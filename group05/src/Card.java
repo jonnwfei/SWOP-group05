@@ -12,6 +12,7 @@ enum Value {
 
 /**
  * @author John Cai
+ * @since 24-02-2026
  */
 public class Card {
     private final Suit suit;
