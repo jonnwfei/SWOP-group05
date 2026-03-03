@@ -1,12 +1,11 @@
 enum BidType {
-    PASS, ASK_PARTNER, SOLO, OPEN_MISERIE, MISERIE
+    PASS, PROPOSAL, ACCEPTANCE, SOLO, OPEN_MISERIE, MISERIE
 }
 
 /**
  * @author Seppe De Houwer
  * @since 24/2/26
- */
-class Bid {
+ */class Bid {
     private Player bidder;
     private BidType type;
 
@@ -16,11 +15,11 @@ class Bid {
      */
     public Bid(Player bidder, BidType type) {
         if (bidder == null) {
-            throw IllegalArgumentException();
+            throw new IllegalArgumentException();
         }
             this.bidder = bidder;
         if (type == null) {
-            throw IllegalArgumentException();
+            throw new IllegalArgumentException();
         }
         this.type = type;
     }
