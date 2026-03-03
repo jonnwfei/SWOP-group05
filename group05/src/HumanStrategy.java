@@ -1,13 +1,18 @@
 import java.util.List;
 
 public class HumanStrategy implements Strategy {
-    @java.lang.Override
+    @Override
     public Bid determineBid() {
         return null;
     }
 
-    @java.lang.Override
+    @Override
     public Card chooseCardToPlay(List<Card> legalCards) {
         return null;
+    }
+
+    @Override
+    public Boolean requiresConfirmation() {
+        return true;
     }
 }
