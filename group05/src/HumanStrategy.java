@@ -1,5 +1,9 @@
 import java.util.List;
 
+/**
+ * @author Tommy Wu
+ * @since 25/02/2026
+ */
 public class HumanStrategy implements Strategy {
     @Override
     public Bid determineBid() {
