@@ -5,11 +5,11 @@ import java.util.List;
  * @author Tommy Wu
  * @since 24/02/2026
  */
-public abstract class Player {
+public class Player {
     private final Strategy decisionStrategy;
     private final String name;
     private final List<Card> currentHand;
-    private Integer Score;
+    private Integer playerScore;
 
     /**
      * @param decisionStrategy
@@ -21,6 +21,7 @@ public abstract class Player {
         this.decisionStrategy = decisionStrategy;
         this.name = name;
         this.currentHand = new ArrayList<>();
+        this.playerScore = 0;
     }
 
     /**
@@ -70,6 +71,6 @@ public abstract class Player {
      * returns player score
      */
     public Integer getScore() {
-        return this.Score;
+        return this.playerScore;
     }
 }
