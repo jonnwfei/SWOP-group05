@@ -1,6 +1,5 @@
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author John Cai
@@ -10,7 +9,7 @@ public class Trick {
     private final Suit trumpSuit;
     private final Player startingPlayer;
     private Player winningPlayer;
-    private LinkedHashMap<Player, Card> playedCards;
+    private List<Turn> turns;
 
     /**
      * @param startingPlayer starting player of this trick
@@ -26,7 +25,7 @@ public class Trick {
         this.trumpSuit = trumpSuit;
         this.startingPlayer = startingPlayer;
         this.winningPlayer = null;
-        this.playedCards = new LinkedHashMap<>();
+        this.turns = new ArrayList<>();
     }
 
 
@@ -45,36 +44,32 @@ public class Trick {
     }
 
     /**
-     * @param player that plays a card
-     * @param card   to be played
+     * @param player     that plays a card
+     * @param playedCard to be played
      * @throws IllegalArgumentException if Player tries to play a card not in their hand
      * @throws IllegalArgumentException if the same Player tries to play more than once in the same
      *                                  trick
-     * @throws IllegalArgumentException if Player doesn't follow the leadingSuit when he's able to
      */
-    public void playCard(Player player, Card card) {
-        List<Card> playerHand = player.getHand();
-        if (!playerHand.contains(card)) {
-            throw new IllegalArgumentException("Trick: Player does not have this card in their hand");
-        }
-        if (playedCards.containsKey(player)) {
+    public void playCard(Player player, Card playedCard) {
+
+        if (turns.stream().anyMatch(t -> t.getPlayer().equals(player))) {
             throw new IllegalArgumentException("Trick: Player already played in this trick");
         }
-        if (!playedCards.isEmpty()) { // Cards have been played, get leading suit
+        if (!turns.isEmpty()) { // Cards have been played, get leading suit
             Suit leadingSuit = getLeadingSuit();
 
-            if (card.getSuit() != leadingSuit && player.hasSuit(leadingSuit)) {
+            if (playedCard.getSuit() != leadingSuit && player.hasSuit(leadingSuit)) {
                 throw new IllegalArgumentException(
                         "Trick: Illegal move: You must follow the leading suit (" + leadingSuit + ").");
             }
         }
 
-        if (playedCards.size() > 4) {
-            throw new IllegalArgumentException("Trick: Trick has already 4 cards");
+        if (turns.size() >= 4) {
+            throw new IllegalArgumentException("Trick: Cannot play card" + playedCard + ", this trick already has 4 cards");
         }
-        player.removeCard(card);
-        playedCards.put(player, card);
-        if (playedCards.size() == 4) {
+//        player.removeCard(playedCard); this is the player's own responsibility
+        turns.add(new Turn(player, playedCard));
+        if (turns.size() == 4) {
             determineWinner();
         }
     }
@@ -88,9 +83,9 @@ public class Trick {
         Player currentWinner = null;
         Card bestCard = null;
 
-        for (Map.Entry<Player, Card> entry : playedCards.entrySet()) {
-            Player player = entry.getKey();
-            Card playedCard = entry.getValue();
+        for (Turn turn : turns) {
+            Player player = turn.getPlayer();
+            Card playedCard = turn.getPlayedCard();
 
             if (bestCard == null) {
                 currentWinner = player;
@@ -124,7 +119,7 @@ public class Trick {
     }
 
     private Suit getLeadingSuit() {
-        Card firstCard = playedCards.values().iterator().next();
+        Card firstCard = turns.getFirst().getPlayedCard();
         return firstCard.getSuit();
     }
 }
