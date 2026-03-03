@@ -13,7 +13,8 @@ public class Trick {
 
     /**
      * @param startingPlayer starting player of this trick
-     * @throws Error if Trick constructor is called without a starting player
+     * @throws IllegalArgumentException if Trick constructor is called without a starting player
+     * @throws IllegalArgumentException if Trick constructor is called without a trumpSuit
      */
     public Trick(Player startingPlayer, Suit trumpSuit) {
         if (startingPlayer == null) {
@@ -51,6 +52,9 @@ public class Trick {
      *                                  trick
      */
     public void playCard(Player player, Card playedCard) {
+        if (player == null) throw new IllegalArgumentException("Trick: Player must exist, cannot be null");
+        if (playedCard == null) throw new IllegalArgumentException("Trick: PlayedCard must exist, cannot be null");
+
 
         if (turns.stream().anyMatch(t -> t.getPlayer().equals(player))) {
             throw new IllegalArgumentException("Trick: Player already played in this trick");
