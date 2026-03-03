@@ -9,15 +9,12 @@ import java.util.Random;
 
 /*
   @author Stan Kestens
-  @creation 23/02/2026
+  @since 23/02/2026
    */
-abstract class Count {
+public abstract class Count {
 
     private List<Player> players;
     private List<Round> rounds;
-    private Player currentPlayer;
-    private Player dealerPlayer;
-    private State state;
 
     /*
      * Constructs a game object
