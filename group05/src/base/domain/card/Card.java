@@ -1,3 +1,5 @@
+package domain.card;
+
 /**
  * @author John Cai
  * @since 24-02-2026

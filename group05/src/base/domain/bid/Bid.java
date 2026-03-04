@@ -1,3 +1,5 @@
+import domain.card.Suit;
+
 import java.util.List;
 
 /**

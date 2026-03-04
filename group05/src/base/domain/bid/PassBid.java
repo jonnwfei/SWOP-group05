@@ -1,3 +1,5 @@
+import domain.card.Suit;
+
 import java.util.Collections;
 import java.util.List;
 

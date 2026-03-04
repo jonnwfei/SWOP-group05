@@ -2,6 +2,8 @@
  * A class that represents a round played during the game
  * */
 
+import domain.card.Suit;
+
 /**
  * @author Seppe De Houwer
  * @since 24/02/26

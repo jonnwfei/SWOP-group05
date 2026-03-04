@@ -1,3 +1,5 @@
+import domain.card.Suit;
+
 import java.util.List;
 
 public record AcceptedBid(Player proposer, Player acceptor) implements Bid {
