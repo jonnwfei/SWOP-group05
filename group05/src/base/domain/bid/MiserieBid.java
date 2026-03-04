@@ -2,17 +2,15 @@ package base.domain.bid;
 
 import base.domain.card.Suit;
 import base.domain.player.Player;
-import base.domain.trick.Trick;
 
 import java.util.List;
 
-public record abondanceBid(Player player, BidType bidType, Suit trump) implements Bid {
+// CHANGE 1: It now takes a List<Player> instead of a single Player!
+public record MiserieBid(Player player, BidType bidType) implements Bid {
 
-    // PERFECT GRASP: The Compact Constructor ensures the Class Invariant.
-    // It runs automatically right before the object is created.
-    public abondanceBid {
-        if (bidType.getBidCategory() != BidCategory.ABONDANCE) {
-            throw new IllegalArgumentException("AbondanceBid requires an ABONDANCE rank!");
+    public MiserieBid {
+        if (bidType.getBidCategory() != BidCategory.MISERIE) {
+            throw new IllegalArgumentException("MiserieBid requires a MISERIE category!");
         }
     }
 
@@ -28,12 +26,12 @@ public record abondanceBid(Player player, BidType bidType, Suit trump) implement
 
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {
-        return trump;
+        return null;
     }
 
     @Override
     public boolean checkWin(int tricksWon) {
-        return tricksWon >= bidType.getTargetTricks();
+        return tricksWon == 0;
     }
 
     @Override
