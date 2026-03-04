@@ -65,6 +65,15 @@ public class Round {
         trumpSuit = lastDealt.getSuit();
     }
 
+    public void askBids() {
+        playerbids = new ArrayList<>();
+        for (Player p : players) {
+            playerbids.add(p.askBid());
+        }
+        this.bids = playerbids
+        return;
+    }
+
     /**
      * this plays a round, unmless there are already 13 rounds played.
      */
@@ -75,11 +84,35 @@ public class Round {
         while (tricks.size() < 13) {
             currentTrick = new Trick(Player currentPlayer, Suit trumpsuit);
             currentTrick.playTrick();
-            currentPlayer = currentTrick.getWinner();
+            currentPlayer = currentTrick.getWinningPlayer();
             tricks.add(currentTrick);
             }
         finished = true;
         }
+    }
+
+    public HashMap<Player, Integer> calculateScores() {
+        HashMap<Player, Integer> result = new HashMap<>();
+        for (Player p : players) {
+            result.put(p, 0);
+        }
+        if (!finished) {
+            return result;
+        }
+        for (Bid bid : bids) {
+            if (bid.getType != PROPOSAL && bid.ACCEPTANCE
+            int points = bid.calculatePoints(bid, getTricks());
+            Player bidder = bid.getBidder();
+
+            result.put(bidder, result.get(bidder) + points);
+
+            for (Player p : players) {
+                if (!p.equals(bidder)) {
+                    result.put(p, result.get(p) - (points / 3));
+                }
+            }
+        }
+        return result;
     }
 
     /**
@@ -91,6 +124,8 @@ public class Round {
     public List<Bid> getBids() { return bids; }
     public boolean isFinished() { return finished; }
     public Suit getTrumpSuit() { return trumpSuit; }
+    public setTrumpSuit(Suit trump) {trumpSuit = trump; }
+    public List<Trick> getTricks() { return playedTricks; }
     public Trick getLastPlayedTrick() {
         if (tricks.isEmpty()) {
             return null;
