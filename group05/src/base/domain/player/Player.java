@@ -1,5 +1,6 @@
+package base.domain.player;
 import domain.card.Suit;
-
+import domain.card.Card;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,9 +11,8 @@ import java.util.List;
 public class Player {
     private final Strategy decisionStrategy;
     private final String name;
-    private final List<Card> currentHand;
+    private List<Card> currentHand;
     private Integer playerScore;
-
     /**
      * @param decisionStrategy
      * @param name
@@ -45,8 +45,26 @@ public class Player {
      */
     public void addCard(Card card) {
         if (card == null) throw new IllegalArgumentException("card can't be null");
-        if (currentHand.size() >= 13) throw new IllegalStateException("Player hand is full");
-        currentHand.add(card);
+        if (this.currentHand.size() >= 13) throw new IllegalStateException("Player hand is full");
+        this.currentHand.add(card);
+    }
+
+    /**
+     * empties Hand of player
+     */
+    public void flushHand() {
+        this.currentHand = new ArrayList<>();
+    }
+
+    /**
+     * Player
+     * @param trump | current trump suit of the round
+     * @param lead | current lead suit of the trick
+     * @return Card chosen by the player following it's strategy
+     */
+    public Card playCard(Suit trump, Suit lead) {
+        List<Card> legalCards = this.getHand().stream().filter(card -> card.getSuit() == trump || card.getSuit() == lead);
+        return this.decisionStrategy.chooseCardToPlay(legalCards);
     }
 
     /**
