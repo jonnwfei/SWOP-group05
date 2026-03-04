@@ -1,4 +1,4 @@
-package domain.card;
+package base.domain.card;
 
 /**
  * @author John Cai

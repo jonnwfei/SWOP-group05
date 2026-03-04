@@ -1,4 +1,7 @@
-import domain.card.Suit;
+package base.domain.player;
+
+import base.domain.card.Card;
+import base.domain.card.Suit;
 
 import java.util.ArrayList;
 import java.util.List;

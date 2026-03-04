@@ -1,3 +1,8 @@
+package base.domain.player;
+
+import base.domain.bid.Bid;
+import base.domain.card.Card;
+
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
