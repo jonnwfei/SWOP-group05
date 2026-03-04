@@ -1,3 +1,8 @@
+package base.domain.player;
+
+import base.domain.card.Card;
+import base.domain.card.Suit;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,7 +60,7 @@ public class Player {
      */
     private void removeCard(Card card) {
         if (card == null) throw new IllegalArgumentException("card can't be null.");
-        if (!currentHand.remove(card)) { throw new IllegalArgumentException("Card is not in player hand."); }
+        if (!currentHand.remove(card)) { throw new IllegalArgumentException("domain.card.Card is not in player hand."); }
     }
 
     /**

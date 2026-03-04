@@ -1,3 +1,9 @@
+package base.domain.trick;
+
+import base.domain.card.Suit;
+import base.domain.player.Player;
+import base.domain.card.Card;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -101,7 +107,7 @@ public class Trick {
             boolean isBestCardTrump = (bestCard.getSuit() == this.trumpSuit);
 
             if (isNewCardTrump) {
-                if (!isBestCardTrump) { // If new Card is Trump it automatically beats all non-trumps
+                if (!isBestCardTrump) { // If new domain.card.Card is Trump it automatically beats all non-trumps
                     currentWinner = player;
                     bestCard = playedCard;
                 } else {                // If both TrumpCards, then highest trump wins
