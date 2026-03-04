@@ -1,6 +1,6 @@
 package base.domain.player;
-import domain.card.Suit;
-import domain.card.Card;
+import base.domain.card.Suit;
+import base.domain.card.Card;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,7 +64,9 @@ public class Player {
      */
     public Card playCard(Suit trump, Suit lead) {
         List<Card> legalCards = this.getHand().stream().filter(card -> card.getSuit() == trump || card.getSuit() == lead);
-        return this.decisionStrategy.chooseCardToPlay(legalCards);
+        Card chosenCard = this.decisionStrategy.chooseCardToPlay(legalCards);
+        this.removeCard(chosenCard);
+        return chosenCard;
     }
 
     /**
