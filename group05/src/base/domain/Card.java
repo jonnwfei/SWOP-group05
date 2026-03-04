@@ -1,13 +1,3 @@
-enum Suit {
-    CLUBS, DIAMONDS, HEARTS, SPADES
-}
-
-enum Rank {
-    TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TEN,
-    JACK, QUEEN, KING, ACE
-
-}
-
 /**
  * @author John Cai
  * @since 24-02-2026
