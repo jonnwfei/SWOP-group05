@@ -6,7 +6,7 @@ import base.domain.trick.Trick;
 
 import java.util.List;
 
-public record SoloProposalBid(Player player) implements Bid {
+public record abondanceBid(Player player, BidRank bidRank, Suit trump) implements Bid {
     @Override
     public List<Player> getTeam() {
         return List.of(player);
@@ -14,25 +14,24 @@ public record SoloProposalBid(Player player) implements Bid {
 
     @Override
     public BidRank getRank() {
-        return BidRank.SOLO_PROPOSAL;
+        // should check wether abondance?
+        return bidRank;
     }
 
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {
-        return dealtTrump;
+        return trump;
     }
 
     @Override
     public boolean checkWin(List<Trick> tricksWon) {
-        if (tricksWon.isEmpty()) {return false;}
-        return tricksWon.size() >= getRank().getTargetTricks() && tricksWon.getLast().hasTrump();
+        // should check which abondance? or change BidRank to hold amount of tricks needed?
+        return false;
     }
 
     @Override
     public int calculateBasePoints(int tricksWon) {
-        int base = 6;
-        int extra = tricksWon - 5;
-        if (extra > 0) {base = base + 3*extra;}
-        return base;
+        // same question
+        return 0;
     }
 }
