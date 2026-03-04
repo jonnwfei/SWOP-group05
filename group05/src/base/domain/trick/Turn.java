@@ -1,5 +1,10 @@
+package base.domain.trick;
+import domain.card.Card;
+import domain.player.Player;
 
 /**
+ * The type Turn.
+ *
  * @author John Cai
  * @since 26/02/2026
  */
@@ -8,7 +13,9 @@ public class Turn {
     private final Card playedCard;
 
     /**
-     * @param player of this turn
+     * Instantiates a new Turn.
+     *
+     * @param player     of this turn
      * @param playedCard of the player in this turn
      */
     public Turn(Player player, Card playedCard) {
@@ -17,6 +24,8 @@ public class Turn {
     }
 
     /**
+     * Gets played card.
+     *
      * @return played card in this turn by the player
      */
     public Card getPlayedCard() {
@@ -24,6 +33,8 @@ public class Turn {
     }
 
     /**
+     * Gets player.
+     *
      * @return player of this turn
      */
     public Player getPlayer() {
