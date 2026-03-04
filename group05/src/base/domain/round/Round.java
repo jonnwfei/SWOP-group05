@@ -1,7 +1,4 @@
-
-/**
- * A class that represents a round played during the game
- * */
+package base.domain.round.Round;
 
 import base.domain.bid.Bid;
 import base.domain.card.Card;
