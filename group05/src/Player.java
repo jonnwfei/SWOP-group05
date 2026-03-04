@@ -53,11 +53,9 @@ public class Player {
      * @throws IllegalArgumentException | !this.getHand().contains(card)
      * @param card
      */
-    public void removeCard(Card card) {
+    private void removeCard(Card card) {
         if (card == null) throw new IllegalArgumentException("card can't be null.");
-        if (currentHand.isEmpty()) throw new IllegalStateException("Player hand is empty");
-        if (!currentHand.contains(card)) throw new IllegalArgumentException("Card is not in player hand.");
-        currentHand.remove(card);
+        if (!currentHand.remove(card)) { throw new IllegalArgumentException("Card is not in player hand."); }
     }
 
     /**

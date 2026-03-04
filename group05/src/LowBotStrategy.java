@@ -6,7 +6,7 @@ import java.util.List;
  * @author Tommy Wu
  * @since 25/02/2026
  */
-class LowBotStrategy implements Strategy {
+public class LowBotStrategy implements Strategy {
 
     @Override
     // always returns pass
