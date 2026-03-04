@@ -1,4 +1,8 @@
-import domain.card.Suit;
+package base.domain.trick;
+
+import base.domain.card.Suit;
+import base.domain.player.Player;
+import base.domain.card.Card;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,3 +1,5 @@
+package base.domain.bid;
+
 /**
  * @author Tommy Wu
  * @since 26/2/26

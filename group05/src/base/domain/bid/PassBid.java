@@ -1,4 +1,8 @@
-import domain.card.Suit;
+package base.domain.bid;
+
+import base.domain.card.Suit;
+import base.domain.player.Player;
+import base.domain.trick.Trick;
 
 import java.util.Collections;
 import java.util.List;
