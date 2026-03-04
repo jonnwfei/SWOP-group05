@@ -15,7 +15,7 @@ public class Trick {
     private final Suit trumpSuit;
     private final Player startingPlayer;
     private Player winningPlayer;
-    private List<Turn> turns;
+    private final List<Turn> turns;
 
     /**
      * @param startingPlayer starting player of this trick
@@ -85,7 +85,7 @@ public class Trick {
     }
 
     /**
-     * Determines the winning player of this trick
+     * Determines the winning player of this trick and sets field: winningPlayer
      */
     private void determineWinner() {
         Suit leadingSuit = getLeadingSuit();
