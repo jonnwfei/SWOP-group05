@@ -1,7 +1,9 @@
 package base.domain.player;
 
+
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.bid.Bid;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +52,10 @@ public class Player {
         if (card == null) throw new IllegalArgumentException("card can't be null");
         if (currentHand.size() >= 13) throw new IllegalStateException("Player hand is full");
         currentHand.add(card);
+    }
+
+    public Bid chooseBid() {
+        return this.decisionStrategy.determineBid();
     }
 
     /**
