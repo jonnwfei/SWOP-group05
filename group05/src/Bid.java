@@ -1,45 +1,17 @@
-enum BidType {
-    PASS,
-    PROPOSAL, ACCEPTANCE,
-    OPENMISERIE, MISERIE,
-    ABONDANCE9, ABONDANCE10, ABONDANCE11, ABONDANCE12,
-    SOLO, SOLOSLIM
-}
+import java.util.List;
 
 /**
- * @author Seppe De Houwer
+ * @author Seppe De Houwer, Tommy Wu
  * @since 24/2/26
  */
-class Bid {
-    private Player bidder;
-    private BidType type;
+public interface Bid extends Comparable<Bid> {
+    List<Player> getTeam();
+    int calculateBasePoints(int tricksWon);
+    boolean checkWin(int tricksWon);
+    BidRank getRank();
 
-    /**
-     * @param bidder
-     * @param type
-     */
-    public Bid(Player bidder, BidType type) {
-        if (bidder == null) {
-            throw IllegalArgumentException();
-        }
-            this.bidder = bidder;
-        if (type == null) {
-            throw IllegalArgumentException();
-        }
-        this.type = type;
-    }
-
-    /**
-     * @return the bidder
-     */
-    public Player getBidder() {
-        return bidder;
-    }
-
-    /**
-     * @return the bidtype
-     */
-    public BidType getType() {
-        return type;
+    @Override
+    default int compareTo(Bid other) {
+        return this.getRank().compareTo(other.getRank());
     }
 }
