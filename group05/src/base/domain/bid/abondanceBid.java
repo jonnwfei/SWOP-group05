@@ -13,9 +13,8 @@ public record abondanceBid(Player player, BidRank bidRank, Suit trump) implement
     }
 
     @Override
-    public BidRank getRank() {
-        // should check wether abondance?
-        return bidRank;
+    public BidType getType() {
+        return BidType;
     }
 
     @Override
@@ -24,14 +23,12 @@ public record abondanceBid(Player player, BidRank bidRank, Suit trump) implement
     }
 
     @Override
-    public boolean checkWin(List<Trick> tricksWon) {
-        // should check which abondance? or change BidRank to hold amount of tricks needed?
-        return false;
+    public boolean checkWin(int tricksWon) {
+        return tricksWon >= bidRank.getTargetTricks();
     }
 
     @Override
     public int calculateBasePoints(int tricksWon) {
-        // same question
-        return 0;
+        return bidRanbidk.getBasePoints();
     }
 }

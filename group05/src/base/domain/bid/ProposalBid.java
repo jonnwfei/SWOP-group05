@@ -18,8 +18,8 @@ public record ProposalBid(Player proposer) implements Bid {
     }
 
     @Override
-    public BidRank getRank() {
-        return BidRank.PROPOSAL;
+    public BidType getType() {
+        return BidType.PROPOSAL;
     }
 
     // --- DEFENSIVE PROGRAMMING BELOW ---
@@ -32,7 +32,7 @@ public record ProposalBid(Player proposer) implements Bid {
     }
 
     @Override
-    public boolean checkWin(List<Trick> teamTricks) {
+    public boolean checkWin(int teamTricks) {
         throw new IllegalStateException("CRITICAL: Cannot evaluate a win for an unresolved ProposalBid!");
     }
 

@@ -13,8 +13,8 @@ public record SoloProposalBid(Player player) implements Bid {
     }
 
     @Override
-    public BidRank getRank() {
-        return BidRank.SOLO_PROPOSAL;
+    public BidType getType() {
+        return BidType.SOLO_PROPOSAL;
     }
 
     @Override
@@ -23,15 +23,14 @@ public record SoloProposalBid(Player player) implements Bid {
     }
 
     @Override
-    public boolean checkWin(List<Trick> tricksWon) {
-        if (tricksWon.isEmpty()) {return false;}
-        return tricksWon.size() >= getRank().getTargetTricks() && tricksWon.getLast().hasTrump();
+    public boolean checkWin(int tricksWon) {
+        return tricksWon >= BidType.SOLO_PROPOSAL.getTargetTricks();
     }
 
     @Override
     public int calculateBasePoints(int tricksWon) {
-        int base = 6;
-        int extra = tricksWon - 5;
+        int base = BidType.SOLO_PROPOSAL.getBasePoints();
+        int extra = tricksWon - BidType.SOLO_PROPOSAL.getTargetTricks();
         if (extra > 0) {base = base + 3*extra;}
         return base;
     }
