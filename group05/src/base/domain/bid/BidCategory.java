@@ -1,5 +1,10 @@
 package base.domain.bid;
 
 public enum BidCategory {
-    ABONDANCE
+    PASS,
+    PROPOSAL,
+    ACCEPTANCE,
+    SOLO,
+    ABONDANCE,
+    MISERIE
 }
