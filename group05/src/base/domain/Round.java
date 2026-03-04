@@ -1,8 +1,13 @@
+
 /**
  * A class that represents a round played during the game
  * */
 
-import domain.card.Suit;
+import base.domain.bid.Bid;
+import base.domain.card.Card;
+import base.domain.card.Suit;
+import base.domain.player.Player;
+import base.domain.trick.Trick;
 
 /**
  * @author Seppe De Houwer

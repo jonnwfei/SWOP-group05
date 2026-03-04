@@ -1,3 +1,7 @@
+package base.domain.trick;
+
+import base.domain.player.Player;
+import base.domain.card.Card;
 
 /**
  * @author John Cai
