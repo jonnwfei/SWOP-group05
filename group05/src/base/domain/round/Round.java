@@ -1,4 +1,4 @@
-package base.domain.round.Round;
+package base.domain.round;
 
 import base.domain.bid.Bid;
 import base.domain.card.Card;
