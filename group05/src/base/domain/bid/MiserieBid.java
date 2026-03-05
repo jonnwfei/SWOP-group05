@@ -9,7 +9,7 @@ import java.util.List;
 public record MiserieBid(Player player, BidType bidType) implements Bid {
 
     public MiserieBid {
-        if (bidType.getBidCategory() != BidCategory.MISERIE) {
+        if (bidType.getCategory() != BidCategory.MISERIE) {
             throw new IllegalArgumentException("MiserieBid requires a MISERIE category!");
         }
     }
@@ -25,13 +25,15 @@ public record MiserieBid(Player player, BidType bidType) implements Bid {
         return null;
     }
 
-    @Override
-    public boolean checkWin(int tricksWon) {
-        return tricksWon == 0;
-    }
 
     @Override
     public int calculateBasePoints(int tricksWon) {
-        return bidType.getBasePoints();
+        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
+        int points = bidType.getBasePoints();
+        if (tricksWon > bidType.getTargetTricks()) {
+            points = -1 * points;
+            return points;
+        }
+        return points;
     }
 }

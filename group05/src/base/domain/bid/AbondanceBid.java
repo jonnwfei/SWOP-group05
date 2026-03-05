@@ -10,7 +10,7 @@ public record AbondanceBid(Player player, BidType bidType, Suit trump) implement
     // PERFECT GRASP: The Compact Constructor ensures the Class Invariant.
     // It runs automatically right before the object is created.
     public AbondanceBid {
-        if (bidType.getBidCategory() != BidCategory.ABONDANCE) {
+        if (bidType.getCategory() != BidCategory.ABONDANCE) {
             throw new IllegalArgumentException("AbondanceBid requires an ABONDANCE rank!");
         }
     }
@@ -27,12 +27,13 @@ public record AbondanceBid(Player player, BidType bidType, Suit trump) implement
     }
 
     @Override
-    public boolean checkWin(int tricksWon) {
-        return tricksWon >= bidType.getTargetTricks();
-    }
-
-    @Override
     public int calculateBasePoints(int tricksWon) {
-        return bidType.getBasePoints();
+        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
+        int points = bidType.getBasePoints();
+        if (tricksWon < bidType.getTargetTricks()) {
+            points = -1 * points;
+            return points;
+        }
+        return points;
     }
 }
