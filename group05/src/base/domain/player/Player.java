@@ -63,12 +63,19 @@ public class Player {
      * @return Card chosen by the player following its strategy
      */
     public Card playCard(Suit lead) {
+        // If we are leading the trick, we can play any card!
+        if (lead == null) {
+            Card chosenCard = this.decisionStrategy.chooseCardToPlay(this.getHand());
+            this.removeCard(chosenCard);
+            return chosenCard;
+        }
+        // Otherwise, we must follow suit if possible.
         List<Card> legalCards = this.getHand().stream().filter(card -> card.suit() == lead).toList();
-        if (legalCards.isEmpty()) {legalCards = this.getHand();}
+        if (legalCards.isEmpty()) { legalCards = this.getHand(); }
         Card chosenCard = this.decisionStrategy.chooseCardToPlay(legalCards);
         this.removeCard(chosenCard);
         return chosenCard;
-    }
+}
 
     public Bid chooseBid() {return this.decisionStrategy.determineBid();}
 
