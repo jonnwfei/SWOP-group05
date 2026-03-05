@@ -1,4 +1,5 @@
 package base.domain.player;
+import base.domain.bid.Bid;
 import base.domain.card.Suit;
 import base.domain.card.Card;
 import java.util.ArrayList;
@@ -69,6 +70,8 @@ public class Player {
         return chosenCard;
     }
 
+    public Bid chooseBid() {return this.decisionStrategy.determineBid();}
+
     /**
      * @throws IllegalArgumentException | card == null
      * @throws IllegalStateException | this.getHand().isEmpty()
@@ -93,4 +96,6 @@ public class Player {
     public Integer getScore() {
         return this.playerScore;
     }
+
+    public String getName() {return this.name;}
 }
