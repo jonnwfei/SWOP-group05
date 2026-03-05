@@ -1,8 +1,8 @@
 package base.domain.player;
 
 import base.domain.bid.Bid;
+import base.domain.bid.PassBid;
 import base.domain.card.Card;
-
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -16,7 +16,7 @@ public class HighBotStrategy implements Strategy {
     @Override
     // always returns pass
     public Bid determineBid(Player player) {
-        return new Bid(player, BidType.PASS); //PASS is BidType
+        return new PassBid(player); //PASS is BidType
     }
 
     @Override
