@@ -6,16 +6,12 @@ import base.domain.trick.Trick;
 
 import java.util.List;
 
-public record AcceptedBid(Player proposer, Player acceptor) implements Bid {
+public record AcceptedBid(Player acceptor) implements Bid {
     @Override
-    public List<Player> getTeam() {
-        return List.of(proposer, acceptor);
-    }
+    public Player getPlayer() {return acceptor;}
 
     @Override
-    public BidRank getRank() {
-        return BidRank.ACCEPTANCE;
-    }
+    public BidType getType() {return BidType.ACCEPTANCE;}
 
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {
@@ -23,18 +19,16 @@ public record AcceptedBid(Player proposer, Player acceptor) implements Bid {
     }
 
     @Override
-    public boolean checkWin(List<Trick> tricksWon) {
-        if (tricksWon.isEmpty()) {return false;}
-        return tricksWon.size() >= 8 && tricksWon.getLast().hasTrump();
+    public boolean checkWin(int tricksWon) {
+        return tricksWon >= BidType.ACCEPTANCE.getTargetTricks();
     }
 
     @Override
     public int calculateBasePoints(int tricksWon) {
-        int base = 2;
-        int extra = tricksWon - 8;
-        if (extra > 0) {
-            base = base + extra;
-        }
+        int base = BidType.ACCEPTANCE.getBasePoints();
+        int extra = tricksWon - BidType.ACCEPTANCE.getTargetTricks();
+        if (extra > 0) {base = base + 3*extra;}
+        if (tricksWon == 13) {base = 2*base;}
         return base;
     }
 }
