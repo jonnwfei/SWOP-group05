@@ -11,7 +11,7 @@ import java.util.List;
  */
 public class HumanStrategy implements Strategy {
     @Override
-    public Bid determineBid() {
+    public Bid determineBid(Player player) {
         return null;
     }
 
@@ -21,7 +21,7 @@ public class HumanStrategy implements Strategy {
     }
 
     @Override
-    public Boolean requiresConfirmation() {
+    public boolean requiresConfirmation() {
         return true;
     }
 }

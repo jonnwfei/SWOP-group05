@@ -15,8 +15,8 @@ public class LowBotStrategy implements Strategy {
 
     @Override
     // always returns pass
-    public Bid determineBid() {
-        return new Bid(this, PASS); // PASS is BidType
+    public Bid determineBid(Player player) {
+        return new Bid(player, BidType.PASS); // PASS is BidType
     }
 
     @Override
@@ -27,7 +27,7 @@ public class LowBotStrategy implements Strategy {
     }
 
     @Override
-    public Boolean requiresConfirmation() {
+    public boolean requiresConfirmation() {
         return false;
     }
 }

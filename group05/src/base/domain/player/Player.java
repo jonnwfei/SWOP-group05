@@ -96,7 +96,7 @@ public class Player {
      *
      * @return the {@link Bid} chosen by the player's strategy.
      */
-    public Bid chooseBid() {return this.decisionStrategy.determineBid();}
+    public Bid chooseBid() {return this.decisionStrategy.determineBid(this);}
 
     /**
      * Removes a specific card from the player's hand after it has been played.
