@@ -10,12 +10,13 @@ import base.domain.player.Player;
 import base.domain.trick.Trick;
 
 import java.util.*;
-import base.domain.bid.Bid;
 /**
  * @author Seppe De Houwer
  * @since 24/02/26
  */
 public class Round {
+    public static final int MAX_TRICKS = 13;
+
     private final List<Player> players;
     private Player currentPlayer;
     private Player dealer;
@@ -24,15 +25,13 @@ public class Round {
     private Trick currentTrick;
 
     private List<Bid> bids;
+    private Bid highestBid;
     private Suit trumpSuit;
     private int multiplier;
-    private boolean finished;
 
     /**
      * @param players       a list of the players
      * @param dealer        the player who starts dealing the cards
-     * @param currentplayer the player who starts with the first turn
-     * @param multiplier    how the scores should be calculated
      * @throws IllegalArgumentException if players or dealer is null
      * @throws IllegalArgumentException if there are more than 4 players
      */
@@ -46,9 +45,9 @@ public class Round {
         this.playedTricks = new ArrayList<>();
         this.currentTrick = null;
         this.bids = new ArrayList<>();
+        this.highestBid = null;
         this.trumpSuit = null;
         this.multiplier = 1;
-        this.finished = false;
     }
 
     /**
@@ -71,12 +70,13 @@ public class Round {
         for (Player p : players) {
             Bid newbid = askBid(p, highesbid);
             if (newbid.getType() != BidType.PASS) {
-                highesbid = newbid.getType();
+                highesbid = newbid;
                 if (highesbid.getType().getCategory() == BidCategory.ABONDANCE) {
                     this.currentPlayer = highesbid.getPlayer();
                 }
             }
             playerBids.add(newbid);
+            this.highestBid = highesbid;
         }
         this.bids = playerBids;
         this.trumpSuit = highesbid.getChosenTrump(trumpSuit);
@@ -88,7 +88,7 @@ public class Round {
         //someone else could out-bid the proposal thats why passcount ahs to be 3
         if (passCount == 3 && proposeCount == 1) {
             Bid proposeBid = bids.stream().filter(b -> b.getType() == BidType.PROPOSAL).findFirst().orElseThrow();
-            Bid newBid = proposeBid.getPlayer().askBid();
+            Bid newBid = proposeBid.getPlayer().chooseBid();
             if (newBid.getType() != BidType.PASS && newBid.getType() != BidType.SOLO_PROPOSAL) {
                 throw new IllegalArgumentException();
             }
@@ -110,12 +110,6 @@ public class Round {
             this.bids = new ArrayList<>(); // reset the bids
             this.multiplier = 2; // set multiplier to 2
             askBids(); //ask again for the bids
-        }
-        //filter all bids such that calculatescore() only has to calculate the valid bids in bids
-        if (highesbid.getType() == BidType.ACCEPTANCE) {
-            bids = bids.stream().filter(b -> b.getType() != BidType.PASS);
-        } else {
-            bids = bids.stream().filter(b -> b.getType() == highesbid.getType());
         }
         return;
     }
@@ -164,38 +158,67 @@ public class Round {
     }
 
     /**
-     * this plays a round, unmless there are already 13 rounds played.
+     * this plays a round, unmless there are already MAX_TRICKS rounds played.
      */
     public void playRound() {
-        if (this.finished) {
+        if ( playedTricks.size() >= MAX_TRICKS) {
             return;
         }
-        while (playedTricks.size() < 13) {
+        while (playedTricks.size() < MAX_TRICKS) {
             currentTrick = new Trick(currentPlayer, trumpSuit);
-            currentTrick.playTrick();
+            //currentTrick.playTrick();
             currentPlayer = currentTrick.getWinningPlayer();
             playedTricks.add(currentTrick);
         }
-        this.finished = true;
         calculateScores();
     }
 
     private void calculateScores() {
-        if (finished) {
+        if ( playedTricks.size() != MAX_TRICKS) {
             return;
         }
-        if (bids == )
-        long tricksWon = 0;
-        for (Bid bid : getBids()) {
-            if (bid.getType() == BidType.PROPOSAL || bid.getType() == bidType.ACCEPTANCE) {
-                tricksWon += getTricksWon(bid.getPlayer());
-            } else {
-
+        int trickswon = 0;
+        if (highestBid.getType() == BidType.ACCEPTANCE ) {
+            Player playeraccept = null;
+            Player playerpropose = null;
+            for (Bid b : bids) {
+                if (b.getType() == BidType.PROPOSAL) {
+                    playerpropose = b.getPlayer();
+                } else if (b.getType() == BidType.ACCEPTANCE) {
+                    playeraccept = b.getPlayer();
+                }
             }
-            int points = bid.calculateBasePoints();
+            for (Trick t : playedTricks) {
+                if (t.getWinningPlayer().equals(playeraccept) || t.getWinningPlayer().equals(playerpropose)) {
+                    trickswon += 1;
+                }
+            }
+            int points = highestBid.calculateBasePoints(trickswon);
+            for (Player p : players) {
+                if (p.equals(playeraccept) || p.equals(playerpropose)) {
+                    p.updateScore(points * multiplier);
+                } else {
+                    p.updateScore(points * multiplier * -1);
+                }
+            }
+        } else {
+            for (Trick t : playedTricks) {
+                if (t.getWinningPlayer().equals(highestBid.getPlayer())) {
+                    trickswon += 1;
+                }
+            }
+            int points = highestBid.calculateBasePoints(trickswon);
+            for (Player p : players) {
+                if (p.equals(highestBid.getPlayer())) {
+                    p.updateScore(points * multiplier);
+                } else {
+                    p.updateScore(points * multiplier * -1 / 3);
+                }
             }
         }
-    }
+        long tricksWon = 0;
+
+        }
     private long getTricksWon(Player player) {
         return (playedTricks.stream().filter(t -> t.getWinningPlayer().equals(player)).count());
     }
@@ -214,16 +237,17 @@ public class Round {
         return bids;
     }
     public boolean isFinished() {
-        return this.finished;
+        return playedTricks.size() == MAX_TRICKS;
     }
-
+    public Bid getHighestBid() {
+        return highestBid;
+    }
     public Suit getTrumpSuit() {
         return trumpSuit;
     }
     public void setTrumpSuit(Suit trump) {
         this.trumpSuit = trump;
     }
-
     public List<Trick> getTricks() {
         return playedTricks;
     }
