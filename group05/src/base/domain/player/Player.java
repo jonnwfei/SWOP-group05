@@ -59,12 +59,12 @@ public class Player {
 
     /**
      * Player
-     * @param trump | current trump suit of the round
      * @param lead | current lead suit of the trick
-     * @return Card chosen by the player following it's strategy
+     * @return Card chosen by the player following its strategy
      */
-    public Card playCard(Suit trump, Suit lead) {
-        List<Card> legalCards = this.getHand().stream().filter(card -> card.getSuit() == trump || card.getSuit() == lead);
+    public Card playCard(Suit lead) {
+        List<Card> legalCards = this.getHand().stream().filter(card -> card.suit() == lead).toList();
+        if (legalCards.isEmpty()) {legalCards = this.getHand();}
         Card chosenCard = this.decisionStrategy.chooseCardToPlay(legalCards);
         this.removeCard(chosenCard);
         return chosenCard;
@@ -93,9 +93,7 @@ public class Player {
     /**
      * returns player score
      */
-    public Integer getScore() {
-        return this.playerScore;
-    }
+    public Integer getScore() {return this.playerScore;}
 
     public String getName() {return this.name;}
 }
