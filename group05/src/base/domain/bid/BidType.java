@@ -20,7 +20,7 @@ public enum BidType {
     SOLO_PROPOSAL(5, 6, BidCategory.PROPOSAL),
 
     /** Forms a team of two players (Proposer and Acceptor), requiring 8 tricks total. */
-    ACCEPTANCE(8, 2, BidCategory.PROPOSAL),
+    ACCEPTANCE(8, 2, BidCategory.ACCEPTANCE),
 
     /** play alone requiring 9 tricks. Player may choose a new trump suit. */
     ABONDANCE_9(9, 15, BidCategory.ABONDANCE),
@@ -89,5 +89,5 @@ public enum BidType {
      * to validate their state during instantiation.
      * * @return the associated {@link BidCategory}.
      */
-    public BidCategory getBidCategory() {return bidCategory;}
+    public BidCategory getCategory() {return bidCategory;}
 }
