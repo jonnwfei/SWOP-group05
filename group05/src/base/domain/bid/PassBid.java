@@ -14,14 +14,10 @@ import java.util.List;
 public record PassBid(Player player) implements Bid {
 
     @Override
-    public List<Player> getTeam() {
-        return Collections.emptyList();
-    }
+    public Player getPlayer() {return player;}
 
     @Override
-    public BidType getType() {
-        return BidType.PASS;
-    }
+    public BidType getType() {return BidType.PASS;}
 
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {

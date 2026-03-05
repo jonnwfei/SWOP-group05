@@ -13,14 +13,10 @@ import java.util.List;
 public record ProposalBid(Player proposer) implements Bid {
 
     @Override
-    public List<Player> getTeam() {
-        return List.of(proposer);
-    }
+    public Player getPlayer() {return proposer;}
 
     @Override
-    public BidType getType() {
-        return BidType.PROPOSAL;
-    }
+    public BidType getType() {return BidType.PROPOSAL;}
 
     // --- DEFENSIVE PROGRAMMING BELOW ---
     // These methods belong to the Playing/Scoring phase.

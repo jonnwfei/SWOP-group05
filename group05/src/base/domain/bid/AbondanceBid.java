@@ -16,14 +16,10 @@ public record AbondanceBid(Player player, BidType bidType, Suit trump) implement
     }
 
     @Override
-    public List<Player> getTeam() {
-        return List.of(player);
-    }
+    public Player getPlayer() {return player;}
 
     @Override
-    public BidType getType() {
-        return bidType;
-    }
+    public BidType getType() {return bidType;}
 
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {

@@ -15,14 +15,10 @@ public record MiserieBid(Player player, BidType bidType) implements Bid {
     }
 
     @Override
-    public List<Player> getTeam() {
-        return List.of(player);
-    }
+    public Player getPlayer() {return player;}
 
     @Override
-    public BidType getType() {
-        return bidType;
-    }
+    public BidType getType() {return bidType;}
 
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {

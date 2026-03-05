@@ -8,19 +8,13 @@ import java.util.List;
 
 public record SoloProposalBid(Player player) implements Bid {
     @Override
-    public List<Player> getTeam() {
-        return List.of(player);
-    }
+    public Player getPlayer() {return player;}
 
     @Override
-    public BidType getType() {
-        return BidType.SOLO_PROPOSAL;
-    }
+    public BidType getType() {return BidType.SOLO_PROPOSAL;}
 
     @Override
-    public Suit getChosenTrump(Suit dealtTrump) {
-        return dealtTrump;
-    }
+    public Suit getChosenTrump(Suit dealtTrump) {return dealtTrump;}
 
     @Override
     public boolean checkWin(int tricksWon) {
@@ -32,6 +26,7 @@ public record SoloProposalBid(Player player) implements Bid {
         int base = BidType.SOLO_PROPOSAL.getBasePoints();
         int extra = tricksWon - BidType.SOLO_PROPOSAL.getTargetTricks();
         if (extra > 0) {base = base + 3*extra;}
+        if (tricksWon == 13) {base = 2*base;}
         return base;
     }
 }

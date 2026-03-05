@@ -13,27 +13,17 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
     }
 
     @Override
-    public List<Player> getTeam() {
-        return List.of(player);
-    }
+    public Player getPlayer() {return player;}
 
     @Override
-    public BidType getType() {
-        return bidType;
-    }
+    public BidType getType() {return bidType;}
 
     @Override
-    public Suit getChosenTrump(Suit dealtTrump) {
-        return trump;
-    }
+    public Suit getChosenTrump(Suit dealtTrump) {return trump;}
 
     @Override
-    public boolean checkWin(int tricksWon) {
-        return tricksWon >= bidType.getTargetTricks();
-    }
+    public boolean checkWin(int tricksWon) {return tricksWon >= bidType.getTargetTricks();}
 
     @Override
-    public int calculateBasePoints(int tricksWon) {
-        return getType().getBasePoints();
-    }
+    public int calculateBasePoints(int tricksWon) {return getType().getBasePoints();}
 }
