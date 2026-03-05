@@ -4,33 +4,28 @@ import base.domain.player.Player;
 import base.domain.card.Card;
 
 /**
+ * The type Turn.
+ *
  * @author John Cai
  * @since 26/02/2026
  */
-public class Turn {
-    private final Player player;
-    private final Card playedCard;
-
+public record Turn(Player player, Card playedCard) {
     /**
-     * @param player of this turn
+     * Instantiates a new Turn.
+     *
+     * @param player     of this turn
      * @param playedCard of the player in this turn
      */
-    public Turn(Player player, Card playedCard) {
-        this.player = player;
-        this.playedCard = playedCard;
+    public Turn {
+        if (player == null) throw new IllegalArgumentException("Turn: Player cannot be null");
+        if (playedCard == null) throw new IllegalArgumentException("Turn: PlayedCard cannot be null");
     }
 
     /**
-     * @return played card in this turn by the player
+     * @return Stringified Turn, e.g. "Turn"
      */
-    public Card getPlayedCard() {
-        return playedCard;
-    }
-
-    /**
-     * @return player of this turn
-     */
-    public Player getPlayer() {
-        return player;
+    @Override
+    public String toString() {
+        return "Turn:" + player.getName() + "played card: " + playedCard;
     }
 }
