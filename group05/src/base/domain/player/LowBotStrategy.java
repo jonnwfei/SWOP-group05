@@ -23,7 +23,7 @@ public class LowBotStrategy implements Strategy {
     public Card chooseCardToPlay(List<Card> legalCards) {
         if (legalCards == null) throw new IllegalArgumentException("legalCards can't be null");
         if (legalCards.isEmpty()) throw new IllegalArgumentException("legalCards can't be empty");
-        return Collections.min(legalCards, Comparator.comparing(Card::getRank));
+        return Collections.min(legalCards, Comparator.comparing(Card::rank));
     }
 
     @Override
