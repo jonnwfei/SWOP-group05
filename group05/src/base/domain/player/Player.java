@@ -15,7 +15,6 @@ public class Player {
     private final String name;
     private final List<Card> currentHand;
     private Integer playerScore;
-
     /**
      * @param decisionStrategy
      * @param name
@@ -48,9 +47,31 @@ public class Player {
      */
     public void addCard(Card card) {
         if (card == null) throw new IllegalArgumentException("card can't be null");
-        if (currentHand.size() >= 13) throw new IllegalStateException("Player hand is full");
-        currentHand.add(card);
+        if (this.currentHand.size() >= 13) throw new IllegalStateException("Player hand is full");
+        this.currentHand.add(card);
     }
+
+    /**
+     * empties Hand of player
+     */
+    public void flushHand() {
+        this.currentHand = new ArrayList<>();
+    }
+
+    /**
+     * Player
+     * @param trump | current trump suit of the round
+     * @param lead | current lead suit of the trick
+     * @return Card chosen by the player following it's strategy
+     */
+    public Card playCard(Suit trump, Suit lead) {
+        List<Card> legalCards = this.getHand().stream().filter(card -> card.getSuit() == trump || card.getSuit() == lead);
+        Card chosenCard = this.decisionStrategy.chooseCardToPlay(legalCards);
+        this.removeCard(chosenCard);
+        return chosenCard;
+    }
+
+    public Bid chooseBid() {return this.decisionStrategy.determineBid();}
 
     /**
      * @throws IllegalArgumentException | card == null
@@ -76,4 +97,6 @@ public class Player {
     public Integer getScore() {
         return this.playerScore;
     }
+
+    public String getName() {return this.name;}
 }
