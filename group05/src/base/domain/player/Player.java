@@ -99,14 +99,10 @@ public class Player {
     public Bid chooseBid() {return this.decisionStrategy.determineBid(this);}
 
     /**
-     * Removes a specific card from the player's hand after it has been played.
-     *
-     * @param card the {@link Card} to remove.
-     * @throws IllegalArgumentException if the {@code card} is null, or if it is not present in the hand.
+     * updates the player score.
+     * @param score the score to be added or deducted to the current player score.
      */
-    private void removeCard(Card card) {
-        if (card == null) throw new IllegalArgumentException("card can't be null.");
-        if (!currentHand.remove(card)) { throw new IllegalArgumentException("domain.card.Card is not in player hand."); }
+    public void updateScore(int score) {this.playerScore = this.playerScore + score;}
     }
 
     /**
@@ -131,4 +127,15 @@ public class Player {
      * @return the player's name.
      */
     public String getName() {return this.name;}
+
+    /**
+     * Removes a specific card from the player's hand after it has been played.
+     *
+     * @param card the {@link Card} to remove.
+     * @throws IllegalArgumentException if the {@code card} is null, or if it is not present in the hand.
+     */
+    private void removeCard(Card card) {
+        if (card == null) throw new IllegalArgumentException("card can't be null.");
+        if (!currentHand.remove(card)) { throw new IllegalArgumentException("domain.card.Card is not in player hand."); }
+    }
 }
