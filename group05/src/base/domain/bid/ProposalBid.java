@@ -28,11 +28,6 @@ public record ProposalBid(Player proposer) implements Bid {
     }
 
     @Override
-    public boolean checkWin(int teamTricks) {
-        throw new IllegalStateException("CRITICAL: Cannot evaluate a win for an unresolved ProposalBid!");
-    }
-
-    @Override
     public int calculateBasePoints(int wonTricks) {
         throw new IllegalStateException("CRITICAL: Cannot score an unresolved ProposalBid!");
     }
