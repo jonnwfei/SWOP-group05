@@ -20,10 +20,10 @@ public class GameController {
             Boolean game_running = true;
             String answer = "";
             while (game_running) {
-                GameEvent response = game.executeState(answer);
-                Response response = terminalManager.handle(response); // response : boolean keeprunnig, answer str
-                game_running = response.get_contiue();
-                answer = response.get_anszer();
+                GameEvent event = game.executeState(answer);
+                Response response = terminalManager.handle(event); // response : boolean keeprunnig, answer str
+                game_running = response.getContinue();
+                answer = response.getContent();
             }
             game.nextState(answer);
         }
