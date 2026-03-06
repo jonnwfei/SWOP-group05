@@ -2,6 +2,7 @@ package base.domain.player;
 
 import base.domain.bid.Bid;
 import base.domain.card.Card;
+import base.domain.card.Suit;
 
 import java.util.List;
 
@@ -29,18 +30,8 @@ public interface Strategy {
      */
     Bid determineBid(Player player);
 
-    /**
-     * Selects a specific card to play during a trick in the Play Phase.
-     * <p>
-     * The game engine provides a list of strictly legal cards (e.g., following the lead suit).
-     * For bot strategies, this list represents their entire mathematical decision space.
-     * For human strategies, this list should ideally be used to filter or validate UI/Console input,
-     * as returning an illegal card will result in the game engine rejecting the play.
-     *
-     * @param legalCards an immutable list of {@link Card}s the player is legally allowed to play.
-     * @return the single {@link Card} chosen to be played on the table.
-     */
-    Card chooseCardToPlay(List<Card> legalCards);
+
+    Card chooseCardToPlay(List<Card> currentHand, Suit lead );
 
     /**
      * Indicates whether this strategy requires a manual confirmation
