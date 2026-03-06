@@ -1,5 +1,6 @@
 package base.domain.player;
 
+import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 
@@ -39,13 +40,13 @@ public class Player {
 
     /**
      * returns True if Player has given suit, false otherwise.
-     * @param suit
+     * @param suit to check
      * @throws IllegalArgumentException | suit == null
      * @return Boolean
      */
     public Boolean hasSuit(Suit suit) {
         if (suit == null) throw new IllegalArgumentException("suit can't be null");
-        return currentHand.stream().anyMatch(card -> card.getSuit() == suit);
+        return currentHand.stream().anyMatch(card -> card.suit() == suit);
     }
 
     /**

@@ -30,14 +30,14 @@ public class HighBotStrategy implements Strategy {
     @Override
     public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
         List<Card> legalCards = determineLegalCards(currentHand, lead);
-        return Collections.max(legalCards, Comparator.comparing(Card::getRank));
+        return Collections.max(legalCards, Comparator.comparing(Card::rank));
     }
 
     private List<Card> determineLegalCards(List<Card> currentHand, Suit lead) {
         if (currentHand == null) throw new IllegalArgumentException("currentHand can't be null");
         if (currentHand.isEmpty()) throw new IllegalArgumentException("currentHand can't be empty");
 
-        List<Card> legalCards = currentHand.stream().filter(card -> card.getSuit() == lead).toList();
+        List<Card> legalCards = currentHand.stream().filter(card -> card.suit() == lead).toList();
         if (legalCards.isEmpty()) {legalCards = currentHand;}
         return legalCards;
     }
