@@ -2,6 +2,7 @@ package base.domain.player;
 
 import base.domain.bid.Bid;
 import base.domain.card.Card;
+import base.domain.card.Suit;
 
 import java.util.List;
 
@@ -23,7 +24,7 @@ public class HumanStrategy implements Strategy {
     }
 
     @Override
-    public Card chooseCardToPlay(List<Card> legalCards) {
+    public Card chooseCardToPlay(List<Card> currentHand, Suit lead) { // TODO:
         return null;
     }
 
