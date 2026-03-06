@@ -9,7 +9,7 @@ public class GameController {
     private final TerminalManager terminalManager;
     private Boolean isRunning;
     public GameController(){
-        this.game = new WhistGame();
+        this.game = new  ();
         this.terminalManager = new TerminalManager();
         this.isRunning = true;
     }
