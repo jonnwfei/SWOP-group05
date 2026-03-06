@@ -18,17 +18,20 @@ public record AcceptedBid(Player acceptor) implements Bid {
         return dealtTrump;
     }
 
-    @Override
-    public boolean checkWin(int tricksWon) {
-        return tricksWon >= BidType.ACCEPTANCE.getTargetTricks();
-    }
+
 
     @Override
     public int calculateBasePoints(int tricksWon) {
-        int base = BidType.ACCEPTANCE.getBasePoints();
+        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
+        int points = BidType.ACCEPTANCE.getBasePoints();
+
         int extra = tricksWon - BidType.ACCEPTANCE.getTargetTricks();
-        if (extra > 0) {base = base + 3*extra;}
-        if (tricksWon == 13) {base = 2*base;}
-        return base;
+        if (extra < 0) {
+            points = -1 * points;
+            return points;
+        }
+
+        if (tricksWon == 13) {points = 2*points;}
+        return points;
     }
 }

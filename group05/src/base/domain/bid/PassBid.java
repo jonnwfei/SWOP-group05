@@ -27,13 +27,8 @@ public record PassBid(Player player) implements Bid {
     }
 
     @Override
-    public boolean checkWin(int teamTricks) {
-        // You cannot win a round by passing.
-        return false;
-    }
-
-    @Override
-    public int calculateBasePoints(int wonTricks) {
+    public int calculateBasePoints(int tricksWon) {
+        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
         // Passing awards 0 points.
         return BidType.PASS.getBasePoints();
     }

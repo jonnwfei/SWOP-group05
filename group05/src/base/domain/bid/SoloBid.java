@@ -7,7 +7,7 @@ import java.util.List;
 
 public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid {
     public SoloBid {
-        if (bidType.getBidCategory() != BidCategory.SOLO) {
+        if (bidType.getCategory() != BidCategory.SOLO) {
             throw new IllegalArgumentException("SoloBid requires a SOLO category!");
         }
     }
@@ -21,9 +21,15 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {return trump;}
 
-    @Override
-    public boolean checkWin(int tricksWon) {return tricksWon >= bidType.getTargetTricks();}
 
     @Override
-    public int calculateBasePoints(int tricksWon) {return getType().getBasePoints();}
+    public int calculateBasePoints(int tricksWon) {
+        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
+        int points = bidType.getBasePoints();
+        if (tricksWon < bidType.getTargetTricks()) {
+            points = -1 * points;
+            return points;
+        }
+            return points;
+        }
 }
