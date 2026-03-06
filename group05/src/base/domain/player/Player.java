@@ -76,20 +76,20 @@ public class Player {
      * @param lead the leading {@link Suit} of the current trick, or {@code null} if this player is leading the trick.
      * @return the {@link Card} chosen by the player's strategy.
      */
-    public Card playCard(Suit lead) {
-        // If we are leading the trick, we can play any card!
-        if (lead == null) {
-            Card chosenCard = this.decisionStrategy.chooseCardToPlay(this.getHand());
-            this.removeCard(chosenCard);
-            return chosenCard;
-        }
-        // Otherwise, we must follow suit if possible.
-        List<Card> legalCards = this.getHand().stream().filter(card -> card.suit() == lead).toList();
-        if (legalCards.isEmpty()) { legalCards = this.getHand(); }
-        Card chosenCard = this.decisionStrategy.chooseCardToPlay(legalCards);
-        this.removeCard(chosenCard);
-        return chosenCard;
-}
+    public Card chooseCard(Suit lead) {
+        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead);
+    }
+
+    /**
+     * Removes a specific card from the player's hand after it has been played.
+     *
+     * @param card the {@link Card} to remove.
+     * @throws IllegalArgumentException if the {@code card} is null, or if it is not present in the hand.
+     */
+    public void removeCard(Card card) {
+        if (card == null) throw new IllegalArgumentException("card can't be null.");
+        if (!this.currentHand.remove(card)) { throw new IllegalArgumentException("domain.card.Card is not in player hand."); }
+    }
 
     /**
      * Prompts the player's strategy to determine their bid for the current round.
@@ -103,7 +103,7 @@ public class Player {
      * @param score the score to be added or deducted to the current player score.
      */
     public void updateScore(int score) {this.playerScore = this.playerScore + score;}
-    }
+
 
     /**
      * Retrieves a defensive copy of the player's current hand to prevent external modification.
@@ -111,7 +111,7 @@ public class Player {
      * @return a new {@code List} containing the player's current {@link Card}s.
      */
     public List<Card> getHand() {
-        return new ArrayList<>(currentHand);
+        return new ArrayList<>(this.currentHand);
     }
 
     /**
@@ -128,14 +128,5 @@ public class Player {
      */
     public String getName() {return this.name;}
 
-    /**
-     * Removes a specific card from the player's hand after it has been played.
-     *
-     * @param card the {@link Card} to remove.
-     * @throws IllegalArgumentException if the {@code card} is null, or if it is not present in the hand.
-     */
-    private void removeCard(Card card) {
-        if (card == null) throw new IllegalArgumentException("card can't be null.");
-        if (!currentHand.remove(card)) { throw new IllegalArgumentException("domain.card.Card is not in player hand."); }
-    }
 }
+
