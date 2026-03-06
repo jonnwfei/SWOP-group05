@@ -26,7 +26,7 @@ public class TerminalManager {
             return new Response(text, true);
         } else {
             System.out.println(element.getContent());
-            return new Response(null, true);
+            return new Response(null, false);
         }
     }
 }

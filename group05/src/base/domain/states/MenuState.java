@@ -6,8 +6,8 @@ import base.domain.player.HumanStrategy;
 import base.domain.player.LowBotStrategy;
 import base.domain.player.Player;
 import cli.elements.GameEvent;
-import cli.elements.PromptElement;
-import cli.elements.TextElement;
+import cli.elements.QuestionEvent;
+import cli.elements.TextEvent;
 
 public class MenuState extends State {
     private int promptCount;
@@ -33,19 +33,19 @@ public class MenuState extends State {
                     "(1) Play a game? \n"+
                     "(2) Count the scores for a game? ";
             promptCount += 1;
-            return new PromptElement(firstMsg);
+            return new QuestionEvent(firstMsg);
         }
         else if (promptCount == 1){ //getting al the players
             //first time we get here, in the input we have the choice
             keuze = input;
             promptCount += 1;
             String amountOfBots = "How many bots will be playing? ";
-            return new PromptElement(amountOfBots);
+            return new QuestionEvent(amountOfBots);
         }
         else if (promptCount == 2) { //delegating the amount of bots
             totalBots = Integer.parseInt(input);
             promptCount += 1;
-            return new PromptElement("Give the name of player one: ");
+            return new QuestionEvent("Give the name of player one: ");
         }
         else {
             if (humanCount < (4 - totalBots)) {
@@ -54,11 +54,11 @@ public class MenuState extends State {
                 humanCount++;
 
                 if (humanCount < (4 - totalBots)) {
-                    return new PromptElement("Give the name of player " + (humanCount + 1) + ": ");
+                    return new QuestionEvent("Give the name of player " + (humanCount + 1) + ": ");
                 } else  {
                     String botStrat= "(1) High Bot \n"+
                             "(2) Low Bot";
-                    return new PromptElement("Which strategy should bot 1 use?: \n" + botStrat);
+                    return new QuestionEvent("Which strategy should bot 1 use?: \n" + botStrat);
                 }
             }
             // THEN: configure bots
@@ -73,10 +73,10 @@ public class MenuState extends State {
                 getGame().addPlayer(bot);
                 botCount++;
                 if (botCount < totalBots) {
-                    return new PromptElement("Which strategy should bot " + (botCount + 1) + " use?");
+                    return new QuestionEvent("Which strategy should bot " + (botCount + 1) + " use?");
                 } else {
                     //all players and bots added
-                    return new TextElement(getGame().printNames());
+                    return new TextEvent(getGame().printNames());
                 }
             }
         }

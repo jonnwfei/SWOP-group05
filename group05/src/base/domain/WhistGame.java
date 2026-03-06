@@ -4,11 +4,7 @@ import java.util.List;
 import base.domain.player.*;
 import base.domain.round.Round;
 import base.domain.states.*;
-import base.domain.trick.Trick;
 import cli.elements.GameEvent;
-import cli.elements.PromptElement;
-import cli.elements.TextElement;
-import base.domain.player.Strategy;
 
 public class WhistGame {
 
