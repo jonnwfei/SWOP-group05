@@ -3,7 +3,11 @@ import base.domain.WhistGame;
 import cli.TerminalManager;
 import cli.elements.GameEvent;
 import cli.elements.Response;
-
+/**
+ * @author stankestens
+* @since 01/03
+ *
+* */
 public class GameController {
     private final WhistGame game;
     private final TerminalManager terminalManager;
@@ -25,7 +29,7 @@ public class GameController {
                 game_running = response.getContinue();
                 answer = response.getContent();
             }
-            game.nextState(answer);
+            game.nextState();
         }
     }
 

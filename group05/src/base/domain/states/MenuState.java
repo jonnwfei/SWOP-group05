@@ -73,8 +73,11 @@ public class MenuState extends State {
                 getGame().addPlayer(bot);
                 botCount++;
                 if (botCount < totalBots) {
-                    return new QuestionEvent("Which strategy should bot " + (botCount + 1) + " use?");
+                    String botStrat= "(1) High Bot \n"+
+                            "(2) Low Bot";
+                    return new QuestionEvent("Which strategy should bot " + (botCount + 1) + " use?" + botStrat);
                 } else {
+
                     //all players and bots added
                     return new TextEvent(getGame().printNames());
                 }
