@@ -7,6 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * Represents a participant in the trick-taking card game.
+ * <p>
+ * This class encapsulates the player's state, such as their hand and score. It utilizes
+ * the Strategy design pattern ({@link Strategy}) to decouple the entity from its decision-making
+ * logic, allowing the same {@code Player} class to be used for both human players and AI opponents.
+ *
  * @author Tommy Wu
  * @since 24/02/2026
  */
@@ -15,10 +21,13 @@ public class Player {
     private final String name;
     private final List<Card> currentHand;
     private Integer playerScore;
+
     /**
-     * @param decisionStrategy
-     * @param name
-     * @throws IllegalArgumentException | decisionStrategy == null || name == null
+     * Constructs a new player with a specific decision-making strategy and name.
+     *
+     * @param decisionStrategy the behavior strategy used to make bids and play cards.
+     * @param name             the display name of the player.
+     * @throws IllegalArgumentException if {@code decisionStrategy} or {@code name} is null.
      */
     public Player(Strategy decisionStrategy, String name) {
         if (decisionStrategy == null || name == null) throw new IllegalArgumentException("Strategy and name can't be null");
@@ -40,10 +49,11 @@ public class Player {
     }
 
     /**
-     * adds card to player hand
-     * @throws IllegalArgumentException | card == null
-     * @throws IllegalStateException | this.getHand().size() >= 13
-     * @param card
+     * Adds a dealt card to the player's current hand.
+     *
+     * @param card the {@link Card} to add to the hand.
+     * @throws IllegalArgumentException if the {@code card} is null.
+     * @throws IllegalStateException    if the player's hand already contains the maximum of 13 cards.
      */
     public void addCard(Card card) {
         if (card == null) throw new IllegalArgumentException("card can't be null");
@@ -52,49 +62,72 @@ public class Player {
     }
 
     /**
-     * empties Hand of player
+     * Empties the player's hand, typically called at the end of a round before redealing.
      */
     public void flushHand() {
         this.currentHand = new ArrayList<>();
     }
 
     /**
-     * Player
-     * @param lead | current lead suit of the trick
-     * @return Card chosen by the player following its strategy
+     * Prompts the player's strategy to select a card to play based on the current trick's lead suit.
+     * <p>
+     * <b>Game Rules Enforced:</b> A player must follow the lead suit if they possess it.
+     * If they are leading the trick ({@code lead} is null), they may play any card in their hand.
+     *
+     * @param lead the leading {@link Suit} of the current trick, or {@code null} if this player is leading the trick.
+     * @return the {@link Card} chosen by the player's strategy.
      */
-    public Card playCard(Suit lead) {
-        List<Card> legalCards = this.getHand().stream().filter(card -> card.suit() == lead).toList();
-        if (legalCards.isEmpty()) {legalCards = this.getHand();}
-        Card chosenCard = this.decisionStrategy.chooseCardToPlay(legalCards);
-        this.removeCard(chosenCard);
-        return chosenCard;
+    public Card chooseCard(Suit lead) {
+        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead);
     }
 
-    public Bid chooseBid() {return this.decisionStrategy.determineBid();}
-
     /**
-     * @throws IllegalArgumentException | card == null
-     * @throws IllegalStateException | this.getHand().isEmpty()
-     * @throws IllegalArgumentException | !this.getHand().contains(card)
-     * @param card
+     * Removes a specific card from the player's hand after it has been played.
+     *
+     * @param card the {@link Card} to remove.
+     * @throws IllegalArgumentException if the {@code card} is null, or if it is not present in the hand.
      */
-    private void removeCard(Card card) {
+    public void removeCard(Card card) {
         if (card == null) throw new IllegalArgumentException("card can't be null.");
-        if (!currentHand.remove(card)) { throw new IllegalArgumentException("domain.card.Card is not in player hand."); }
+        if (!this.currentHand.remove(card)) { throw new IllegalArgumentException("domain.card.Card is not in player hand."); }
     }
 
     /**
-     * gives a duplicate list of currentHand
+     * Prompts the player's strategy to determine their bid for the current round.
+     *
+     * @return the {@link Bid} chosen by the player's strategy.
+     */
+    public Bid chooseBid() {return this.decisionStrategy.determineBid(this);}
+
+    /**
+     * updates the player score.
+     * @param score the score to be added or deducted to the current player score.
+     */
+    public void updateScore(int score) {this.playerScore = this.playerScore + score;}
+
+
+    /**
+     * Retrieves a defensive copy of the player's current hand to prevent external modification.
+     *
+     * @return a new {@code List} containing the player's current {@link Card}s.
      */
     public List<Card> getHand() {
-        return new ArrayList<>(currentHand);
+        return new ArrayList<>(this.currentHand);
     }
 
     /**
-     * returns player score
+     * Retrieves the player's current cumulative score.
+     *
+     * @return the player's score.
      */
     public Integer getScore() {return this.playerScore;}
 
+    /**
+     * Retrieves the display name of the player.
+     *
+     * @return the player's name.
+     */
     public String getName() {return this.name;}
+
 }
+
