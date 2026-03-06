@@ -22,7 +22,6 @@ public class Round {
     private Player dealer;
 
     private List<Trick> playedTricks = new ArrayList<>();
-    private Trick currentTrick;
 
     private List<Bid> bids;
     private Bid highestBid;
@@ -43,7 +42,6 @@ public class Round {
         this.dealer = dealer;
         this.currentPlayer = players.get((players.indexOf(dealer) +1) %4);
         this.playedTricks = new ArrayList<>();
-        this.currentTrick = null;
         this.bids = new ArrayList<>();
         this.highestBid = null;
         this.trumpSuit = null;
@@ -103,7 +101,7 @@ public class Round {
         long passCount2 = bids.stream().filter(b -> b.getType() == BidType.PASS).count();
         if (passCount2 == players.size()) {
             for (Player p : players) {
-                p.flushHand(); //reset every players hand
+                p.flushHand(); //reset every player's hand
             }
             this.dealer = players.get(players.indexOf(dealer) +1 % 4);
             this.currentPlayer = players.get(players.indexOf(currentPlayer) +1 % 4);
@@ -122,15 +120,19 @@ public class Round {
         if (deck.size() != 52) {
             throw new IllegalArgumentException();
         }
+        int[] dealPattern = {4, 4, 5};
         Iterator<Card> it = deck.iterator();
         int index = (players.indexOf(dealer) + 1) % 4;
         Card lastDealt = null;
-        while (it.hasNext()) {
-            Card c = it.next();
-            Player p = players.get(index % 4);
-            p.addCard(c);
-            lastDealt = c;
-            index++;
+        for (int amountToDeal : dealPattern) {
+            // Deal to each of the 4 players
+            for (int i = 0 ; i < 4 ; i++) {
+                Player p = players.get((index + i) % 4);
+                for (int j = 0; j < amountToDeal; j++) {
+                    lastDealt = it.next();
+                    p.addCard(lastDealt);
+                }
+            }
         }
         trumpSuit = lastDealt.getSuit();
     }
@@ -160,18 +162,7 @@ public class Round {
     /**
      * this plays a round, unmless there are already MAX_TRICKS rounds played.
      */
-    public void playRound() {
-        if ( playedTricks.size() >= MAX_TRICKS) {
-            return;
-        }
-        while (playedTricks.size() < MAX_TRICKS) {
-            currentTrick = new Trick(currentPlayer, trumpSuit);
-            //currentTrick.playTrick();
-            currentPlayer = currentTrick.getWinningPlayer();
-            playedTricks.add(currentTrick);
-        }
-        calculateScores();
-    }
+
 
     private void calculateScores() {
         if ( playedTricks.size() != MAX_TRICKS) {
@@ -216,11 +207,6 @@ public class Round {
                 }
             }
         }
-        long tricksWon = 0;
-
-        }
-    private long getTricksWon(Player player) {
-        return (playedTricks.stream().filter(t -> t.getWinningPlayer().equals(player)).count());
     }
     /**
      * getters voor info van de class
@@ -228,13 +214,13 @@ public class Round {
      * @return values
      */
     public List<Player> getPlayers() {
-        return players;
+        return List.copyOf(players);
     }
     public Player getCurrentPlayer() {
         return currentPlayer;
     }
     public List<Bid> getBids() {
-        return bids;
+        return List.copyOf(bids);
     }
     public boolean isFinished() {
         return playedTricks.size() == MAX_TRICKS;
@@ -249,7 +235,7 @@ public class Round {
         this.trumpSuit = trump;
     }
     public List<Trick> getTricks() {
-        return playedTricks;
+        return List.copyOf(playedTricks);
     }
     public Trick getLastPlayedTrick() {
         if (playedTricks.isEmpty()) {
