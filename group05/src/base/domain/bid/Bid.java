@@ -11,14 +11,15 @@ import java.util.List;
  * @since 24/2/26
  */
 public interface Bid extends Comparable<Bid> {
-    List<Player> getTeam(); //maybe hold Player name instead?
-    BidRank getRank();
+    Player getPlayer();
+    BidType getType();
     int calculateBasePoints(int tricksWon);
-    boolean checkWin(List<Trick> tricksWon); //a list of tricks is needed due to condition proposal bid: last won trick must have trump played.
     Suit getChosenTrump(Suit dealtTrump);
 
     @Override
     default int compareTo(Bid other) {
-        return this.getRank().compareTo(other.getRank());
+        return this.getType().compareTo(other.getType());
     }
+
+
 }
