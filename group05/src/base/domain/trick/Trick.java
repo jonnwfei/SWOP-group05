@@ -83,8 +83,9 @@ public class Trick {
         if (turns.size() >= 4) {
             throw new IllegalArgumentException("Trick: Cannot play card" + playedCard + ", this trick already has 4 cards");
         }
-//        player.removeCard(playedCard); this is the player's own responsibility
+
         turns.add(new Turn(player, playedCard));
+        player.removeCard(playedCard);
         if (turns.size() == 4) {
             determineWinner();
         }
