@@ -19,7 +19,7 @@ import java.util.List;
 public class Player {
     private final Strategy decisionStrategy;
     private final String name;
-    private final List<Card> currentHand;
+    private List<Card> currentHand;
     private Integer playerScore;
 
     /**
@@ -128,6 +128,4 @@ public class Player {
      * @return the player's name.
      */
     public String getName() {return this.name;}
-
 }
-

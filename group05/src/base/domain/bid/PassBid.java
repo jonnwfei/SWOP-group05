@@ -14,14 +14,10 @@ import java.util.List;
 public record PassBid(Player player) implements Bid {
 
     @Override
-    public List<Player> getTeam() {
-        return Collections.emptyList();
-    }
+    public Player getPlayer() {return player;}
 
     @Override
-    public BidRank getRank() {
-        return BidRank.PASS;
-    }
+    public BidType getType() {return BidType.PASS;}
 
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {
@@ -31,7 +27,7 @@ public record PassBid(Player player) implements Bid {
     }
 
     @Override
-    public boolean checkWin(List<Trick> teamTricks) {
+    public boolean checkWin(int teamTricks) {
         // You cannot win a round by passing.
         return false;
     }
@@ -39,6 +35,6 @@ public record PassBid(Player player) implements Bid {
     @Override
     public int calculateBasePoints(int wonTricks) {
         // Passing awards 0 points.
-        return 0;
+        return BidType.PASS.getBasePoints();
     }
 }

@@ -13,14 +13,10 @@ import java.util.List;
 public record ProposalBid(Player proposer) implements Bid {
 
     @Override
-    public List<Player> getTeam() {
-        return List.of(proposer);
-    }
+    public Player getPlayer() {return proposer;}
 
     @Override
-    public BidRank getRank() {
-        return BidRank.PROPOSAL;
-    }
+    public BidType getType() {return BidType.PROPOSAL;}
 
     // --- DEFENSIVE PROGRAMMING BELOW ---
     // These methods belong to the Playing/Scoring phase.
@@ -32,7 +28,7 @@ public record ProposalBid(Player proposer) implements Bid {
     }
 
     @Override
-    public boolean checkWin(List<Trick> teamTricks) {
+    public boolean checkWin(int teamTricks) {
         throw new IllegalStateException("CRITICAL: Cannot evaluate a win for an unresolved ProposalBid!");
     }
 
