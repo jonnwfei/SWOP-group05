@@ -1,10 +1,14 @@
 package base.domain;
+import java.util.ArrayList;
 import java.util.List;
 import base.domain.player.*;
 import base.domain.round.Round;
+import base.domain.states.*;
+import base.domain.trick.Trick;
 import cli.elements.GameEvent;
 import cli.elements.PromptElement;
 import cli.elements.TextElement;
+import base.domain.player.Strategy;
 
 public class WhistGame {
 
@@ -15,64 +19,32 @@ public class WhistGame {
     private Player currentPlayer;
     private Player dealerPlayer;
 
-    private abstract class State {
-        abstract GameEvent executeState(String response);
-
+    public WhistGame(){
+        this.state = new MenuState(this);
+        this.running = true;
+        this.players = new ArrayList<>();
+        this.rounds = new ArrayList<>();
+        this.currentPlayer = null;
+        this.dealerPlayer = null;
     }
-    private class MenuState extends State {
-        private int promptcount = 0;
-        @Override
-        GameEvent executeState(String s) {
-            if (promptcount == 0) {
-                return new PromptElement("This is a question? : ");
-            }
-            else{
-                return new TextElement("This is a test!");
-            }
+    public List<Player> getPlayers(){
+        return this.players;
+    }
+
+    public State nextState(String finalAnswer){
+        return state.nextState();
+    }
+    public GameEvent executeState(String response){
+        return state.executeState(response);
+    }
+    public void addPlayer(Player player){
+        this.players.add(player);
+    }
+    public String printNames() {
+        String result = "Players in this game:\n";
+        for (Player p : players) {
+            result += "- " + p.getName() + "\n";
         }
+        return result;
     }
-    private class BidState extends State {
-        private int promptcount = 0;
-        @Override
-        GameEvent executeState(String s) {
-            if (promptcount == 0) {
-                return new PromptElement("This is a question? : ");
-            }
-            else{
-                return new TextElement("This is a test!");
-            }
-        }
-
-
-    }
-    private class PlayState extends State {
-        private int promptcount = 0;
-        @Override
-        GameEvent executeState(String s) {
-            if (promptcount == 0) {
-                return new PromptElement("This is a question? : ");
-            }
-            else{
-                return new TextElement("This is a test!");
-            }
-        }
-
-    }
-    private class CountState extends State {
-
-        private int promptcount = 0;
-        @Override
-        GameEvent executeState(String s) {
-            if (promptcount == 0) {
-                return new PromptElement("This is a question? : ");
-            }
-            else{
-                return new TextElement("This is a test!");
-            }
-        }
-    }
-    public void nextState(){
-
-    }
-
 }
