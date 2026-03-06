@@ -27,8 +27,8 @@ public class WhistGame {
         return this.players;
     }
 
-    public State nextState(String finalAnswer){
-        return state.nextState();
+    public void nextState(){
+        this.state = state.nextState();
     }
     public GameEvent executeState(String response){
         return state.executeState(response);
