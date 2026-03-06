@@ -134,7 +134,7 @@ public class Round {
                 }
             }
         }
-        trumpSuit = lastDealt.getSuit();
+        trumpSuit = lastDealt.suit();
     }
 
     private Bid askBid(Player p, Bid highestBid) {
