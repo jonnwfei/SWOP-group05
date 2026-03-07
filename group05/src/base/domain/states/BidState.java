@@ -6,6 +6,7 @@ import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.round.Round;
 import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
@@ -14,24 +15,29 @@ import java.util.List;
 
 
 public class BidState extends State {
+    private final Round currentRound;
     private List<Bid> bids;
     private BidType currentHighestBidType;
     private Player currentPlayer;
-    private Suit dealtTrumpSuit;
+    private Suit TrumpSuit;
     private BidType pendingBidType;
 
     public BidState(WhistGame game) {
         super(game);
+        this.currentRound = game.getCurrentRound(); //TODO
         this.bids = new ArrayList<>();
         this.currentHighestBidType = null; // Starts as null!
         this.currentPlayer = game.getCurrentPlayer();
-        this.dealtTrumpSuit = game.getCurrentRound().getTrumpSuit(); //TODO
+        this.dealtTrumpSuit = null;
     }
 
     @Override
     public GameEvent executeState(String input) {
 
-        //TODO: if cards not dealt yet -> call dealingCards()
+        if(TrumpSuit == null) {
+            getGame().getDeck().dealCards(); //TODO
+            TrumpSuit = currentRound.getTrumpSuit(); //TODO
+        }
 
         if(input != null && !input.trim().isEmpty()) {
 
@@ -74,6 +80,7 @@ public class BidState extends State {
         if (index == -1) {throw new IllegalArgumentException("currentPlayer not found in list of players");}
         int newIndex = (index + 1) % players.size();
         this.currentPlayer = players.get(newIndex);
+        getGame().setCurrentPlayer(currentPlayer); //TODO
     }
 
     private void updateHighestBidType(BidType bidType) {
@@ -83,17 +90,22 @@ public class BidState extends State {
     }
 
     private String buildFirstPlayerPrompt(Player player) {
-        return "=== BIDDING TURN: " + player.getName() + " ===\n" +
-                "you are the first to bid!\n" +
-                buildBidTypeOptions() + // Show all options
+        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
+                "Dealt Trump: " + TrumpSuit.name() + "\n" +
+                // TODO: "Your Hand: " + player.getFormattedHand() + "\n"
+                "---------------------------------------\n" +
+                "Status: You are the first to bid!\n\n" +
+                buildBidTypeOptions() + "\n" +
                 "Your choice: ";
     }
 
     private String buildStandardPrompt(Player player) {
-        return "=== BIDDING TURN: " + player.getName() + " ===\n" +
-                //TODO: show cards of the player
-                "current Highest:" + currentHighestBidType.name() + "\n" +
-                buildBidTypeOptions() + // Show all options
+        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
+                "Dealt Trump: " + TrumpSuit.name() + "\n" +
+                // TODO: "Your Hand: " + formatHand(player.getHand()) + "\n"
+                "---------------------------------------\n" +
+                "Current Highest: " + currentHighestBidType.name() + "\n\n" +
+                buildBidTypeOptions() + "\n" +
                 "Your choice: ";
     }
 
@@ -200,7 +212,7 @@ public class BidState extends State {
                 return new QuestionEvent(buildSuitOptions());
             }
 
-            Bid finalizedBid = chosenBidType.instantiate(currentPlayer, dealtTrumpSuit);
+            Bid finalizedBid = chosenBidType.instantiate(currentPlayer, TrumpSuit);
             this.bids.add(finalizedBid);
 
             updateHighestBidType(finalizedBid.getType());
