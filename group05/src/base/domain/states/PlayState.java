@@ -1,10 +1,8 @@
 package base.domain.states;
 
-import base.GameController;
 import base.domain.WhistGame;
 
 import base.domain.card.Card;
-import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
@@ -12,15 +10,13 @@ import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
 
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author Stan Kestens
  * @since 01/03/2026
  */
 public class PlayState extends State {
-    private Round currentRound;
+    private final Round currentRound;
     private Trick currentTrick;
 
 
