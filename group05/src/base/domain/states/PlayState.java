@@ -20,12 +20,24 @@ public class PlayState extends State {
     private Trick currentTrick;
 
 
+    /**
+     * Instantiates the playState.
+     *
+     * @param game the given game that holds this State
+     */
     public PlayState(WhistGame game) {
         super(game);
         this.currentRound = game.getRounds().getLast(); // will not throw since BidState ensures that a new Round has been instantiated
         this.currentTrick = new Trick(currentRound.getCurrentPlayer(), currentRound.getTrumpSuit());
     }
 
+    /**
+     * Handles the execution of playState, orchestrating the logic flow of a Round and its Tricks, in the give game
+     * of which holds this state.
+     *
+     * @param input the Users response to the previous QuestionEvent
+     * @return the next QuestionEvent or TextEvent
+     */
     @Override
     public GameEvent executeState(String input) {
         Player currentPlayer = currentRound.getCurrentPlayer();
@@ -84,6 +96,12 @@ public class PlayState extends State {
         }
     }
 
+    /**
+     * Returns the nextState, after playState only comes MenuState or itself to continue on to the next Round within
+     * the same game.
+     *
+     * @return the next state
+     */
     @Override
     public State nextState() {
         if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
