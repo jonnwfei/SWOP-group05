@@ -22,52 +22,69 @@ import java.util.List;
 public class PlayState extends State {
     private Round currentRound;
     private Trick currentTrick;
-    private int cardsPlayedInTrick;
 
 
     public PlayState(WhistGame game) {
         super(game);
-        this.currentRound = game.getRounds().get(0);
+        this.currentRound = game.getRounds().getLast(); // will not throw since DealState or BidState ensures that a new Round has been instantiated
         this.currentTrick = new Trick(currentRound.getCurrentPlayer(), currentRound.getTrumpSuit());
-        this.cardsPlayedInTrick = 0;
     }
 
     @Override
     public GameEvent executeState(String input) {
         Player currentPlayer = currentRound.getCurrentPlayer();
+        String outputLog = "";
 
         if (input != null && !input.isEmpty() && currentPlayer.getRequiresConfirmation()) {
-            int handIdx = Integer.parseInt(input);
-            if (handIdx > currentPlayer.getHand().size()) {
-                return new QuestionEvent(currentPlayer + "does not hold card at index " + handIdx);
-            }
-            Card playedCard = currentPlayer.getHand().get(handIdx); // TODO: indien input == playerResponse parse card input, may
-
             try {
-                currentTrick.playCard(currentPlayer, playedCard); // this can throw, checks if the played card is valid //TODO: needs to use hasSuit()
-                cardsPlayedInTrick++;
-                currentRound.advanceToNextPlayer(); // TODO: implement advance to next Player in Round.
-                return new TextEvent(currentPlayer + "played " + playedCard);
+
+                int handIdx = Integer.parseInt(input);
+                if (handIdx < 1 || handIdx > currentPlayer.getHand().size()) {
+                    return new QuestionEvent("Invalid hand number. Choose between 1 and " + currentPlayer.getHand().size() + ":" );
+                }
+
+                Card playedCard = currentPlayer.getHand().get(handIdx -1);
+                currentTrick.playCard(currentPlayer, playedCard); // plays the card and checks if the played card is valid, could throw
+                currentRound.advanceToNextPlayer();
+                outputLog = currentPlayer.getName() + " played " + playedCard.toString() + ".\n";
+            } catch (NumberFormatException e) {
+                return new QuestionEvent("Please enter a valid number:");
             } catch (IllegalArgumentException e) {
                 return new QuestionEvent("Invalid move (" + e.getMessage() + "). Try again.");
             }
-        } else if (!currentPlayer.getRequiresConfirmation()) {
-            Card botCard = currentPlayer.chooseCard(currentRound.getTrumpSuit());
-            currentTrick.playCard(currentPlayer, botCard);
-            cardsPlayedInTrick++;
-            currentRound.advanceToNextPlayer();
 
-            return new TextEvent(currentPlayer + "played " + botCard.toString());
+        } else if (!currentPlayer.getRequiresConfirmation()) {
+            Card botCard = currentPlayer.chooseCard(currentTrick.getLeadingSuit());
+            currentTrick.playCard(currentPlayer, botCard);
+            currentRound.advanceToNextPlayer();
+            outputLog = currentPlayer.getName() + " played " + botCard.toString() + ".\n";
         }
 
+        if (currentTrick.isCompleted()) {
+            Player winningPlayer = currentTrick.getWinningPlayer();
+            currentRound.registerCompletedTrick(currentTrick);
+
+            outputLog += "*** " + winningPlayer.getName() + " wins the trick! ***\n";
+
+            if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
+                outputLog += "\n --- ROUND OVER ---\nCalculating final scores...";
+
+                return new TextEvent(outputLog);
+            }
+            this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
+        }
+
+
+        // Question event for the next Turn if nextPlayer is a Human
         Player nextPlayer = currentRound.getCurrentPlayer();
         if (nextPlayer.getRequiresConfirmation()) {
-            String currentHand = nextPlayer.getHand().toString();
-            return new QuestionEvent("Trick: " + (currentRound.getTricks().size() + 1) +
+            String currentHand = nextPlayer.getFormattedHand();
+
+            return new QuestionEvent(outputLog + "\nTrick: " + (currentRound.getTricks().size() + 1) +
                     " | " + nextPlayer.getName() + "'s turn.\n" +
-                    "Your hand: " + currentHand + "\nChoose Card via index:");
+                    "Your hand: \n" + currentHand + "\nChoose Card via index:");
         } else {
-            return new TextEvent("");
+            return new TextEvent(outputLog);
         }
     }
 
