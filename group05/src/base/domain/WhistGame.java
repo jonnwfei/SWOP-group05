@@ -81,6 +81,10 @@ public class WhistGame {
         return this.rounds.getLast();
     }
 
+    public void setDeck(Deck deck){
+        this.deck = deck;
+    }
+
     public void nextState(){
         this.state = state.nextState();
     }
@@ -136,4 +140,6 @@ public class WhistGame {
         result += "======================";
         return result;
     }
+
+
 }
