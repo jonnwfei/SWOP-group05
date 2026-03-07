@@ -14,6 +14,8 @@ import java.util.List;
  * @since 25/02/2026
  */
 public class Trick {
+    public static final int MAX_TURNS = 4;
+
     private final Suit trumpSuit;
     private final Player startingPlayer;
     private Player winningPlayer;
@@ -71,7 +73,16 @@ public class Trick {
      * @return list of turns
      */
     public List<Turn> getTurns() {
-        return new ArrayList<>(this.turns);
+        return List.copyOf(this.turns);
+    }
+
+    /**
+     * Gets status of the game. (now >= to include an error case when more than MAX_TURNS were played)
+     *
+     * @return true if MAX_TURNS have been played out, else false
+     */
+    public boolean isCompleted() {
+        return this.turns.size() >= MAX_TURNS;
     }
 
     /**
@@ -100,13 +111,13 @@ public class Trick {
             }
         }
 
-        if (turns.size() >= 4) {
+        if (turns.size() >= MAX_TURNS) {
             throw new IllegalArgumentException("Trick: Cannot play card" + playedCard + ", this trick already has 4 cards");
         }
 
         turns.add(new Turn(player, playedCard));
         player.removeCard(playedCard); // Trick only calls that player has to remove this card from its hand, Trick doesn't know how to do this
-        if (turns.size() == 4) {
+        if (turns.size() == MAX_TURNS) {
             determineWinner();
         }
     }
