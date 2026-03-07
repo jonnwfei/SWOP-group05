@@ -39,11 +39,12 @@ public class Trick {
     }
 
     /**
-     * Gets the leading suit of this Trick
+     * Gets the leading suit of this Trick. (suit of first card played)
      *
-     * @return the leadingSuit of this Trick (suit of first card played)
+     * @return the leadingSuit or null if Trick is empty
      */
     public Suit getLeadingSuit() {
+        if (turns.isEmpty()) return null;
         // get(0) instead of getFirst() for compatibility with earlier version of jdk
         Card firstCard = turns.get(0).playedCard();
         return firstCard.suit();
