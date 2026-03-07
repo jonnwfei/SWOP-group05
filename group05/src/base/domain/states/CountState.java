@@ -42,7 +42,7 @@ public class CountState extends State {
                         "Solo:\n(9) Normal       (10) Solo Slim\n");
             }
 
-            // Phase 1: Validatie Bid Type
+
             if (phase == 1) {
                 int bidChoice = Integer.parseInt(input);
                 if (bidChoice < 1 || bidChoice > 10) {
@@ -54,7 +54,7 @@ public class CountState extends State {
                         "(1) Hearts (2) Clubs (3) Diamonds (4) Spades");
             }
 
-            // Phase 2: Validatie Troef
+
             if (phase == 2) {
                 this.numberTrump = Integer.parseInt(input);
                 this.trumpSuit = switch (numberTrump) {
@@ -72,7 +72,7 @@ public class CountState extends State {
                 return new QuestionEvent("Which player numbers played this bid? (e.g., '0' or '0, 2')\n" + getGame().printNames());
             }
 
-            // Phase 3: Validatie Spelers
+
             if (phase == 3) {
                 this.participatingPlayers = Arrays.stream(input.split("[^0-9]+"))
                         .filter(s -> !s.isEmpty())
@@ -83,7 +83,7 @@ public class CountState extends State {
                     return new QuestionEvent("Please enter at least one player number:");
                 }
 
-                // Check of player indices bestaan
+
                 for (int idx : participatingPlayers) {
                     if (idx < 0 || idx >= getGame().getPlayers().size()) {
                         return new QuestionEvent("Invalid player number: " + idx + ". Try again:");
@@ -98,7 +98,7 @@ public class CountState extends State {
                 }
             }
 
-            // Phase 4: Berekening en Resultaat
+
             if (phase == 4) {
                 Player firstPlayer = getGame().getPlayers().get(participatingPlayers.get(0));
 
