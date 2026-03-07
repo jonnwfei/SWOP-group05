@@ -49,8 +49,27 @@ public class Round {
     }
 
     /**
+     * Advances the currentPlayer to the next in Turn player.
+     */
+    public void advanceToNextPlayer() {
+        int currentIdx = players.indexOf(dealer);
+        this.currentPlayer = players.get((currentIdx +1) %4);
+    }
+
+    public void registerCompletedTrick(Trick trick) {
+        if (trick.getTurns().size() != Trick.MAX_TURNS) {
+            throw new IllegalArgumentException("Trick is not completed yet");
+        }
+        this.playedTricks.add(trick);
+        this.currentPlayer = trick.getWinningPlayer();
+
+        if (this.playedTricks.size() == MAX_TRICKS) {
+            calculateScores();
+        }
+    }
+
+    /**
      * Deals cards and asks for bids, if all players pass start again but the score is doubled but only once
-     *
      */
     public void askBids() {
         List<Card> deck = new ArrayList<>(52);
@@ -82,8 +101,8 @@ public class Round {
         long passCount = bids.stream().filter(b -> b.getType() == BidType.PASS).count();
         long proposeCount = bids.stream().filter(b -> b.getType() == BidType.PROPOSAL).count();
 
-        //check if one player proposes, if no one accepts ask that player if they wants to play alone or pass
-        //someone else could out-bid the proposal thats why passcount ahs to be 3
+        //check if one player proposes, if no one accepts ask that player if they want to play alone or pass
+        //someone else could out-bid the proposal that's why pass count has to be 3
         if (passCount == 3 && proposeCount == 1) {
             Bid proposeBid = bids.stream().filter(b -> b.getType() == BidType.PROPOSAL).findFirst().orElseThrow();
             Bid newBid = proposeBid.getPlayer().chooseBid();
@@ -109,14 +128,13 @@ public class Round {
             this.multiplier = 2; // set multiplier to 2
             askBids(); //ask again for the bids
         }
-        return;
     }
 
     /**
-     * @param deck
+     * @param deck to deal out from
      * @throws IllegalArgumentException when a deck is not 52 cards
      */
-    private void deal(List<Card> deck) {
+    public void deal(List<Card> deck) {
         if (deck.size() != 52) {
             throw new IllegalArgumentException();
         }
@@ -137,56 +155,59 @@ public class Round {
         trumpSuit = lastDealt.suit();
     }
 
-    private Bid askBid(Player p, Bid highestBid) {
+    /**
+     * Asks a given player which Bid he chooses
+     *
+     * @param p player
+     * @param highestBid current highest bid
+     * @return Bid
+     */
+    public Bid askBid(Player p, Bid highestBid) {
         Bid bid = p.chooseBid();
         if (bid.getType() == BidType.PASS) {
             return bid;
         }
         int comparison = bid.compareTo(highestBid);
         if (comparison < 0) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Can't bid lower than highest bid");
         } else if (comparison > 0) {
             return bid;
-        } else if (comparison == 0) {
+        } else {
             if (bid.getType() == BidType.PASS ||
                     bid.getType() == BidType.MISERIE ||
                     bid.getType() == BidType.OPEN_MISERIE) {
                 return bid;
-            } else {
-                throw new IllegalArgumentException();
             }
         }
         return bid;
     }
 
     /**
-     * this plays a round, unmless there are already MAX_TRICKS rounds played.
+     * Calculates the gained or lost scores for each player, updating them each respectively.
      */
-
-
-    private void calculateScores() {
+    public void calculateScores() {
         if ( playedTricks.size() != MAX_TRICKS) {
             return;
         }
-        int trickswon = 0;
+        int tricksWon = 0;
         if (highestBid.getType() == BidType.ACCEPTANCE ) {
-            Player playeraccept = null;
-            Player playerpropose = null;
+            Player playerAcceptance = null;
+            Player playerProposal = null;
             for (Bid b : bids) {
                 if (b.getType() == BidType.PROPOSAL) {
-                    playerpropose = b.getPlayer();
+                    playerProposal = b.getPlayer();
                 } else if (b.getType() == BidType.ACCEPTANCE) {
-                    playeraccept = b.getPlayer();
+                    playerAcceptance = b.getPlayer();
                 }
             }
             for (Trick t : playedTricks) {
-                if (t.getWinningPlayer().equals(playeraccept) || t.getWinningPlayer().equals(playerpropose)) {
-                    trickswon += 1;
+                if (t.getWinningPlayer().equals(playerAcceptance) || t.getWinningPlayer().equals(playerProposal)) {
+                    tricksWon += 1;
                 }
             }
-            int points = highestBid.calculateBasePoints(trickswon);
+            int points = highestBid.calculateBasePoints(tricksWon);
             for (Player p : players) {
-                if (p.equals(playeraccept) || p.equals(playerpropose)) {
+                if (p.equals(playerAcceptance) || p.equals(playerProposal)) {
                     p.updateScore(points * multiplier);
                 } else {
                     p.updateScore(points * multiplier * -1);
@@ -195,10 +216,10 @@ public class Round {
         } else {
             for (Trick t : playedTricks) {
                 if (t.getWinningPlayer().equals(highestBid.getPlayer())) {
-                    trickswon += 1;
+                    tricksWon += 1;
                 }
             }
-            int points = highestBid.calculateBasePoints(trickswon);
+            int points = highestBid.calculateBasePoints(tricksWon);
             for (Player p : players) {
                 if (p.equals(highestBid.getPlayer())) {
                     p.updateScore(points * multiplier);
@@ -208,8 +229,9 @@ public class Round {
             }
         }
     }
+
     /**
-     * getters voor info van de class
+     * getters voor info van de class //TODO: kdenk niet dat dit mag qua documentatie
      *
      * @return values
      */
@@ -227,6 +249,9 @@ public class Round {
     }
     public Bid getHighestBid() {
         return highestBid;
+    }
+    public void setHighestBid(Bid highestBid) {
+        this.highestBid = highestBid;
     }
     public Suit getTrumpSuit() {
         return trumpSuit;
