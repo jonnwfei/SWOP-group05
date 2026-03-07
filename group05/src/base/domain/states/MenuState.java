@@ -25,99 +25,130 @@ public class MenuState extends State {
     /*
      * In this function : we will initiate the game, by asking for the player names, and requesting the usecase
      * */
+    private enum SetupState {
+        WELCOME,
+        CHOOSE_MODE,
+        CHOOSE_BOTS,
+        ENTER_HUMANS,
+        ENTER_BOTS
+    }
+
+    private SetupState state = SetupState.WELCOME; // dit is gewoon hoe ge het initieert
+
+    /**
+     *Executes the menustate
+     *
+     * @param  input the users response to the previous QuestionEvent
+     * @return the next QuestionEvent or TextEvent
+     * @throws
+     */
     @Override
     public GameEvent executeState(String input) {
         try {
-            if (promptCount == 0) {
-                String firstMsg = "======== WELCOME TO WHIST ===== \n" +
-                        "Do you want to: \n" +
-                        "(1) Play a game? \n" +
-                        "(2) Count the scores for a game? \n";
-                promptCount = 1; // Direct naar de eerste input-stap
-                return new QuestionEvent(firstMsg);
+            switch (state) {
+                case WELCOME:
+                    return showWelcome();
+
+                case CHOOSE_MODE:
+                    return handleMainChoice(input);
+
+                case CHOOSE_BOTS:
+                    return handleBotAmount(input);
+
+                case ENTER_HUMANS:
+                    return handleHumanInput(input);
+
+                case ENTER_BOTS:
+                    return handleBotInput(input);
             }
-
-            if (promptCount == 1) {
-                keuze = Integer.parseInt(input);
-                if (keuze != 1 && keuze != 2) {
-                    return new QuestionEvent("Invalid choice. Please enter (1) or (2):");
-                }
-                promptCount = 2;
-                if (keuze == 1) {
-                    return new QuestionEvent("How many bots will be playing? (0-4):");
-                } else {
-                    totalBots = 0;
-                    promptCount = 3; // Skip bot-hoeveelheid vraag voor counting
-                    return new QuestionEvent("Give the name of player 1: ");
-                }
-            }
-
-            if (promptCount == 2) { // Delegating amount of bots
-                int bots = Integer.parseInt(input);
-                if (bots < 0 || bots > 4) {
-                    return new QuestionEvent("Invalid amount. Enter a number between 0 and 4:");
-                }
-                totalBots = bots;
-                promptCount = 3;
-                return new QuestionEvent("Give the name of player 1: ");
-            }
-
-
-            if (promptCount >= 3) {
-                if (keuze == 1) {
-                    // Adding human players
-                    if (humanCount < (4 - totalBots)) {
-                        if (input.trim().isEmpty()) return new QuestionEvent("Name cannot be empty. Give player " + (humanCount + 1) + " a name:");
-                        getGame().addPlayer(new Player(new HumanStrategy(), input));
-                        humanCount++;
-
-                        if (humanCount < (4 - totalBots)) {
-                            return new QuestionEvent("Give the name of player " + (humanCount + 1) + ": ");
-                        } else if (totalBots > 0) {
-                            return new QuestionEvent("Which strategy should bot 1 use?: \n(1) High Bot \n(2) Low Bot\n");
-                        } else {
-                            return new TextEvent(getGame().printNames());
-                        }
-                    }
-                    // Adding bots
-                    else {
-                        if (!input.equals("1") && !input.equals("2")) {
-                            return new QuestionEvent("Invalid strategy. Choose (1) High Bot or (2) Low Bot:");
-                        }
-                        Player bot = input.equals("1") ?
-                                new Player(new HighBotStrategy(), "Bot" + (botCount + 1)) :
-                                new Player(new LowBotStrategy(), "Bot" + (botCount + 1));
-
-                        getGame().addPlayer(bot);
-                        botCount++;
-
-                        if (botCount < totalBots) {
-                            return new QuestionEvent("Which strategy should bot " + (botCount + 1) + " use?\n(1) High Bot \n(2) Low Bot\n");
-                        } else {
-                            return new TextEvent(getGame().printNames());
-                        }
-                    }
-                }
-                // Flow voor alleen counting
-                else {
-                    if (input.trim().isEmpty()) return new QuestionEvent("Name cannot be empty. Give player " + (humanCount + 1) + " a name:");
-                    getGame().addPlayer(new Player(new HumanStrategy(), input));
-                    humanCount++;
-
-                    if (humanCount < 4) {
-                        return new QuestionEvent("Give the name of player " + (humanCount + 1) + ": ");
-                    } else {
-                        return new TextEvent(getGame().printNames());
-                    }
-                }
-            }
-
         } catch (NumberFormatException e) {
             return new QuestionEvent("That's not a valid number. Please try again:");
         }
-
-        return new TextEvent("System Error: Flow stuck."); // Fallback
+        throw new IllegalStateException("Flow stuck in MenuState at count " + promptCount);
     }
+
+    private GameEvent showWelcome() {
+        state = SetupState.CHOOSE_MODE;
+        return new QuestionEvent(
+                "======== WELCOME TO WHIST ===== \n" +
+                        "Do you want to:\n" +
+                        "(1) Play a game?\n" +
+                        "(2) Count the scores for a game?\n"
+        );
+    }
+
+    private GameEvent handleMainChoice(String input) {
+        keuze = Integer.parseInt(input);
+
+        if (keuze != 1 && keuze != 2) {
+            return new QuestionEvent("Invalid choice. Please enter (1) or (2):");
+        }
+
+        if (keuze == 1) {
+            state = SetupState.CHOOSE_BOTS;
+            return new QuestionEvent("How many bots will be playing? (0-4):");
+        } else {
+            totalBots = 0;
+            state = SetupState.ENTER_HUMANS;
+            return new QuestionEvent("Give the name of player 1:");
+        }
+    }
+
+    private GameEvent handleBotAmount(String input) {
+        int bots = Integer.parseInt(input);
+
+        if (bots < 0 || bots > 4) {
+            return new QuestionEvent("Invalid amount. Enter a number between 0 and 4:");
+        }
+
+        totalBots = bots;
+        state = SetupState.ENTER_HUMANS;
+        return new QuestionEvent("Give the name of player 1:");
+    }
+
+    private GameEvent handleHumanInput(String input) {
+        if (input.trim().isEmpty()) {
+            return new QuestionEvent("Name cannot be empty. Give player " + (humanCount + 1) + " a name:");
+        }
+
+        getGame().addPlayer(new Player(new HumanStrategy(), input));
+        humanCount++;
+
+        if (humanCount < (4 - totalBots)) {
+            return new QuestionEvent("Give the name of player " + (humanCount + 1) + ":");
+        }
+
+        if (totalBots > 0) {
+            state = SetupState.ENTER_BOTS;
+            return new QuestionEvent("Which strategy should bot 1 use?\n(1) High Bot\n(2) Low Bot");
+        }
+
+        return finish();
+    }
+
+    private GameEvent handleBotInput(String input) {
+        if (!input.equals("1") && !input.equals("2")) {
+            return new QuestionEvent("Invalid strategy. Choose (1) High Bot or (2) Low Bot:");
+        }
+
+        Player bot = input.equals("1")
+                ? new Player(new HighBotStrategy(), "Bot" + (botCount + 1))
+                : new Player(new LowBotStrategy(), "Bot" + (botCount + 1));
+
+        getGame().addPlayer(bot);
+        botCount++;
+
+        if (botCount < totalBots) {
+            return new QuestionEvent("Which strategy should bot " + (botCount + 1) + " use?\n(1) High Bot\n(2) Low Bot");
+        }
+
+        return finish();
+    }
+
+    private GameEvent finish() {
+        return new TextEvent(getGame().printNames());
+    }
+
 
     @Override
     public State nextState(){
