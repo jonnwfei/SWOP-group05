@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * Represents an unresolved request for a partner.
- * MUST be resolved into AcceptedBid, SoloProposalBid or PassBid before the Playing Phase.
+ * MUST be linked with AcceptedBid or solved into SoloProposalBid/PassBid before the Playing Phase.
  */
 public record ProposalBid(Player proposer) implements Bid {
 
@@ -18,17 +18,23 @@ public record ProposalBid(Player proposer) implements Bid {
     @Override
     public BidType getType() {return BidType.PROPOSAL;}
 
-    // --- DEFENSIVE PROGRAMMING BELOW ---
-    // These methods belong to the Playing/Scoring phase.
-    // If they are called, the engine has a bug.
-
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {
-        throw new IllegalStateException("CRITICAL: An unresolved ProposalBid reached the play phase!");
+        return dealtTrump;
     }
 
     @Override
-    public int calculateBasePoints(int wonTricks) {
-        throw new IllegalStateException("CRITICAL: Cannot score an unresolved ProposalBid!");
+    public int calculateBasePoints(int tricksWon) {
+        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
+        int points = BidType.ACCEPTANCE.getBasePoints();
+
+        int extra = tricksWon - BidType.ACCEPTANCE.getTargetTricks();
+        if (extra < 0) {
+            points = -1 * points;
+            return points;
+        }
+
+        if (tricksWon == 13) {points = 2*points;}
+        return points;
     }
 }
