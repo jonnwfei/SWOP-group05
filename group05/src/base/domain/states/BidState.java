@@ -58,7 +58,8 @@ public class BidState extends State {
 
             // CHECK END CONDITION
             if (isBiddingComplete()) {
-                //TODO: set active bids and currentPlayer
+                List<Bid> activeBids = filterBids(bids);
+                //TODO currentRound.setActiveBids();
                 return new TextEvent("\n=== BIDDING COMPLETE ===");
             }
         }
@@ -234,5 +235,17 @@ public class BidState extends State {
         return this.bids.size() == getGame().getPlayers().size();
     }
 
+    private List<Bid> filterBids(List<Bid> bids) {
+        if (currentHighestBidType == BidType.PASS) {
+            return bids;
+        }
+        else if(currentHighestBidType == BidType.ACCEPTANCE) {
+            return bids.stream().filter(bid -> bid.getType() == BidType.ACCEPTANCE || bid.getType() == BidType.PROPOSAL).toList();
+        }
+        else if(currentHighestBidType.getCategory() == BidCategory.MISERIE) {
+            return bids.stream().filter(bid -> bid.getType().getCategory() == BidCategory.MISERIE).toList();
+        }
+        return bids.stream().filter(bid -> bid.getType() == currentHighestBidType).toList();
+    }
 }
 
