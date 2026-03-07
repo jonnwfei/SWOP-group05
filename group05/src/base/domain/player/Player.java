@@ -130,5 +130,13 @@ public class Player {
      */
     public String getName() {return this.name;}
 
+    /**
+     * Retrieves boolean whether player needs confirmation or not.
+     *
+     * @return true if Player is a player, false if it's a bot
+     */
+    public boolean getRequiresConfirmation() {
+        return this.decisionStrategy.requiresConfirmation();
+    }
 }
 
