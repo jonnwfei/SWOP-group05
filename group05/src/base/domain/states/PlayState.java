@@ -27,7 +27,11 @@ public class PlayState extends State {
      */
     public PlayState(WhistGame game) {
         super(game);
-        this.currentRound = game.getRounds().getLast(); // will not throw since BidState ensures that a new Round has been instantiated
+        Round round = game.getCurrentRound();
+        if (round == null) {
+            throw new IllegalStateException("Cannot create playState: when currentRound doesn't exist. " + "Make sure round has been created");
+        }
+        this.currentRound = round; // will not throw since BidState ensures that a new Round has been instantiated
         this.currentTrick = new Trick(currentRound.getCurrentPlayer(), currentRound.getTrumpSuit());
     }
 
@@ -41,64 +45,82 @@ public class PlayState extends State {
     @Override
     public GameEvent executeState(String input) {
         Player currentPlayer = currentRound.getCurrentPlayer();
-        String outputLog = "";
+        StringBuilder outputLog = new StringBuilder();
 
         if (input != null && !input.isEmpty() && currentPlayer.getRequiresConfirmation()) { // Checks if the input for HUMAN Turn
             try {
-
                 int handIdx = Integer.parseInt(input);
                 if (handIdx < 1 || handIdx > currentPlayer.getHand().size()) {
-                    return new QuestionEvent("Invalid hand number. Choose between 1 and " + currentPlayer.getHand().size() + ":" );
+                    return new QuestionEvent("Invalid hand number. Choose between 1 and " + currentPlayer.getHand().size() + ":");
                 }
 
-                Card playedCard = currentPlayer.getHand().get(handIdx -1);
+                Card playedCard = currentPlayer.getHand().get(handIdx - 1);
                 currentTrick.playCard(currentPlayer, playedCard); // plays the card and checks if the played card is valid, could throw
-                currentRound.advanceToNextPlayer();
-                outputLog = currentPlayer.getName() + " played " + playedCard.toString() + ".\n";
+                outputLog.append(currentPlayer.getName()).append(" played ").append(playedCard.toString()).append(".\n");
+
+                TextEvent roundCompletedEvent = processTurnOutcome(outputLog);
+                if (roundCompletedEvent != null) {
+                    return roundCompletedEvent; // Ends the State if the round is over.
+                }
+
             } catch (NumberFormatException e) {
                 return new QuestionEvent("Please enter a valid number:");
             } catch (IllegalArgumentException e) {
                 return new QuestionEvent("Invalid move (" + e.getMessage() + "). Try again.");
             }
+        }
+        // Updates the reference pointer if HUMAN just played
+        currentPlayer = currentRound.getCurrentPlayer();
 
-        } else if (!currentPlayer.getRequiresConfirmation()) { // Else it's a BOT Turn
+        // Loop as long as the next players are BOTS
+        while (!currentPlayer.getRequiresConfirmation()) { // Else it's a BOT Turn
             Card botCard = currentPlayer.chooseCard(currentTrick.getLeadingSuit());
             currentTrick.playCard(currentPlayer, botCard);
-            currentRound.advanceToNextPlayer(); // This changes this Round's currentPlayer
-            outputLog = currentPlayer.getName() + " played " + botCard.toString() + ".\n";
+            outputLog.append(currentPlayer.getName()).append(" played ").append(botCard.toString()).append(".\n");
+
+            TextEvent roundCompletedEvent = processTurnOutcome(outputLog);
+            if (roundCompletedEvent != null) {
+                return roundCompletedEvent; // Ends the State if the round is over.
+            }
+
+            currentPlayer = currentRound.getCurrentPlayer(); // Updates the reference pointer to the next BOT
         }
 
+        // Question event for the next Turn if nextPlayer is a Human
+        String currentHand = currentPlayer.getFormattedHand();
+
+        return new QuestionEvent(outputLog + "\nTrick: " + (currentRound.getTricks().size() + 1) +
+                " | " + currentPlayer.getName() + "'s turn.\n" +
+                "Your hand: \n" + currentHand + "\nChoose Card via index:");
+
+    }
+
+    /**
+     * Helper method to process the outcome of a Turn. As it checks if a Trick or Round has ended.
+     * @param outputLog the game HistoryLog
+     * @return TextEvent if the Round is over, signaling a nextState to be called, else returns null.
+     */
+    private TextEvent processTurnOutcome(StringBuilder outputLog) {
         if (currentTrick.isCompleted()) { // Check if TRICK is completed
             Player winningPlayer = currentTrick.getWinningPlayer();
             currentRound.registerCompletedTrick(currentTrick);
 
-            outputLog += "*** " + winningPlayer.getName() + " wins the trick! ***\n";
+            outputLog.append("*** ").append(winningPlayer.getName()).append(" wins the trick! ***\n");
 
-            if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
-                outputLog += "\n --- ROUND OVER ---\nCalculating final scores...";
-
-                return new TextEvent(outputLog);
+            if (currentRound.getTricks().size() >= Round.MAX_TRICKS) { // We check if Round has already completed 13 tricks
+                outputLog.append("\n --- ROUND OVER ---\nCalculating final scores...");
+                return new TextEvent(outputLog.toString());
             }
             this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
-        }
-
-
-        // Question event for the next Turn if nextPlayer is a Human
-        Player nextPlayer = currentRound.getCurrentPlayer();
-        if (nextPlayer.getRequiresConfirmation()) {
-            String currentHand = nextPlayer.getFormattedHand();
-
-            return new QuestionEvent(outputLog + "\nTrick: " + (currentRound.getTricks().size() + 1) +
-                    " | " + nextPlayer.getName() + "'s turn.\n" +
-                    "Your hand: \n" + currentHand + "\nChoose Card via index:");
         } else {
-            return new TextEvent(outputLog);
+            currentRound.advanceToNextPlayer();
         }
+        return null; // Signals that the Round Continues
     }
 
     /**
-     * Returns the nextState, after playState only comes MenuState or itself to continue on to the next Round within
-     * the same game.
+     * Returns the nextState. After playState, the game either transitions to MenuState when the current Round has
+     * finished, or remains in this playState instance to continue on to the next Round within the same game.
      *
      * @return the next state
      */
