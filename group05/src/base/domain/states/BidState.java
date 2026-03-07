@@ -19,7 +19,7 @@ public class BidState extends State {
     private List<Bid> bids;
     private BidType currentHighestBidType;
     private Player currentPlayer;
-    private Suit TrumpSuit;
+    private Suit trumpSuit;
     private BidType pendingBidType;
 
     public BidState(WhistGame game) {
@@ -28,7 +28,7 @@ public class BidState extends State {
         this.bids = new ArrayList<>();
         this.currentHighestBidType = null; // Starts as null!
         this.currentPlayer = game.getCurrentPlayer();
-        this.dealtTrumpSuit = null;
+        this.trumpSuit = null;
     }
 
     @Override
@@ -209,10 +209,11 @@ public class BidState extends State {
 
             if (chosenBidType.getRequiresSuit()) {
                 this.pendingBidType = chosenBidType;
-                return new QuestionEvent(buildSuitOptions());
+                return new QuestionEvent("You chose " + chosenBidType.name() + ".\n\n" +
+                        buildSuitOptions() + "Your choice: ");
             }
 
-            Bid finalizedBid = chosenBidType.instantiate(currentPlayer, TrumpSuit);
+            Bid finalizedBid = chosenBidType.instantiate(currentPlayer, null);
             this.bids.add(finalizedBid);
 
             updateHighestBidType(finalizedBid.getType());
