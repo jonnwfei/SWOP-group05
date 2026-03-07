@@ -138,5 +138,21 @@ public class Player {
     public boolean getRequiresConfirmation() {
         return this.decisionStrategy.requiresConfirmation();
     }
+
+    /**
+     * Returns a formatted, 1-indexed string of the player's current hand.
+     * Example: "(1) ACE of HEARTS \n (2) TEN of HEARTS"
+     * @return a formatted string of currentHand
+     */
+    public String getFormattedHand() {
+        StringBuilder sb = new StringBuilder();
+        List<Card> hand = this.getHand();
+
+        for (int i = 0; i < hand.size(); i++) {
+            // i + 1 ensures the terminal list starts at 1 instead of 0
+            sb.append("(").append(i + 1).append(") ").append(hand.get(i).toString()).append("\n");
+        }
+        return sb.toString();
+    }
 }
 
