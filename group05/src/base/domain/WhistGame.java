@@ -39,6 +39,14 @@ public class WhistGame {
     }
 
     /**
+     * Gives the deck of the game
+     * @return the deck
+     */
+    public Deck getDeck(){
+        return this.deck;
+    }
+
+    /**
      * Gets a shallow copy of the list of Rounds
      *
      * @return list of Rounds
