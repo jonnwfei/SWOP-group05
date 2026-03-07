@@ -31,9 +31,11 @@ public class BidState extends State {
     @Override
     public GameEvent executeState(String input) {
 
-        if (input != null && !input.trim().isEmpty()) {
+        //TODO: if cards not dealt yet -> call dealingCards()
 
-            GameEvent errorOrFollowUpPrompt;
+        if(input != null && !input.trim().isEmpty()) {
+
+            QuestionEvent errorOrFollowUpPrompt;
 
             if (this.pendingBidType != null) {
                 errorOrFollowUpPrompt = handleSuitInput(input);
@@ -47,6 +49,7 @@ public class BidState extends State {
             }
 
             if (isBiddingComplete()) {
+                //TODO: set active bids and currentPlayer
                 return new TextEvent("\n=== BIDDING COMPLETE ===");
             }
         }
@@ -88,7 +91,8 @@ public class BidState extends State {
 
     private String buildStandardPrompt(Player player) {
         return "=== BIDDING TURN: " + player.getName() + " ===\n" +
-                "current Highest:" + currentHighestBidType.name() +
+                //TODO: show cards of the player
+                "current Highest:" + currentHighestBidType.name() + "\n" +
                 buildBidTypeOptions() + // Show all options
                 "Your choice: ";
     }
@@ -129,12 +133,12 @@ public class BidState extends State {
         int choiceIndex;
         try {choiceIndex = Integer.parseInt(input.trim());}
         catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid input! Please enter a number.\nTry again: ");
+            throw new IllegalArgumentException("Invalid input! Please enter a number.");
         }
 
         BidType selectedType = determineBid(choiceIndex);
         if (selectedType == null) {
-            throw  new IllegalArgumentException("That number is not on the options.\nTry again: ");
+            throw  new IllegalArgumentException("That number is not on the options.");
         }
         return selectedType;
     }
@@ -165,7 +169,7 @@ public class BidState extends State {
         return true;
     }
 
-    private GameEvent handleSuitInput(String input) {
+    private QuestionEvent handleSuitInput(String input) {
         try {
             Suit chosenSuit = parseSuit(input);
             Bid finalizedBid = pendingBidType.instantiate(currentPlayer, chosenSuit);
@@ -183,7 +187,7 @@ public class BidState extends State {
         }
     }
 
-    private GameEvent handleBidInput(String input) {
+    private QuestionEvent handleBidInput(String input) {
         try {
             BidType chosenBidType = parseBidType(input);
 
