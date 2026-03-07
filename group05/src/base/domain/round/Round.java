@@ -10,6 +10,10 @@ import base.domain.player.Player;
 import base.domain.trick.Trick;
 
 import java.util.*;
+
+import static base.domain.bid.BidType.MISERIE;
+import static base.domain.bid.BidType.OPEN_MISERIE;
+
 /**
  * @author Seppe De Houwer
  * @since 24/02/26
@@ -69,118 +73,67 @@ public class Round {
     }
 
     /**
-     * Deals cards and asks for bids, if all players pass start again but the score is doubled but only once
-     */
-    public void askBids() {
-        List<Card> deck = new ArrayList<>(52);
-        for (Suit suit : Suit.values()) {
-            for (Rank rank : Rank.values()) {
-                deck.add(new Card(suit, rank));
-            }
-        }
-        Collections.shuffle(deck);
-
-        deal(deck);
-
-        List<Bid> playerBids = new ArrayList<>();
-        Bid highesbid = null;
-        for (Player p : players) {
-            Bid newbid = askBid(p, highesbid);
-            if (newbid.getType() != BidType.PASS) {
-                highesbid = newbid;
-                if (highesbid.getType().getCategory() == BidCategory.ABONDANCE) {
-                    this.currentPlayer = highesbid.getPlayer();
-                }
-            }
-            playerBids.add(newbid);
-            this.highestBid = highesbid;
-        }
-        this.bids = playerBids;
-        this.trumpSuit = highesbid.getChosenTrump(trumpSuit);
-
-        long passCount = bids.stream().filter(b -> b.getType() == BidType.PASS).count();
-        long proposeCount = bids.stream().filter(b -> b.getType() == BidType.PROPOSAL).count();
-
-        //check if one player proposes, if no one accepts ask that player if they want to play alone or pass
-        //someone else could out-bid the proposal that's why pass count has to be 3
-        if (passCount == 3 && proposeCount == 1) {
-            Bid proposeBid = bids.stream().filter(b -> b.getType() == BidType.PROPOSAL).findFirst().orElseThrow();
-            Bid newBid = proposeBid.getPlayer().chooseBid();
-            if (newBid.getType() != BidType.PASS && newBid.getType() != BidType.SOLO_PROPOSAL) {
-                throw new IllegalArgumentException();
-            }
-            for (int i = 0; i < bids.size(); i++) {
-                if (bids.get(i).getPlayer().equals(proposeBid.getPlayer())) {
-                    bids.set(i, newBid);
-                    break;
-                }
-            }
-        }
-        //check again if all players passed and reset the round accordingly
-        long passCount2 = bids.stream().filter(b -> b.getType() == BidType.PASS).count();
-        if (passCount2 == players.size()) {
-            for (Player p : players) {
-                p.flushHand(); //reset every player's hand
-            }
-            this.dealer = players.get(players.indexOf(dealer) +1 % 4);
-            this.currentPlayer = players.get(players.indexOf(currentPlayer) +1 % 4);
-            this.bids = new ArrayList<>(); // reset the bids
-            this.multiplier = 2; // set multiplier to 2
-            askBids(); //ask again for the bids
-        }
-    }
-
-    /**
-     * @param deck to deal out from
-     * @throws IllegalArgumentException when a deck is not 52 cards
-     */
-    public void deal(List<Card> deck) {
-        if (deck.size() != 52) {
-            throw new IllegalArgumentException();
-        }
-        int[] dealPattern = {4, 4, 5};
-        Iterator<Card> it = deck.iterator();
-        int index = (players.indexOf(dealer) + 1) % 4;
-        Card lastDealt = null;
-        for (int amountToDeal : dealPattern) {
-            // Deal to each of the 4 players
-            for (int i = 0 ; i < 4 ; i++) {
-                Player p = players.get((index + i) % 4);
-                for (int j = 0; j < amountToDeal; j++) {
-                    lastDealt = it.next();
-                    p.addCard(lastDealt);
-                }
-            }
-        }
-        trumpSuit = lastDealt.suit();
-    }
-
-    /**
-     * Asks a given player which Bid he chooses
+     * @param tricksWon amount of tricks won by the bidding side (ignored for Miserie)
      *
-     * @param p player
-     * @param highestBid current highest bid
-     * @return Bid
+     * @param participants the players that joined the bid (1 for Solo/Abondance, 2 for Proposal/Acceptance)
+     * @param winningMiseriePlayers only used for Miserie: the players from the participants list who got 0 tricks
      */
-    public Bid askBid(Player p, Bid highestBid) {
-        Bid bid = p.chooseBid();
-        if (bid.getType() == BidType.PASS) {
-            return bid;
+    public void calculateScoresForCount(int tricksWon, List<Player> participants, List<Player> winningMiseriePlayers) {
+        if (highestBid == null) {
+            System.err.println("highestBid is null in Round.");
+            throw new IllegalStateException("Cannot calculate scores without a bid.");
         }
-        int comparison = bid.compareTo(highestBid);
-        if (comparison < 0) {
-            throw new IllegalArgumentException("Can't bid lower than highest bid");
-        } else if (comparison > 0) {
-            return bid;
-        } else {
-            if (bid.getType() == BidType.PASS ||
-                    bid.getType() == BidType.MISERIE ||
-                    bid.getType() == BidType.OPEN_MISERIE) {
-                return bid;
+        // --- CASE 1: MISERIE (Normal or Open) ---
+        if (highestBid.getType() == BidType.MISERIE || highestBid.getType() == BidType.OPEN_MISERIE) {
+            if (participants == null || participants.isEmpty()) {
+                throw new IllegalArgumentException("Miserie requires at least one participating player.");
+            }
+            for (Player p : participants) {
+                boolean hasWon = winningMiseriePlayers != null && winningMiseriePlayers.contains(p);
+                // calculateBasePoints(0) returns positive, calculateBasePoints(1) returns negative
+                int basePoints = hasWon ? highestBid.calculateBasePoints(0) : highestBid.calculateBasePoints(1);
+
+                p.updateScore(basePoints * multiplier);
+
+                // The other 3 players at the table pay or receive from this specific miserie player
+                for (Player other : this.players) {
+                    if (!participants.contains(other)) {
+                        other.updateScore((basePoints * multiplier * -1));
+
+                    }
+                }
             }
         }
-        return bid;
+        // --- CASE 2: PARTNER BIDS (Proposal / Acceptance / SoloProposal) ---
+        else if (participants.size() == 2) {
+            int points = highestBid.calculateBasePoints(tricksWon);
+
+            for (Player p : this.players) {
+                if (participants.contains(p)) {
+                    p.updateScore(points * multiplier);
+                } else {
+                    // The 2 opponents pay the 2 winners
+                    p.updateScore(points * multiplier * -1);
+                }
+            }
+        }
+        // --- CASE 3: SOLO BIDS (Solo, Abondance, SoloProposal played alone) ---
+        else {
+            int points = highestBid.calculateBasePoints(tricksWon);
+            Player bidder = participants.get(0);
+
+            for (Player p : this.players) {
+                if (p.equals(bidder)) {
+                    // Bidder receives points from 3 others
+                    p.updateScore(points * multiplier);
+                } else {
+                    // The 3 opponents pay 1/3 each
+                    p.updateScore((points * multiplier * -1) / 3);
+                }
+            }
+        }
     }
+
 
     /**
      * Calculates the gained or lost scores for each player, updating them each respectively.
