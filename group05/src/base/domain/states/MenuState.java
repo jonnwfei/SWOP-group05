@@ -40,7 +40,7 @@ public class MenuState extends State {
      *
      * @param  input the users response to the previous QuestionEvent
      * @return the next QuestionEvent or TextEvent
-     * @throws
+     * @throws IllegalStateException getting in a unknown state
      */
     @Override
     public GameEvent executeState(String input) {
