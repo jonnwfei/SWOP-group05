@@ -1,6 +1,8 @@
 package base.domain;
 import java.util.ArrayList;
 import java.util.List;
+
+import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.domain.round.Round;
 import base.domain.states.*;
@@ -17,6 +19,7 @@ public class WhistGame {
     private List<Round> rounds;
     private Player currentPlayer;
     private Player dealerPlayer;
+    private Deck deck;
 
     public WhistGame(){
         this.state = new MenuState(this);
@@ -33,6 +36,14 @@ public class WhistGame {
      */
     public List<Player> getPlayers(){
         return new ArrayList<>(this.players);
+    }
+
+    /**
+     * Gives the deck of the game
+     * @return the deck
+     */
+    public Deck getDeck(){
+        return this.deck;
     }
 
     /**
@@ -68,6 +79,10 @@ public class WhistGame {
      * */
     public Round getCurrentRound(){
         return this.rounds.getLast();
+    }
+
+    public void setDeck(Deck deck){
+        this.deck = deck;
     }
 
     public void nextState(){
@@ -125,4 +140,6 @@ public class WhistGame {
         result += "======================";
         return result;
     }
+
+
 }
