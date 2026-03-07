@@ -38,10 +38,13 @@ public class PlayState extends State {
 
         if (input != null && !input.isEmpty() && currentPlayer.getRequiresConfirmation()) {
             int handIdx = Integer.parseInt(input);
+            if (handIdx > currentPlayer.getHand().size()) {
+                return new QuestionEvent(currentPlayer + "does not hold card at index " + handIdx);
+            }
             Card playedCard = currentPlayer.getHand().get(handIdx); // TODO: indien input == playerResponse parse card input, may
 
             try {
-                currentTrick.playCard(currentPlayer, playedCard);
+                currentTrick.playCard(currentPlayer, playedCard); // this can throw, checks if the played card is valid //TODO: needs to use hasSuit()
                 cardsPlayedInTrick++;
                 currentRound.advanceToNextPlayer(); // TODO: implement advance to next Player in Round.
                 return new TextEvent(currentPlayer + "played " + playedCard);
