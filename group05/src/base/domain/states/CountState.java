@@ -42,52 +42,33 @@ public class CountState extends State {
                         "Solo:\n(9) Normal       (10) Solo Slim\n");
             }
 
-
             if (phase == 1) {
                 int bidChoice = Integer.parseInt(input);
-                if (bidChoice < 1 || bidChoice > 10) {
-                    return new QuestionEvent("Invalid choice. Please pick a number between 1 and 10:");
-                }
+                if (bidChoice < 1 || bidChoice > 10) return new QuestionEvent("Invalid choice. Please pick 1-10:");
                 this.numberBid = bidChoice;
                 phase = 2;
-                return new QuestionEvent("What Suit is the trump suit?\n" +
-                        "(1) Hearts (2) Clubs (3) Diamonds (4) Spades");
+                return new QuestionEvent("What Suit is the trump suit?\n(1) Hearts (2) Clubs (3) Diamonds (4) Spades");
             }
-
 
             if (phase == 2) {
                 this.numberTrump = Integer.parseInt(input);
                 this.trumpSuit = switch (numberTrump) {
-                    case 1 -> Suit.HEARTS;
-                    case 2 -> Suit.CLUBS;
-                    case 3 -> Suit.DIAMONDS;
-                    case 4 -> Suit.SPADES;
+                    case 1 -> Suit.HEARTS; case 2 -> Suit.CLUBS;
+                    case 3 -> Suit.DIAMONDS; case 4 -> Suit.SPADES;
                     default -> null;
                 };
-
-                if (this.trumpSuit == null) {
-                    return new QuestionEvent("Invalid suit. Please pick (1) Hearts, (2) Clubs, (3) Diamonds or (4) Spades:");
-                }
+                if (this.trumpSuit == null) return new QuestionEvent("Invalid suit. Pick (1-4):");
                 phase = 3;
                 return new QuestionEvent("Which player numbers played this bid? (e.g., '0' or '0, 2')\n" + getGame().printNames());
             }
 
-
             if (phase == 3) {
                 this.participatingPlayers = Arrays.stream(input.split("[^0-9]+"))
-                        .filter(s -> !s.isEmpty())
-                        .map(Integer::parseInt)
-                        .toList();
+                        .filter(s -> !s.isEmpty()).map(Integer::parseInt).toList();
 
-                if (participatingPlayers.isEmpty()) {
-                    return new QuestionEvent("Please enter at least one player number:");
-                }
-
-
+                if (participatingPlayers.isEmpty()) return new QuestionEvent("Enter at least one player number:");
                 for (int idx : participatingPlayers) {
-                    if (idx < 0 || idx >= getGame().getPlayers().size()) {
-                        return new QuestionEvent("Invalid player number: " + idx + ". Try again:");
-                    }
+                    if (idx < 0 || idx >= getGame().getPlayers().size()) return new QuestionEvent("Invalid player: " + idx);
                 }
 
                 phase = 4;
@@ -98,14 +79,17 @@ public class CountState extends State {
                 }
             }
 
-
             if (phase == 4) {
-                Player firstPlayer = getGame().getPlayers().get(participatingPlayers.get(0));
+                // 1. Haal de volledige lijst van deelnemende Player objecten op
+                List<Player> participants = participatingPlayers.stream()
+                        .map(idx -> getGame().getPlayers().get(idx)).toList();
 
-                // Mapping van keuze naar Bid object
+                Player firstPlayer = participants.get(0);
+
+                // 2. Initialiseer de Bid
                 this.bid = switch (numberBid) {
-                    case 1 -> new SoloProposalBid(firstPlayer); // Alone op dealt trump
-                    case 2 -> new ProposalBid(firstPlayer);   // Wordt later AcceptedBid
+                    case 1 -> new SoloProposalBid(firstPlayer);
+                    case 2 -> new ProposalBid(firstPlayer); // Wordt intern in Round afgehandeld als partnerschap
                     case 3 -> new AbondanceBid(firstPlayer, ABONDANCE_9, trumpSuit);
                     case 4 -> new AbondanceBid(firstPlayer, ABONDANCE_10, trumpSuit);
                     case 5 -> new AbondanceBid(firstPlayer, ABONDANCE_11, trumpSuit);
@@ -114,42 +98,53 @@ public class CountState extends State {
                     case 8 -> new MiserieBid(firstPlayer, OPEN_MISERIE);
                     case 9 -> new SoloBid(firstPlayer, SOLO, trumpSuit);
                     case 10 -> new SoloBid(firstPlayer, SOLO_SLIM, trumpSuit);
-                    default -> throw new IllegalStateException("Unexpected value: " + numberBid);
+                    default -> throw new IllegalStateException("Unexpected bid index");
                 };
 
+                // 3. Maak de ronde aan en zet de hoogste bid
                 Round round = new Round(getGame().getPlayers(), null);
-                getGame().addRound(round);
                 round.setHighestBid(bid);
+                getGame().addRound(round);
 
+                // 4. Score berekening op basis van type
                 if (numberBid == 7 || numberBid == 8) {
-                    // TODO: Implementeer specifieke Miserie-winnaars logica
-                    // Bijvoorbeeld: parse input voor spelers die 0 slagen haalden
+                    // Input zijn de player indices die 0 slagen haalden (winnende miserie spelers)
+                    List<Integer> winnersIndices = Arrays.stream(input.split("[^0-9]+"))
+                            .filter(s -> !s.isEmpty()).map(Integer::parseInt).toList();
+
+                    List<Player> winningMiseriePlayers = winnersIndices.stream()
+                            .map(idx -> getGame().getPlayers().get(idx)).toList();
+
+                    // Bij miserie is tricksWon irrelevant (we sturen 0)
+                    round.calculateScoresForCount(0, participants, winningMiseriePlayers);
                 } else {
                     int aantalSlagen = Integer.parseInt(input);
-                    if (aantalSlagen < 0 || aantalSlagen > 13) {
-                        return new QuestionEvent("A round has between 0 and 13 tricks. Please enter a valid number:");
-                    }
-                    round.calculateScores(aantalSlagen, null);
+                    if (aantalSlagen < 0 || aantalSlagen > 13) return new QuestionEvent("Enter a number between 0-13:");
+
+                    // Bij normale biedingen is winningMiseriePlayers null
+                    round.calculateScoresForCount(aantalSlagen, participants, null);
                 }
 
                 phase = 5;
-                return new QuestionEvent(getGame().printScore() + "\n" +
+                return new QuestionEvent(getGame().printScores() + "\n" +
                         "Do you want to: \n(1) Simulate another round\n(2) Go back to the main menu");
             }
 
             if (phase == 5) {
                 keuze = Integer.parseInt(input);
-                if (keuze != 1 && keuze != 2) {
-                    return new QuestionEvent("Please choose (1) or (2):");
-                }
-                return new TextEvent("Transitioning...");
+                if (keuze != 1 && keuze != 2) return new QuestionEvent("Please choose (1) or (2):");
+                return new TextEvent("Processing choice...");
             }
 
         } catch (NumberFormatException e) {
-            return new QuestionEvent("Invalid input. Please enter a number:");
+            System.err.println("Input parsing error: " + input);
+            return new QuestionEvent("Invalid input. Please enter a valid number:");
+        } catch (Exception e) {
+            System.err.println("CRITICAL: " + e.getMessage());
+            throw new IllegalStateException("Flow failed in Phase " + phase, e);
         }
 
-        return new TextEvent("Finalizing state...");
+        return new TextEvent("Finalizing...");
     }
 
     @Override
