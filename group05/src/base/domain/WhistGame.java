@@ -1,6 +1,8 @@
 package base.domain;
 import java.util.ArrayList;
 import java.util.List;
+
+import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.domain.round.Round;
 import base.domain.states.*;
@@ -17,6 +19,7 @@ public class WhistGame {
     private List<Round> rounds;
     private Player currentPlayer;
     private Player dealerPlayer;
+    private Deck deck;
 
     public WhistGame(){
         this.state = new MenuState(this);
