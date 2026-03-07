@@ -24,7 +24,7 @@ public class BidState extends State {
 
     public BidState(WhistGame game) {
         super(game);
-        this.currentRound = game.getCurrentRound(); //TODO
+        this.currentRound = null ; //TODO game.getCurrentRound()
         this.bids = new ArrayList<>();
         this.currentHighestBidType = null; // Starts as null!
         this.currentPlayer = game.getCurrentPlayer();
@@ -34,9 +34,9 @@ public class BidState extends State {
     @Override
     public GameEvent executeState(String input) {
 
-        if(TrumpSuit == null) {
-            getGame().getDeck().dealCards(); //TODO
-            TrumpSuit = currentRound.getTrumpSuit(); //TODO
+        if(trumpSuit == null) {
+            //TODO getGame().getDeck().dealCards();
+            trumpSuit = currentRound.getTrumpSuit();
         }
 
         if(input != null && !input.trim().isEmpty()) {
@@ -80,7 +80,7 @@ public class BidState extends State {
         if (index == -1) {throw new IllegalArgumentException("currentPlayer not found in list of players");}
         int newIndex = (index + 1) % players.size();
         this.currentPlayer = players.get(newIndex);
-        getGame().setCurrentPlayer(currentPlayer); //TODO
+        //TODO getGame().setCurrentPlayer(currentPlayer);
     }
 
     private void updateHighestBidType(BidType bidType) {
@@ -91,7 +91,7 @@ public class BidState extends State {
 
     private String buildFirstPlayerPrompt(Player player) {
         return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
-                "Dealt Trump: " + TrumpSuit.name() + "\n" +
+                "Dealt Trump: " + trumpSuit.name() + "\n" +
                 // TODO: "Your Hand: " + player.getFormattedHand() + "\n"
                 "---------------------------------------\n" +
                 "Status: You are the first to bid!\n\n" +
@@ -101,7 +101,7 @@ public class BidState extends State {
 
     private String buildStandardPrompt(Player player) {
         return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
-                "Dealt Trump: " + TrumpSuit.name() + "\n" +
+                "Dealt Trump: " + trumpSuit.name() + "\n" +
                 // TODO: "Your Hand: " + formatHand(player.getHand()) + "\n"
                 "---------------------------------------\n" +
                 "Current Highest: " + currentHighestBidType.name() + "\n\n" +
