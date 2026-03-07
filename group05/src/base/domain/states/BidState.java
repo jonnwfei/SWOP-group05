@@ -39,10 +39,12 @@ public class BidState extends State {
             trumpSuit = currentRound.getTrumpSuit();
         }
 
+        // PROCESS INCOMING DATA
         if(input != null && !input.trim().isEmpty()) {
 
             QuestionEvent errorOrFollowUpPrompt;
 
+            // Route the input based on the current context (Multi-step prompt memory)
             if (this.pendingBidType != null) {
                 errorOrFollowUpPrompt = handleSuitInput(input);
             } else {
@@ -54,12 +56,14 @@ public class BidState extends State {
                 return errorOrFollowUpPrompt;
             }
 
+            // CHECK END CONDITION
             if (isBiddingComplete()) {
                 //TODO: set active bids and currentPlayer
                 return new TextEvent("\n=== BIDDING COMPLETE ===");
             }
         }
 
+        //GENERATE NEXT PROMPT (First Player or Next Player)
         String promptText;
         if (this.bids.isEmpty()) {
             promptText = buildFirstPlayerPrompt(currentPlayer);
