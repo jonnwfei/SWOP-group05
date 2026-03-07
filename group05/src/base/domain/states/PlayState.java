@@ -22,7 +22,7 @@ public class PlayState extends State {
 
     public PlayState(WhistGame game) {
         super(game);
-        this.currentRound = game.getRounds().getLast(); // will not throw since DealState or BidState ensures that a new Round has been instantiated
+        this.currentRound = game.getRounds().getLast(); // will not throw since BidState ensures that a new Round has been instantiated
         this.currentTrick = new Trick(currentRound.getCurrentPlayer(), currentRound.getTrumpSuit());
     }
 
@@ -31,7 +31,7 @@ public class PlayState extends State {
         Player currentPlayer = currentRound.getCurrentPlayer();
         String outputLog = "";
 
-        if (input != null && !input.isEmpty() && currentPlayer.getRequiresConfirmation()) {
+        if (input != null && !input.isEmpty() && currentPlayer.getRequiresConfirmation()) { // Checks if the input for HUMAN Turn
             try {
 
                 int handIdx = Integer.parseInt(input);
@@ -49,14 +49,14 @@ public class PlayState extends State {
                 return new QuestionEvent("Invalid move (" + e.getMessage() + "). Try again.");
             }
 
-        } else if (!currentPlayer.getRequiresConfirmation()) {
+        } else if (!currentPlayer.getRequiresConfirmation()) { // Else it's a BOT Turn
             Card botCard = currentPlayer.chooseCard(currentTrick.getLeadingSuit());
             currentTrick.playCard(currentPlayer, botCard);
-            currentRound.advanceToNextPlayer();
+            currentRound.advanceToNextPlayer(); // This changes this Round's currentPlayer
             outputLog = currentPlayer.getName() + " played " + botCard.toString() + ".\n";
         }
 
-        if (currentTrick.isCompleted()) {
+        if (currentTrick.isCompleted()) { // Check if TRICK is completed
             Player winningPlayer = currentTrick.getWinningPlayer();
             currentRound.registerCompletedTrick(currentTrick);
 
