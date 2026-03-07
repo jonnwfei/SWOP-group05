@@ -24,6 +24,9 @@ public class CountState extends State {
 
     public CountState(WhistGame game) {
         super(game);
+        this.numberBid = 0;
+        this.numberTrump = 0;
+        this.participatingPlayers = null;
     }
 
     @Override
@@ -163,6 +166,4 @@ public class CountState extends State {
 
         }
     }
-
-}
 }
