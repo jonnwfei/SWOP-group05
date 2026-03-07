@@ -97,9 +97,9 @@ public class Round {
 
                 // The other 3 players at the table pay or receive from this specific miserie player
                 for (Player other : this.players) {
-                    if (!participants.contains(other)) {
-                        other.updateScore((basePoints * multiplier * -1));
-
+                    if (!other.equals(p)) {
+                        // The 3 opponents pay or receive 1/3 each, mirroring solo scoring
+                        other.updateScore((basePoints * multiplier * -1) / 3);
                     }
                 }
             }
