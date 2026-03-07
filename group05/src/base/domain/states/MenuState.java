@@ -8,7 +8,7 @@ import base.domain.player.Player;
 import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
-
+import base.domain.deck.Deck;
 public class MenuState extends State {
     private int promptCount;
     private int keuze;
@@ -107,6 +107,7 @@ public class MenuState extends State {
     @Override
     public State nextState(){
        if (keuze == 1){
+           getGame().setDeck(new Deck());
            return new BidState(getGame());
        }
        else{
