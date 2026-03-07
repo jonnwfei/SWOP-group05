@@ -52,7 +52,7 @@ public class Round {
      * Advances the currentPlayer to the next in Turn player.
      */
     public void advanceToNextPlayer() {
-        int currentIdx = players.indexOf(dealer);
+        int currentIdx = players.indexOf(currentPlayer);
         this.currentPlayer = players.get((currentIdx +1) %4);
     }
 
