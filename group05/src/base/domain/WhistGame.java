@@ -63,8 +63,8 @@ public class WhistGame {
     }
 
 
-    public State nextState(String finalAnswer){
-        return state.nextState();
+    public void nextState(){
+        this.state = state.nextState();
     }
 
     public GameEvent executeState(String response){
