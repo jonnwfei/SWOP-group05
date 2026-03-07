@@ -36,11 +36,21 @@ public class Trick {
         this.turns = new ArrayList<>();
     }
 
+    /**
+     * Gets the leading suit of this Trick
+     *
+     * @return the leadingSuit of this Trick (suit of first card played)
+     */
+    public Suit getLeadingSuit() {
+        // get(0) instead of getFirst() for compatibility with earlier version of jdk
+        Card firstCard = turns.get(0).playedCard();
+        return firstCard.suit();
+    }
 
     /**
      * Gets starting player.
      *
-     * @return Player starting player
+     * @return starting Player
      */
     public Player getStartingPlayer() {
         return this.startingPlayer;
@@ -49,14 +59,24 @@ public class Trick {
     /**
      * Gets winning player.
      *
-     * @return player winning player
+     * @return winning player
      */
     public Player getWinningPlayer() {
         return this.winningPlayer;
     }
 
     /**
-     * Given player plays the given playedCard and checks whether the play is valid or not.
+     * Gets a shallow copy of the list of turns in this Trick
+     *
+     * @return list of turns
+     */
+    public List<Turn> getTurns() {
+        return new ArrayList<>(this.turns);
+    }
+
+    /**
+     * Given player plays the given playedCard, adds Turn [Player,Card] to list of turns
+     * and checks whether the play is valid or not.
      * I.e.
      *
      * @param player     that plays a card
@@ -71,7 +91,7 @@ public class Trick {
         if (turns.stream().anyMatch(t -> t.player().equals(player))) {
             throw new IllegalArgumentException("Trick: Player already played in this trick");
         }
-        if (!turns.isEmpty()) { // Cards have been played, get leading suit
+        if (!turns.isEmpty()) { // Cards have been played, get leading suit // TODO: idk if this should do any of this?
             Suit leadingSuit = getLeadingSuit();
 
             if (playedCard.suit() != leadingSuit && player.hasSuit(leadingSuit)) {
@@ -85,7 +105,7 @@ public class Trick {
         }
 
         turns.add(new Turn(player, playedCard));
-        player.removeCard(playedCard);
+        player.removeCard(playedCard); // Trick only calls that player has to remove this card from its hand, Trick doesn't know how to do this
         if (turns.size() == 4) {
             determineWinner();
         }
@@ -135,14 +155,4 @@ public class Trick {
         this.winningPlayer = currentWinner;
     }
 
-    /**
-     * Gets the leading suit of this Trick
-     *
-     * @return the leadingSuit of this Trick (suit of first card played)
-     */
-    private Suit getLeadingSuit() {
-        // get(0) instead of getFirst() for compatibility with earlier version of jdk
-        Card firstCard = turns.get(0).playedCard();
-        return firstCard.suit();
-    }
 }
