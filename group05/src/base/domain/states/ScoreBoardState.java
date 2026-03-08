@@ -1,7 +1,6 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.player.Player;
 import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
@@ -12,11 +11,11 @@ import cli.elements.TextEvent;
  * @author John Cai
  * @since 02/03/2026
  */
-public class EndRoundState extends State {
+public class ScoreBoardState extends State {
     private boolean userWantsToQuit = false;
     private boolean userWantsToRestart = false;
 
-    public EndRoundState(WhistGame game) {
+    public ScoreBoardState(WhistGame game) {
         super(game);
         game.getCurrentRound().calculateScores(); // TODO: fix getCurrentRound to return null if empty round, cuz curently it throws
     }
