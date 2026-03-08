@@ -4,6 +4,7 @@ import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
+import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
@@ -65,9 +66,17 @@ public class BidState extends State {
 
     @Override
     public GameEvent executeState(String input) {
-        // 2. Handle the "Rejected Proposal" Decision
+        //HANDLE PLAYER BOTS
+        if(!currentPlayer.getRequiresConfirmation()) {
+            bids.add(new PassBid(currentPlayer));
+            if (isBiddingComplete()) {
+                return handleEndOfBidding();
+            }
+        }
+
+        // Handle the "Rejected Proposal" Decision
         // This occurs AFTER everyone has had a turn, and the highest was a PROPOSAL
-        if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
+        if(isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
             return handleRejectedProposal(input);
         }
 
