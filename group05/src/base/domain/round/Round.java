@@ -10,6 +10,9 @@ import base.domain.trick.Trick;
 import java.util.*;
 
 /**
+ * Round class, containing List of Players, currentPlayer whose turn it is, List of Played Tricks, List of bids, the highestBid
+ * this round's trumpSuit and the multiplier in case all Players PASS.
+ *
  * @author Seppe De Houwer
  * @since 24/02/26
  */
@@ -18,8 +21,6 @@ public class Round {
 
     private final List<Player> players;
     private Player currentPlayer;
-    private Player dealer;
-
 
     private List<Trick> playedTricks = new ArrayList<>();
 
@@ -30,20 +31,19 @@ public class Round {
 
     /**
      * @param players       a list of the players
-     * @param dealer        the player who starts dealing the cards
+     * @param startingPlayer        the player who starts playing first
      * @throws IllegalArgumentException if players or dealer is null
      * @throws IllegalArgumentException if there are more than 4 players
      */
-    public Round(List<Player> players, Player dealer) {
+    public Round(List<Player> players, Player startingPlayer) {
         if (players == null || players.size() != 4) {
             throw new IllegalArgumentException("Players list must contain exactly 4 players.");
         }
-        if (dealer == null || !players.contains(dealer)) {
+        if (startingPlayer == null || !players.contains(startingPlayer)) {
             throw new IllegalArgumentException("Dealer must not be null and must be in the players list.");
         }
         this.players = new ArrayList<>(players);
-        this.dealer = dealer;
-        this.currentPlayer = players.get((players.indexOf(dealer) +1) %4);
+        this.currentPlayer = startingPlayer;
         this.playedTricks = new ArrayList<>();
         this.bids = new ArrayList<>();
         this.highestBid = null;
