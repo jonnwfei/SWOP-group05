@@ -50,16 +50,13 @@ public class Player {
     }
 
     /**
-     * Adds a dealt card to the player's current hand.
-     *
-     * @param card the {@link Card} to add to the hand.
-     * @throws IllegalArgumentException if the {@code card} is null.
-     * @throws IllegalStateException    if the player's hand already contains the maximum of 13 cards.
+     * Sets the given Hand as this player's currentHand,
+     * @param hand to set
+     * @throws IllegalArgumentException if hand is null
      */
-    public void addCard(Card card) {
-        if (card == null) throw new IllegalArgumentException("card can't be null");
-        if (this.currentHand.size() >= 13) throw new IllegalStateException("Player hand is full");
-        this.currentHand.add(card);
+    public void setHand(List<Card> hand) {
+        if (hand == null) throw new IllegalArgumentException("The given hand can't be null");
+        this.currentHand.addAll(hand);
     }
 
     /**
