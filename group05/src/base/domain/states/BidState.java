@@ -104,7 +104,7 @@ public class BidState extends State {
             if (chosenBidType.getRequiresSuit()) {
                 this.pendingBidType = chosenBidType;
                 return new QuestionEvent("You chose " + chosenBidType.name() + ".\n\n" +
-                        buildSuitOptions() + "Your choice: ");
+                        buildOptions(Suit.values()) + "Your choice: ");
             }
 
             Bid finalizedBid = chosenBidType.instantiate(currentPlayer, null);
@@ -239,7 +239,7 @@ public class BidState extends State {
                 player.getFormattedHand() + "\n" +
                 "---------------------------------------\n" +
                 "Status: You are the first to bid!\n\n" +
-                buildBidTypeOptions() + "\n" +
+                buildOptions(Suit.values()) + "\n" +
                 "Your choice: ";
     }
 
@@ -249,26 +249,14 @@ public class BidState extends State {
                 player.getFormattedHand() + "\n" +
                 "---------------------------------------\n" +
                 "Current Highest: " + currentHighestBidType.name() + "\n\n" +
-                buildBidTypeOptions() + "\n" +
+                buildOptions(BidType.values()) + "\n" +
                 "Your choice: ";
     }
 
-    private String buildBidTypeOptions() { // Typo fixed!
+    private String buildOptions(Enum<?>[] optionsArray) {
         StringBuilder options = new StringBuilder("All Options:\n");
-        BidType[] allTypes = BidType.values();
-        for (int i = 0; i < allTypes.length; i++) {
-            BidType currentBid = allTypes[i];
-            options.append("   [").append(i).append("] ").append(currentBid.name()).append("\n");
-        }
-        return options.toString();
-    }
-
-    private String buildSuitOptions() {
-        StringBuilder options = new StringBuilder("All options:\n");
-        Suit[] allSuits = Suit.values();
-        for (int i = 0; i < allSuits.length; i++) {
-            Suit currentSuit = allSuits[i];
-            options.append("   [").append(i).append("] ").append(currentSuit.name()).append("\n");
+        for (int i = 0; i < optionsArray.length; i++) {
+            options.append("   [").append(i).append("] ").append(optionsArray[i].name()).append("\n");
         }
         return options.toString();
     }
