@@ -126,7 +126,7 @@ public class CountState extends State {
                 }
 
                 phase = 5;
-                return new QuestionEvent(getGame().printScores() + "\n" +
+                return new QuestionEvent(getGame().printScore() + "\n" +
                         "Do you want to: \n(1) Simulate another round\n(2) Go back to the main menu");
             }
 
