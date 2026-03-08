@@ -3,7 +3,6 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.deck.Deck;
 import base.domain.player.Player;
-import base.domain.round.Round;
 import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
