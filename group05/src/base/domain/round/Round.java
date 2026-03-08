@@ -3,16 +3,11 @@ package base.domain.round;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.bid.BidCategory;
-import base.domain.card.Card;
 import base.domain.card.Suit;
-import base.domain.card.Rank;
 import base.domain.player.Player;
 import base.domain.trick.Trick;
 
 import java.util.*;
-
-import static base.domain.bid.BidType.MISERIE;
-import static base.domain.bid.BidType.OPEN_MISERIE;
 
 /**
  * @author Seppe De Houwer
@@ -24,6 +19,7 @@ public class Round {
     private final List<Player> players;
     private Player currentPlayer;
     private Player dealer;
+
 
     private List<Trick> playedTricks = new ArrayList<>();
 
@@ -116,7 +112,7 @@ public class Round {
         }
         // --- CASE 1: MISERIE ---
         if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
-            List<Player> miseriePlayers = getAttackingTeam();
+            List<Player> miseriePlayers = getBiddingTeam();
             for (Player p : miseriePlayers) {
                 // Check tricks for THIS specific player only!
                 int tricks = getTricksWonBy(List.of(p));
@@ -126,7 +122,7 @@ public class Round {
         }
         // --- CASE 2: NORMAL BIDS (Solo, Partners) ---
         else {
-            List<Player> attackers = getAttackingTeam();
+            List<Player> attackers = getBiddingTeam();
             int tricksWon = getTricksWonBy(attackers);
             int points = highestBid.calculateBasePoints(tricksWon);
 
@@ -136,16 +132,55 @@ public class Round {
     }
 
     /**
+     * Determines which players won the round based on the final trick count.
+     * * @return A list of the winning players.
+     * For normal bids: Returns the bidders if they met their contract, otherwise returns the other players.
+     * For Miserie: Returns only the specific Miserie players who successfully took 0 tricks.
+     */
+    public List<Player> getWinningPlayers() {
+        if (!isFinished()) {
+            return new ArrayList<>(); // The round isn't over yet!
+        }
+
+        List<Player> bidders = getBiddingTeam();
+
+        // --- CASE 1: MISERIE ---
+        if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
+            List<Player> successfulMiseriePlayers = new ArrayList<>();
+            for (Player p : bidders) {
+                // In Miserie, you only win if you took exactly 0 tricks
+                if (getTricksWonBy(List.of(p)) == 0) {
+                    successfulMiseriePlayers.add(p);
+                }
+            }
+            return successfulMiseriePlayers;
+        }
+
+        // --- CASE 2: NORMAL BIDS (Solo, Partners) ---
+        int tricksWon = getTricksWonBy(bidders);
+        int points = highestBid.calculateBasePoints(tricksWon);
+
+        // If points are positive, the Bidding team made their contract!
+        if (points > 0) {
+            return bidders;
+        } else {
+            List<Player> defenders = new ArrayList<>(this.players);
+            defenders.removeAll(bidders);
+            return defenders;
+        }
+    }
+
+    /**
      *handles 1vs3 and 2vs2
      */
-    private void distributeScores(int basePoints, List<Player> attackers) {
+    private void distributeScores(int basePoints, List<Player> bidders) {
         for (Player p : this.players) {
-            if (attackers.contains(p)) {
+            if (bidders.contains(p)) {
                 p.updateScore(basePoints * multiplier);
             } else {
-                // If 2 attackers, opponents pay full basePoints.
-                // If 1 attacker, 3 opponents pay 1/3 each.
-                if (attackers.size() == 2) {
+                // If 2 bidders, opponents pay full basePoints.
+                // If 1 bidder, 3 opponents pay 1/3 each.
+                if (bidders.size() == 2) {
                     p.updateScore(basePoints * multiplier * -1);
                 } else {
                     p.updateScore((basePoints * multiplier * -1) / 3);
@@ -157,7 +192,7 @@ public class Round {
     /**
      * Extracts the players responsible for the highest bid.
      */
-    private List<Player> getAttackingTeam() {
+    private List<Player> getBiddingTeam() {
         List<Player> attackers = new ArrayList<>();
         if (highestBid.getType() == BidType.ACCEPTANCE) {
             for (Bid b : bids) {
