@@ -157,7 +157,7 @@ public class PlayState extends State {
         if (highestBid != null && highestBid.getType() == BidType.OPEN_MISERIE) {
             Player exposedPlayer = highestBid.getPlayer();
             table.append("\n--- EXPOSED HAND (OPEN_MISERIE: ").append(exposedPlayer.getName()).append(")---\n");
-            table.append(exposedPlayer.getFormattedHand()).append("\n");
+            table.append(exposedPlayer.getHand().toString()).append("\n");
         }
         table.append("----------------------\n");
         return table.toString();
