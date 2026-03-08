@@ -1,6 +1,7 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.deck.Deck;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import cli.elements.GameEvent;
@@ -14,9 +15,13 @@ import java.util.List;
 import static base.domain.bid.BidType.*;
 
 public class CountState extends State {
-    private int phase = 0;
+
+    private enum CountPhase {
+        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, CALCULATE, FINISH
+    }
+
+    private CountPhase currentPhase = CountPhase.START;
     private int numberBid;
-    private int numberTrump;
     private int keuze;
     private Bid bid;
     private Suit trumpSuit;
@@ -24,141 +29,180 @@ public class CountState extends State {
 
     public CountState(WhistGame game) {
         super(game);
-        this.numberBid = 0;
-        this.numberTrump = 0;
-        this.participatingPlayers = null;
     }
 
+    /**
+     *Executes the menustate
+     *
+     * @param  input the users response to the previous QuestionEvent
+     * @return the next QuestionEvent or TextEvent
+     * @throws IllegalStateException getting in a unknown state
+     */
     @Override
     public GameEvent executeState(String input) {
         try {
-            // Phase 0: Welkomstbericht tonen
-            if (phase == 0) {
-                phase = 1;
-                return new QuestionEvent("===== WELCOME TO THE COUNT ==== \n" + "WHICH ROUND WAS PLAYED? \n" +
-                        "Proposal: \n(1) Alone    (2) With Partner\n" +
-                        "Abondance:\n(3) 9   (4) 10   (5) 11   (6) 12\n" +
-                        "Miserie:\n(7) Normal       (8) Open\n" +
-                        "Solo:\n(9) Normal       (10) Solo Slim\n");
-            }
-
-            if (phase == 1) {
-                int bidChoice = Integer.parseInt(input);
-                if (bidChoice < 1 || bidChoice > 10) return new QuestionEvent("Invalid choice. Please pick 1-10:");
-                this.numberBid = bidChoice;
-                phase = 2;
-                return new QuestionEvent("What Suit is the trump suit?\n(1) Hearts (2) Clubs (3) Diamonds (4) Spades");
-            }
-
-            if (phase == 2) {
-                this.numberTrump = Integer.parseInt(input);
-                this.trumpSuit = switch (numberTrump) {
-                    case 1 -> Suit.HEARTS; case 2 -> Suit.CLUBS;
-                    case 3 -> Suit.DIAMONDS; case 4 -> Suit.SPADES;
-                    default -> null;
-                };
-                if (this.trumpSuit == null) return new QuestionEvent("Invalid suit. Pick (1-4):");
-                phase = 3;
-                return new QuestionEvent("Which player numbers played this bid? (e.g., '0' or '0, 2')\n" + getGame().printNames());
-            }
-
-            if (phase == 3) {
-                this.participatingPlayers = Arrays.stream(input.split("[^0-9]+"))
-                        .filter(s -> !s.isEmpty()).map(Integer::parseInt).toList();
-
-                if (participatingPlayers.isEmpty()) return new QuestionEvent("Enter at least one player number:");
-                for (int idx : participatingPlayers) {
-                    if (idx < 0 || idx >= getGame().getPlayers().size()) return new QuestionEvent("Invalid player: " + idx);
-                }
-
-                phase = 4;
-                if (numberBid == 7 || numberBid == 8) {
-                    return new QuestionEvent("Which players won their bid? (Numbers of players who got 0 tricks): \n" + getGame().printNames());
-                } else {
-                    return new QuestionEvent("How many tricks did the player(s) win?");
-                }
-            }
-
-            if (phase == 4) {
-                // 1. Haal de volledige lijst van deelnemende Player objecten op
-                List<Player> participants = participatingPlayers.stream()
-                        .map(idx -> getGame().getPlayers().get(idx)).toList();
-
-                Player firstPlayer = participants.get(0);
-
-                // 2. Initialiseer de Bid
-                this.bid = switch (numberBid) {
-                    case 1 -> new SoloProposalBid(firstPlayer);
-                    case 2 -> new ProposalBid(firstPlayer); // Wordt intern in Round afgehandeld als partnerschap
-                    case 3 -> new AbondanceBid(firstPlayer, ABONDANCE_9, trumpSuit);
-                    case 4 -> new AbondanceBid(firstPlayer, ABONDANCE_10, trumpSuit);
-                    case 5 -> new AbondanceBid(firstPlayer, ABONDANCE_11, trumpSuit);
-                    case 6 -> new AbondanceBid(firstPlayer, ABONDANCE_12_OT, trumpSuit);
-                    case 7 -> new MiserieBid(firstPlayer, MISERIE);
-                    case 8 -> new MiserieBid(firstPlayer, OPEN_MISERIE);
-                    case 9 -> new SoloBid(firstPlayer, SOLO, trumpSuit);
-                    case 10 -> new SoloBid(firstPlayer, SOLO_SLIM, trumpSuit);
-                    default -> throw new IllegalStateException("Unexpected bid index");
-                };
-
-                // 3. Maak de ronde aan en zet de hoogste bid
-                Round round = new Round(getGame().getPlayers(), null);
-                round.setHighestBid(bid);
-                getGame().addRound(round);
-
-                // 4. Score berekening op basis van type
-                if (numberBid == 7 || numberBid == 8) {
-                    // Input zijn de player indices die 0 slagen haalden (winnende miserie spelers)
-                    List<Integer> winnersIndices = Arrays.stream(input.split("[^0-9]+"))
-                            .filter(s -> !s.isEmpty()).map(Integer::parseInt).toList();
-
-                    List<Player> winningMiseriePlayers = winnersIndices.stream()
-                            .map(idx -> getGame().getPlayers().get(idx)).toList();
-
-                    // Bij miserie is tricksWon irrelevant (we sturen 0)
-                    round.calculateScoresForCount(0, participants, winningMiseriePlayers);
-                } else {
-                    int aantalSlagen = Integer.parseInt(input);
-                    if (aantalSlagen < 0 || aantalSlagen > 13) return new QuestionEvent("Enter a number between 0-13:");
-
-                    // Bij normale biedingen is winningMiseriePlayers null
-                    round.calculateScoresForCount(aantalSlagen, participants, null);
-                }
-
-                phase = 5;
-                return new QuestionEvent(getGame().printScore() + "\n" +
-                        "Do you want to: \n(1) Simulate another round\n(2) Go back to the main menu");
-            }
-
-            if (phase == 5) {
-                keuze = Integer.parseInt(input);
-                if (keuze != 1 && keuze != 2) return new QuestionEvent("Please choose (1) or (2):");
-                return new TextEvent("Processing choice...");
-            }
-
+            return switch (currentPhase) {
+                case START          -> handleStart();
+                case SELECT_BID     -> handleSelectBid(input);
+                case SELECT_TRUMP   -> handleSelectTrump(input);
+                case SELECT_PLAYERS -> handleSelectPlayers(input);
+                case CALCULATE     -> handleCalculate(input);
+                case FINISH        -> handleFinish(input);
+            };
         } catch (NumberFormatException e) {
-            System.err.println("Input parsing error: " + input);
-            return new QuestionEvent("Invalid input. Please enter a valid number:");
+            return new QuestionEvent("That's not a valid number. Please try again:");
         } catch (Exception e) {
-            System.err.println("CRITICAL: " + e.getMessage());
-            throw new IllegalStateException("Flow failed in Phase " + phase, e);
+            System.err.println("Unexpected error in " + currentPhase + ": " + e.getMessage());
+            return new QuestionEvent("An error occurred. Please repeat your last input:");
+        }
+    }
+
+    // --- HELPER METHODS ---
+    /**
+     * First questionEvent the Count State
+     *
+     * @return QuestionEvent what bid was played
+    * */
+    private GameEvent handleStart() {
+        String msg = "===== WELCOME TO THE COUNT ==== \n" +
+                "WHICH ROUND WAS PLAYED? \n" +
+                "Proposal: \n(1) Alone    (2) With Partner\n" +
+                "Abondance:\n(3) 9   (4) 10   (5) 11   (6) 12\n" +
+                "Miserie:\n(7) Normal       (8) Open\n" +
+                "Solo:\n(9) Normal       (10) Solo Slim\n";
+        currentPhase = CountPhase.SELECT_BID;
+        return new QuestionEvent(msg);
+    }
+    /**
+     * Second questionEvent the Count State
+     * handles de bid, and asks what the trump is
+     * @param  input  answer of the user to what bid is played
+     * @return QuestionEvent what is the trump suit
+     *
+     * */
+    private GameEvent handleSelectBid(String input) {
+        int choice = Integer.parseInt(input);
+        if (choice < 1 || choice > 10) return new QuestionEvent("Invalid choice (1-10):");
+        this.numberBid = choice;
+        currentPhase = CountPhase.SELECT_TRUMP;
+        return new QuestionEvent("What Suit is the trump suit?\n(1) Hearts (2) Clubs (3) Diamonds (4) Spades");
+    }
+
+    /**
+     * Third questionEvent the Count State
+     * Handles the trump and asks for the players who played the bid
+     * @param  input  answer from user what suit trump is
+     * @return QuestionEvent which players played the bid
+     * */
+    private GameEvent handleSelectTrump(String input) {
+        int choice = Integer.parseInt(input);
+        this.trumpSuit = switch (choice) {
+            case 1 -> Suit.HEARTS; case 2 -> Suit.CLUBS;
+            case 3 -> Suit.DIAMONDS; case 4 -> Suit.SPADES;
+            default -> null;
+        };
+        if (this.trumpSuit == null) return new QuestionEvent("Invalid suit (1-4):");
+        currentPhase = CountPhase.SELECT_PLAYERS;
+        return new QuestionEvent("Which player numbers played this bid?\n" + getGame().printNames());
+    }
+    /**
+     * Handles the players that played in the bid, asks depending on the bid the amount of tricks of which players won
+     * @param  input  answer from user to which players were playing this bid
+     * @return QuestionEvent who won the bid or how many tricks were won
+    * */
+    private GameEvent handleSelectPlayers(String input) {
+        this.participatingPlayers = parseIndices(input);
+        if (participatingPlayers.isEmpty()) return new QuestionEvent("Select at least one player:");
+
+        for (int idx : participatingPlayers) {
+            if (idx < 0 || idx >= getGame().getPlayers().size()) return new QuestionEvent("Invalid player index: " + idx);
         }
 
-        return new TextEvent("Finalizing...");
+        currentPhase = CountPhase.CALCULATE;
+        if (numberBid == 7 || numberBid == 8) {
+            return new QuestionEvent("Which players won their bid? (Got 0 tricks): \n" + getGame().printNames());
+        }
+        return new QuestionEvent("How many tricks did the player(s) win?");
+    }
+
+    /**
+     *Handles the results of the bid and calculates the scores, prints them and asks what state to go next to
+     * @param input answer from user to question who won the bid or how many tricks were won
+     * @return QuestionEvent about if the users wants to count another round
+     */
+    private GameEvent handleCalculate(String input) {
+        List<Player> participants = participatingPlayers.stream()
+                .map(idx -> getGame().getPlayers().get(idx)).toList();
+        createBidObject(participants.getFirst());
+        Round round = new Round(getGame().getPlayers(), null);
+        round.setHighestBid(bid);
+        getGame().addRound(round);
+
+        if (numberBid == 7 || numberBid == 8) {
+            List<Player> winners = parseIndices(input).stream()
+                    .map(idx -> getGame().getPlayers().get(idx)).toList();
+            round.calculateScoresForCount(0, participants, winners);
+        } else {
+            int tricks = Integer.parseInt(input);
+            if (tricks < 0 || tricks > 13) return new QuestionEvent("Tricks must be 0-13:");
+            round.calculateScoresForCount(tricks, participants, null);
+        }
+
+        currentPhase = CountPhase.FINISH;
+        return new QuestionEvent(getGame().printScore() + "\n" +
+                "Do you want to: \n(1) Simulate another round\n(2) Go back to the main menu");
+    }
+
+    /**
+     * Defensive programming for final state
+     * @param input wrong input for nextState
+     * @return QuestionEvent about what to do next
+     */
+    private GameEvent handleFinish(String input) {
+        keuze = Integer.parseInt(input);
+        if (keuze != 1 && keuze != 2) return new QuestionEvent("Choose (1) or (2):");
+        return new TextEvent("Round finalized.");
+    }
+
+    // --- UTILS ---
+
+    /**
+     * Splits up the input to get the different numbers that were put in
+     * @param input (eg. 1,4)
+     * @return list containing those numbers (eg. [1,4])
+     */
+    private List<Integer> parseIndices(String input) {
+        return Arrays.stream(input.split("[^0-9]+"))
+                .filter(s -> !s.isEmpty())
+                .map(Integer::parseInt)
+                .toList();
+    }
+
+    /**
+     * creates the bid depending on numberBid and the player thats given (for less code cluttering seperated)
+     * @param bidder
+     *
+     */
+    private void createBidObject(Player bidder) {
+        this.bid = switch (numberBid) {
+            case 1 -> new SoloProposalBid(bidder);
+            case 2 -> new ProposalBid(bidder);
+            case 3 -> new AbondanceBid(bidder, ABONDANCE_9, trumpSuit);
+            case 4 -> new AbondanceBid(bidder, ABONDANCE_10, trumpSuit);
+            case 5 -> new AbondanceBid(bidder, ABONDANCE_11, trumpSuit);
+            case 6 -> new AbondanceBid(bidder, ABONDANCE_12_OT, trumpSuit);
+            case 7 -> new MiserieBid(bidder, MISERIE);
+            case 8 -> new MiserieBid(bidder, OPEN_MISERIE);
+            case 9 -> new SoloBid(bidder, SOLO, trumpSuit);
+            case 10 -> new SoloBid(bidder, SOLO_SLIM, trumpSuit);
+            default -> throw new IllegalStateException("Invalid bid index");
+        };
     }
 
     @Override
 
-    public State nextState() {
-        if (keuze == 1){
-
-            return new CountState(getGame());
-
-        }
-        else {
-
-            return new MenuState(getGame());
-
-        }
+    public State nextState(){
+        return (keuze == 1) ? new CountState(getGame()) : new MenuState(getGame());
     }
+
 }
