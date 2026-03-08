@@ -18,17 +18,16 @@ public class EndRoundState extends State {
 
     public EndRoundState(WhistGame game) {
         super(game);
-
-        game.getCurrentRound().calculateScores();
+        game.getCurrentRound().calculateScores(); // TODO: fix getCurrentRound to return null if empty round, cuz curently it throws
     }
 
     @Override
     public GameEvent executeState(String input) {
         if (input != null && !input.isEmpty()) {
-            if (input.equals("0")) {
+            if (input.equals("1")) {
                 userWantsToRestart = true;
                 return new TextEvent("Starting new round...");
-            } else if (input.equals("1")) {
+            } else if (input.equals("2")) {
                 userWantsToQuit = true;
                 return new TextEvent("Returning to main menu...");
             } else {
@@ -36,13 +35,12 @@ public class EndRoundState extends State {
             }
         }
 
-        StringBuilder scoreBoard = new StringBuilder("\n---ROUND OVER: Final Scores ---\n");
-        for (Player p : getGame().getPlayers()) {
-            scoreBoard.append(p.getName()).append(": ").append(p.getScore()).append(" points\n");
-        }
-        scoreBoard.append("-------------------------------\n");
-        scoreBoard.append("(0) Start next round\n (1) Quit to Menu\nYour Choice: ");
-        return new QuestionEvent(scoreBoard.toString());
+        String prompt = getGame().printScore() + "\n\n" +
+                "Do you want to:\n\n" +
+                "(1) Play another round\n" +
+                "(2) Quit to main menu\n" +
+                "Your choice: ";
+        return new QuestionEvent(prompt);
     }
 
     @Override
@@ -50,6 +48,7 @@ public class EndRoundState extends State {
         if (userWantsToQuit) {
             return new MenuState(getGame());
         } else if (userWantsToRestart) {
+            //
             return new BidState(getGame());
         } else {
             return this;
