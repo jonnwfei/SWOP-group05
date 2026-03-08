@@ -33,14 +33,14 @@ public class MenuState extends State {
         ENTER_BOTS
     }
 
-    private SetupState state = SetupState.WELCOME; // dit is gewoon hoe ge het initieert
+    private SetupState state = SetupState.WELCOME;
 
     /**
-     *Executes the menustate
+     *Executes the menu state
      *
      * @param  input the users response to the previous QuestionEvent
      * @return the next QuestionEvent or TextEvent
-     * @throws IllegalStateException getting in a unknown state
+     * @throws IllegalStateException getting in an unknown state
      */
     @Override
     public GameEvent executeState(String input) {
@@ -97,7 +97,7 @@ public class MenuState extends State {
     private GameEvent handleBotAmount(String input) {
         int bots = Integer.parseInt(input);
 
-        if (bots < 0 || bots > 4) {
+        if (bots < 0 || bots >= 4) {
             return new QuestionEvent("Invalid amount. Enter a number between 0 and 4:");
         }
 
