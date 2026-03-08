@@ -2,10 +2,13 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 
+import base.domain.bid.Bid;
+import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
+import base.domain.trick.Turn;
 import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
@@ -18,6 +21,7 @@ import cli.elements.TextEvent;
 public class PlayState extends State {
     private final Round currentRound;
     private Trick currentTrick;
+    private boolean isHandHidden = true;
 
 
     /**
@@ -28,11 +32,12 @@ public class PlayState extends State {
     public PlayState(WhistGame game) {
         super(game);
         Round round = game.getCurrentRound();
-        if (round == null) {
+        if (round == null) { // TODO: fix it in whistGame.getCurrentHand() to return null if empty
             throw new IllegalStateException("Cannot create PlayState: no currentRound exist; make sure a round has been created.");
         }
         this.currentRound = round; // will not throw since BidState ensures that a new Round has been instantiated
         this.currentTrick = new Trick(currentRound.getCurrentPlayer(), currentRound.getTrumpSuit());
+        this.isHandHidden = false;
     }
 
     /**
@@ -47,7 +52,24 @@ public class PlayState extends State {
         Player currentPlayer = currentRound.getCurrentPlayer();
         StringBuilder outputLog = new StringBuilder();
 
-        if (input != null && !input.isEmpty() && currentPlayer.getRequiresConfirmation()) { // Checks if the input for HUMAN Turn
+        // Initial Load or when user needs to press "ENTER"
+        if (input == null) {
+            isHandHidden = true;
+            return new QuestionEvent("*** Pass the terminal to " + currentPlayer.getName()
+                    + " ***\nPress ENTER to reveal your hand...");
+        }
+        // User pressed "ENTER" on the Pass terminal screen
+        if (isHandHidden && input.isEmpty()) {
+            isHandHidden = false;
+
+            String currentHand = currentPlayer.getFormattedHand();
+            return new QuestionEvent(buildTableDisplay() + "\nTrick: " + (currentRound.getTricks().size() + 1) +
+                    " | " + currentPlayer.getName() + "'s turn.\n" +
+                    "Your hand: \n" + currentHand + "\nChoose Card via index:");
+        }
+
+        // Checks if the input for HUMAN Turn
+        if (currentPlayer.getRequiresConfirmation()) {
             try {
                 int handIdx = Integer.parseInt(input);
                 if (handIdx < 1 || handIdx > currentPlayer.getHand().size()) {
@@ -57,6 +79,8 @@ public class PlayState extends State {
                 Card playedCard = currentPlayer.getHand().get(handIdx - 1);
                 currentTrick.playCard(currentPlayer, playedCard); // plays the card and checks if the played card is valid, could throw
                 outputLog.append(currentPlayer.getName()).append(" played ").append(playedCard.toString()).append(".\n");
+
+                isHandHidden = true; // Hide the hand for next player
 
                 TextEvent roundCompletedEvent = processTurnOutcome(outputLog);
                 if (roundCompletedEvent != null) {
@@ -87,11 +111,8 @@ public class PlayState extends State {
         }
 
         // Question event for the next Turn if nextPlayer is a Human
-        String currentHand = currentPlayer.getFormattedHand();
-
-        return new QuestionEvent(outputLog + "\nTrick: " + (currentRound.getTricks().size() + 1) +
-                " | " + currentPlayer.getName() + "'s turn.\n" +
-                "Your hand: \n" + currentHand + "\nChoose Card via index:");
+        return new QuestionEvent(outputLog + "\n\n*** Pass the device to " + currentRound.getCurrentPlayer().getName()
+                + "***\nPress ENTER to reveal your hand...");
 
     }
 
@@ -119,6 +140,30 @@ public class PlayState extends State {
     }
 
     /**
+     * Builds a string containing the currently Played cards and if applicable, the Hand of the player playing OPEN MISERIE
+     * @return formatted string that hold the current table status of open cards
+     */
+    private String buildTableDisplay() {
+        StringBuilder table = new StringBuilder("\n--- CARDS ON TABLE ---\n");
+        if(currentTrick.getTurns().isEmpty()) {
+            table.append("(No cards played yet)\n");
+        } else {
+            for (Turn turn : currentTrick.getTurns()) {
+                table.append("- ").append(turn.toString()).append("\n");
+            }
+        }
+
+        Bid highestBid = currentRound.getHighestBid();
+        if (highestBid != null && highestBid.getType() == BidType.OPEN_MISERIE) {
+            Player exposedPlayer = highestBid.getPlayer();
+            table.append("\n--- EXPOSED HAND (OPEN_MISERIE: ").append(exposedPlayer.getName()).append(")---\n");
+            table.append(exposedPlayer.getFormattedHand()).append("\n");
+        }
+        table.append("----------------------\n");
+        return table.toString();
+    }
+
+    /**
      * Returns the nextState. After playState, the game either transitions to a new MenuState when the current Round has
      * finished, or returns this same playState instance so that the current round can continue.
      *
@@ -127,7 +172,7 @@ public class PlayState extends State {
     @Override
     public State nextState() {
         if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
-            return new MenuState(getGame());
+            return new EndRoundState(this.getGame());
         }
         return this;
     }
