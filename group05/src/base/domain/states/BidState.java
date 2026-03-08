@@ -15,8 +15,7 @@ import java.util.List;
 
 
 public class BidState extends State {
-    private final Round currentRound;
-    private List<Bid> bids;
+    private final List<Bid> bids;
     private BidType currentHighestBidType;
     private Player currentPlayer;
     private Suit trumpSuit;
@@ -24,7 +23,6 @@ public class BidState extends State {
 
     public BidState(WhistGame game) {
         super(game);
-        this.currentRound = null ; //TODO game.getCurrentRound()
         this.bids = new ArrayList<>();
         this.currentHighestBidType = null; // Starts as null!
         this.currentPlayer = game.getCurrentPlayer();
@@ -33,10 +31,31 @@ public class BidState extends State {
 
     @Override
     public GameEvent executeState(String input) {
-
+        // INITIALIZE DEALING CARDS
         if(trumpSuit == null) {
             //TODO getGame().getDeck().dealCards();
-            trumpSuit = currentRound.getTrumpSuit();
+            //TODO trumpSuit = getGame.getDeck.getTrump() or smth
+        }
+
+        // 2. Handle the "Rejected Proposal" Decision
+        // This occurs AFTER everyone has had a turn, and the highest was a PROPOSAL
+        if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
+            if (input == null || input.trim().isEmpty()) {
+                return new QuestionEvent("No one accepted your proposal. Do you [0] PASS or [1] SOLO_PROPOSAL?\nYour choice: ");
+            }
+
+            try {
+                BidType decision = parseBidType(input);
+                if (decision == BidType.PASS || decision == BidType.SOLO_PROPOSAL) {
+                    replaceProposalBid(decision);
+                    // Update the state's highest bid so filterBids works correctly
+                    this.currentHighestBidType = decision;
+                    return new TextEvent("\n=== BIDDING COMPLETE ===");
+                }
+                return new QuestionEvent("Invalid choice. Choose [0] PASS or [1] SOLO_PROPOSAL: ");
+            } catch (Exception e) {
+                return new QuestionEvent("Please enter 0 or 1: ");
+            }
         }
 
         // PROCESS INCOMING DATA
@@ -58,8 +77,11 @@ public class BidState extends State {
 
             // CHECK END CONDITION
             if (isBiddingComplete()) {
-                List<Bid> activeBids = filterBids(bids);
-                //TODO currentRound.setActiveBids();
+                if (currentHighestBidType == BidType.PROPOSAL) {
+                    // Prompt the proposer immediately
+                    Player proposer = findProposer();
+                    return new QuestionEvent("\n" + proposer.getName() + ": No one accepted. [0] PASS or [1] SOLO_PROPOSAL?");
+                }
                 return new TextEvent("\n=== BIDDING COMPLETE ===");
             }
         }
@@ -77,6 +99,10 @@ public class BidState extends State {
 
     @Override
     public State nextState(){
+        if (currentHighestBidType == BidType.PASS) {
+            //TODO resetGame: flushHand players, set trump card to null...
+            return new BidState(getGame());
+        }
         return new PlayState(getGame());
     }
 
@@ -134,18 +160,6 @@ public class BidState extends State {
         return options.toString();
     }
 
-    private BidType determineBid(int index) {
-        BidType[] allBids = BidType.values();
-        if (index < 0 || index >= allBids.length) {return null;}
-        return allBids[index];
-    }
-
-    private Suit determineSuit(int index) {
-        Suit[] allSuits = Suit.values();
-        if (index < 0 || index >= allSuits.length) {return null;}
-        return allSuits[index];
-    }
-
     private BidType parseBidType(String input) {
         int choiceIndex;
         try {choiceIndex = Integer.parseInt(input.trim());}
@@ -153,11 +167,11 @@ public class BidState extends State {
             throw new IllegalArgumentException("Invalid input! Please enter a number.");
         }
 
-        BidType selectedType = determineBid(choiceIndex);
-        if (selectedType == null) {
-            throw  new IllegalArgumentException("That number is not on the options.");
+        BidType[] allBids = BidType.values();
+        if (choiceIndex < 0 || choiceIndex >= allBids.length) {
+            throw new IllegalArgumentException("That number is not on the options.");
         }
-        return selectedType;
+        return allBids[choiceIndex];
     }
 
     private Suit parseSuit(String input) {
@@ -167,18 +181,18 @@ public class BidState extends State {
             throw new IllegalArgumentException("Invalid input! Please enter a number.");
         }
 
-        Suit selectedSuit = determineSuit(choiceIndex);
-        if (selectedSuit == null) {
+        Suit[] allSuits = Suit.values();
+        if (choiceIndex < 0 || choiceIndex >= allSuits.length) {
             throw  new IllegalArgumentException("That number is not on the options.");
         }
-        return selectedSuit;
+        return allSuits[choiceIndex];
     }
 
     private boolean isLegalBidType(BidType chosenBidType) {
-        if (chosenBidType == BidType.PASS) {return true;}
+        if(chosenBidType == BidType.PASS) {return true;}
         //If there is no highest bid yet, any bid is legal
         if (currentHighestBidType == null) {return true;}
-
+        if (chosenBidType == BidType.SOLO_PROPOSAL && !isBiddingComplete()) {return false;}
         int comparison = chosenBidType.compareTo(currentHighestBidType);
         if (comparison < 0) {return false;}
         if (comparison == 0 && chosenBidType.getCategory() != BidCategory.MISERIE) {return false;}
@@ -231,21 +245,22 @@ public class BidState extends State {
         }
     }
 
-    private boolean isBiddingComplete() {
-        return this.bids.size() == getGame().getPlayers().size();
+    private Player findProposer() {
+        return bids.stream()
+                .filter(b -> b.getType() == BidType.PROPOSAL)
+                .map(Bid::getPlayer)
+                .findFirst()
+                .orElse(null);
     }
 
-    private List<Bid> filterBids(List<Bid> bids) {
-        if (currentHighestBidType == BidType.PASS) {
-            return bids;
-        }
-        else if(currentHighestBidType == BidType.ACCEPTANCE) {
-            return bids.stream().filter(bid -> bid.getType() == BidType.ACCEPTANCE || bid.getType() == BidType.PROPOSAL).toList();
-        }
-        else if(currentHighestBidType.getCategory() == BidCategory.MISERIE) {
-            return bids.stream().filter(bid -> bid.getType().getCategory() == BidCategory.MISERIE).toList();
-        }
-        return bids.stream().filter(bid -> bid.getType() == currentHighestBidType).toList();
+    private void replaceProposalBid(BidType chosenBidType) {
+        Bid proposalBid = bids.stream().filter(bid -> bid.getType() == BidType.PROPOSAL).toList().getFirst();
+        bids.remove(proposalBid);
+        bids.add(chosenBidType.instantiate(proposalBid.getPlayer(), null));
+    }
+
+    private boolean isBiddingComplete() {
+        return this.bids.size() == getGame().getPlayers().size();
     }
 }
 
