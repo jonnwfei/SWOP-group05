@@ -116,16 +116,22 @@ public class CountState extends State {
     * */
     private GameEvent handleSelectPlayers(String input) {
         this.participatingPlayers = parseIndices(input);
-        if (participatingPlayers.isEmpty()) return new QuestionEvent("Select at least one player:");
-
-        for (int idx : participatingPlayers) {
-            if (idx <= 0 || idx >= getGame().getPlayers().size()) return new QuestionEvent("Invalid player index: " + idx);
+        if (participatingPlayers.isEmpty()) {
+            return new QuestionEvent("Select at least one player:");
         }
-
+        for (int idx : participatingPlayers) {
+            if (idx < 0 || idx >= getGame().getPlayers().size()) {
+                return new QuestionEvent("Invalid player index: " + idx);
+            }
+        }
+        if (numberBid == 2 && participatingPlayers.size() != 2) {
+            return new QuestionEvent("Select exactly two players:\n" + getGame().printNames());
+        }
         currentPhase = CountPhase.CALCULATE;
         if (numberBid == 7 || numberBid == 8) {
             return new QuestionEvent("Which players won their bid? (Got 0 tricks): \n" + getGame().printNames());
         }
+
         return new QuestionEvent("How many tricks did the player(s) win?");
     }
 
@@ -135,12 +141,15 @@ public class CountState extends State {
      * @return QuestionEvent about if the users wants to count another round
      */
     private GameEvent handleCalculate(String input) {
+        //prep
         List<Player> participants = participatingPlayers.stream()
                 .map(idx -> getGame().getPlayers().get(idx)).toList();
+
         createBidObject(participants.getFirst());
         Round round = new Round(getGame().getPlayers(), null);
         round.setHighestBid(bid);
         getGame().addRound(round);
+        //case of miserie
         if (numberBid == 7 || numberBid == 8) {
             List<Integer> winnerIndices = parseIndices(input);
             if (winnerIndices.isEmpty()) {
@@ -156,7 +165,8 @@ public class CountState extends State {
             }
             List<Player> winners = winnerIndices.stream().map(idx -> getGame().getPlayers().get(idx)).toList();
             round.calculateScoresForCount(0, participants, winners);
-        } else {
+        }//other cases
+        else {
             int tricks = Integer.parseInt(input);
             if (tricks < 0 || tricks > 13) return new QuestionEvent("Tricks must be 0-13:");
             round.calculateScoresForCount(tricks, participants, null);
@@ -189,6 +199,7 @@ public class CountState extends State {
         return Arrays.stream(input.split("[^0-9]+"))
                 .filter(s -> !s.isEmpty())
                 .map(Integer::parseInt)
+                .map(i -> i - 1)
                 .toList();
     }
 
