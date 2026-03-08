@@ -14,12 +14,25 @@ import cli.elements.TextEvent;
 public class ScoreBoardState extends State {
     private boolean userWantsToQuit = false;
     private boolean userWantsToRestart = false;
+    private final State targetRestartState; // Can hold either new BidState or CountState
 
-    public ScoreBoardState(WhistGame game) {
+    /**
+     * Constructs a ScoreBordState for prompting the player whether to restart or quit to the menu. (Can be used for either
+     * PlayState and CountState, avoiding double code)
+     * @param game that will hold this state
+     * @param targetRestartState can either be new CountState or new BidState
+     */
+    public ScoreBoardState(WhistGame game, State targetRestartState) {
         super(game);
         game.getCurrentRound().calculateScores(); // TODO: fix getCurrentRound to return null if empty round, cuz curently it throws
+        this.targetRestartState = targetRestartState;
     }
 
+    /**
+     *
+     * @param input the user's response on the previous QuestionEvent
+     * @return GameEvent either TextEvent which calls nextState, or QuestionEvent which returns the currentState
+     */
     @Override
     public GameEvent executeState(String input) {
         if (input != null && !input.isEmpty()) {
@@ -42,13 +55,20 @@ public class ScoreBoardState extends State {
         return new QuestionEvent(prompt);
     }
 
+    /**
+     * Method to transition onwards to the nextState, following a ScoreBoardState can either be a MenuState, CountState
+     * or BidState.
+     *
+     * @return nextState
+     */
     @Override
     public State nextState() {
         if (userWantsToQuit) {
             return new MenuState(getGame());
         } else if (userWantsToRestart) {
-            //
-            return new BidState(getGame());
+            // TODO: needs to setup game, as to set the nextDealer as the person next to the dealer/ this is done by bidState
+
+            return targetRestartState;
         } else {
             return this;
         }
