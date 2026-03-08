@@ -142,6 +142,29 @@ public class WhistGame {
             }
             return result;
     }
+
+    /**
+     * Sets the current player.
+     *
+     * @param player the player that should become the current player
+     * @throws IllegalArgumentException if the player is null or not part of the game
+     * @throws IllegalStateException if the players list is not initialized
+     */
+    public void setCurrentPlayer(Player player) {
+        if (player == null) {
+            throw new IllegalArgumentException("Player cannot be null");
+        }
+
+        if (players == null) {
+            throw new IllegalStateException("Players list is not initialized");
+        }
+
+        if (!players.contains(player)) {
+            throw new IllegalArgumentException("Player must be part of the players list");
+        }
+
+        this.currentPlayer = player;
+    }
     /**
      * Returns a formatted string of the players and their current score
      * */

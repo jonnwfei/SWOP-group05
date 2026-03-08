@@ -9,6 +9,9 @@ import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
 import base.domain.deck.Deck;
+
+import java.util.Random;
+
 public class MenuState extends State {
     private int keuze;
     private int totalBots;
@@ -152,6 +155,9 @@ public class MenuState extends State {
     public State nextState(){
        if (keuze == 1){
            getGame().setDeck(new Deck());
+           getGame().setCurrentPlayer(
+                   getGame().getPlayers().get(new Random().nextInt(getGame().getPlayers().size()))
+           );
            return new BidState(getGame());
        }
        else{
