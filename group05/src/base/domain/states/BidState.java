@@ -45,14 +45,14 @@ public class BidState extends State {
             }
 
             try {
-                BidType decision = parseBidType(input);
-                if (decision == BidType.PASS || decision == BidType.SOLO_PROPOSAL) {
-                    replaceProposalBid(decision);
-                    // Update the state's highest bid so filterBids works correctly
-                    this.currentHighestBidType = decision;
-                    return new TextEvent("\n=== BIDDING COMPLETE ===");
-                }
-                return new QuestionEvent("Invalid choice. Choose [0] PASS or [1] SOLO_PROPOSAL: ");
+                int choice = Integer.parseInt(input.trim());
+                BidType decision;
+
+                if (choice == 0) decision = BidType.PASS;
+                else if (choice == 1) decision = BidType.SOLO_PROPOSAL;
+                else return new QuestionEvent("Invalid choice. Choose [0] PASS or [1] SOLO_PROPOSAL: ");
+                replaceProposalBid(decision);
+                return new TextEvent("\n=== BIDDING COMPLETE ===");
             } catch (Exception e) {
                 return new QuestionEvent("Please enter 0 or 1: ");
             }
@@ -255,9 +255,14 @@ public class BidState extends State {
     }
 
     private void replaceProposalBid(BidType chosenBidType) {
-        Bid proposalBid = bids.stream().filter(bid -> bid.getType() == BidType.PROPOSAL).toList().getFirst();
-        bids.remove(proposalBid);
-        bids.add(chosenBidType.instantiate(proposalBid.getPlayer(), null));
+        Bid proposalBid = bids.stream()
+                .filter(bid -> bid.getType() == BidType.PROPOSAL)
+                .findFirst()
+                .orElseThrow();
+
+        int index = bids.indexOf(proposalBid);
+
+        bids.set(index, chosenBidType.instantiate(proposalBid.getPlayer(), null));
     }
 
     private boolean isBiddingComplete() {
@@ -270,6 +275,7 @@ public class BidState extends State {
         for(int i = 0; i < allPlayers.size(); i++) {
             allPlayers.get(i).setHand(hands.get(i));
         }
-        trumpSuit = getGame().getDeck().getCards().getLast().suit();
-    }
+
+        Player lastPlayer = allPlayers.getLast();
+        trumpSuit = lastPlayer.getHand().getLast().suit();    }
 }
