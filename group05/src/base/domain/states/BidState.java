@@ -100,7 +100,7 @@ public class BidState extends State {
     @Override
     public State nextState(){
         if (currentHighestBidType == BidType.PASS) {
-            //TODO resetGame: flushHand players, set trump card to null...
+            //TODO resetGame: flushHand players, set trump card to null, multiplier...
             return new BidState(getGame());
         }
         return new PlayState(getGame());
@@ -266,9 +266,9 @@ public class BidState extends State {
 
     private void dealCards() {
         List<List<Card>> hands = getGame().getDeck().deal();
-        for(int i = 0; i < getGame().getPlayers().size(); i++) {
-            currentPlayer.setHand(hands.get(i));
-            updateCurrentPlayer(getGame().getPlayers());
+        List<Player> allPlayers = getGame().getPlayers();
+        for(int i = 0; i < allPlayers.size(); i++) {
+            allPlayers.get(i).setHand(hands.get(i));
         }
         trumpSuit = getGame().getDeck().getCards().getLast().suit();
     }
