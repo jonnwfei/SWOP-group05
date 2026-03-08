@@ -4,6 +4,7 @@ import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
+import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.round.Round;
@@ -33,8 +34,7 @@ public class BidState extends State {
     public GameEvent executeState(String input) {
         // INITIALIZE DEALING CARDS
         if(trumpSuit == null) {
-            //TODO getGame().getDeck().dealCards();
-            //TODO trumpSuit = getGame.getDeck.getTrump() or smth
+            dealCards();
         }
 
         // 2. Handle the "Rejected Proposal" Decision
@@ -111,7 +111,7 @@ public class BidState extends State {
         if (index == -1) {throw new IllegalArgumentException("currentPlayer not found in list of players");}
         int newIndex = (index + 1) % players.size();
         this.currentPlayer = players.get(newIndex);
-        //TODO getGame().setCurrentPlayer(currentPlayer);
+        //TODO getGame().getCurrentRound().advanceToNextPlayer();
     }
 
     private void updateHighestBidType(BidType bidType) {
@@ -123,7 +123,7 @@ public class BidState extends State {
     private String buildFirstPlayerPrompt(Player player) {
         return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
                 "Dealt Trump: " + trumpSuit.name() + "\n" +
-                // TODO: "Your Hand: " + player.getFormattedHand() + "\n"
+                player.getFormattedHand() + "\n" +
                 "---------------------------------------\n" +
                 "Status: You are the first to bid!\n\n" +
                 buildBidTypeOptions() + "\n" +
@@ -133,7 +133,7 @@ public class BidState extends State {
     private String buildStandardPrompt(Player player) {
         return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
                 "Dealt Trump: " + trumpSuit.name() + "\n" +
-                // TODO: "Your Hand: " + formatHand(player.getHand()) + "\n"
+                player.getFormattedHand() + "\n" +
                 "---------------------------------------\n" +
                 "Current Highest: " + currentHighestBidType.name() + "\n\n" +
                 buildBidTypeOptions() + "\n" +
@@ -262,5 +262,13 @@ public class BidState extends State {
     private boolean isBiddingComplete() {
         return this.bids.size() == getGame().getPlayers().size();
     }
-}
 
+    private void dealCards() {
+        List<List<Card>> hands = getGame().getDeck().deal();
+        for(int i = 0; i < getGame().getPlayers().size(); i++) {
+            currentPlayer.setHand(hands.get(i));
+            updateCurrentPlayer(getGame().getPlayers());
+        }
+        trumpSuit = getGame().getDeck().getCards().getLast().suit();
+    }
+}
