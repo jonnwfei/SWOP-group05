@@ -30,6 +30,7 @@ public class BidState extends State {
         this.trumpSuit = null;
 
         dealCards();
+        initializeRound();
     }
 
     private void dealCards() {
@@ -87,10 +88,9 @@ public class BidState extends State {
     @Override
     public State nextState(){
         if (currentHighestBidType == BidType.PASS) {
-            //TODO resetGame: flushHand players, set trump card to null, multiplier...
             return new BidState(getGame());
         }
-        initializeRound();
+        setRoundReadyForPlayState();
         return new PlayState(getGame());
     }
 
@@ -269,6 +269,14 @@ public class BidState extends State {
     private void initializeRound() {
         WhistGame game = this.getGame();
         List<Player> players = game.getPlayers();
+        Player newCurrentPlayer = currentPlayer;
+        int multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
+        Round newRound = new Round(players, newCurrentPlayer, multiplier);
+        game.addRound(newRound);
+    }
+    private void setRoundReadyForPlayState() {
+        WhistGame game = this.getGame();
+        List<Player> players = game.getPlayers();
         Player newCurrentPlayer = game.getLastRoundWinner();
         if (newCurrentPlayer == null) {
             newCurrentPlayer = players.get((players.indexOf(game.getDealerPlayer()) + 1) % 4);
@@ -276,8 +284,7 @@ public class BidState extends State {
         if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE) {
             newCurrentPlayer = bids.stream().filter( bid -> bid.getType() == currentHighestBidType).findFirst().get().getPlayer();
         }
-        Round newRound = new Round(players, newCurrentPlayer); //TODO fix dit in round denk ik ?
-        game.addRound(newRound);
+        game.getCurrentRound().setCurrentPlayer(newCurrentPlayer);
     }
 
 }

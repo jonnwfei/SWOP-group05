@@ -35,7 +35,7 @@ public class Round {
      * @throws IllegalArgumentException if players or dealer is null
      * @throws IllegalArgumentException if there are more than 4 players
      */
-    public Round(List<Player> players, Player startingPlayer) {
+    public Round(List<Player> players, Player startingPlayer, int multiplier) {
         if (players == null || players.size() != 4) {
             throw new IllegalArgumentException("Players list must contain exactly 4 players.");
         }
@@ -48,7 +48,7 @@ public class Round {
         this.bids = new ArrayList<>();
         this.highestBid = null;
         this.trumpSuit = null;
-        this.multiplier = 1;
+        this.multiplier = multiplier;
     }
 
     /**
@@ -252,6 +252,7 @@ public class Round {
     public void setTrumpSuit(Suit trump) {
         this.trumpSuit = trump;
     }
+    public void setCurrentPlayer(Player player) {this.currentPlayer = player;}
     public List<Trick> getTricks() {
         return List.copyOf(playedTricks);
     }
