@@ -7,7 +7,7 @@ import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
 import base.domain.bid.*;
 import base.domain.card.Suit;
-
+import base.domain.round.Round;
 import java.util.Arrays;
 import java.util.List;
 import static base.domain.bid.BidType.*;
