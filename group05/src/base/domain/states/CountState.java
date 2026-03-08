@@ -1,7 +1,6 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.deck.Deck;
 import base.domain.player.Player;
 import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
@@ -31,7 +30,7 @@ public class CountState extends State {
     }
 
     /**
-     *Executes the menustate
+     *Executes the count state
      *
      * @param  input the users response to the previous QuestionEvent
      * @return the next QuestionEvent or TextEvent
@@ -63,12 +62,18 @@ public class CountState extends State {
      * @return QuestionEvent what bid was played
     * */
     private GameEvent handleStart() {
-        String msg = "===== WELCOME TO THE COUNT ==== \n" +
-                "WHICH ROUND WAS PLAYED? \n" +
-                "Proposal: \n(1) Alone    (2) With Partner\n" +
-                "Abondance:\n(3) 9   (4) 10   (5) 11   (6) 12\n" +
-                "Miserie:\n(7) Normal       (8) Open\n" +
-                "Solo:\n(9) Normal       (10) Solo Slim\n";
+        String msg = """
+                ===== WELCOME TO THE COUNT ====\s
+                 WHICH ROUND WAS PLAYED?\s
+                Proposal:\s
+                (1) Alone    (2) With Partner
+                Abondance:
+                (3) 9   (4) 10   (5) 11   (6) 12
+                Miserie:
+                (7) Normal       (8) Open
+                Solo:
+                (9) Normal       (10) Solo Slim
+                """;
         currentPhase = CountPhase.SELECT_BID;
         return new QuestionEvent(msg);
     }
@@ -114,7 +119,7 @@ public class CountState extends State {
         if (participatingPlayers.isEmpty()) return new QuestionEvent("Select at least one player:");
 
         for (int idx : participatingPlayers) {
-            if (idx < 0 || idx >= getGame().getPlayers().size()) return new QuestionEvent("Invalid player index: " + idx);
+            if (idx <= 0 || idx >= getGame().getPlayers().size()) return new QuestionEvent("Invalid player index: " + idx);
         }
 
         currentPhase = CountPhase.CALCULATE;
@@ -136,10 +141,20 @@ public class CountState extends State {
         Round round = new Round(getGame().getPlayers(), null);
         round.setHighestBid(bid);
         getGame().addRound(round);
-
         if (numberBid == 7 || numberBid == 8) {
-            List<Player> winners = parseIndices(input).stream()
-                    .map(idx -> getGame().getPlayers().get(idx)).toList();
+            List<Integer> winnerIndices = parseIndices(input);
+            if (winnerIndices.isEmpty()) {
+                return new QuestionEvent("Select at least one winning player:");
+            }
+            for (int idx : winnerIndices) {
+                if (idx < 0 || idx >= getGame().getPlayers().size()) {
+                    return new QuestionEvent("Invalid player index: " + idx);
+                }
+                if (!participatingPlayers.contains(idx)) {
+                    return new QuestionEvent("Winners must be among the participating players:");
+                }
+            }
+            List<Player> winners = winnerIndices.stream().map(idx -> getGame().getPlayers().get(idx)).toList();
             round.calculateScoresForCount(0, participants, winners);
         } else {
             int tricks = Integer.parseInt(input);
@@ -179,7 +194,7 @@ public class CountState extends State {
 
     /**
      * creates the bid depending on numberBid and the player thats given (for less code cluttering seperated)
-     * @param bidder
+     * @param bidder player that plays the bid
      *
      */
     private void createBidObject(Player bidder) {
