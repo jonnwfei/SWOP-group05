@@ -10,7 +10,6 @@ import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
 import base.domain.deck.Deck;
 public class MenuState extends State {
-    private int promptCount;
     private int keuze;
     private int totalBots;
     private int botCount; //bots added
@@ -18,7 +17,6 @@ public class MenuState extends State {
 
     public MenuState(WhistGame game){
         super(game);
-        this.promptCount = 0;
         this.botCount = 0;
         this.humanCount = 0;
     }
@@ -64,7 +62,7 @@ public class MenuState extends State {
         } catch (NumberFormatException e) {
             return new QuestionEvent("That's not a valid number. Please try again:");
         }
-        throw new IllegalStateException("Flow stuck in MenuState at count " + promptCount);
+        throw new IllegalStateException("Flow stuck in MenuState at phase " + state.name());
     }
 
     private GameEvent showWelcome() {
