@@ -72,6 +72,19 @@ public class WhistGame {
     public Player getCurrentPlayer(){
         return this.currentPlayer;
     }
+
+    /**
+     * Gets the winner from the last Round, if no Rounds exist, return null
+     *
+     * @return Last Round's Winner
+     */
+    public Player getLastRoundWinner() {
+        if (this.rounds.isEmpty()) return null;
+        List<Player> winningPlayers = rounds.getLast().getWinningPlayers();
+        if (winningPlayers.isEmpty()) return null;
+
+        return winningPlayers.getFirst();
+    }
     /**
      * Gets the active round of the Game
      *
