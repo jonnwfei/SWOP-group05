@@ -90,6 +90,7 @@ public class BidState extends State {
             //TODO resetGame: flushHand players, set trump card to null, multiplier...
             return new BidState(getGame());
         }
+        initializeRound();
         return new PlayState(getGame());
     }
 
@@ -260,4 +261,23 @@ public class BidState extends State {
         }
         return options.toString();
     }
+
+    /**
+     * Initializes round with apropriate current player, based on the winner of last round or
+     * the player who bid ABONDANCE
+     */
+    private void initializeRound() {
+        WhistGame game = this.getGame();
+        List<Player> players = game.getPlayers();
+        Player newCurrentPlayer = game.getLastRoundWinner();
+        if (newCurrentPlayer == null) {
+            newCurrentPlayer = players.get((players.indexOf(game.getDealerPlayer()) + 1) % 4);
+        }
+        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE) {
+            newCurrentPlayer = bids.stream().filter( bid -> bid.getType() == currentHighestBidType).findFirst().get().getPlayer();
+        }
+        Round newRound = new Round(players, newCurrentPlayer); //TODO fix dit in round denk ik ?
+        game.addRound(newRound);
+    }
+
 }
