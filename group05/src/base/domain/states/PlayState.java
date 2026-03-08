@@ -29,17 +29,17 @@ public class PlayState extends State {
         super(game);
         Round round = game.getCurrentRound();
         if (round == null) {
-            throw new IllegalStateException("Cannot create playState: when currentRound doesn't exist. " + "Make sure round has been created");
+            throw new IllegalStateException("Cannot create PlayState: no currentRound exist; make sure a round has been created.");
         }
         this.currentRound = round; // will not throw since BidState ensures that a new Round has been instantiated
         this.currentTrick = new Trick(currentRound.getCurrentPlayer(), currentRound.getTrumpSuit());
     }
 
     /**
-     * Handles the execution of playState, orchestrating the logic flow of a Round and its Tricks, in the give game
-     * of which holds this state.
+     * Handles the execution of playState, orchestrating the logic flow of a Round and its Tricks, in the given game
+     * that holds this state.
      *
-     * @param input the Users response to the previous QuestionEvent
+     * @param input the user's response to the previous QuestionEvent
      * @return the next QuestionEvent or TextEvent
      */
     @Override
@@ -119,8 +119,8 @@ public class PlayState extends State {
     }
 
     /**
-     * Returns the nextState. After playState, the game either transitions to MenuState when the current Round has
-     * finished, or remains in this playState instance to continue on to the next Round within the same game.
+     * Returns the nextState. After playState, the game either transitions to a new MenuState when the current Round has
+     * finished, or returns this same playState instance so that the current round can continue.
      *
      * @return the next state
      */
