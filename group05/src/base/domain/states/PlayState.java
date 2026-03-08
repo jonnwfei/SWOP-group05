@@ -172,7 +172,7 @@ public class PlayState extends State {
     @Override
     public State nextState() {
         if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
-            return new ScoreBoardState(this.getGame());
+            return new ScoreBoardState(this.getGame(), new BidState(getGame()));
         }
         return this;
     }
