@@ -146,7 +146,7 @@ public class CountState extends State {
                 .map(idx -> getGame().getPlayers().get(idx)).toList();
 
         createBidObject(participants.getFirst());
-        Round round = new Round(getGame().getPlayers(), null);
+        Round round = new Round(getGame().getPlayers(), null, 1);
         round.setHighestBid(bid);
         getGame().addRound(round);
         //case of miserie

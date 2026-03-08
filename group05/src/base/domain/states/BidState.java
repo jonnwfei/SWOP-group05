@@ -272,9 +272,15 @@ public class BidState extends State {
     private void initializeRound() {
         WhistGame game = this.getGame();
         List<Player> players = game.getPlayers();
-        Player newCurrentPlayer = currentPlayer;
-        int multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
-        Round newRound = new Round(players, newCurrentPlayer, multiplier);
+
+        int multiplier;
+        if (getGame().getRounds().isEmpty()){
+             multiplier = 1;
+        }
+        else{
+            multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
+        }
+        Round newRound = new Round(players, currentPlayer, multiplier);
         game.addRound(newRound);
     }
     private void setRoundReadyForPlayState() {
