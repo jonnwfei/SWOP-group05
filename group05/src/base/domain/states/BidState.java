@@ -8,10 +8,12 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.round.Round;
+import base.domain.deck.Deck;
 import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -88,6 +90,7 @@ public class BidState extends State {
     @Override
     public State nextState(){
         if (currentHighestBidType == BidType.PASS) {
+            getGame().getDeck().shuffle();
             return new BidState(getGame());
         }
         setRoundReadyForPlayState();
