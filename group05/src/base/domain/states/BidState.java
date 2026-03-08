@@ -28,34 +28,26 @@ public class BidState extends State {
         this.currentHighestBidType = null; // Starts as null!
         this.currentPlayer = game.getCurrentPlayer();
         this.trumpSuit = null;
+
+        dealCards();
     }
+
+    private void dealCards() {
+        List<List<Card>> hands = getGame().getDeck().deal();
+        List<Player> allPlayers = getGame().getPlayers();
+        for(int i = 0; i < allPlayers.size(); i++) {
+            allPlayers.get(i).setHand(hands.get(i));
+        }
+
+        Player lastPlayer = allPlayers.getLast();
+        trumpSuit = lastPlayer.getHand().getLast().suit();    }
 
     @Override
     public GameEvent executeState(String input) {
-        // INITIALIZE DEALING CARDS
-        if(trumpSuit == null) {
-            dealCards();
-        }
-
         // 2. Handle the "Rejected Proposal" Decision
         // This occurs AFTER everyone has had a turn, and the highest was a PROPOSAL
         if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
-            if (input == null || input.trim().isEmpty()) {
-                return new QuestionEvent("No one accepted your proposal. Do you [0] PASS or [1] SOLO_PROPOSAL?\nYour choice: ");
-            }
-
-            try {
-                int choice = Integer.parseInt(input.trim());
-                BidType decision;
-
-                if (choice == 0) decision = BidType.PASS;
-                else if (choice == 1) decision = BidType.SOLO_PROPOSAL;
-                else return new QuestionEvent("Invalid choice. Choose [0] PASS or [1] SOLO_PROPOSAL: ");
-                replaceProposalBid(decision);
-                return new TextEvent("\n=== BIDDING COMPLETE ===");
-            } catch (Exception e) {
-                return new QuestionEvent("Please enter 0 or 1: ");
-            }
+            return handleRejectedProposal(input);
         }
 
         // PROCESS INCOMING DATA
@@ -77,12 +69,7 @@ public class BidState extends State {
 
             // CHECK END CONDITION
             if (isBiddingComplete()) {
-                if (currentHighestBidType == BidType.PROPOSAL) {
-                    // Prompt the proposer immediately
-                    Player proposer = findProposer();
-                    return new QuestionEvent("\n" + proposer.getName() + ": No one accepted. [0] PASS or [1] SOLO_PROPOSAL?");
-                }
-                return new TextEvent("\n=== BIDDING COMPLETE ===");
+                return handleEndOfBidding();
             }
         }
 
@@ -106,6 +93,74 @@ public class BidState extends State {
         return new PlayState(getGame());
     }
 
+    private QuestionEvent handleBidInput(String input) {
+        try {
+            BidType chosenBidType = parseBidType(input);
+
+            if (!isLegalBidType(chosenBidType)) {
+                return new QuestionEvent("Illegal Bid chosen.\nTry again: ");
+            }
+
+            if (chosenBidType.getRequiresSuit()) {
+                this.pendingBidType = chosenBidType;
+                return new QuestionEvent("You chose " + chosenBidType.name() + ".\n\n" +
+                        buildSuitOptions() + "Your choice: ");
+            }
+
+            Bid finalizedBid = chosenBidType.instantiate(currentPlayer, null);
+            commitBid(finalizedBid);
+            return null;
+
+        } catch (IllegalArgumentException error) {
+            return new QuestionEvent(error.getMessage() + "\nTry again: ");
+        }
+    }
+
+    private QuestionEvent handleSuitInput(String input) {
+        try {
+            Suit chosenSuit = parseSuit(input);
+            Bid finalizedBid = pendingBidType.instantiate(currentPlayer, chosenSuit);
+
+            commitBid(finalizedBid);
+            this.pendingBidType = null;
+            return null;
+
+        } catch (IllegalArgumentException error) {
+            return new QuestionEvent(error.getMessage() + "\nTry again: ");
+        }
+    }
+
+    private GameEvent handleRejectedProposal(String input) {
+        try {
+            int choice = Integer.parseInt(input.trim());
+            BidType decision;
+
+            if (choice == 0) decision = BidType.PASS;
+            else if (choice == 1) decision = BidType.SOLO_PROPOSAL;
+            else return new QuestionEvent("Invalid choice. Choose [0] PASS or [1] SOLO_PROPOSAL: ");
+            replaceProposalBid(decision);
+            return new TextEvent("\n=== BIDDING COMPLETE ===");
+        } catch (Exception e) {
+            return new QuestionEvent("Please enter 0 or 1: ");
+        }
+    }
+
+    private GameEvent handleEndOfBidding() {
+        if (currentHighestBidType == BidType.PROPOSAL) {
+            Player proposer = findProposalBid().getPlayer();
+            int passIdx = BidType.PASS.ordinal();
+            int soloPropIdx = BidType.SOLO_PROPOSAL.ordinal();
+            return new QuestionEvent("\n" + proposer.getName() + ": No one accepted. [" + passIdx + "] PASS or [" + soloPropIdx + "] SOLO_PROPOSAL?");
+        }
+        return new TextEvent("\n=== BIDDING COMPLETE ===");
+    }
+
+    private void commitBid(Bid finalizedBid) {
+        this.bids.add(finalizedBid);
+        updateHighestBidType(finalizedBid.getType());
+        updateCurrentPlayer(getGame().getPlayers());
+    }
+
     private void updateCurrentPlayer(List<Player> players) {
         int index = players.indexOf(currentPlayer);
         if (index == -1) {throw new IllegalArgumentException("currentPlayer not found in list of players");}
@@ -120,44 +175,10 @@ public class BidState extends State {
         }
     }
 
-    private String buildFirstPlayerPrompt(Player player) {
-        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
-                "Dealt Trump: " + trumpSuit.name() + "\n" +
-                player.getFormattedHand() + "\n" +
-                "---------------------------------------\n" +
-                "Status: You are the first to bid!\n\n" +
-                buildBidTypeOptions() + "\n" +
-                "Your choice: ";
-    }
-
-    private String buildStandardPrompt(Player player) {
-        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
-                "Dealt Trump: " + trumpSuit.name() + "\n" +
-                player.getFormattedHand() + "\n" +
-                "---------------------------------------\n" +
-                "Current Highest: " + currentHighestBidType.name() + "\n\n" +
-                buildBidTypeOptions() + "\n" +
-                "Your choice: ";
-    }
-
-    private String buildBidTypeOptions() { // Typo fixed!
-        StringBuilder options = new StringBuilder("All Options:\n");
-        BidType[] allTypes = BidType.values();
-        for (int i = 0; i < allTypes.length; i++) {
-            BidType currentBid = allTypes[i];
-            options.append("   [").append(i).append("] ").append(currentBid.name()).append("\n");
-        }
-        return options.toString();
-    }
-
-    private String buildSuitOptions() {
-        StringBuilder options = new StringBuilder("All options:\n");
-        Suit[] allSuits = Suit.values();
-        for (int i = 0; i < allSuits.length; i++) {
-            Suit currentSuit = allSuits[i];
-            options.append("   [").append(i).append("] ").append(currentSuit.name()).append("\n");
-        }
-        return options.toString();
+    private void replaceProposalBid(BidType chosenBidType) {
+        Bid proposalBid = findProposalBid();
+        int index = bids.indexOf(proposalBid);
+        bids.set(index, chosenBidType.instantiate(proposalBid.getPlayer(), null));
     }
 
     private BidType parseBidType(String input) {
@@ -201,81 +222,54 @@ public class BidState extends State {
         return true;
     }
 
-    private QuestionEvent handleSuitInput(String input) {
-        try {
-            Suit chosenSuit = parseSuit(input);
-            Bid finalizedBid = pendingBidType.instantiate(currentPlayer, chosenSuit);
-
-            this.bids.add(finalizedBid);
-            this.pendingBidType = null;
-
-            updateHighestBidType(finalizedBid.getType());
-            updateCurrentPlayer(getGame().getPlayers());
-
-            return null;
-
-        } catch (IllegalArgumentException error) {
-            return new QuestionEvent(error.getMessage() + "\nTry again: ");
-        }
-    }
-
-    private QuestionEvent handleBidInput(String input) {
-        try {
-            BidType chosenBidType = parseBidType(input);
-
-            if (!isLegalBidType(chosenBidType)) {
-                return new QuestionEvent("Illegal Bid chosen.\nTry again: ");
-            }
-
-            if (chosenBidType.getRequiresSuit()) {
-                this.pendingBidType = chosenBidType;
-                return new QuestionEvent("You chose " + chosenBidType.name() + ".\n\n" +
-                        buildSuitOptions() + "Your choice: ");
-            }
-
-            Bid finalizedBid = chosenBidType.instantiate(currentPlayer, null);
-            this.bids.add(finalizedBid);
-
-            updateHighestBidType(finalizedBid.getType());
-            updateCurrentPlayer(getGame().getPlayers());
-
-            return null; // Null means success
-
-        } catch (IllegalArgumentException error) {
-            return new QuestionEvent(error.getMessage() + "\nTry again: ");
-        }
-    }
-
-    private Player findProposer() {
-        return bids.stream()
-                .filter(b -> b.getType() == BidType.PROPOSAL)
-                .map(Bid::getPlayer)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private void replaceProposalBid(BidType chosenBidType) {
-        Bid proposalBid = bids.stream()
-                .filter(bid -> bid.getType() == BidType.PROPOSAL)
-                .findFirst()
-                .orElseThrow();
-
-        int index = bids.indexOf(proposalBid);
-
-        bids.set(index, chosenBidType.instantiate(proposalBid.getPlayer(), null));
-    }
-
     private boolean isBiddingComplete() {
         return this.bids.size() == getGame().getPlayers().size();
     }
 
-    private void dealCards() {
-        List<List<Card>> hands = getGame().getDeck().deal();
-        List<Player> allPlayers = getGame().getPlayers();
-        for(int i = 0; i < allPlayers.size(); i++) {
-            allPlayers.get(i).setHand(hands.get(i));
-        }
+    private Bid findProposalBid() {
+        return bids.stream()
+                .filter(b -> b.getType() == BidType.PROPOSAL)
+                .findFirst()
+                .orElse(null); // Or throw an exception
+    }
 
-        Player lastPlayer = allPlayers.getLast();
-        trumpSuit = lastPlayer.getHand().getLast().suit();    }
+    private String buildFirstPlayerPrompt(Player player) {
+        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
+                "Dealt Trump: " + trumpSuit.name() + "\n" +
+                player.getFormattedHand() + "\n" +
+                "---------------------------------------\n" +
+                "Status: You are the first to bid!\n\n" +
+                buildBidTypeOptions() + "\n" +
+                "Your choice: ";
+    }
+
+    private String buildStandardPrompt(Player player) {
+        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
+                "Dealt Trump: " + trumpSuit.name() + "\n" +
+                player.getFormattedHand() + "\n" +
+                "---------------------------------------\n" +
+                "Current Highest: " + currentHighestBidType.name() + "\n\n" +
+                buildBidTypeOptions() + "\n" +
+                "Your choice: ";
+    }
+
+    private String buildBidTypeOptions() { // Typo fixed!
+        StringBuilder options = new StringBuilder("All Options:\n");
+        BidType[] allTypes = BidType.values();
+        for (int i = 0; i < allTypes.length; i++) {
+            BidType currentBid = allTypes[i];
+            options.append("   [").append(i).append("] ").append(currentBid.name()).append("\n");
+        }
+        return options.toString();
+    }
+
+    private String buildSuitOptions() {
+        StringBuilder options = new StringBuilder("All options:\n");
+        Suit[] allSuits = Suit.values();
+        for (int i = 0; i < allSuits.length; i++) {
+            Suit currentSuit = allSuits[i];
+            options.append("   [").append(i).append("] ").append(currentSuit.name()).append("\n");
+        }
+        return options.toString();
+    }
 }
