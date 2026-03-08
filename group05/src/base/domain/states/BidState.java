@@ -192,6 +192,7 @@ public class BidState extends State {
         if(chosenBidType == BidType.PASS) {return true;}
         //If there is no highest bid yet, any bid is legal
         if (currentHighestBidType == null) {return true;}
+        if (chosenBidType == BidType.ACCEPTANCE && currentHighestBidType != BidType.PROPOSAL) {return false;}
         if (chosenBidType == BidType.SOLO_PROPOSAL && !isBiddingComplete()) {return false;}
         int comparison = chosenBidType.compareTo(currentHighestBidType);
         if (comparison < 0) {return false;}
