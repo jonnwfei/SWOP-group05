@@ -1,12 +1,5 @@
 package cli.elements;
 
-public class QuestionEvent extends GameEvent {
-    public QuestionEvent(String content) {
-        super(content);
-    }
+public record QuestionEvent(String string) implements GameEvent {
 
-    @Override
-    public boolean isInputRequired() {
-        return true;
-    }
 }
