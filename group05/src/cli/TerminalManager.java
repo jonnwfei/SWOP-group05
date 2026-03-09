@@ -22,19 +22,22 @@ public class TerminalManager {
      */
     public Response handle(GameEvent event) {
         if (event instanceof BidTurnEvent bidEvent) {
-            return renderBidTurnEvent(bidEvent);
+            renderBidTurnEvent(bidEvent);
+            return getResponse();
         }
         // ... handle other events
         return null;
     }
 
-        private Response renderBidTurnEvent(BidTurnEvent event) {
+        private void renderBidTurnEvent(BidTurnEvent event) {
             System.out.println("\n=== BIDDING TURN: " + event.currentPlayer().getName().toUpperCase() + " ===");
             System.out.println("Dealt Trump: " + event.dealtTrump().toString());
             System.out.println("Current Highest: " + event.currentHighestBid());
 
             System.out.print("Your choice: ");
+        }
 
+        private Response getResponse() {
             Scanner scanner = new Scanner(System.in);
             String input = scanner.nextLine();
             return new Response(input, true);
