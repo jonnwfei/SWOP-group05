@@ -9,12 +9,10 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.round.Round;
-import base.domain.deck.Deck;
 import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -81,7 +79,7 @@ public class BidState extends State {
 
     /**
      * Processes user/bot input and advances the bidding state machine.
-     * * @param input | The raw string input from the user (or injected for bots).
+     * @param input The raw string input from the user (or injected for bots).
      * @return A GameEvent (TextEvent or QuestionEvent) to be displayed to the UI.
      */
     @Override
@@ -140,6 +138,7 @@ public class BidState extends State {
     @Override
     public State nextState(){
         if (currentHighestBidType == BidType.PASS) {
+            getGame().getDeck().shuffle();
             getGame().getCurrentRound().setHighestBid(findBid(currentHighestBidType));
             getGame().getPlayers().forEach(Player::flushHand);
             return new BidState(getGame());
@@ -270,8 +269,8 @@ public class BidState extends State {
         if (chosenBidType == BidType.SOLO_PROPOSAL && !isBiddingComplete()) {return false;}
         int comparison = chosenBidType.compareTo(currentHighestBidType);
         if (comparison < 0) {return false;}
-        if (comparison == 0 && chosenBidType.getCategory() != BidCategory.MISERIE) {return false;}
-
+        if (chosenBidType.getCategory() != BidCategory.MISERIE)
+            return comparison != 0;
         return true;
     }
 
