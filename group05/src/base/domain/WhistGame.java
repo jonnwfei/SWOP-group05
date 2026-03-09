@@ -18,7 +18,6 @@ public class WhistGame {
     private List<Player> players;
     private List<Round> rounds;
     private Player currentPlayer;
-    private Player dealerPlayer;
     private Deck deck;
 
     public WhistGame(){
@@ -26,7 +25,6 @@ public class WhistGame {
         this.players = new ArrayList<>();
         this.rounds = new ArrayList<>();
         this.currentPlayer = null;
-        this.dealerPlayer = null;
     }
 
     /**
@@ -53,15 +51,6 @@ public class WhistGame {
      */
     public List<Round> getRounds(){
         return new ArrayList<>(this.rounds);
-    }
-
-    /**
-     * Gets the dealer of this Game
-     *
-     * @return dealerPlayer of this Game
-     */
-    public Player getDealerPlayer(){
-        return this.dealerPlayer;
     }
 
     /**
@@ -148,7 +137,7 @@ public class WhistGame {
      *
      * @return the formatted player names
      */
-    public String printNames() {
+    public String getFormattedNames() {
         String result = "Players in this game:\n";
         for (int i = 0; i < players.size(); i++) {
             result += (i + 1) + ". " + players.get(i).getName() + "\n";
