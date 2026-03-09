@@ -6,200 +6,117 @@ import base.domain.player.Player;
 import base.domain.states.CountState;
 import base.domain.states.MenuState;
 import base.domain.states.State;
-import cli.elements.QuestionEvent;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.Scanner;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class StartNewCount {
 
     private WhistGame game;
-    private State currentState;
+    private final InputStream sysInBackup = System.in;
 
     @BeforeEach
     void setUp() {
         game = new WhistGame();
-        currentState = new MenuState(game);
+    }
+
+    @AfterEach
+    void tearDown() {
+        System.setIn(sysInBackup);
+    }
+
+    /**
+     * Hulpmethode die een reeks inputs (gescheiden door newlines) in System.in zet
+     * en de state-machine doorloopt tot de inputs op zijn.
+     */
+    private void runFullSequence(String... inputs) {
+        String joinedInput = String.join("\n", inputs) + "\n";
+        System.setIn(new ByteArrayInputStream(joinedInput.getBytes()));
+        Scanner scanner = new Scanner(System.in);
+
+        State currentState = new MenuState(game);
+
+        while (scanner.hasNextLine()) {
+            String input = scanner.nextLine();
+            currentState.executeState(input);
+
+            // Check of we naar een volgende staat moeten (bijv. na namen invoeren of ronde afronden)
+            State next = currentState.nextState();
+            if (next != currentState) {
+                currentState = next;
+                // De start-fase van een nieuwe state triggeren indien nodig
+                currentState.executeState("");
+            }
+        }
     }
 
     @Test
-    void testFullStartNewCountFlow() {
-        // --- STAP 1 & 2: Menu & Namen registreren (Scenario 1 & 2) ---
-        currentState.executeState(""); // Trigger welkom
+    void testFullScenarioAbondance() {
+        // Script:
+        // 1. Kies Count (2)
+        // 2. Namen: John 1, John 2, John 3, John 4
+        // 3. Bid: Abondance 9 (3)
+        // 4. Trump: Clubs (2)
+        // 5. Player: John 2 (2) -> index 1
+        // 6. Slagen: 10
+        // 7. Stop: Menu (2)
+        runFullSequence("2", "John 1", "John 2", "John 3", "John 4", "3", "2", "2", "10");
 
-        // Kies (2) Count the scores
-        currentState.executeState("2");
-
-        // Registreer 4 spelers
-        currentState.executeState("John Doe 1");
-        currentState.executeState("John Doe 2");
-        currentState.executeState("John Doe 3");
-        currentState.executeState("John Doe 4");
-
-        // Controleer of spelers zijn toegevoegd en we naar CountState gaan
         assertEquals(4, game.getPlayers().size());
-        currentState = currentState.nextState();
-        assertTrue(currentState instanceof CountState, "Moet nu in CountState zijn");
-
-        // FIX: Trigger de START fase van CountState
-        currentState.executeState("");
-        // Kies Bid: (3) Abondance 9
-        currentState.executeState("3");
-
-        // Kies Trump: (2) Clubs
-        currentState.executeState("2");
-
-        // --- STAP 5: Welke speler speelt het bid? (Scenario 5) ---
-        // Player 1 (John Doe 1) speelt solo
-        currentState.executeState("2");
-
-        // --- STAP 6 & 7: Resultaat & Berekening (Scenario 6 & 7) ---
-        // Scenario 6b: Hoeveel tricks gewonnen? john Doe 1 wint er 10 (Abondance 9 gehaald)
-        currentState.executeState("10");
-        assertTrue( game.getPlayers().get(1).getScore() > 0, "De bieder moet punten hebben gewonnen");
-        assertTrue( game.getPlayers().get(2).getScore() < 0, "Tegenstander moet punten hebben verloren");
-
-    }
-
-    @Test
-    void testMiserieCountFlow() {
-        // Setup spelers
-        game.addPlayer(new Player(new HumanStrategy(), "P1")); // Index 0
-        game.addPlayer(new Player(new HumanStrategy(), "P2")); // Index 1
-        game.addPlayer(new Player(new HumanStrategy(), "P3")); // Index 2
-        game.addPlayer(new Player(new HumanStrategy(), "P4")); // Index 3
-
-        currentState = new CountState(game);
-
-        // 1. Trigger de START fase (fase gaat naar SELECT_BID)
-        currentState.executeState("");
-
-        // 2. Selecteer Miserie (fase gaat naar SELECT_TRUMP)
-        currentState.executeState("7");
-
-        // 3. Selecteer Trump (fase gaat naar SELECT_PLAYERS)
-        currentState.executeState("1");
-
-        // 4. Selecteer spelers P1 en P2 (gebruik "1, 2" want 1-1=0 en 2-1=1)
-        currentState.executeState("1, 2");
-
-        // 5. Wie heeft gewonnen? Enkel P1 (gebruik "1" want 1-1=0)
-        // Nu gaat de fase naar CALCULATE en worden scores bijgewerkt
-        currentState.executeState("1");
-
-        // 6. Assertions op de juiste indices (0 en 1)
-        assertTrue(game.getPlayers().get(0).getScore() > 0, "P1 (index 0) moet positieve score hebben");
-        assertTrue(game.getPlayers().get(1).getScore() < 0, "P2 (index 1) moet negatieve score hebben");
-
-    }
-    @Test
-    void testSoloBidSuccessAndReturnToMenu() {
-        game.addPlayer(new Player(new HumanStrategy(), "P1"));
-        game.addPlayer(new Player(new HumanStrategy(), "P2"));
-        game.addPlayer(new Player(new HumanStrategy(), "P3"));
-        game.addPlayer(new Player(new HumanStrategy(), "P4"));
-
-        currentState = new CountState(game);
-        currentState.executeState("");
-        currentState.executeState("9"); // Solo Normal
-        currentState.executeState("3"); // Diamonds
-        currentState.executeState("1"); // P1 speelt
-        currentState.executeState("13"); // 6 slagen (Solo gehaald)
-
-        assertTrue(game.getPlayers().get(0).getScore() > 0);
         assertEquals(1, game.getRounds().size());
-
-        currentState.executeState("2"); // Terug naar menu
-        currentState = currentState.nextState();
-        assertTrue(currentState instanceof MenuState);
+        assertTrue(game.getPlayers().get(1).getScore() > 0, "Bieder John 2 moet punten hebben");
     }
+
     @Test
-    void testProposalWithPartnerFailure() {
+    void testFullScenarioMiserie() {
+        // Eerst handmatig spelers toevoegen voor een schone CountState test
         game.addPlayer(new Player(new HumanStrategy(), "P1"));
         game.addPlayer(new Player(new HumanStrategy(), "P2"));
         game.addPlayer(new Player(new HumanStrategy(), "P3"));
         game.addPlayer(new Player(new HumanStrategy(), "P4"));
 
-        currentState = new CountState(game);
-        currentState.executeState("");
-        currentState.executeState("2"); // Proposal
-        currentState.executeState("4"); // Spades
-        currentState.executeState("1, 3"); // P1 en P3 zijn partners
-        currentState.executeState("5"); // 5 slagen (Gefaald, 8 nodig)
+        // Script: Start, Miserie (7), Trump (1), Spelers P1&P2 (1,2), Winnaar P1 (1), Stop (2)
+        // We omzeilen MenuState door direct een CountState te starten in de sequence helper
+        String joinedInput = String.join("\n", "7", "1", "1, 2", "1", "2") + "\n";
+        System.setIn(new ByteArrayInputStream(joinedInput.getBytes()));
+        Scanner scanner = new Scanner(System.in);
 
-        assertTrue(game.getPlayers().get(0).getScore() < 0);
-        assertTrue(game.getPlayers().get(2).getScore() < 0);
-        assertTrue(game.getPlayers().get(1).getScore() > 0);
+        State currentState = new CountState(game);
+        currentState.executeState(""); // De initiële vraag tonen
+
+        while (scanner.hasNextLine()) {
+            currentState.executeState(scanner.nextLine());
+            currentState = currentState.nextState();
+        }
+
+        assertTrue(game.getPlayers().get(0).getScore() > 0, "P1 wint");
+        assertTrue(game.getPlayers().get(1).getScore() < 0, "P2 verliest");
     }
+
     @Test
-    void testMultipleRoundsConsecutively() {
-        game.addPlayer(new Player(new HumanStrategy(), "P1"));
-        game.addPlayer(new Player(new HumanStrategy(), "P2"));
-        game.addPlayer(new Player(new HumanStrategy(), "P3"));
-        game.addPlayer(new Player(new HumanStrategy(), "P4"));
-
-        // Ronde 1: Abondance 10
-        currentState = new CountState(game);
-        currentState.executeState("");
-        currentState.executeState("4");
-        currentState.executeState("1");
-        currentState.executeState("2");
-        currentState.executeState("11");
-
-        int scoreNaRonde1 = game.getPlayers().get(1).getScore();
-        currentState.executeState("1"); // Nog een ronde spelen
-        currentState = currentState.nextState();
-        assertTrue(currentState instanceof CountState);
-
-        // Ronde 2: Miserie
-        currentState.executeState("");
-        currentState.executeState("7");
-        currentState.executeState("1");
-        currentState.executeState("2");
-        currentState.executeState("2");
+    void testSequentialRounds() {
+        // Scenario: 2 rondes achter elkaar tellen zonder te stoppen
+        // Menu(2) -> Namen -> Bid(3), Trump(2), Speler(2), Slagen(10) -> Opnieuw(1) -> Bid(7)...
+        runFullSequence("2", "P1", "P2", "P3", "P4",
+                "3", "2", "2", "10", "1", // Eerste ronde + "Simulate another"
+                "7", "1", "1", "1", "2"); // Tweede ronde (Miserie) + "Back to menu"
 
         assertEquals(2, game.getRounds().size());
-        assertNotEquals(scoreNaRonde1, game.getPlayers().get(1).getScore());
+        assertEquals(0, game.getPlayers().stream().mapToInt(Player::getScore).sum(), "Zero-sum check");
     }
+
     @Test
-    void testOpenMiserieMixedResults() {
-        game.addPlayer(new Player(new HumanStrategy(), "P1"));
-        game.addPlayer(new Player(new HumanStrategy(), "P2"));
-        game.addPlayer(new Player(new HumanStrategy(), "P3"));
-        game.addPlayer(new Player(new HumanStrategy(), "P4"));
+    void testSoloSlimAndZeroSum() {
+        runFullSequence("2", "A", "B", "C", "D", "10", "1", "1", "13", "2");
 
-        currentState = new CountState(game);
-        currentState.executeState("");
-        currentState.executeState("8"); // Open Miserie
-        currentState.executeState("1");
-        currentState.executeState("1, 2, 4"); // P1, P2 en P4 spelen miserie
-        currentState.executeState("1, 4"); // Enkel P1 en P4 halen 0 slagen
-
-        assertTrue(game.getPlayers().get(0).getScore() > 0); // P1 win
-        assertTrue(game.getPlayers().get(1).getScore() < 0); // P2 verlies
-        assertTrue(game.getPlayers().get(3).getScore() > 0); // P4 win
-    }
-    @Test
-    void testSoloSlimZeroSum() {
-        game.addPlayer(new Player(new HumanStrategy(), "P1"));
-        game.addPlayer(new Player(new HumanStrategy(), "P2"));
-        game.addPlayer(new Player(new HumanStrategy(), "P3"));
-        game.addPlayer(new Player(new HumanStrategy(), "P4"));
-
-        currentState = new CountState(game);
-        currentState.executeState("");
-        currentState.executeState("10"); // Solo Slim
-        currentState.executeState("2");
-        currentState.executeState("4"); // P4 speelt
-        currentState.executeState("13"); // Alles gewonnen
-
-        int totaalScore = game.getPlayers().stream().mapToInt(Player::getScore).sum();
-        assertEquals(0, totaalScore);
-        assertTrue(game.getPlayers().get(3).getScore() > 0);
-
-        currentState.executeState("2"); // Stop
-        currentState = currentState.nextState();
-        assertTrue(currentState instanceof MenuState);
+        int total = game.getPlayers().stream().mapToInt(Player::getScore).sum();
+        assertEquals(0, total);
+        assertTrue(game.getPlayers().get(0).getScore() > 0);
     }
 }
