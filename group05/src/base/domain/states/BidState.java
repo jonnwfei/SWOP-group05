@@ -98,7 +98,7 @@ public class BidState extends State {
         }
 
         //HANDLE PLAYER BOTS
-        while(!currentPlayer.getRequiresConfirmation() || !isBiddingComplete()) {
+        while(!currentPlayer.getRequiresConfirmation() && !isBiddingComplete()) {
             Bid finalizedBid = new PassBid(currentPlayer);
             commitBid(finalizedBid);
         }
@@ -184,9 +184,7 @@ public class BidState extends State {
     private GameEvent handleEndOfBidding() {
         if (currentHighestBidType == BidType.PROPOSAL) {
             Player proposer = findBid(BidType.PROPOSAL).getPlayer();
-            int passIdx = BidType.PASS.ordinal();
-            int soloPropIdx = BidType.SOLO_PROPOSAL.ordinal();
-            return new QuestionEvent("\n" + proposer.getName() + ": No one accepted. [" + passIdx + "] PASS or [" + soloPropIdx + "] SOLO_PROPOSAL?");
+            return new QuestionEvent("\n" + proposer.getName() + ": No one accepted. [0] PASS or [1] SOLO_PROPOSAL?");
         }
         return new TextEvent("\n=== BIDDING COMPLETE ===");
     }
@@ -303,7 +301,7 @@ public class BidState extends State {
         if (newCurrentPlayer == null) {
             newCurrentPlayer = players.get((players.indexOf(game.getDealerPlayer()) + 1) % 4);
         }
-        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE) {
+        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE || currentHighestBidType.getCategory() == BidCategory.SOLO) {
             newCurrentPlayer = bids.stream().filter( bid -> bid.getType() == currentHighestBidType).findFirst().get().getPlayer();
         }
         game.getCurrentRound().setCurrentPlayer(newCurrentPlayer);
