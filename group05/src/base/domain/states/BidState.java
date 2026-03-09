@@ -79,7 +79,7 @@ public class BidState extends State {
 
     /**
      * Processes user/bot input and advances the bidding state machine.
-     * * @param input | The raw string input from the user (or injected for bots).
+     * @param input | The raw string input from the user (or injected for bots).
      * @return A GameEvent (TextEvent or QuestionEvent) to be displayed to the UI.
      */
     @Override
