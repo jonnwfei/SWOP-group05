@@ -137,17 +137,27 @@ public class Player {
     }
 
     /**
+     * Method Overloading getFormattedHand for appending handIdx in the output
+     *
+     * @return a formatted string of currentHand without handIdx
+     */
+    public String getFormattedHand() {
+        return this.getFormattedHand(false);
+    }
+
+    /**
      * Returns a formatted, 1-indexed string of the player's current hand.
+     * <br>
      * Example: "(1) ACE of HEARTS \n (2) TEN of HEARTS"
      * @return a formatted string of currentHand
      */
-    public String getFormattedHand() {
+    public String getFormattedHand(boolean showIdx) {
         StringBuilder sb = new StringBuilder();
         List<Card> hand = this.getHand();
 
         for (int i = 0; i < hand.size(); i++) {
             // i + 1 ensures the terminal list starts at 1 instead of 0
-            sb.append("(").append(i + 1).append(") ").append(hand.get(i).toString()).append("\n");
+            if (showIdx) sb.append("(").append(i + 1).append(") ").append(hand.get(i).toString()).append("\n");
         }
         return sb.toString();
     }
