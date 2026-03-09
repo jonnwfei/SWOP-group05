@@ -305,6 +305,7 @@ public class BidState extends State {
             newCurrentPlayer = bids.stream().filter( bid -> bid.getType() == currentHighestBidType).findFirst().get().getPlayer();
         }
         game.getCurrentRound().setCurrentPlayer(newCurrentPlayer);
+        game.getCurrentRound().setTrumpSuit(trumpSuit);
         game.getCurrentRound().setHighestBid(findBid(currentHighestBidType));
         game.getCurrentRound().setBids(this.bids);
     }
