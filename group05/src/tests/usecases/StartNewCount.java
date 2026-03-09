@@ -22,10 +22,7 @@ public class StartNewCount {
         System.setIn(sysInBackup);
     }
 
-    /**
-     * De 'Motor' van de test. Mockt System.in, start de GameController,
-     * vangt de natuurlijke exit op en geeft het interne spelobject terug voor validatie.
-     */
+
     private WhistGame runIntegrationTest(String... scriptLines) throws Exception {
         String script = String.join("\n", scriptLines) + "\n";
         System.setIn(new ByteArrayInputStream(script.getBytes()));
