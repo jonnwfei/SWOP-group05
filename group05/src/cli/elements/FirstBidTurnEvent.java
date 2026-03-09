@@ -1,4 +1,7 @@
 package cli.elements;
 
-public record FirstBidTurnEvent() implements GameEvent{
+import base.domain.card.Suit;
+import base.domain.player.Player;
+
+public record FirstBidTurnEvent(Player currentPlayer, Suit dealtTrump) implements GameEvent{
 }
