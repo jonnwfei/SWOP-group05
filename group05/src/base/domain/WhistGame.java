@@ -88,10 +88,12 @@ public class WhistGame {
     /**
      * Gets the active round of the Game
      *
-     * @return round being played
+     * @return current round or null if no rounds have been played yet
      * */
     public Round getCurrentRound(){
-        return this.rounds.getLast();
+        Round round = this.rounds.getLast();
+        if (rounds.isEmpty()) return null;
+        return round;
     }
 
     public void setDeck(Deck deck){
@@ -123,24 +125,36 @@ public class WhistGame {
         this.rounds.add(round);
     }
 
+    /**
+     * resets the players
+     */
+    public void resetPlayers(){
+        this.players = new ArrayList<>();
+    }
 
+    /**
+     * resets the rounds
+     */
+    public void resetRounds(){
+        this.rounds = new ArrayList<>();
+    }
     /**
      * Returns a formatted string of the players in this game as follows:
      * <pre>
      * Players in this game:
-     * - player1
-     * - player2
+     * 1. player1
+     * 2. player2
      * etc.
      * </pre>
      *
      * @return the formatted player names
      */
     public String printNames() {
-            String result = "Players in this game:\n";
-            for (Player p : players) {
-                result += "- " + p.getName() + "\n";
-            }
-            return result;
+        String result = "Players in this game:\n";
+        for (int i = 0; i < players.size(); i++) {
+            result += (i + 1) + ". " + players.get(i).getName() + "\n";
+        }
+        return result;
     }
 
     /**
