@@ -33,6 +33,7 @@ public class BidState extends State {
         this.trumpSuit = null;
 
         dealCards();
+        initializeRound();
     }
 
     private void dealCards() {
@@ -97,7 +98,7 @@ public class BidState extends State {
         }
 
         //HANDLE PLAYER BOTS
-        while(!currentPlayer.getRequiresConfirmation()) {
+        while(!currentPlayer.getRequiresConfirmation() || !isBiddingComplete()) {
             Bid finalizedBid = new PassBid(currentPlayer);
             commitBid(finalizedBid);
         }
@@ -173,6 +174,7 @@ public class BidState extends State {
             else if (choice == 1) decision = BidType.SOLO_PROPOSAL;
             else return new QuestionEvent("Invalid choice. Choose [0] PASS or [1] SOLO_PROPOSAL: ");
             replaceProposalBid(decision);
+            this.currentHighestBidType = decision;
             return new TextEvent("\n=== BIDDING COMPLETE ===");
         } catch (Exception e) {
             return new QuestionEvent("Please enter 0 or 1: ");
@@ -306,6 +308,7 @@ public class BidState extends State {
         }
         game.getCurrentRound().setCurrentPlayer(newCurrentPlayer);
         game.getCurrentRound().setHighestBid(findBid(currentHighestBidType));
+        game.getCurrentRound().setBids(this.bids);
     }
 
 }
