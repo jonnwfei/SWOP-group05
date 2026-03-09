@@ -46,8 +46,8 @@ public class PlayState extends State {
      * Handles the execution of playState, orchestrating the logic flow of a Round and its Tricks, in the given game
      * that holds this state.
      *
-     *
-     * @return the next GameEvent
+     * @param input the user's response to the previous QuestionEvent
+     * @return the next QuestionEvent or TextEvent
      */
     @Override
     public GameEvent executeState(String input) {
@@ -61,7 +61,7 @@ public class PlayState extends State {
             return new InitiateTurnEvent(currentPlayer);
 
         }
-        // User pressed "ANY BUTTON" on the Pass terminal screen
+
         if (isHandHidden) {
             isHandHidden = false;
 
@@ -113,7 +113,6 @@ public class PlayState extends State {
             if (roundOver) {
                 return new EndOfRoundEvent(currentPlayer, botCard);
             }
-
             currentPlayer = currentRound.getCurrentPlayer(); // Updates the reference pointer to the next BOT
         }
 
