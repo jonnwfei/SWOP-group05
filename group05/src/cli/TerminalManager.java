@@ -1,5 +1,6 @@
 package cli;
 
+import cli.elements.BidTurnEvent;
 import cli.elements.GameEvent;
 import cli.elements.Response;
 import java.util.Scanner;
@@ -19,14 +20,23 @@ public class TerminalManager {
     /**
      * Method is now PUBLIC so App can actually run IO tasks.
      */
-    public Response handle(GameEvent element) {
-        if (element.isInputRequired()) {
-            System.out.print(element.getContent() + " ");
-            String text = scanner.nextLine();
-            return new Response(text, true);
-        } else {
-            System.out.println(element.getContent());
-            return new Response(null, false);
+    public Response handle(GameEvent event) {
+        if (event instanceof BidTurnEvent bidEvent) {
+            return renderBidTurnEvent(bidEvent);
         }
+        // ... handle other events
+        return null;
     }
+
+        private Response renderBidTurnEvent(BidTurnEvent event) {
+            System.out.println("\n=== BIDDING TURN: " + event.currentPlayer().getName().toUpperCase() + " ===");
+            System.out.println("Dealt Trump: " + event.dealtTrump().toString());
+            System.out.println("Current Highest: " + event.currentHighestBid());
+
+            System.out.print("Your choice: ");
+
+            Scanner scanner = new Scanner(System.in);
+            String input = scanner.nextLine();
+            return new Response(input, true);
+        }
 }
