@@ -1,9 +1,9 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import cli.elements.GameEvent;
-import cli.elements.QuestionEvent;
-import cli.elements.TextEvent;
+import base.domain.events.GameEvent;
+import base.domain.events.QuestionEvent;
+import base.domain.events.TextEvent;
 
 /**
  * EndRoundState, mini menu state where the player can restart Round (12a)

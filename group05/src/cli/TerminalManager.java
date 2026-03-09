@@ -1,7 +1,7 @@
 package cli;
 
-import cli.elements.BidTurnEvent;
-import cli.elements.GameEvent;
+import base.domain.events.bidevents.BidTurnEvent;
+import base.domain.events.GameEvent;
 import cli.elements.Response;
 import java.util.Scanner;
 

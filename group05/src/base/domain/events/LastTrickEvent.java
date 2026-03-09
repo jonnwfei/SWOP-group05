@@ -1,4 +1,4 @@
-package cli.elements;
+package base.domain.events;
 
 import base.domain.trick.Trick;
 import base.domain.trick.Turn;

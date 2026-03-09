@@ -1,7 +1,7 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import cli.elements.GameEvent;
+import base.domain.events.GameEvent;
 
 /**
  * Common interface for all states.

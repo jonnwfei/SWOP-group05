@@ -7,9 +7,15 @@ import base.domain.bid.BidType;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.events.ErrorEvent;
+import base.domain.events.GameEvent;
+import base.domain.events.QuestionEvent;
+import base.domain.events.TextEvent;
 import base.domain.player.Player;
 import base.domain.round.Round;
-import cli.elements.*;
+import base.domain.events.bidevents.BidTurnEvent;
+import base.domain.events.bidevents.RejectedProposalEvent;
+
 import java.util.ArrayList;
 import java.util.List;
 

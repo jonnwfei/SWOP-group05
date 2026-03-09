@@ -2,9 +2,9 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.player.Player;
-import cli.elements.GameEvent;
-import cli.elements.QuestionEvent;
-import cli.elements.TextEvent;
+import base.domain.events.GameEvent;
+import base.domain.events.QuestionEvent;
+import base.domain.events.TextEvent;
 import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.round.Round;

@@ -1,7 +1,7 @@
 package base;
 import base.domain.WhistGame;
 import cli.TerminalManager;
-import cli.elements.GameEvent;
+import base.domain.events.GameEvent;
 import cli.elements.Response;
 /**
  * @author stankestens

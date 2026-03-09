@@ -1,4 +1,4 @@
-package cli.elements;
+package base.domain.events;
 
 public class TextEvent extends GameEvent {
     public TextEvent(String content) {

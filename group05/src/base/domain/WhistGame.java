@@ -6,7 +6,7 @@ import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.domain.round.Round;
 import base.domain.states.*;
-import cli.elements.GameEvent;
+import base.domain.events.GameEvent;
 
 /**
  * @author Stan Kestens
