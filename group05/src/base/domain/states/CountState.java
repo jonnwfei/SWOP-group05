@@ -127,7 +127,11 @@ public class CountState extends State {
         if (numberBid == 2 && participatingPlayers.size() != 2) {
             return new QuestionEvent("Select exactly two players:\n" + getGame().printNames());
         }
+        else if (numberBid != 2&&numberBid != 7 && numberBid !=8 && participatingPlayers.size() != 1){
+            return new QuestionEvent("Select exactly one player:\n" + getGame().printNames());
+        }
         currentPhase = CountPhase.CALCULATE;
+        //going to next bid confirmed
         if (numberBid == 7 || numberBid == 8) {
             return new QuestionEvent("Which players won their bid? (Got 0 tricks): \n" + getGame().printNames());
         }
@@ -146,7 +150,7 @@ public class CountState extends State {
                 .map(idx -> getGame().getPlayers().get(idx)).toList();
 
         createBidObject(participants.getFirst());
-        Round round = new Round(getGame().getPlayers(), null, 1);
+        Round round = new Round(getGame().getPlayers(), getGame().getPlayers().getFirst(), 1);
         round.setHighestBid(bid);
         getGame().addRound(round);
         //case of miserie

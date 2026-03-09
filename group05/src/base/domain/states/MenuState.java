@@ -70,6 +70,8 @@ public class MenuState extends State {
 
     private GameEvent showWelcome() {
         state = SetupState.CHOOSE_MODE;
+        getGame().resetPlayers();
+        getGame().resetRounds();
         return new QuestionEvent(
                 "======== WELCOME TO WHIST ===== \n" +
                         "Do you want to:\n" +
