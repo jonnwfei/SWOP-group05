@@ -147,7 +147,7 @@ public class WhistGame {
      *
      * @return the formatted player names
      */
-    public String getFormattedNames() {
+    public String printNames() {
         String result = "Players in this game:\n";
         for (int i = 0; i < players.size(); i++) {
             result += (i + 1) + ". " + players.get(i).getName() + "\n";
