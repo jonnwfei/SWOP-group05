@@ -47,8 +47,8 @@ public class BidState extends State {
         trumpSuit = lastPlayer.getHand().getLast().suit();    }
 
     /**
-     * Initializes round with apropriate current player, based on the winner of last round or
-     * the player who bid ABONDANCE
+     * Initializes the round with the appropriate current player, based on the winner of the last round or
+     * the player who bid ABONDANCE.
      */
     private void initializeRound() {
         WhistGame game = this.getGame();
