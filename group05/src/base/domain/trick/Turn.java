@@ -26,6 +26,6 @@ public record Turn(Player player, Card playedCard) {
      */
     @Override
     public String toString() {
-        return "Turn:" + player.getName() + "played card: " + playedCard;
+        return player.getName() + " played " + playedCard;
     }
 }

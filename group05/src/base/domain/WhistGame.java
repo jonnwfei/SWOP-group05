@@ -183,11 +183,11 @@ public class WhistGame {
      * Returns a formatted string of the players and their current score
      * */
     public String printScore(){
-        String result = "======= SCORES =======\n";
+        String result = "============== SCORES ==============\n";
         for (Player p : players) {
             result += p.getName() + ": " + p.getScore() + " points\n";
         }
-        result += "======================";
+        result += "====================================";
         return result;
     }
 
