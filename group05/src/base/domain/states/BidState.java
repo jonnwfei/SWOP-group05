@@ -16,7 +16,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-
+/**
+ * Represents the Bidding phase of a Whist game.
+ * This state handles initializing the new round, dealing cards, taking bids sequentially from players,
+ * enforcing legal bid rules, and transitioning the game to the Play state.
+ */
 public class BidState extends State {
     private final List<Bid> bids;
     private BidType currentHighestBidType;
@@ -24,6 +28,12 @@ public class BidState extends State {
     private Suit trumpSuit;
     private BidType pendingBidType;
 
+    /**
+     * Constructs a new BidState.
+     * Automatically deals cards and initializes the round with multiplier upon creation.
+     *
+     * @param game The current WhistGame instance.
+     */
     public BidState(WhistGame game) {
         super(game);
         this.bids = new ArrayList<>();
@@ -35,6 +45,10 @@ public class BidState extends State {
         initializeRound();
     }
 
+    /**
+     * Deals 13 cards to each of the 4 players.
+     * The suit of the last card dealt to the last player determines the initial trump suit.
+     */
     private void dealCards() {
         List<List<Card>> hands = getGame().getDeck().deal();
         List<Player> allPlayers = getGame().getPlayers();
@@ -46,8 +60,8 @@ public class BidState extends State {
         trumpSuit = lastPlayer.getHand().getLast().suit();    }
 
     /**
-     * Initializes the round with the appropriate current player, based on the winner of the last round or
-     * the player who bid ABONDANCE.
+     * Initializes the round with the appropriate current player.
+     * Applies a double-point multiplier if the previous round ended with all players passing.
      */
     private void initializeRound() {
         WhistGame game = this.getGame();
@@ -64,6 +78,11 @@ public class BidState extends State {
         game.addRound(newRound);
     }
 
+    /**
+     * Processes user/bot input and advances the bidding state machine.
+     * * @param input | The raw string input from the user (or injected for bots).
+     * @return A GameEvent (TextEvent or QuestionEvent) to be displayed to the UI.
+     */
     @Override
     public GameEvent executeState(String input) {
 
@@ -117,7 +136,8 @@ public class BidState extends State {
     @Override
     public State nextState(){
         if (currentHighestBidType == BidType.PASS) {
-            getGame().getDeck().shuffle();
+            getGame().getCurrentRound().setHighestBid(findBid(currentHighestBidType));
+            getGame().getPlayers().forEach(Player::flushHand);
             return new BidState(getGame());
         }
         setRoundReadyForPlayState();
