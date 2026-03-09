@@ -32,7 +32,10 @@ public class TerminalManager {
         private void renderBidTurnEvent(BidTurnEvent event) {
             System.out.println("\n=== BIDDING TURN: " + event.currentPlayer().getName().toUpperCase() + " ===");
             System.out.println("Dealt Trump: " + event.dealtTrump().toString());
-            System.out.println("Current Highest: " + event.currentHighestBid());
+            if(event.currentHighestBidType() == null) {
+                System.out.println("You are the first to bid!");
+            }
+            System.out.println("Current Highest: " + event.currentHighestBidType());
 
             System.out.print("Your choice: ");
         }

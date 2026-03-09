@@ -10,9 +10,8 @@ import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.deck.Deck;
-import cli.elements.GameEvent;
-import cli.elements.QuestionEvent;
-import cli.elements.TextEvent;
+import cli.elements.*;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -77,7 +76,7 @@ public class BidState extends State {
         // PROCESS INCOMING DATA
         if(input != null && !input.trim().isEmpty()) {
 
-            QuestionEvent errorOrFollowUpPrompt;
+            GameEvent errorOrFollowUpPrompt;
 
             // Route the input based on the current context (Multi-step prompt memory)
             if (this.pendingBidType != null) {
@@ -108,14 +107,11 @@ public class BidState extends State {
         }
 
         //GENERATE NEXT PROMPT (First Player or Next Player)
-        String promptText;
         if (this.bids.isEmpty()) {
-            promptText = buildFirstPlayerPrompt(currentPlayer);
+            return new BidTurnEvent(currentPlayer, trumpSuit, null);
         } else {
-            promptText = buildStandardPrompt(currentPlayer);
+            return new BidTurnEvent(currentPlayer, trumpSuit, currentHighestBidType);
         }
-
-        return new QuestionEvent(promptText);
     }
 
     @Override
@@ -172,7 +168,7 @@ public class BidState extends State {
 
             if (choice == 0) decision = BidType.PASS;
             else if (choice == 1) decision = BidType.SOLO_PROPOSAL;
-            else return new QuestionEvent("Invalid choice. Choose [0] PASS or [1] SOLO_PROPOSAL: ");
+            else return new ErrorEvent(0, 1);
             replaceProposalBid(decision);
             this.currentHighestBidType = decision;
             return new TextEvent("\n=== BIDDING COMPLETE ===");
@@ -184,7 +180,7 @@ public class BidState extends State {
     private GameEvent handleEndOfBidding() {
         if (currentHighestBidType == BidType.PROPOSAL) {
             Player proposer = findBid(BidType.PROPOSAL).getPlayer();
-            return new QuestionEvent("\n" + proposer.getName() + ": No one accepted. [0] PASS or [1] SOLO_PROPOSAL?");
+            return new RejectedProposalEvent(proposer);
         }
         return new TextEvent("\n=== BIDDING COMPLETE ===");
     }
@@ -264,26 +260,6 @@ public class BidState extends State {
                 .filter(b -> b.getType() == bidType)
                 .findFirst()
                 .orElse(null); // Or throw an exception
-    }
-
-    private String buildFirstPlayerPrompt(Player player) {
-        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
-                "Dealt Trump: " + trumpSuit.name() + "\n" +
-                "Your Hand\n" + player.getFormattedHand() + "\n" +
-                "---------------------------------------\n" +
-                "Status: You are the first to bid!\n\n" +
-                buildOptions(BidType.values()) + "\n" +
-                "Your choice: ";
-    }
-
-    private String buildStandardPrompt(Player player) {
-        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
-                "Dealt Trump: " + trumpSuit.name() + "\n" +
-                "Your Hand\n" + player.getFormattedHand() + "\n" +
-                "---------------------------------------\n" +
-                "Current Highest: " + currentHighestBidType.name() + "\n\n" +
-                buildOptions(BidType.values()) + "\n" +
-                "Your choice: ";
     }
 
     private String buildOptions(Enum<?>[] optionsArray) {
