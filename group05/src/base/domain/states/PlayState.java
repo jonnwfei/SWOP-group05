@@ -32,7 +32,7 @@ public class PlayState extends State {
     public PlayState(WhistGame game) {
         super(game);
         Round round = game.getCurrentRound();
-        if (round == null) { // TODO: fix it in whistGame.getCurrentHand() to return null if empty
+        if (round == null) {
             throw new IllegalStateException("Cannot create PlayState: no currentRound exist; make sure a round has been created.");
         }
         this.currentRound = round; // will not throw since BidState ensures that a new Round has been instantiated
@@ -52,19 +52,19 @@ public class PlayState extends State {
         Player currentPlayer = currentRound.getCurrentPlayer();
         StringBuilder outputLog = new StringBuilder();
 
-        // Initial Load or when user needs to press "ENTER"
+        // Initial Load
         if (input == null) {
             isHandHidden = true;
-            return new QuestionEvent("*** Pass the terminal to " + currentPlayer.getName()
-                    + " ***\nPress ENTER to reveal your hand...");
+            return new QuestionEvent("\n==============  Pass the terminal to " + currentPlayer.getName() + " ==============\n"
+                                        + "Press ANY BUTTON to reveal your hand...");
         }
         // User pressed "ENTER" on the Pass terminal screen
-        if (isHandHidden && input.isEmpty()) {
+        if (isHandHidden) {
             isHandHidden = false;
 
             String currentHand = currentPlayer.getFormattedHand();
             return new QuestionEvent(buildTableDisplay() + "\nTrick: " + (currentRound.getTricks().size() + 1) +
-                    " | " + currentPlayer.getName() + "'s turn.\n" +
+                    " | " + currentPlayer.getName() + "'s turn.\n" + "(0) to show last played Trick.\n" +
                     "Your hand: \n" + currentHand + "\nChoose Card via index:");
         }
 
@@ -72,8 +72,13 @@ public class PlayState extends State {
         if (currentPlayer.getRequiresConfirmation()) {
             try {
                 int handIdx = Integer.parseInt(input);
-                if (handIdx < 1 || handIdx > currentPlayer.getHand().size()) {
-                    return new QuestionEvent("Invalid hand number. Choose between 1 and " + currentPlayer.getHand().size() + ":");
+                if (handIdx < 0 || handIdx > currentPlayer.getHand().size()) {
+                    return new QuestionEvent("Invalid hand number\nChoose (0) to see the last trick or between 1 and " + currentPlayer.getHand().size() + ": ");
+                }
+                if (handIdx == 0) {
+                    String lastPlayedTrick = buildLastTrickDisplay();
+                    String display = lastPlayedTrick == null ? "No last played trick has been found.\n" : lastPlayedTrick;
+                    return new QuestionEvent(display + "\nChoose Card via index:");
                 }
 
                 Card playedCard = currentPlayer.getHand().get(handIdx - 1);
@@ -88,9 +93,9 @@ public class PlayState extends State {
                 }
 
             } catch (NumberFormatException e) {
-                return new QuestionEvent("Please enter a valid number:");
+                return new QuestionEvent("Invalid hand number.\nChoose Card via index:");
             } catch (IllegalArgumentException e) {
-                return new QuestionEvent("Invalid move (" + e.getMessage() + "). Try again.");
+                return new QuestionEvent("Invalid move ~" + e.getMessage() + "~\n(Try again!)\nChoose Card via index:");
             }
         }
         // Updates the reference pointer if HUMAN just played
@@ -111,13 +116,15 @@ public class PlayState extends State {
         }
 
         // Question event for the next Turn if nextPlayer is a Human
-        return new QuestionEvent(outputLog + "\n\n*** Pass the device to " + currentRound.getCurrentPlayer().getName()
-                + "***\nPress ENTER to reveal your hand...");
+        return new QuestionEvent(outputLog
+                + "\n\n============== Pass the terminal to " + currentRound.getCurrentPlayer().getName() + " ==============\n"
+                + "Press ENTER to reveal your hand...\n");
 
     }
 
     /**
      * Helper method to process the outcome of a Turn. As it checks if a Trick or Round has ended.
+     *
      * @param outputLog the game HistoryLog
      * @return TextEvent if the Round is over, signaling a nextState to be called, else returns null.
      */
@@ -126,12 +133,13 @@ public class PlayState extends State {
             Player winningPlayer = currentTrick.getWinningPlayer();
             currentRound.registerCompletedTrick(currentTrick);
 
-            outputLog.append("*** ").append(winningPlayer.getName()).append(" wins the trick! ***\n");
+            outputLog.append("\n============== ").append(winningPlayer.getName()).append(" wins the trick! ==============\n");
 
             if (currentRound.getTricks().size() >= Round.MAX_TRICKS) { // We check if Round has already completed 13 tricks
-                outputLog.append("\n --- ROUND OVER ---\nCalculating final scores...");
+                outputLog.append("\n============== ROUND OVER ==============\nCalculating final scores...\n");
                 return new TextEvent(outputLog.toString());
             }
+            outputLog.append("\n============== NEXT TRICK ==============\n");
             this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
         } else {
             currentRound.advanceToNextPlayer();
@@ -141,11 +149,12 @@ public class PlayState extends State {
 
     /**
      * Builds a string containing the currently Played cards and if applicable, the Hand of the player playing OPEN MISERIE
-     * @return formatted string that hold the current table status of open cards
+     *
+     * @return formatted string that holds the current table status of open cards
      */
     private String buildTableDisplay() {
-        StringBuilder table = new StringBuilder("\n--- CARDS ON TABLE ---\n");
-        if(currentTrick.getTurns().isEmpty()) {
+        StringBuilder table = new StringBuilder("\n-------------- CARDS ON TABLE ---------------\n");
+        if (currentTrick.getTurns().isEmpty()) {
             table.append("(No cards played yet)\n");
         } else {
             for (Turn turn : currentTrick.getTurns()) {
@@ -159,7 +168,25 @@ public class PlayState extends State {
             table.append("\n--- EXPOSED HAND (OPEN_MISERIE: ").append(exposedPlayer.getName()).append(")---\n");
             table.append(exposedPlayer.getHand().toString()).append("\n");
         }
-        table.append("----------------------\n");
+        table.append("---------------------------------------------\n");
+        return table.toString();
+    }
+
+    /**
+     * Builds a string containing the last played trick
+     *
+     * @return formatted string that shows the last Played Trick if any were found.
+     */
+    private String buildLastTrickDisplay() {
+        StringBuilder table = new StringBuilder("\n-------------- LAST PLAYED TRICK ---------------\n");
+
+        Trick lastTrick = getGame().getCurrentRound().getLastPlayedTrick();
+        if (lastTrick == null) return null;
+
+        for (Turn turn : lastTrick.getTurns()) {
+            table.append("- ").append(turn.toString()).append("\n");
+        }
+        table.append("------------------------------------------------\n");
         return table.toString();
     }
 
