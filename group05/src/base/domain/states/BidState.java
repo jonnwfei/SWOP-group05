@@ -66,13 +66,6 @@ public class BidState extends State {
 
     @Override
     public GameEvent executeState(String input) {
-        //HANDLE PLAYER BOTS
-        if(!currentPlayer.getRequiresConfirmation()) {
-            bids.add(new PassBid(currentPlayer));
-            if (isBiddingComplete()) {
-                return handleEndOfBidding();
-            }
-        }
 
         // Handle the "Rejected Proposal" Decision
         // This occurs AFTER everyone has had a turn, and the highest was a PROPOSAL
@@ -101,6 +94,16 @@ public class BidState extends State {
             if (isBiddingComplete()) {
                 return handleEndOfBidding();
             }
+        }
+
+        //HANDLE PLAYER BOTS
+        while(!currentPlayer.getRequiresConfirmation()) {
+            Bid finalizedBid = new PassBid(currentPlayer);
+            commitBid(finalizedBid);
+        }
+
+        if (isBiddingComplete()) {
+            return handleEndOfBidding();
         }
 
         //GENERATE NEXT PROMPT (First Player or Next Player)
