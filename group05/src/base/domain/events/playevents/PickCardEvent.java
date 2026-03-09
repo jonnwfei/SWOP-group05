@@ -1,4 +1,4 @@
-package cli.elements;
+package base.domain.events.playevents;
 
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
@@ -6,10 +6,11 @@ import base.domain.card.Card;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Turn;
+import base.domain.events.GameEvent;
 
 import java.util.List;
 
-public record PickCardEvent(Round round, Player player) implements GameEvent  {
+public record PickCardEvent(Round round, Player player, List<Card> hand) implements GameEvent {
     private String renderPickCardEvent(){
         return buildTableDisplay() + "\nTrick: " + (round.getTricks().size() + 1) +
                 " | " + player.getName() + "'s turn.\n" + "(0) to show last played Trick.\n" +

@@ -1,4 +1,4 @@
-package cli.elements;
+package base.domain.events;
 public interface GameEvent {
 
 }

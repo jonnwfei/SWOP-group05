@@ -2,14 +2,17 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 
-import base.domain.bid.Bid;
-import base.domain.bid.BidType;
 import base.domain.card.Card;
+import base.domain.events.ErrorEvent;
+import base.domain.events.GameEvent;
+import base.domain.events.LastTrickEvent;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
-import base.domain.trick.Turn;
-import cli.elements.*;
+import base.domain.events.playevents.EndOfRoundEvent;
+import base.domain.events.playevents.EndOfTrickEvent;
+import base.domain.events.playevents.InitiateTurnEvent;
+import base.domain.events.playevents.PickCardEvent;
 
 
 /**
