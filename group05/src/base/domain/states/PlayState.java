@@ -93,7 +93,7 @@ public class PlayState extends State {
                 }
 
             } catch (NumberFormatException e) {
-                return new QuestionEvent("Invalid hand number.\nChoose (0) to see the last trick or between 1 and " + currentPlayer.getHand().size() + ":");
+                return new QuestionEvent("Invalid hand number\nChoose (0) to see the last trick or between 1 and " + currentPlayer.getHand().size() + ":");
             } catch (IllegalArgumentException e) {
                 return new QuestionEvent("Invalid move ~" + e.getMessage() + "~\n(Try again!)\nChoose Card via index:");
             }
