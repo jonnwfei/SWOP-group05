@@ -62,7 +62,7 @@ public class PlayState extends State {
         if (isHandHidden) {
             isHandHidden = false;
 
-            String currentHand = currentPlayer.getFormattedHand();
+            String currentHand = currentPlayer.getFormattedHand(true);
             return new QuestionEvent(buildTableDisplay() + "\nTrick: " + (currentRound.getTricks().size() + 1) +
                     " | " + currentPlayer.getName() + "'s turn.\n" + "(0) to show last played Trick.\n" +
                     "Your hand: \n" + currentHand + "\nChoose Card via index:");
@@ -166,7 +166,7 @@ public class PlayState extends State {
         if (highestBid != null && highestBid.getType() == BidType.OPEN_MISERIE) {
             Player exposedPlayer = highestBid.getPlayer();
             table.append("\n--- EXPOSED HAND (OPEN_MISERIE: ").append(exposedPlayer.getName()).append(")---\n");
-            table.append(exposedPlayer.getHand().toString()).append("\n");
+            table.append(exposedPlayer.getFormattedHand()).append("\n");
         }
         table.append("---------------------------------------------\n");
         return table.toString();
