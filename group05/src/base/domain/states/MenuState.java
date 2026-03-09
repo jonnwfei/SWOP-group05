@@ -89,7 +89,7 @@ public class MenuState extends State {
 
         if (keuze == 1) {
             state = SetupState.CHOOSE_BOTS;
-            return new QuestionEvent("How many bots will be playing? (0-4):");
+            return new QuestionEvent("How many bots will be playing? (0-3):");
         } else {
             totalBots = 0;
             state = SetupState.ENTER_HUMANS;
@@ -101,7 +101,7 @@ public class MenuState extends State {
         int bots = Integer.parseInt(input);
 
         if (bots < 0 || bots >= 4) {
-            return new QuestionEvent("Invalid amount. Enter a number between 0 and 4:");
+            return new QuestionEvent("Invalid amount. Enter a number between 0 and 3:");
         }
 
         totalBots = bots;
@@ -123,7 +123,7 @@ public class MenuState extends State {
 
         if (totalBots > 0) {
             state = SetupState.ENTER_BOTS;
-            return new QuestionEvent("Which strategy should bot 1 use?\n(1) High Bot\n(2) Low Bot");
+            return new QuestionEvent("Which strategy should bot 1 use?\n(1) High Bot\n(2) Low Bot\n");
         }
 
         return finish();
@@ -142,7 +142,7 @@ public class MenuState extends State {
         botCount++;
 
         if (botCount < totalBots) {
-            return new QuestionEvent("Which strategy should bot " + (botCount + 1) + " use?\n(1) High Bot\n(2) Low Bot");
+            return new QuestionEvent("Which strategy should bot " + (botCount + 1) + " use?\n(1) High Bot\n(2) Low Bot\n");
         }
 
         return finish();
