@@ -4,6 +4,7 @@ import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
+import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
@@ -45,11 +46,31 @@ public class BidState extends State {
         Player lastPlayer = allPlayers.getLast();
         trumpSuit = lastPlayer.getHand().getLast().suit();    }
 
+    /**
+     * Initializes the round with the appropriate current player, based on the winner of the last round or
+     * the player who bid ABONDANCE.
+     */
+    private void initializeRound() {
+        WhistGame game = this.getGame();
+        List<Player> players = game.getPlayers();
+
+        int multiplier;
+        if (getGame().getRounds().isEmpty()){
+            multiplier = 1;
+        }
+        else{
+            multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
+        }
+        Round newRound = new Round(players, currentPlayer, multiplier);
+        game.addRound(newRound);
+    }
+
     @Override
     public GameEvent executeState(String input) {
-        // 2. Handle the "Rejected Proposal" Decision
+
+        // Handle the "Rejected Proposal" Decision
         // This occurs AFTER everyone has had a turn, and the highest was a PROPOSAL
-        if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
+        if(isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
             return handleRejectedProposal(input);
         }
 
@@ -74,6 +95,16 @@ public class BidState extends State {
             if (isBiddingComplete()) {
                 return handleEndOfBidding();
             }
+        }
+
+        //HANDLE PLAYER BOTS
+        while(!currentPlayer.getRequiresConfirmation() && !isBiddingComplete()) {
+            Bid finalizedBid = new PassBid(currentPlayer);
+            commitBid(finalizedBid);
+        }
+
+        if (isBiddingComplete()) {
+            return handleEndOfBidding();
         }
 
         //GENERATE NEXT PROMPT (First Player or Next Player)
@@ -143,6 +174,7 @@ public class BidState extends State {
             else if (choice == 1) decision = BidType.SOLO_PROPOSAL;
             else return new QuestionEvent("Invalid choice. Choose [0] PASS or [1] SOLO_PROPOSAL: ");
             replaceProposalBid(decision);
+            this.currentHighestBidType = decision;
             return new TextEvent("\n=== BIDDING COMPLETE ===");
         } catch (Exception e) {
             return new QuestionEvent("Please enter 0 or 1: ");
@@ -151,10 +183,8 @@ public class BidState extends State {
 
     private GameEvent handleEndOfBidding() {
         if (currentHighestBidType == BidType.PROPOSAL) {
-            Player proposer = findProposalBid().getPlayer();
-            int passIdx = BidType.PASS.ordinal();
-            int soloPropIdx = BidType.SOLO_PROPOSAL.ordinal();
-            return new QuestionEvent("\n" + proposer.getName() + ": No one accepted. [" + passIdx + "] PASS or [" + soloPropIdx + "] SOLO_PROPOSAL?");
+            Player proposer = findBid(BidType.PROPOSAL).getPlayer();
+            return new QuestionEvent("\n" + proposer.getName() + ": No one accepted. [0] PASS or [1] SOLO_PROPOSAL?");
         }
         return new TextEvent("\n=== BIDDING COMPLETE ===");
     }
@@ -170,7 +200,6 @@ public class BidState extends State {
         if (index == -1) {throw new IllegalArgumentException("currentPlayer not found in list of players");}
         int newIndex = (index + 1) % players.size();
         this.currentPlayer = players.get(newIndex);
-        //TODO getGame().getCurrentRound().advanceToNextPlayer();
     }
 
     private void updateHighestBidType(BidType bidType) {
@@ -180,7 +209,7 @@ public class BidState extends State {
     }
 
     private void replaceProposalBid(BidType chosenBidType) {
-        Bid proposalBid = findProposalBid();
+        Bid proposalBid = findBid(BidType.PROPOSAL);
         int index = bids.indexOf(proposalBid);
         bids.set(index, chosenBidType.instantiate(proposalBid.getPlayer(), null));
     }
@@ -230,9 +259,9 @@ public class BidState extends State {
         return this.bids.size() == getGame().getPlayers().size();
     }
 
-    private Bid findProposalBid() {
+    private Bid findBid(BidType bidType) {
         return bids.stream()
-                .filter(b -> b.getType() == BidType.PROPOSAL)
+                .filter(b -> b.getType() == bidType)
                 .findFirst()
                 .orElse(null); // Or throw an exception
     }
@@ -240,17 +269,17 @@ public class BidState extends State {
     private String buildFirstPlayerPrompt(Player player) {
         return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
                 "Dealt Trump: " + trumpSuit.name() + "\n" +
-                player.getFormattedHand() + "\n" +
+                "Your Hand\n" + player.getFormattedHand() + "\n" +
                 "---------------------------------------\n" +
                 "Status: You are the first to bid!\n\n" +
-                buildOptions(Suit.values()) + "\n" +
+                buildOptions(BidType.values()) + "\n" +
                 "Your choice: ";
     }
 
     private String buildStandardPrompt(Player player) {
         return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
                 "Dealt Trump: " + trumpSuit.name() + "\n" +
-                player.getFormattedHand() + "\n" +
+                "Your Hand\n" + player.getFormattedHand() + "\n" +
                 "---------------------------------------\n" +
                 "Current Highest: " + currentHighestBidType.name() + "\n\n" +
                 buildOptions(BidType.values()) + "\n" +
@@ -265,24 +294,6 @@ public class BidState extends State {
         return options.toString();
     }
 
-    /**
-     * Initializes round with apropriate current player, based on the winner of last round or
-     * the player who bid ABONDANCE
-     */
-    private void initializeRound() {
-        WhistGame game = this.getGame();
-        List<Player> players = game.getPlayers();
-
-        int multiplier;
-        if (getGame().getRounds().isEmpty()){
-             multiplier = 1;
-        }
-        else{
-            multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
-        }
-        Round newRound = new Round(players, currentPlayer, multiplier);
-        game.addRound(newRound);
-    }
     private void setRoundReadyForPlayState() {
         WhistGame game = this.getGame();
         List<Player> players = game.getPlayers();
@@ -290,10 +301,13 @@ public class BidState extends State {
         if (newCurrentPlayer == null) {
             newCurrentPlayer = players.get((players.indexOf(game.getDealerPlayer()) + 1) % 4);
         }
-        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE) {
+        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE || currentHighestBidType.getCategory() == BidCategory.SOLO) {
             newCurrentPlayer = bids.stream().filter( bid -> bid.getType() == currentHighestBidType).findFirst().get().getPlayer();
         }
         game.getCurrentRound().setCurrentPlayer(newCurrentPlayer);
+        game.getCurrentRound().setTrumpSuit(trumpSuit);
+        game.getCurrentRound().setHighestBid(findBid(currentHighestBidType));
+        game.getCurrentRound().setBids(this.bids);
     }
 
 }

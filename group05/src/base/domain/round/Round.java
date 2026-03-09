@@ -237,6 +237,13 @@ public class Round {
     public List<Bid> getBids() {
         return List.copyOf(bids);
     }
+    public void setBids(List<Bid> bids) {
+        if (bids == null) {
+            throw new IllegalArgumentException("Bids list cannot be null.");
+        }
+        this.bids = new ArrayList<>(bids);
+    }
+
     public boolean isFinished() {
         return playedTricks.size() == MAX_TRICKS;
     }
