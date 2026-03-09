@@ -4,5 +4,5 @@ import base.domain.bid.BidType;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 
-public record BidTurnEvent(Player currentPlayer, Suit dealtTrump, BidType currentHighestBid) implements GameEvent {
+public record BidTurnEvent(Player currentPlayer, Suit dealtTrump, BidType currentHighestBidType) implements GameEvent {
 }
