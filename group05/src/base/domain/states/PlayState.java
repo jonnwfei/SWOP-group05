@@ -22,6 +22,7 @@ public class PlayState extends State {
     private final Round currentRound;
     private Trick currentTrick;
     private boolean isHandHidden;
+    private boolean firstTurn = true;
 
 
     /**
@@ -53,8 +54,9 @@ public class PlayState extends State {
         StringBuilder outputLog = new StringBuilder();
 
         // Initial Load
-        if (input == null) {
+        if (input == null || firstTurn) {
             isHandHidden = true;
+            firstTurn = false;
             return new QuestionEvent("\n============== Pass the terminal to " + currentPlayer.getName() + " ==============\n"
                                         + "Press ANY BUTTON to reveal your hand...");
         }
@@ -95,7 +97,7 @@ public class PlayState extends State {
             } catch (NumberFormatException e) {
                 return new QuestionEvent("Invalid hand number\nChoose (0) to see the last trick or between 1 and " + currentPlayer.getHand().size() + ":");
             } catch (IllegalArgumentException e) {
-                return new QuestionEvent("Invalid move ~" + e.getMessage() + "~\n(Try again!)\nChoose Card via index:");
+                return new QuestionEvent("Invalid move, '" + e.getMessage() + "',\n(Try again!)\nChoose Card via index:");
             }
         }
         // Updates the reference pointer if HUMAN just played
