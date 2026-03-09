@@ -7,14 +7,10 @@ import base.domain.bid.BidType;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
-import base.domain.events.ErrorEvent;
-import base.domain.events.GameEvent;
-import base.domain.events.QuestionEvent;
-import base.domain.events.TextEvent;
+import base.domain.events.*;
 import base.domain.player.Player;
 import base.domain.round.Round;
-import base.domain.events.bidevents.BidTurnEvent;
-import base.domain.events.bidevents.RejectedProposalEvent;
+import base.domain.events.bidevents.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -83,7 +79,7 @@ public class BidState extends State {
 
     /**
      * Processes user/bot input and advances the bidding state machine.
-     * @param input The raw string input from the user (or injected for bots).
+     * * @param input | The raw string input from the user (or injected for bots).
      * @return A GameEvent (TextEvent or QuestionEvent) to be displayed to the UI.
      */
     @Override
