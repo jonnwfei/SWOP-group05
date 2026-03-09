@@ -66,7 +66,7 @@ public class PlayState extends State {
 
             String currentHand = currentPlayer.getFormattedHand(true);
             return new QuestionEvent(buildTableDisplay() + "\nTrick: " + (currentRound.getTricks().size() + 1) +
-                    " | " + currentPlayer.getName() + "'s turn.\n" + "(0) to show last played Trick.\n" +
+                    " | " + "Trumpsuit: " + (currentRound.getTrumpSuit()) + " | " + currentPlayer.getName() + "'s turn.\n" + "(0) to show last played Trick.\n" +
                     "Your hand: \n" + currentHand + "\nChoose Card via index:");
         }
 
