@@ -46,8 +46,8 @@ public class PlayState extends State {
      * Handles the execution of playState, orchestrating the logic flow of a Round and its Tricks, in the given game
      * that holds this state.
      *
-     * @param input the user's response to the previous QuestionEvent
-     * @return the next QuestionEvent or TextEvent
+     *
+     * @return the next GameEvent
      */
     @Override
     public GameEvent executeState(String input) {
@@ -147,7 +147,7 @@ public class PlayState extends State {
     @Override
     public State nextState() {
         if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
-            return new ScoreBoardState(this.getGame(), ScoreBoardState.RestartTarget.BID_STATE);
+            return new ScoreBoardState(this.getGame(), new BidState(getGame()));
         }
         return this;
     }
