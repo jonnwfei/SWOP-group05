@@ -91,9 +91,8 @@ public class WhistGame {
      * @return current round or null if no rounds have been played yet
      * */
     public Round getCurrentRound(){
-        Round round = this.rounds.getLast();
         if (rounds.isEmpty()) return null;
-        return round;
+        return this.rounds.getLast();
     }
 
     public void setDeck(Deck deck){
