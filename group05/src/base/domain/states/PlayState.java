@@ -55,10 +55,10 @@ public class PlayState extends State {
         // Initial Load
         if (input == null) {
             isHandHidden = true;
-            return new QuestionEvent("\n==============  Pass the terminal to " + currentPlayer.getName() + " ==============\n"
+            return new QuestionEvent("\n============== Pass the terminal to " + currentPlayer.getName() + " ==============\n"
                                         + "Press ANY BUTTON to reveal your hand...");
         }
-        // User pressed "ENTER" on the Pass terminal screen
+        // User pressed "ANY BUTTON" on the Pass terminal screen
         if (isHandHidden) {
             isHandHidden = false;
 
@@ -93,7 +93,7 @@ public class PlayState extends State {
                 }
 
             } catch (NumberFormatException e) {
-                return new QuestionEvent("Invalid hand number.\nChoose Card via index:");
+                return new QuestionEvent("Invalid hand number.\nChoose (0) to see the last trick or between 1 and " + currentPlayer.getHand().size() + ":");
             } catch (IllegalArgumentException e) {
                 return new QuestionEvent("Invalid move ~" + e.getMessage() + "~\n(Try again!)\nChoose Card via index:");
             }
@@ -118,7 +118,7 @@ public class PlayState extends State {
         // Question event for the next Turn if nextPlayer is a Human
         return new QuestionEvent(outputLog
                 + "\n\n============== Pass the terminal to " + currentRound.getCurrentPlayer().getName() + " ==============\n"
-                + "Press ENTER to reveal your hand...\n");
+                + "Press ANY BUTTON to reveal your hand...\n");
 
     }
 
@@ -178,10 +178,10 @@ public class PlayState extends State {
      * @return formatted string that shows the last Played Trick if any were found.
      */
     private String buildLastTrickDisplay() {
-        StringBuilder table = new StringBuilder("\n-------------- LAST PLAYED TRICK ---------------\n");
-
         Trick lastTrick = getGame().getCurrentRound().getLastPlayedTrick();
         if (lastTrick == null) return null;
+
+        StringBuilder table = new StringBuilder("\n-------------- LAST PLAYED TRICK ---------------\n");
 
         for (Turn turn : lastTrick.getTurns()) {
             table.append("- ").append(turn.toString()).append("\n");
