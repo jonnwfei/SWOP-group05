@@ -21,7 +21,7 @@ import cli.elements.TextEvent;
 public class PlayState extends State {
     private final Round currentRound;
     private Trick currentTrick;
-    private boolean isHandHidden = true;
+    private boolean isHandHidden;
 
 
     /**
