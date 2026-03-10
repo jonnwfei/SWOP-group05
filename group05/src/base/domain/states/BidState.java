@@ -126,9 +126,9 @@ public class BidState extends State {
 
         //GENERATE NEXT PROMPT (First Player or Next Player)
         if (this.bids.isEmpty()) {
-            return new BidTurnEvent(currentPlayer, trumpSuit, null);
+            return new BidTurnEvent(currentPlayer.getName(), trumpSuit, null, BidType.values());
         } else {
-            return new BidTurnEvent(currentPlayer, trumpSuit, currentHighestBidType);
+            return new BidTurnEvent(currentPlayer.getName(), trumpSuit, currentHighestBidType, BidType.values());
         }
     }
 
@@ -200,7 +200,7 @@ public class BidState extends State {
     private GameEvent handleEndOfBidding() {
         if (currentHighestBidType == BidType.PROPOSAL) {
             Player proposer = findBid(BidType.PROPOSAL).getPlayer();
-            return new RejectedProposalEvent(proposer);
+            return new RejectedProposalEvent(proposer.getName());
         }
         return new TextEvent("\n=== BIDDING COMPLETE ===");
     }
@@ -295,7 +295,7 @@ public class BidState extends State {
         List<Player> players = game.getPlayers();
         Player newCurrentPlayer = game.getLastRoundWinner();
         if (newCurrentPlayer == null) {
-            newCurrentPlayer = players.get((players.indexOf(game.getDealerPlayer()) + 1) % 4);
+            newCurrentPlayer = game.getCurrentPlayer();
         }
         if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE || currentHighestBidType.getCategory() == BidCategory.SOLO) {
             newCurrentPlayer = bids.stream().filter( bid -> bid.getType() == currentHighestBidType).findFirst().get().getPlayer();
