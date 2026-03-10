@@ -9,8 +9,6 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
-import base.domain.events.QuestionEvent;
-import base.domain.events.TextEvent;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.events.bidevents.BidTurnEvent;
@@ -130,9 +128,9 @@ public class BidState extends State {
 
         //GENERATE NEXT PROMPT (First Player or Next Player)
         if (this.bids.isEmpty()) {
-            return new BidTurnEvent(currentPlayer, trumpSuit, null);
+            return new BidTurnEvent(currentPlayer.getName(), trumpSuit, null, BidType.values());
         } else {
-            return new BidTurnEvent(currentPlayer, trumpSuit, currentHighestBidType);
+            return new BidTurnEvent(currentPlayer.getName(), trumpSuit, currentHighestBidType, BidType.values());
         }
     }
 
@@ -204,7 +202,7 @@ public class BidState extends State {
     private GameEvent handleEndOfBidding() {
         if (currentHighestBidType == BidType.PROPOSAL) {
             Player proposer = findBid(BidType.PROPOSAL).getPlayer();
-            return new RejectedProposalEvent(proposer);
+            return new RejectedProposalEvent(proposer.getName());
         }
         return new TextEvent("\n=== BIDDING COMPLETE ===");
     }
@@ -284,14 +282,6 @@ public class BidState extends State {
                 .filter(b -> b.getType() == bidType)
                 .findFirst()
                 .orElse(null); // Or throw an exception
-    }
-
-    private String buildOptions(Enum<?>[] optionsArray) {
-        StringBuilder options = new StringBuilder("All Options:\n");
-        for (int i = 0; i < optionsArray.length; i++) {
-            options.append("   [").append(i).append("] ").append(optionsArray[i].name()).append("\n");
-        }
-        return options.toString();
     }
 
     private void setRoundReadyForPlayState() {

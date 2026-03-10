@@ -4,8 +4,6 @@ import base.domain.WhistGame;
 import base.domain.events.countEvents.*;
 import base.domain.player.Player;
 import base.domain.events.GameEvent;
-import base.domain.events.QuestionEvent;
-import base.domain.events.TextEvent;
 import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.round.Round;

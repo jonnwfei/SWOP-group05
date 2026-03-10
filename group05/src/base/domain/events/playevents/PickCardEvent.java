@@ -11,16 +11,16 @@ import base.domain.events.GameEvent;
 import java.util.List;
 
 public record PickCardEvent(
-        List<String> cardsOnTable,      // e.g., ["Player1 played ACE of SPADES", ...]
-        boolean isOpenMiserie,         // Tells the UI whether to draw the exposed hand
-        String exposedPlayerName,      // Who is playing Open Miserie
-        String formattedExposedHand,   // The actual cards to show everyone
-        int trickNumber,
         String currentPlayerName,
-        List<String> currentPlayerHand // Formatted strings of the cards they can play
+        int trickNumber,
+        List<Card> cardsOnTable,
+        List<Card> currentPlayerHand,
+        List<Card> exposedHand // List of Cards instead of a formatted String
 ) implements GameEvent {
     public PickCardEvent {
         cardsOnTable = List.copyOf(cardsOnTable);
         currentPlayerHand = List.copyOf(currentPlayerHand);
+        // exposedHand can be null if not an Open Miserie
+        if (exposedHand != null) exposedHand = List.copyOf(exposedHand);
     }
 }

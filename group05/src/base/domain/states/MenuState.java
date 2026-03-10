@@ -8,10 +8,7 @@ import base.domain.player.HumanStrategy;
 import base.domain.player.LowBotStrategy;
 import base.domain.player.Player;
 import base.domain.events.GameEvent;
-import base.domain.events.QuestionEvent;
 import base.domain.deck.Deck;
-
-import java.util.Random;
 
 public class MenuState extends State {
     private int keuze;

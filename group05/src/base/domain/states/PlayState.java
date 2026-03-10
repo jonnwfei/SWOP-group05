@@ -24,7 +24,6 @@ public class PlayState extends State {
     private Trick currentTrick;
     private boolean isHandHidden;
     private boolean firstTurn = true;
-    private boolean roundOver = false;
 
     /**
      * Instantiates the playState.
@@ -58,14 +57,14 @@ public class PlayState extends State {
         if (input == null || firstTurn) {
             isHandHidden = true;
             firstTurn = false;
-            return new InitiateTurnEvent(currentPlayer);
+            return new InitiateTurnEvent(currentPlayer.getName());
 
         }
 
         if (isHandHidden) {
             isHandHidden = false;
 
-            return new PickCardEvent(currentRound, currentPlayer);
+            return new PickCardEvent(currentRound,true, currentPlayer.getName());
         }
 
         // Checks if the input for HUMAN Turn
@@ -92,10 +91,10 @@ public class PlayState extends State {
                 isHandHidden = true; // Hide the hand for next player
                 processTurnOutcome();
                 if (roundOver){
-                    return new EndOfRoundEvent(currentPlayer, playedCard);
+                    return new EndOfRoundEvent(currentPlayer.getName(), playedCard);
                 }
                 else{
-                    return new EndOfTrickEvent(currentPlayer, playedCard);
+                    return new EndOfTrickEvent(currentPlayer.getName(), playedCard);
                 }
 
             } catch (IllegalArgumentException e) {
@@ -111,12 +110,12 @@ public class PlayState extends State {
             currentTrick.playCard(currentPlayer, botCard);
             processTurnOutcome();
             if (roundOver) {
-                return new EndOfRoundEvent(currentPlayer, botCard);
+                return new EndOfRoundEvent(currentPlayer.getName(), botCard);
             }
             currentPlayer = currentRound.getCurrentPlayer(); // Updates the reference pointer to the next BOT
         }
 
-        return new InitiateTurnEvent(currentPlayer);
+        return new InitiateTurnEvent(currentPlayer.getName());
 
     }
 

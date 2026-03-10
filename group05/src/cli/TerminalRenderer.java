@@ -79,37 +79,19 @@ public class TerminalRenderer {
     }
 
     private void renderPickCardEvent(PickCardEvent event) {
-        System.out.println("\n-------------- CARDS ON TABLE ---------------");
+        System.out.println("=== TRICK " + event.trickNumber() + " ===");
 
-        if(event.cardsOnTable().isEmpty()) {
-            System.out.println("(No cards played yet)");
-        } else {
-            for(String cardStr : event.cardsOnTable()) {
-                System.out.println("- " + cardStr);
-            }
+        if (event.exposedHand() != null) {
+            System.out.println("EXPOSED HAND:");
+            // The Terminal converts the objects to text here
+            event.exposedHand().forEach(card -> System.out.print("[" + card + "] "));
+            System.out.println();
         }
 
-        // The 'if (false)' is replaced with our pure boolean data!
-        if (event.isOpenMiserie()) {
-            System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: " + event.exposedPlayerName() + ") ---");
-            System.out.println(event.formattedExposedHand());
+        System.out.println("Hand for " + event.currentPlayerName() + ":");
+        for (int i = 0; i < event.currentPlayerHand().size(); i++) {
+            System.out.println("[" + (i + 1) + "] " + event.currentPlayerHand().get(i));
         }
-        System.out.println("---------------------------------------------");
-
-        // Fixed the math concatenation bug by putting the math in parentheses!
-        System.out.println("Trick: " + event.trickNumber() + " | " + event.currentPlayerName() + "'s turn.");
-
-        System.out.println("[0] Show last played Trick.");
-        System.out.println("Your hand: ");
-
-        // Fixed the <= out of bounds bug.
-        // Notice we start formatting at [1] because [0] is reserved for "Show last trick"
-        List<String> hand = event.currentPlayerHand();
-        for (int i = 0; i < hand.size(); i++) {
-            System.out.println("   [" + (i + 1) + "] " + hand.get(i));
-        }
-
-        System.out.print("Choose Card via index: ");
     }
 
     private void renderErrorEvent(ErrorEvent event) {
