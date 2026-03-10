@@ -5,6 +5,8 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -56,6 +58,13 @@ public class Player {
      */
     public void setHand(List<Card> hand) {
         if (hand == null) throw new IllegalArgumentException("The given hand can't be null");
+        hand.sort((c1, c2) -> {
+            int suitCompare = c1.suit().compareTo(c2.suit());
+            if (suitCompare != 0) {
+                return suitCompare;
+            }
+            return c2.rank().compareTo(c1.rank()); // hoog naar laag
+        });
         this.currentHand.addAll(hand);
     }
 
