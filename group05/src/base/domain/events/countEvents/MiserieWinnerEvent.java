@@ -5,16 +5,8 @@ import base.domain.player.Player;
 
 import java.util.List;
 
-public record MiserieWinnerEvent(List<Player> players) implements GameEvent {
-    private String renderMiserieWinnerEvent(){
-        return "Which players won their bid? (Got 0 tricks): \n" + printNames();
-    }
-
-    public String printNames() {
-        String result = "Players in this game:\n";
-        for (int i = 0; i < players.size(); i++) {
-            result += (i + 1) + ". " + players.get(i).getName() + "\n";
-        }
-        return result;
+public record MiserieWinnerEvent(List<String> playerNames) implements GameEvent {
+    public MiserieWinnerEvent {
+        playerNames = List.copyOf(playerNames); // Defensive copy
     }
 }
