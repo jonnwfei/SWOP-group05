@@ -161,6 +161,7 @@ public class WhistGame {
         this.currentPlayer = player;
     }
 
+
     /**
      * Helper function that sets the dealerPlayer randomly, only called upon first Round
      * @throws IllegalArgumentException when trying to set a randomDealer when no player list has been initialized
