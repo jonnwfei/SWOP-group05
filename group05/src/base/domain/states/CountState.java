@@ -93,7 +93,7 @@ public class CountState extends State {
         };
         if (this.trumpSuit == null) return new QuestionEvent("Invalid suit (1-4):");
         currentPhase = CountPhase.SELECT_PLAYERS;
-        return new PlayersInBidEvent(getGame().getPlayers());
+        return new PlayersInBidEvent(getPlayerNames());
     }
     /**
      * Handles the players that played in the bid, asks depending on the bid the amount of tricks of which players won
@@ -105,7 +105,7 @@ public class CountState extends State {
         currentPhase = CountPhase.CALCULATE;
         //going to next bid confirmed
         if (numberBid == 7 || numberBid == 8) {
-            return new MiserieWinnerEvent(getGame().getPlayers());
+            return new MiserieWinnerEvent(getPlayerNames());
 
         }
         return new TrickWonEvent();
@@ -144,9 +144,19 @@ public class CountState extends State {
 
             round.calculateScoresForCount(tricks, participants, null);
         }
-        return new ScoreBoardEvent(getGame().getPlayers());
+
+        List<Integer> playerScores = getGame().getPlayers().stream()
+                .map(Player::getScore)
+                .toList();
+        return new ScoreBoardEvent(getPlayerNames(), playerScores);
     }
     // --- UTILS ---
+    private List<String> getPlayerNames() {
+        return getGame().getPlayers().stream()
+                .map(Player::getName)
+                .toList();
+    }
+
     /**
      * Splits up the input to get the different numbers that were put in
      * @param input (eg. 1,4)
@@ -160,7 +170,7 @@ public class CountState extends State {
                 .toList();
     }
     /**
-     * creates the bid depending on numberBid and the player thats given (for less code cluttering seperated)
+     * creates the bid depending on numberBid and the player thats given (for less code cluttering separated)
      * @param bidder player that plays the bid
      *
      */
