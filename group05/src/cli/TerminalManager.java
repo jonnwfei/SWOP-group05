@@ -2,17 +2,20 @@ package cli;
 
 import base.domain.actions.ContinueAction;
 import base.domain.actions.NumberAction;
+import base.domain.actions.NumberListAction;
 import base.domain.actions.TextAction;
-import base.domain.events.bidevents.BidTurnEvent;
 import base.domain.events.GameEvent;
+import base.domain.events.errorEvents.NumberErrorEvent;
 import cli.elements.Response;
+
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class TerminalManager {
 
     private final Scanner scanner;
     private final TerminalRenderer renderer;
-
+    private final TerminalParser parser;
     /**
      *
      *
@@ -20,36 +23,76 @@ public class TerminalManager {
     public TerminalManager() {
         this.scanner = new Scanner(System.in);
         this.renderer = new TerminalRenderer();
+        this.parser = new TerminalParser();
     }
 
     /**
      * Method is now PUBLIC so App can actually run IO tasks.
      */
-    public Response handle(GameEvent event) {
-        renderer.render(event);
-        if (event.needsInput()){
-            return getResponse();
+    public Response handle(GameEvent<?> event) {
+        try {
+            renderer.render(event);
+            if (event.needsInput()) {
+                return getResponse(event);
+            }
+            return new Response(false, null);
+        } catch (IllegalStateException e) {
+
+            if (event.getInputType() == Integer.class) {
+                GameEvent<Integer> intEvent = (GameEvent<Integer>) event;
+                NumberErrorEvent errorEvent = new NumberErrorEvent(e.getMessage(), intEvent::isValid);
+                return handle(errorEvent);
+            }
+
+            // Fallback for non-integer errors
+            throw e;
         }
-        return new Response(false, null);
     }
 
     /**
      * Reads the terminal and translates text into pure Domain data types.
      */
-    private Response getResponse() {
-        String input = scanner.nextLine().trim();
-
-        if (input.isEmpty()) {
-            return new Response(true, new ContinueAction());
-        }
-
+    private Response getResponse(GameEvent<?> event) {
+        String rawInput = scanner.nextLine().trim();
         try {
-            // If the user typed a number, wrap it in a NumberAction
-            int number = Integer.parseInt(input);
-            return new Response(true, new NumberAction(number));
-        } catch (NumberFormatException e) {
-            // If they typed letters (like a name), wrap it in a TextAction
-            return new Response(true, new TextAction(input));
+            // 1. Handle String Inputs
+            if (event.getInputType() == String.class) {
+                String parsed = parser.parseString(rawInput);
+                validateOrThrow(event, parsed);
+                return new Response(true, new TextAction(parsed));
+            }
+
+            // 2. Handle Integer Inputs
+            else if (event.getInputType() == Integer.class) {
+                Integer parsed = parser.parseNumberInput(rawInput);
+                validateOrThrow(event, parsed);
+                return new Response(true, new NumberAction(parsed));
+            }
+
+            // 3. Handle List Inputs (ArrayList<Integer>)
+            else if (event.getInputType().equals(ArrayList.class) ||
+                    event.getInputType().getName().contains("ArrayList")) {
+                ArrayList<Integer> parsed = parser.parseNumbersInput(rawInput);
+                validateOrThrow(event, parsed);
+                return new Response(true, new NumberListAction(parsed));
+            }
+
+            throw new IllegalStateException("Unsupported input type: " + event.getInputType());
+
+        } catch (IllegalArgumentException e) {
+            // If the parser fails or validation fails, wrap it in IllegalStateException
+            throw new IllegalStateException("Invalid input: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Helper to bridge your boolean isValid check with the Exception-based flow.
+     */
+    private <T> void validateOrThrow(GameEvent<T> event, Object parsed) {
+        @SuppressWarnings("unchecked")
+        T typedInput = (T) parsed;
+        if (!event.isValid(typedInput)) {
+            throw new IllegalArgumentException("Input does not meet the requirements");
         }
     }
 }
