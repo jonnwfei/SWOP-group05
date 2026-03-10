@@ -97,9 +97,9 @@ public class Round {
      */
     public void calculateScoresForCount(int tricksWon, List<Player> participants, List<Player> winningMiseriePlayers) {
         if (highestBid == null) {
-            System.err.println("highestBid is null in Round.");
             throw new IllegalStateException("Cannot calculate scores without a bid.");
         }
+
         // --- CASE 1: MISERIE (Normal or Open), NO TRICKS WON ---
         if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
             if (participants == null || participants.isEmpty()) {
@@ -108,14 +108,13 @@ public class Round {
             for (Player p : participants) {
                 boolean hasWon = winningMiseriePlayers != null && winningMiseriePlayers.contains(p);
                 int basePoints = hasWon ? highestBid.calculateBasePoints(0)
-                        : highestBid.calculateBasePoints(1); // Gives positive or negative points already
+                        : highestBid.calculateBasePoints(1);
 
-                // Distribute points to players who are NOT participants in this bid
-                distributeMiserieScores(p, basePoints * multiplier, participants);
+                // FIX: Evaluate every Miserie player independently as a 1vs3 game!
+                distributeScores(basePoints, List.of(p));
             }
         } else {
             // --- CASE 2: ALL OTHER BIDS (Solo & Partner Bids) ---
-            // 'participants' is either size 1 or 2. distributeScores() automatically handles the math
             int points = highestBid.calculateBasePoints(tricksWon);
             distributeScores(points, participants);
         }
@@ -141,7 +140,7 @@ public class Round {
                 // Check tricks for THIS specific player only!
                 int tricks = getTricksWonBy(List.of(p));
                 int basePoints = highestBid.calculateBasePoints(tricks);
-                distributeMiserieScores(p, basePoints * multiplier, miseriePlayers);
+                distributeScores(basePoints, List.of(p));
             }
         }
         // --- CASE 2: NORMAL BIDS (Solo, Partners) ---
@@ -197,37 +196,6 @@ public class Round {
             return defenders;
         }
     }
-
-    /**
-     * Helper method to distribute scores exclusively for Miserie bids.
-     * Miserie players settle their scores only with the non-participating defenders, never with other Miserie players.
-     *
-     * @param miseriePlayer     The specific player who played Miserie
-     * @param multipliedPoints  Base points multiplied by the multiplier 1x or 2x max
-     * @param allMiseriePlayers all The list of players who bid Miserie this round
-     * @throws IllegalArgumentException if miseriePlayer or allMiseriePlayers list is null
-     */
-    private void distributeMiserieScores(Player miseriePlayer, int multipliedPoints, List<Player> allMiseriePlayers) {
-        if (miseriePlayer == null) throw new IllegalArgumentException("Miserie cannot be null.");
-        if (allMiseriePlayers == null || allMiseriePlayers.size() > this.players.size())
-            throw new IllegalArgumentException("AllMiseriePlayer list cannot be null or exceed the total number of players.");
-
-        int numberOfNonParticipants = this.players.size() - allMiseriePlayers.size();
-        if (numberOfNonParticipants == 0) {
-            miseriePlayer.updateScore(multipliedPoints);
-            return;
-        }
-
-        miseriePlayer.updateScore(multipliedPoints);
-
-        for (Player p : this.players) {
-            if (!allMiseriePlayers.contains(p)) {
-                p.updateScore((multipliedPoints * -1) / numberOfNonParticipants);
-            }
-        }
-
-    }
-
 
     /**
      * Helper method to distribute scores for standard team-based bids (1v3 or 2v2).
