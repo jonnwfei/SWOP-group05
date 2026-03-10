@@ -1,14 +1,9 @@
 package cli;
 
-import base.domain.events.ErrorEvent;
-import base.domain.events.GameEvent;
-import base.domain.events.bidevents.BidTurnEvent;
-import base.domain.events.bidevents.RejectedProposalEvent;
-import base.domain.events.bidevents.SuitPromptEvent;
-import base.domain.events.playevents.EndOfRoundEvent;
-import base.domain.events.playevents.EndOfTrickEvent;
-import base.domain.events.playevents.InitiateTurnEvent;
-import base.domain.events.playevents.PickCardEvent;
+import base.domain.events.*;
+import base.domain.events.bidevents.*;
+import base.domain.events.countEvents.*;
+import base.domain.events.playevents.*;
 
 import java.util.List;
 
@@ -23,7 +18,14 @@ public class TerminalRenderer {
             case InitiateTurnEvent e -> renderInitiateTurnEvent(e);
             case PickCardEvent e -> renderPickCardEvent(e);
             case ErrorEvent e -> renderErrorEvent(e);
-            default -> System.out.println("[WARNING] Unknown event type received!");        }
+            case GetSuitEvent e -> renderGetSuitEvent();
+            case MiserieWinnerEvent e -> renderMiserieWinnerEvent(e);
+            case PlayersInBidEvent e -> renderPlayersInBidEvent(e);
+            case ScoreBoardEvent e -> renderScoreBoardEvent(e);
+            case TrickWonEvent e -> renderTrickWonEvent();
+            case WelcomeCountEvent e -> renderWelcomeCountEvent();
+
+            default -> System.out.println("[WARNING] Unknown event type!");  }
     }
 
     private void renderBidTurnEvent(BidTurnEvent event) {
@@ -108,4 +110,62 @@ public class TerminalRenderer {
         System.out.println("Please give a number between " + event.lowerBound() + " and " + event.upperBound());
     }
 
+    private void renderGetSuitEvent() {
+        System.out.println("What Suit is the trump suit?");
+        System.out.println("(1) Hearts (2) Clubs (3) Diamonds (4) Spades");
+        System.out.print("Your choice: ");
+    }
+
+    private void renderMiserieWinnerEvent(MiserieWinnerEvent event) {
+        System.out.println("Which players won their bid? (Got 0 tricks): ");
+        System.out.println("Players in this game:");
+        List<String> names = event.playerNames();
+        for (int i = 0; i < names.size(); i++) {
+            System.out.println((i + 1) + ". " + names.get(i));
+        }
+        System.out.print("Your choice (comma-separated): ");
+    }
+
+    private void renderPlayersInBidEvent(PlayersInBidEvent event) {
+        System.out.println("Which player numbers played this bid?");
+        System.out.println("Players in this game:");
+        List<String> names = event.playerNames();
+        for (int i = 0; i < names.size(); i++) {
+            System.out.println((i + 1) + ". " + names.get(i));
+        }
+        System.out.print("Your choice (comma-separated): ");
+    }
+
+    private void renderScoreBoardEvent(ScoreBoardEvent event) {
+        System.out.println("============== SCORES ==============");
+        List<String> names = event.playerNames();
+        List<Integer> scores = event.scores();
+
+        for (int i = 0; i < names.size(); i++) {
+            System.out.println(names.get(i) + ": " + scores.get(i) + " points");
+        }
+        System.out.println("====================================");
+        System.out.println("Do you want to:");
+        System.out.println("(1) Simulate another round\n(2) Go back to the main menu");
+        System.out.print("Your choice: ");
+    }
+
+    private void renderTrickWonEvent() {
+        System.out.println("How many tricks did the player(s) win?");
+        System.out.print("Your choice: ");
+    }
+
+    private void renderWelcomeCountEvent() {
+        System.out.println("===== WELCOME TO THE COUNT ====");
+        System.out.println(" WHICH ROUND WAS PLAYED?");
+        System.out.println("Proposal:");
+        System.out.println("(1) Alone    (2) With Partner");
+        System.out.println("Abondance:");
+        System.out.println("(3) 9   (4) 10   (5) 11   (6) 12");
+        System.out.println("Miserie:");
+        System.out.println("(7) Normal       (8) Open");
+        System.out.println("Solo:");
+        System.out.println("(9) Normal       (10) Solo Slim");
+        System.out.print("Your choice: ");
+    }
 }
