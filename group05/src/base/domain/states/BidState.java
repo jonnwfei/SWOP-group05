@@ -40,7 +40,9 @@ public class BidState extends State {
         super(game);
         this.bids = new ArrayList<>();
         this.currentHighestBidType = null; // Starts as null!
-        this.currentPlayer = game.getCurrentPlayer();
+        Player dealerPlayer = game.getDealerPlayer();
+        int dealerIdx = game.getPlayers().indexOf(dealerPlayer);
+        this.currentPlayer = game.getPlayers().get((dealerIdx + 1)% game.getPlayers().size());
         this.trumpSuit = null;
 
         dealCards();
@@ -254,14 +256,14 @@ public class BidState extends State {
     private void setRoundReadyForPlayState() {
         WhistGame game = this.getGame();
         List<Player> players = game.getPlayers();
-        Player newCurrentPlayer = game.getLastRoundWinner();
-        if (newCurrentPlayer == null) {
-            newCurrentPlayer = players.get((players.indexOf(game.getDealerPlayer()) + 1) % 4);
+
+        Player firstPlayer = players.get((players.indexOf(game.getDealerPlayer()) + 1) % 4);
+
+        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE ||
+                this.currentHighestBidType.getCategory() == BidCategory.SOLO) {
+            firstPlayer = findBid(currentHighestBidType).getPlayer();
         }
-        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE || currentHighestBidType.getCategory() == BidCategory.SOLO) {
-            newCurrentPlayer = bids.stream().filter( bid -> bid.getType() == currentHighestBidType).findFirst().get().getPlayer();
-        }
-        game.getCurrentRound().setCurrentPlayer(newCurrentPlayer);
+        game.getCurrentRound().setCurrentPlayer(firstPlayer);
         game.getCurrentRound().setHighestBid(findBid(currentHighestBidType));
         game.getCurrentRound().setBids(this.bids);
         game.getCurrentRound().setTrumpSuit(trumpSuit);

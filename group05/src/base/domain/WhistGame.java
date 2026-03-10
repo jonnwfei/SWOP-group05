@@ -1,6 +1,7 @@
 package base.domain;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import base.domain.deck.Deck;
 import base.domain.player.*;
@@ -18,6 +19,7 @@ public class WhistGame {
     private List<Player> players;
     private List<Round> rounds;
     private Player currentPlayer;
+    private Player dealerPlayer;
     private Deck deck;
 
     public WhistGame(){
@@ -25,6 +27,7 @@ public class WhistGame {
         this.players = new ArrayList<>();
         this.rounds = new ArrayList<>();
         this.currentPlayer = null;
+        this.dealerPlayer = null;
     }
 
     /**
@@ -60,6 +63,15 @@ public class WhistGame {
      */
     public Player getCurrentPlayer(){
         return this.currentPlayer;
+    }
+
+    /**
+     * Gets the dealer of this Game
+     *
+     * @return dealerPlayer of this Game
+     */
+    public Player getDealerPlayer(){
+        return this.dealerPlayer;
     }
 
     /**
@@ -151,6 +163,38 @@ public class WhistGame {
         this.currentPlayer = player;
     }
 
+    /**
+     * Helper function that sets the dealerPlayer randomly, only called upon first Round
+     * @throws IllegalArgumentException when trying to set a randomDealer when no player list has been initialized
+     */
+    public void setRandomDealer() {
+        if (players.isEmpty()) throw new IllegalArgumentException("Cannot set randomDealer, Players list is not initialized");
+        int randIdx = new Random().nextInt(players.size());
+        this.dealerPlayer = players.get(randIdx);
+    }
+
+    /**
+     * Helper function that advances the dealer by one player
+     * @throws IllegalArgumentException when trying to advance the dealer when no player list has been initialized or
+     * dealer is null
+     */
+    public void advanceDealer() {
+        if (players.isEmpty() || dealerPlayer == null) throw new IllegalStateException("Cannot advanceDealer, " +
+                "Players list is not initialized or dealer is null");
+        int currentIdx =  players.indexOf(dealerPlayer);
+        this.dealerPlayer = players.get((currentIdx + 1)% players.size());
+    }
+    /**
+     * Returns a formatted string of the players and their current score
+     * */
+    public String printScore(){
+        String result = "============== SCORES ==============\n";
+        for (Player p : players) {
+            result += p.getName() + ": " + p.getScore() + " points\n";
+        }
+        result += "====================================";
+        return result;
+    }
 
 
 }

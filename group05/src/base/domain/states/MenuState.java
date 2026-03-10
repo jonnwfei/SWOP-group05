@@ -144,9 +144,7 @@ public class MenuState extends State {
     public State nextState(){
        if (keuze == 1){
            getGame().setDeck(new Deck());
-           getGame().setCurrentPlayer(
-                   getGame().getPlayers().get(new Random().nextInt(getGame().getPlayers().size()))
-           );
+           getGame().setRandomDealer();
            return new BidState(getGame());
        }
        else{
