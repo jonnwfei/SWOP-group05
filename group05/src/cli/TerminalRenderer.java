@@ -5,6 +5,7 @@ import base.domain.events.bidevents.*;
 import base.domain.events.countEvents.*;
 import base.domain.events.menuEvents.*;
 import base.domain.events.playevents.*;
+import base.domain.trick.Turn;
 
 import java.util.List;
 
@@ -30,6 +31,7 @@ public class TerminalRenderer {
             case PlayerNameEvent e -> renderPlayerNameEvent(e);
             case PrintNamesEvent e -> renderPrintNamesEvent(e);
             case WelcomeMenuEvent e -> renderWelcomeMenuEvent();
+            case LastTrickEvent e -> renderLastTrickEvent(e);
 
             default -> System.out.println("[WARNING] Unknown event type!");  }
     }
@@ -207,5 +209,13 @@ public class TerminalRenderer {
         System.out.println("(1) Play a game?");
         System.out.println("(2) Count the scores for a game?");
         System.out.print("Your choice: ");
+    }
+
+    private void renderLastTrickEvent(LastTrickEvent event) {
+        System.out.println("-------------- LAST PLAYED TRICK ---------------");
+        for(Turn turn : event.trick().getTurns()) {
+            System.out.println("- " + turn.toString());
+        }
+        System.out.println("------------------------------------------------");
     }
 }
