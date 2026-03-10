@@ -37,6 +37,12 @@ public class WhistGame {
         return new ArrayList<>(this.players);
     }
 
+    public List<String> getPlayerNames() {
+        return players.stream()
+                .map(Player::getName)
+                .toList();
+    }
+
     /**
      * Gives the deck of the game
      * @return the deck
