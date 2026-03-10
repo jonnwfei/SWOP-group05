@@ -5,9 +5,18 @@ import base.domain.player.Player;
 
 import java.util.List;
 
-public record PrintNamesEvent(List<String> playerNames) implements GameEvent {
-    // Defensive copy to prevent external modification
-    public PrintNamesEvent {
-        playerNames = List.copyOf(playerNames);
+public record PrintNamesEvent(List<String> playerNames) implements GameEvent<String> {
+    @Override
+    public Class<String> getInputType() {
+        return String.class;
+    }
+
+    @Override
+    public boolean isValid(String input) {
+        return true;
+    }
+    @Override
+    public boolean needsInput(){
+        return false;
     }
 }

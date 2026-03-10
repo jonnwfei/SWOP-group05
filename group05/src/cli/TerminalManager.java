@@ -27,7 +27,10 @@ public class TerminalManager {
      */
     public Response handle(GameEvent event) {
         renderer.render(event);
-        return getResponse();
+        if (event.needsInput()){
+            return getResponse();
+        }
+        return new Response(false, null);
     }
 
     /**

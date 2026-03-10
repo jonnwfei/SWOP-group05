@@ -18,9 +18,18 @@ public record PickCardEvent(
         int trickNumber,
         String currentPlayerName,
         List<String> currentPlayerHand // Formatted strings of the cards they can play
-) implements GameEvent {
-    public PickCardEvent {
-        cardsOnTable = List.copyOf(cardsOnTable);
-        currentPlayerHand = List.copyOf(currentPlayerHand);
+) implements GameEvent<Integer> {
+    @Override
+    public Class<Integer> getInputType() {
+        return Integer.class;
+    }
+
+    @Override
+    public boolean isValid(Integer input) {
+        return input >= 1 && input <= currentPlayerHand.size();
+    }
+    @Override
+    public boolean needsInput(){
+        return true;
     }
 }
