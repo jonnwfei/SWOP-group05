@@ -2,6 +2,9 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.actions.GameAction;
+import base.domain.actions.NumberAction;
+import base.domain.actions.TextAction;
+import base.domain.events.ErrorEvent;
 import base.domain.events.menuEvents.*;
 import base.domain.events.menuEvents.BotStrategyEvent;
 import base.domain.player.HighBotStrategy;
@@ -11,6 +14,7 @@ import base.domain.player.Player;
 import base.domain.events.GameEvent;
 import base.domain.deck.Deck;
 
+import java.util.List;
 import java.util.Random;
 
 public class MenuState extends State {
@@ -51,16 +55,16 @@ public class MenuState extends State {
                     return showWelcome();
 
                 case CHOOSE_MODE:
-                    return handleMainChoice(input);
+                    return handleMainChoice(action);
 
                 case CHOOSE_BOTS:
-                    return handleBotAmount(input);
+                    return handleBotAmount(action);
 
                 case ENTER_HUMANS:
-                    return handleHumanInput(input);
+                    return handleHumanInput(action);
 
                 case ENTER_BOTS:
-                    return handleBotInput(input);
+                    return handleBotInput(action);
 
                 default:
                     throw new IllegalStateException("Unexpected state: " + state);
@@ -78,8 +82,14 @@ public class MenuState extends State {
         return new WelcomeMenuEvent();
     }
 
-    private GameEvent handleMainChoice(String input) {
-        keuze = Integer.parseInt(input);
+    private GameEvent handleMainChoice(GameAction action) {
+        if (!(action instanceof NumberAction(int value))) {
+            return new ErrorEvent(0, 1); // Min 0 tricks, Max 13 tricks
+        }
+        keuze = value;
+        if (keuze < 0 || keuze > 1) {
+            return new ErrorEvent(0, 1);
+        }
 
 
         if (keuze == 1) {
@@ -92,8 +102,13 @@ public class MenuState extends State {
         }
     }
 
-    private GameEvent handleBotAmount(String input) {
-        int bots = Integer.parseInt(input);
+    private GameEvent handleBotAmount(GameAction action) {
+        if (!(action instanceof NumberAction(int bots))) {
+            return new ErrorEvent(0, 4);
+        }
+        if (bots < 0 || bots > 4) {
+            return new ErrorEvent(0, 4);
+        }
 
 
         totalBots = bots;
@@ -101,9 +116,12 @@ public class MenuState extends State {
         return new PlayerNameEvent(1);
     }
 
-    private GameEvent handleHumanInput(String input) {
+    private GameEvent handleHumanInput(GameAction action) {
+        if (!(action instanceof TextAction(String name))) {
+            return new PrintNamesEvent(getPlayerNames()); //should return some error event
+        }
 
-        getGame().addPlayer(new Player(new HumanStrategy(), input));
+        getGame().addPlayer(new Player(new HumanStrategy(), name));
         humanCount++;
 
         if (humanCount < (4 - totalBots)) {
@@ -115,15 +133,20 @@ public class MenuState extends State {
             return new BotStrategyEvent(1);
         }
 
-        return new PrintNamesEvent(getGame().getPlayers());
+
+        return new PrintNamesEvent(getPlayerNames());
     }
 
-    private GameEvent handleBotInput(String input) {
-        if (!input.equals("1") && !input.equals("2")) {
-            return new QuestionEvent("Invalid strategy. Choose (1) High Bot or (2) Low Bot:");
+    private GameEvent handleBotInput(GameAction action) {
+
+        if (!(action instanceof NumberAction(int strategy))) {
+            return new ErrorEvent(1, 2); // Min 0 tricks, Max 13 tricks
+        }
+        if (strategy < 1 || strategy > 2) {
+            return new ErrorEvent(1, 2);
         }
 
-        Player bot = input.equals("1")
+        Player bot = strategy == 1
                 ? new Player(new HighBotStrategy(), "Bot" + (botCount + 1))
                 : new Player(new LowBotStrategy(), "Bot" + (botCount + 1));
 
@@ -134,7 +157,11 @@ public class MenuState extends State {
             return new BotStrategyEvent(1);
         }
 
-        return new PrintNamesEvent(getGame().getPlayers());
+        return new PrintNamesEvent(getPlayerNames());
+    }
+
+    private List<String> getPlayerNames() {
+        return getGame().getPlayers().stream().map(Player::getName).toList();
     }
 
 
