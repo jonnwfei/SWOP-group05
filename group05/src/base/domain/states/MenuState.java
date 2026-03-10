@@ -116,7 +116,7 @@ public class MenuState extends State {
             return new BotStrategyEvent(1);
         }
 
-        return new PrintNamesEvent(getGame().getPlayers());
+        return new PrintNamesEvent(getGame().getPlayerNames());
     }
 
     private GameEvent handleBotInput(String input) {
@@ -135,7 +135,7 @@ public class MenuState extends State {
             return new BotStrategyEvent(1);
         }
 
-        return new PrintNamesEvent(getGame().getPlayers());
+        return new PrintNamesEvent(getGame().getPlayerNames());
     }
 
 

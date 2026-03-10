@@ -93,7 +93,7 @@ public class CountState extends State {
         };
         if (this.trumpSuit == null) return new QuestionEvent("Invalid suit (1-4):");
         currentPhase = CountPhase.SELECT_PLAYERS;
-        return new PlayersInBidEvent(getPlayerNames());
+        return new PlayersInBidEvent(getGame().getPlayerNames());
     }
     /**
      * Handles the players that played in the bid, asks depending on the bid the amount of tricks of which players won
@@ -105,7 +105,7 @@ public class CountState extends State {
         currentPhase = CountPhase.CALCULATE;
         //going to next bid confirmed
         if (numberBid == 7 || numberBid == 8) {
-            return new MiserieWinnerEvent(getPlayerNames());
+            return new MiserieWinnerEvent(getGame().getPlayerNames());
 
         }
         return new TrickWonEvent();
@@ -148,14 +148,9 @@ public class CountState extends State {
         List<Integer> playerScores = getGame().getPlayers().stream()
                 .map(Player::getScore)
                 .toList();
-        return new ScoreBoardEvent(getPlayerNames(), playerScores);
+        return new ScoreBoardEvent(getGame().getPlayerNames(), playerScores);
     }
     // --- UTILS ---
-    private List<String> getPlayerNames() {
-        return getGame().getPlayers().stream()
-                .map(Player::getName)
-                .toList();
-    }
 
     /**
      * Splits up the input to get the different numbers that were put in
