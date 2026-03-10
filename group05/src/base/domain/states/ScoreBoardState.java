@@ -1,6 +1,7 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.bid.Bid;
 import cli.elements.GameEvent;
 import cli.elements.QuestionEvent;
 import cli.elements.TextEvent;
@@ -12,20 +13,24 @@ import cli.elements.TextEvent;
  * @since 02/03/2026
  */
 public class ScoreBoardState extends State {
+    public enum RestartTarget {
+        BID_STATE, COUNT_STATE
+    }
+
     private boolean userWantsToQuit = false;
     private boolean userWantsToRestart = false;
-    private final State targetRestartState; // Can hold either new BidState or CountState
+    private final RestartTarget targetRestartTarget; // Can hold either new BidState or CountState
 
     /**
      * Constructs a ScoreBordState for prompting the player whether to restart or quit to the menu. (Can be used for either
      * PlayState and CountState, avoiding double code)
      * @param game that will hold this state
-     * @param targetRestartState can either be new CountState or new BidState
+     * @param targetRestartTarget can either be new CountState or new BidState
      */
-    public ScoreBoardState(WhistGame game, State targetRestartState) {
+    public ScoreBoardState(WhistGame game, RestartTarget targetRestartTarget) {
         super(game);
         game.getCurrentRound().calculateScores(); // TODO: fix getCurrentRound to return null if empty round, cuz curently it throws
-        this.targetRestartState = targetRestartState;
+        this.targetRestartTarget = targetRestartTarget;
     }
 
     /**
@@ -67,8 +72,14 @@ public class ScoreBoardState extends State {
             return new MenuState(getGame());
         } else if (userWantsToRestart) {
             // TODO: needs to setup game, as to set the nextDealer as the person next to the dealer/ this is done by bidState
+            getGame().advanceDealer();
 
-            return targetRestartState;
+            if (targetRestartTarget == RestartTarget.BID_STATE) {
+                return new BidState(getGame());
+            }
+            else {
+                return new CountState(getGame());
+            }
         } else {
             return this;
         }
