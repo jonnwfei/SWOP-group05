@@ -32,7 +32,7 @@ public enum BidType {
     SOLO_PROPOSAL(5, 6, BidCategory.PROPOSAL, false) {
         @Override
         public Bid instantiate(Player player, Suit TrumpSuit) {
-            return new ProposalBid(player);
+            return new SoloProposalBid(player);
 
         }
     },

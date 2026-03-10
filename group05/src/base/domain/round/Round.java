@@ -40,7 +40,7 @@ public class Round {
             throw new IllegalArgumentException("Players list must contain exactly 4 players.");
         }
         if (startingPlayer == null || !players.contains(startingPlayer)) {
-            throw new IllegalArgumentException("Dealer must not be null and must be in the players list.");
+            throw new IllegalArgumentException("Starting Player must not be null and must be in the players list.");
         }
         this.players = new ArrayList<>(players);
         this.currentPlayer = startingPlayer;
