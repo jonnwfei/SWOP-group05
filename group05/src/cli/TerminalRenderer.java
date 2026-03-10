@@ -3,6 +3,7 @@ package cli;
 import base.domain.events.*;
 import base.domain.events.bidevents.*;
 import base.domain.events.countEvents.*;
+import base.domain.events.menuEvents.*;
 import base.domain.events.playevents.*;
 
 import java.util.List;
@@ -24,6 +25,11 @@ public class TerminalRenderer {
             case ScoreBoardEvent e -> renderScoreBoardEvent(e);
             case TrickWonEvent e -> renderTrickWonEvent();
             case WelcomeCountEvent e -> renderWelcomeCountEvent();
+            case AmountOfBotsEvent e -> renderAmountOfBotsEvent();
+            case BotStrategyEvent e -> renderBotStrategyEvent(e);
+            case PlayerNameEvent e -> renderPlayerNameEvent(e);
+            case PrintNamesEvent e -> renderPrintNamesEvent(e);
+            case WelcomeMenuEvent e -> renderWelcomeMenuEvent();
 
             default -> System.out.println("[WARNING] Unknown event type!");  }
     }
@@ -166,6 +172,40 @@ public class TerminalRenderer {
         System.out.println("(7) Normal       (8) Open");
         System.out.println("Solo:");
         System.out.println("(9) Normal       (10) Solo Slim");
+        System.out.print("Your choice: ");
+    }
+
+    private void renderAmountOfBotsEvent() {
+        System.out.println("How many bots will be playing? (0-3):");
+        System.out.print("Your choice: ");
+    }
+
+    private void renderBotStrategyEvent(BotStrategyEvent event) {
+        System.out.println("Which strategy should bot " + event.botIndex() + " use?");
+        System.out.println("(1) High Bot\n(2) Low Bot");
+        System.out.print("Your choice: ");
+    }
+
+    private void renderPlayerNameEvent(PlayerNameEvent event) {
+        // Using print instead of println so they type on the same line
+        System.out.print("Give the name of player " + event.playerIndex() + ": ");
+    }
+
+    private void renderPrintNamesEvent(PrintNamesEvent event) {
+        System.out.println("Players in this game:");
+        List<String> names = event.playerNames();
+        for (int i = 0; i < names.size(); i++) {
+            System.out.println((i + 1) + ". " + names.get(i));
+        }
+        // Note: I didn't add "Your choice:" here because usually, printing
+        // names is just informational. If this event requires input, add it!
+    }
+
+    private void renderWelcomeMenuEvent() {
+        System.out.println("======== WELCOME TO WHIST =====");
+        System.out.println("Do you want to:");
+        System.out.println("(1) Play a game?");
+        System.out.println("(2) Count the scores for a game?");
         System.out.print("Your choice: ");
     }
 }

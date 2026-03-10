@@ -1,11 +1,8 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.events.menuEvents.PrintNamesEvent;
-import base.domain.events.menuEvents.AmountOfBotsEvent;
-import base.domain.events.menuEvents.BotStategyEvent;
-import base.domain.events.menuEvents.PlayerNameEvent;
-import base.domain.events.menuEvents.WelcomeMenuEvent;
+import base.domain.events.menuEvents.*;
+import base.domain.events.menuEvents.BotStrategyEvent;
 import base.domain.player.HighBotStrategy;
 import base.domain.player.HumanStrategy;
 import base.domain.player.LowBotStrategy;
@@ -116,7 +113,7 @@ public class MenuState extends State {
 
         if (totalBots > 0) {
             state = SetupState.ENTER_BOTS;
-            return new BotStategyEvent(1);
+            return new BotStrategyEvent(1);
         }
 
         return new PrintNamesEvent(getGame().getPlayers());
@@ -135,7 +132,7 @@ public class MenuState extends State {
         botCount++;
 
         if (botCount < totalBots) {
-            return new BotStategyEvent(1);
+            return new BotStrategyEvent(1);
         }
 
         return new PrintNamesEvent(getGame().getPlayers());
