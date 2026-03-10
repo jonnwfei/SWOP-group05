@@ -1,5 +1,8 @@
 package cli;
 
+import base.domain.actions.ContinueAction;
+import base.domain.actions.NumberAction;
+import base.domain.actions.TextAction;
 import base.domain.events.bidevents.BidTurnEvent;
 import base.domain.events.GameEvent;
 import cli.elements.Response;
@@ -8,6 +11,7 @@ import java.util.Scanner;
 public class TerminalManager {
 
     private final Scanner scanner;
+    private final TerminalRenderer renderer;
 
     /**
      *
@@ -15,34 +19,34 @@ public class TerminalManager {
      */
     public TerminalManager() {
         this.scanner = new Scanner(System.in);
+        this.renderer = new TerminalRenderer();
     }
 
     /**
      * Method is now PUBLIC so App can actually run IO tasks.
      */
     public Response handle(GameEvent event) {
-        if (event instanceof BidTurnEvent bidEvent) {
-            renderBidTurnEvent(bidEvent);
-            return getResponse();
-        }
-        // ... handle other events
-        return null;
+        renderer.render(event);
+        return getResponse();
     }
 
-        private void renderBidTurnEvent(BidTurnEvent event) {
-            System.out.println("\n=== BIDDING TURN: " + event.currentPlayer().getName().toUpperCase() + " ===");
-            System.out.println("Dealt Trump: " + event.dealtTrump().toString());
-            if(event.currentHighestBidType() == null) {
-                System.out.println("You are the first to bid!");
-            }
-            System.out.println("Current Highest: " + event.currentHighestBidType());
+    /**
+     * Reads the terminal and translates text into pure Domain data types.
+     */
+    private Response getResponse() {
+        String input = scanner.nextLine().trim();
 
-            System.out.print("Your choice: ");
+        if (input.isEmpty()) {
+            return new Response(true, new ContinueAction());
         }
 
-        private Response getResponse() {
-            Scanner scanner = new Scanner(System.in);
-            String input = scanner.nextLine();
-            return new Response(input, true);
+        try {
+            // If the user typed a number, wrap it in a NumberAction
+            int number = Integer.parseInt(input);
+            return new Response(true, new NumberAction(number));
+        } catch (NumberFormatException e) {
+            // If they typed letters (like a name), wrap it in a TextAction
+            return new Response(true, new TextAction(input));
         }
+    }
 }

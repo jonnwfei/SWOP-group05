@@ -1,6 +1,7 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.actions.GameAction;
 import base.domain.events.menuEvents.*;
 import base.domain.events.menuEvents.BotStrategyEvent;
 import base.domain.player.HighBotStrategy;
@@ -8,7 +9,6 @@ import base.domain.player.HumanStrategy;
 import base.domain.player.LowBotStrategy;
 import base.domain.player.Player;
 import base.domain.events.GameEvent;
-import base.domain.events.QuestionEvent;
 import base.domain.deck.Deck;
 
 import java.util.Random;
@@ -38,14 +38,13 @@ public class MenuState extends State {
     private SetupState state = SetupState.WELCOME;
 
     /**
-     *Executes the menu state
+     * Executes the menu state
      *
-     * @param  input the users response to the previous QuestionEvent
-     * @return the next QuestionEvent or TextEvent
+     * @param action@return the next QuestionEvent or TextEvent
      * @throws IllegalStateException getting in an unknown state
      */
     @Override
-    public GameEvent executeState(String input) {
+    public GameEvent executeState(GameAction action) {
         try {
             switch (state) {
                 case WELCOME:

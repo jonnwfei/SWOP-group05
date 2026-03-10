@@ -1,9 +1,8 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.actions.GameAction;
 import base.domain.events.GameEvent;
-import base.domain.events.QuestionEvent;
-import base.domain.events.TextEvent;
 
 /**
  * EndRoundState, mini menu state where the player can restart Round (12a)
@@ -30,11 +29,10 @@ public class ScoreBoardState extends State {
 
     /**
      *
-     * @param input the user's response on the previous QuestionEvent
-     * @return GameEvent either TextEvent which calls nextState, or QuestionEvent which returns the currentState
+     * @param action@return GameEvent either TextEvent which calls nextState, or QuestionEvent which returns the currentState
      */
     @Override
-    public GameEvent executeState(String input) {
+    public GameEvent executeState(GameAction action) {
         if (input != null && !input.isEmpty()) {
             if (input.equals("1")) {
                 userWantsToRestart = true;

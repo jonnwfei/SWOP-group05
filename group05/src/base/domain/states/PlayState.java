@@ -2,10 +2,11 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 
+import base.domain.actions.GameAction;
 import base.domain.card.Card;
 import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
-import base.domain.events.LastTrickEvent;
+import base.domain.events.playevents.LastTrickEvent;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
@@ -46,11 +47,10 @@ public class PlayState extends State {
      * Handles the execution of playState, orchestrating the logic flow of a Round and its Tricks, in the given game
      * that holds this state.
      *
-     * @param input the user's response to the previous QuestionEvent
-     * @return the next QuestionEvent or TextEvent
+     * @param action@return the next QuestionEvent or TextEvent
      */
     @Override
-    public GameEvent executeState(String input) {
+    public GameEvent executeState(GameAction action) {
         Player currentPlayer = currentRound.getCurrentPlayer();
         StringBuilder outputLog = new StringBuilder();
 

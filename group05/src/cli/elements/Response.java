@@ -1,19 +1,21 @@
 package cli.elements;
 
+import base.domain.actions.GameAction;
+
 public class Response{
     private final Boolean keepRunning;
-    private final String content;
+    private final GameAction action;
 
 
-    public Response(String s, Boolean b){
-        this.keepRunning = b;
-        this.content = s;
+    public Response(Boolean keepRunning, GameAction action){
+        this.keepRunning = keepRunning;
+        this.action = action;
     }
 
     public Boolean getContinue(){
         return this.keepRunning;
     }
-    public String getContent(){
-        return this.content;
+    public GameAction getAction(){
+        return this.action;
     }
 }
