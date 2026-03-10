@@ -126,24 +126,7 @@ public class WhistGame {
     public void resetRounds(){
         this.rounds = new ArrayList<>();
     }
-    /**
-     * Returns a formatted string of the players in this game as follows:
-     * <pre>
-     * Players in this game:
-     * 1. player1
-     * 2. player2
-     * etc.
-     * </pre>
-     *
-     * @return the formatted player names
-     */
-    public String printNames() {
-        String result = "Players in this game:\n";
-        for (int i = 0; i < players.size(); i++) {
-            result += (i + 1) + ". " + players.get(i).getName() + "\n";
-        }
-        return result;
-    }
+
 
     /**
      * Sets the current player.
@@ -167,17 +150,7 @@ public class WhistGame {
 
         this.currentPlayer = player;
     }
-    /**
-     * Returns a formatted string of the players and their current score
-     * */
-    public String printScore(){
-        String result = "============== SCORES ==============\n";
-        for (Player p : players) {
-            result += p.getName() + ": " + p.getScore() + " points\n";
-        }
-        result += "====================================";
-        return result;
-    }
+
 
 
 }
