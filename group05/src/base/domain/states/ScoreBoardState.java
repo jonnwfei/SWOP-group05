@@ -29,7 +29,6 @@ public class ScoreBoardState extends State {
      */
     public ScoreBoardState(WhistGame game, RestartTarget targetRestartTarget) {
         super(game);
-        game.getCurrentRound().calculateScores(); // TODO: fix getCurrentRound to return null if empty round, cuz curently it throws
         this.targetRestartTarget = targetRestartTarget;
     }
 
