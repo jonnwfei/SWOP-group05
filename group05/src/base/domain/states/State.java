@@ -6,6 +6,8 @@ import base.domain.events.GameEvent;
 
 /**
  * Common interface for all states.
+ * @since 01/03
+ * @author Stan Kestens
  */
 public abstract class State {
     private WhistGame game;
