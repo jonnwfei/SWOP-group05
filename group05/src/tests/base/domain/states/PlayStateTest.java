@@ -1,128 +1,268 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.actions.ContinueAction;
+import base.domain.actions.NumberAction;
+import base.domain.actions.TextAction;
+import base.domain.bid.Bid;
+import base.domain.bid.BidType;
+import base.domain.card.Card;
+import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.player.HighBotStrategy;
+import base.domain.events.ErrorEvent;
+import base.domain.events.GameEvent;
+import base.domain.events.playevents.*;
 import base.domain.player.HumanStrategy;
-import base.domain.player.LowBotStrategy;
 import base.domain.player.Player;
 import base.domain.round.Round;
+import base.domain.states.PlayState;
+import base.domain.states.ScoreBoardState;
+import base.domain.states.State;
 import base.domain.trick.Trick;
-import cli.elements.GameEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-//
+
 class PlayStateTest {
-    GameEvent gameEvent;
-    PlayState playState;
-    WhistGame game;
-    Round currentRound;
-    Trick currentTrick;
-    List<Player> players = List.of(
-            new Player(new HumanStrategy(), "P1"),
-            new Player(new LowBotStrategy(), "L-BOT1"),
-            new Player(new LowBotStrategy(), "L-BOT2"),
-            new Player(new HighBotStrategy(), "H-BOT3")
-    );
+
+    private FakeWhistGame fakeGame;
+    private FakeRound fakeRound;
+    private PlayState playState;
+    private FakePlayer p1, p2, p3, p4;
 
     @BeforeEach
     void setUp() {
-        game = new WhistGame();
-        for  (Player player : players) {
-            game.addPlayer(player);
+        p1 = new FakePlayer("Alice", true);
+        p2 = new FakePlayer("Bob", true);
+        p3 = new FakePlayer("Charlie", true);
+        p4 = new FakePlayer("Diana", true);
+        List<Player> players = Arrays.asList(p1, p2, p3, p4);
+
+        fakeRound = new FakeRound(players, p1);
+        fakeRound.setTrumpSuit(Suit.SPADES);
+
+        fakeGame = new FakeWhistGame(players, fakeRound);
+        playState = new PlayState(fakeGame);
+    }
+
+    @Test
+    void testConstructor_ThrowsExceptionWhenNoRoundExists() {
+        FakeWhistGame emptyGame = new FakeWhistGame(new ArrayList<>(), null);
+        assertThrows(IllegalStateException.class, () -> new PlayState(emptyGame),
+                "PlayState should instantly crash if there is no active round.");
+    }
+
+    @Test
+    void testHumanTurn_FullCycle_EndOfTurn() {
+        // Use testHand directly to bypass Player encapsulation
+        p1.testHand.add(new Card(Suit.CLUBS, Rank.ACE));
+
+        GameEvent<?> promptEvent = playState.executeState(new ContinueAction());
+        assertInstanceOf(InitiateTurnEvent.class, promptEvent);
+
+        GameEvent<?> revealEvent = playState.executeState(new ContinueAction());
+        assertInstanceOf(PickCardEvent.class, revealEvent);
+
+        GameEvent<?> playEvent = playState.executeState(new NumberAction(1));
+
+        assertInstanceOf(EndOfTurnEvent.class, playEvent);
+        assertEquals(0, p1.testHand.size(), "The card should be physically removed from Alice's hand");
+    }
+
+    @Test
+    void testBotTurn_PlaysAutomatically_EndOfTurn() {
+        p1.requiresConfirmation = false;
+        p1.testHand.add(new Card(Suit.HEARTS, Rank.TWO));
+
+        GameEvent<?> event = playState.executeState(new ContinueAction());
+
+        assertInstanceOf(EndOfTurnEvent.class, event);
+        assertEquals(0, p1.testHand.size(), "Bot should automatically play and remove the card");
+    }
+
+    @Test
+    void testTrickCompletion_ReturnsEndOfTrickEvent() {
+        p1.requiresConfirmation = false; p1.testHand.add(new Card(Suit.CLUBS, Rank.TWO));
+        p2.requiresConfirmation = false; p2.testHand.add(new Card(Suit.CLUBS, Rank.THREE));
+        p3.requiresConfirmation = false; p3.testHand.add(new Card(Suit.CLUBS, Rank.FOUR));
+        p4.requiresConfirmation = true;  p4.testHand.add(new Card(Suit.CLUBS, Rank.FIVE));
+
+        playState.executeState(new ContinueAction()); // P1 plays
+        playState.executeState(new ContinueAction()); // P2 plays
+        playState.executeState(new ContinueAction()); // P3 plays
+
+        playState.executeState(new ContinueAction()); // P4 Prompt
+        playState.executeState(new ContinueAction()); // P4 Reveal
+        GameEvent<?> event = playState.executeState(new NumberAction(1)); // P4 Plays
+
+        assertInstanceOf(EndOfTrickEvent.class, event);
+        assertEquals(1, fakeRound.getTricks().size(), "The round should have saved the completed trick");
+    }
+
+    @Test
+    void testRoundCompletion_ReturnsEndOfRoundEvent_AndTransitions() {
+        for (int i = 0; i < 12; i++) {
+            fakeRound.fakeTricks.add(new Trick(p1, Suit.SPADES));
         }
 
-        currentRound = new Round(players, players.getFirst(), 1); // NOT added yet to game... + getFirst should be P1
-        currentTrick = null; // No trick played just yet when first instantiating
+        p1.requiresConfirmation = false; p1.testHand.add(new Card(Suit.HEARTS, Rank.TWO));
+        p2.requiresConfirmation = false; p2.testHand.add(new Card(Suit.HEARTS, Rank.THREE));
+        p3.requiresConfirmation = false; p3.testHand.add(new Card(Suit.HEARTS, Rank.FOUR));
+        p4.requiresConfirmation = true;  p4.testHand.add(new Card(Suit.HEARTS, Rank.FIVE));
 
-        assertThrows(IllegalStateException.class, () -> new PlayState(game)); // No round added to game
-        game.addRound(currentRound); // add the round
-        playState = new PlayState(game); // Instantiate playState
+        playState.executeState(new ContinueAction());
+        playState.executeState(new ContinueAction());
+        playState.executeState(new ContinueAction());
+        playState.executeState(new ContinueAction());
+        playState.executeState(new ContinueAction());
 
+        GameEvent<?> event = playState.executeState(new NumberAction(1));
+
+        assertInstanceOf(EndOfRoundEvent.class, event);
+        assertInstanceOf(ScoreBoardState.class, playState.nextState());
     }
 
     @Test
-    void constructorTest() {
-        assertEquals(game, playState.getGame()); // After a round has been added to a game
+    void testInvalidInput_ReturnsErrorEvent() {
+        p1.testHand.add(new Card(Suit.CLUBS, Rank.ACE));
 
-        assertNull(playState.getGame().getCurrentRound().getLastPlayedTrick());
-        assertEquals(currentRound, playState.getGame().getCurrentRound());
-        assertEquals(currentTrick, playState.getGame().getCurrentRound().getLastPlayedTrick());
+        playState.executeState(new ContinueAction());
+        playState.executeState(new ContinueAction());
 
-        assertEquals(players, playState.getGame().getPlayers());
-
-        assertEquals(1, playState.getGame().getRounds().size());
-        assertNull(playState.getGame().getCurrentRound().getTrumpSuit());
+        assertInstanceOf(ErrorEvent.class, playState.executeState(new TextAction("Cheat")));
+        assertInstanceOf(ErrorEvent.class, playState.executeState(new NumberAction(2)));
+        assertInstanceOf(ErrorEvent.class, playState.executeState(new NumberAction(-1)));
     }
 
-    /**
-     * Currently not in works yet, this could change after refactoring of using new GameEvents
-     */
     @Test
-    void executeState() {
-//        Player currentPlayer = playState.getGame().getCurrentRound().getCurrentPlayer();
-//
-//        // FIRST INITIAL PROMPT
-//        gameEvent = playState.executeState("firstTurn, dus dit maakt nie uit");
-//        assertTrue(gameEvent.isInputRequired());
-//        String expectedOutput = "\n============== Pass the terminal to " + currentPlayer.getName() + " ==============\n" + "Press ANY BUTTON to reveal your hand...";
-//        assertEquals(expectedOutput, gameEvent.getContent());
-//
-//        // SECOND PROMPT, showHand
-//        gameEvent = playState.executeState("dit maakt ook nie uit");
-//        assertTrue(gameEvent.isInputRequired());
-//
-//        String expectedOutput2 = "\nTrick: " + (currentRound.getTricks().size() + 1) +
-//                " | " + currentPlayer.getName() + "'s turn.\n" + "(0) to show last played Trick.\n" +
-//                "Your hand: \n" + currentPlayer.getFormattedHand() + "\nChoose Card via index:";
-//        assertTrue(gameEvent.getContent().contains(expectedOutput2));
-//
-//        // THIRD PROMPT aka first TURN → HUMAN P1 TURN
-//        gameEvent = playState.executeState("abcd"); // FOR ERROR CATCH
-//        assertTrue(gameEvent.isInputRequired());
-//        assertEquals("Invalid hand number\nChoose (0) to see the last trick or between 1 and " + currentPlayer
-//                .getHand().size() + ":", gameEvent.getContent()); // THIS looks at the catch
-//        gameEvent = playState.executeState("3000"); // FOR invalid input CATCH
-//        assertTrue(gameEvent.isInputRequired());
-//        assertEquals("Invalid hand number\nChoose (0) to see the last trick or between 1 and " + currentPlayer
-//                .getHand().size() + ": ", gameEvent.getContent()); // THIS looks at the catch
-//
-//        //
-//        gameEvent = playState.executeState("0");
-//        assertTrue(gameEvent.isInputRequired());
-//        assertEquals("No last played trick has been found.\n" + "\nChoose Card via index:", gameEvent.getContent()); // FOR some reason is the string trimmed?
-//
+    void testViewLastTrick_OptionZero() {
+        playState.executeState(new ContinueAction());
+        playState.executeState(new ContinueAction());
 
+        assertInstanceOf(ErrorEvent.class, playState.executeState(new NumberAction(0)));
 
+        fakeRound.fakeTricks.add(new Trick(p1, Suit.SPADES));
+        assertInstanceOf(LastTrickEvent.class, playState.executeState(new NumberAction(0)));
     }
 
-    /**
-     * Currently not in works yet, this could change after refactoring of using new GameEvents
-     */
     @Test
-    void nextState() {
-        State nextState = playState.nextState();
-        assertInstanceOf(PlayState.class, nextState);
-        assertEquals(playState.getGame().getRounds().size(), nextState.getGame().getRounds().size());
+    void testIllegalCardPlay_CatchesException_ReturnsPickCardEvent() {
+        // Give P1 a Club and a Heart.
+        p1.testHand.add(new Card(Suit.CLUBS, Rank.TWO));
+        p1.testHand.add(new Card(Suit.HEARTS, Rank.TWO));
 
-        Trick completedTrick = new Trick(currentRound.getCurrentPlayer(), Suit.HEARTS);
-//        while(completedTrick.getTurns().size() < Trick.MAX_TURNS) {
-//            completedTrick.playCard(currentRound.getCurrentPlayer(), new Card(Suit.HEARTS, Rank.ACE));
-//        }
-//
-//
-//        while(playState.getGame().getRounds().size() < Round.MAX_TRICKS) {
-//            playState.getGame().getCurrentRound().registerCompletedTrick(completedTrick);
-//        }
-//        System.out.println(playState.getGame().getCurrentRound().getTricks().size());
-//
-//        nextState = playState.nextState();
-//        assertInstanceOf(ScoreBoardState.class, nextState);
+        // Let P4 lead the trick so the turn naturally advances to P1 next
+        p4.requiresConfirmation = false;
+        p4.testHand.add(new Card(Suit.CLUBS, Rank.ACE));
 
+        // Set P4 as current player to lead the trick
+        fakeRound.setCurrentPlayer(p4);
+        playState = new PlayState(fakeGame); // Re-init to grab P4 as starter
+        playState.executeState(new ContinueAction()); // P4 plays Club
 
+        // Now the round correctly advanced to P1.
+        playState.executeState(new ContinueAction()); // P1 Prompt
+        playState.executeState(new ContinueAction()); // P1 Reveal
+
+        // P1 tries to play index 2 (The Heart). They HAVE a Club, so this is illegal (reneging).
+        GameEvent<?> event = playState.executeState(new NumberAction(2));
+
+        assertInstanceOf(PickCardEvent.class, event, "Illegal plays should be caught and return the PickCard screen again");
+    }
+
+    @Test
+    void testOpenMiserie_BuildsPickCardEventWithExposedHand() {
+        FakeBid miserieBid = new FakeBid(BidType.OPEN_MISERIE, p2);
+        fakeRound.setHighestBid(miserieBid);
+        p2.testHand.add(new Card(Suit.DIAMONDS, Rank.KING));
+
+        playState.executeState(new ContinueAction());
+        PickCardEvent event = (PickCardEvent) playState.executeState(new ContinueAction());
+
+        assertTrue(event.isOpenMiserie());
+        assertEquals("Bob", event.exposedPlayerName());
+        assertEquals(1, event.formattedExposedHand().size());
+    }
+
+    // =========================================================================
+    // BULLETPROOF MANUAL FAKES
+    // =========================================================================
+
+    static class FakePlayer extends Player {
+        boolean requiresConfirmation;
+        public List<Card> testHand = new ArrayList<>();
+
+        public FakePlayer(String name, boolean human) {
+            super(new HumanStrategy(), name);
+            this.requiresConfirmation = human;
+        }
+
+        @Override public boolean getRequiresConfirmation() { return requiresConfirmation; }
+        @Override public List<Card> getHand() { return testHand; }
+        @Override public void removeCard(Card card) { testHand.remove(card); }
+
+        // ADD THIS OVERRIDE: So Trick.playCard() knows we actually have the leading suit!
+        @Override
+        public Boolean hasSuit(Suit suit) {
+            return testHand.stream().anyMatch(c -> c.suit() == suit);
+        }
+
+        @Override
+        public Card chooseCard(Suit lead) {
+            if (testHand.isEmpty()) throw new IllegalStateException("Bot tried to play with an empty hand");
+            return testHand.get(0);
+        }
+    }
+
+    static class FakeWhistGame extends WhistGame {
+        List<Player> players;
+        Round currentRound;
+
+        public FakeWhistGame(List<Player> p, Round r) {
+            this.players = p;
+            this.currentRound = r;
+        }
+
+        @Override public List<Player> getPlayers() { return players; }
+        @Override public Round getCurrentRound() { return currentRound; }
+    }
+
+    static class FakeRound extends Round {
+        List<Trick> fakeTricks = new ArrayList<>();
+        Bid fakeBid;
+
+        public FakeRound(List<Player> players, Player start) {
+            super(players, start, 1);
+        }
+
+        @Override public List<Trick> getTricks() { return fakeTricks; }
+        @Override public Bid getHighestBid() { return fakeBid; }
+        @Override public void setHighestBid(Bid bid) { this.fakeBid = bid; }
+
+        @Override
+        public void registerCompletedTrick(Trick trick) {
+            fakeTricks.add(trick);
+        }
+
+        @Override
+        public Trick getLastPlayedTrick() {
+            return fakeTricks.isEmpty() ? null : fakeTricks.getLast();
+        }
+    }
+
+    static class FakeBid implements Bid {
+        BidType type;
+        Player player;
+
+        public FakeBid(BidType type, Player player) { this.type = type; this.player = player; }
+        @Override public BidType getType() { return type; }
+        @Override public Player getPlayer() { return player; }
+        @Override public Suit getChosenTrump(Suit dealtTrump) { return null; }
+        @Override public int calculateBasePoints(int tricksWon) { return 0; }
     }
 }
