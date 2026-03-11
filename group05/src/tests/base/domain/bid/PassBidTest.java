@@ -11,36 +11,35 @@ import static org.junit.jupiter.api.Assertions.*;
 class PassBidTest {
 
     private Player testPlayer;
+    private PassBid bid;
 
     @BeforeEach
     void setUp() {
         testPlayer = new Player(new HumanStrategy(), "Passer");
+        bid = new PassBid(testPlayer);
     }
 
     @Test
-    void getPlayer() {
-        PassBid bid = new PassBid(testPlayer);
+    void getPlayer_ReturnsPlayer() {
         assertEquals(testPlayer, bid.getPlayer());
     }
 
     @Test
-    void getType() {
-        PassBid bid = new PassBid(testPlayer);
+    void getType_ReturnsPass() {
         assertEquals(BidType.PASS, bid.getType());
     }
 
     @Test
     void getChosenTrump_ReturnsNull() {
-        PassBid bid = new PassBid(testPlayer);
-        // Een PassBid mag nooit de troef bepalen
+        // A PassBid never determines the trump suit, so it should always safely return null
         assertNull(bid.getChosenTrump(Suit.HEARTS));
         assertNull(bid.getChosenTrump(null));
     }
 
     @Test
     void calculateBasePoints_AlwaysReturnsPassPoints() {
-        PassBid bid = new PassBid(testPlayer);
-        // TODO: Controleer of BidType.PASS.getBasePoints() inderdaad 0 is in je Enum
+        // A PassBid always awards its base points (which should be 0 in the BidType enum)
+        // regardless of how many tricks the player accidentally wins during the round.
         int expected = BidType.PASS.getBasePoints();
 
         assertEquals(expected, bid.calculateBasePoints(0));
@@ -50,15 +49,26 @@ class PassBidTest {
 
     @Test
     void calculateBasePoints_NegativeInput_ThrowsException() {
-        PassBid bid = new PassBid(testPlayer);
-        assertThrows(IllegalArgumentException.class, () -> bid.calculateBasePoints(-1));
+        // Edge case: Even for a PassBid, the system should catch invalid negative tricks
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                bid.calculateBasePoints(-1)
+        );
+        assertTrue(exception.getMessage().contains("negative tricks"));
     }
 
     @Test
     void testRecordEquality() {
-        // Records hebben automatische equals() methodes
+        // Records have built-in equals() and hashCode() methods based on their fields.
+        // Testing this ensures the JVM handles identical PassBids correctly.
         PassBid bid1 = new PassBid(testPlayer);
         PassBid bid2 = new PassBid(testPlayer);
+
         assertEquals(bid1, bid2);
+    }
+
+    @Test
+    void testRecordAccessor() {
+        // Testing the native record accessor for 100% method coverage
+        assertEquals(testPlayer, bid.player());
     }
 }

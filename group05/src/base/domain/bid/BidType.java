@@ -41,7 +41,7 @@ public enum BidType {
     ACCEPTANCE(8, 2, BidCategory.ACCEPTANCE, false) {
         @Override
         public Bid instantiate(Player player, Suit TrumpSuit) {
-            return new ProposalBid(player);
+            return new AcceptedBid(player);
         }
     },
 
