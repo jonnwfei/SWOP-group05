@@ -58,14 +58,19 @@ public class Player {
      */
     public void setHand(List<Card> hand) {
         if (hand == null) throw new IllegalArgumentException("The given hand can't be null");
-        hand.sort((c1, c2) -> {
+
+        // First clear then Add the cards to the player's internal hand
+        this.currentHand.clear();
+        this.currentHand.addAll(hand);
+
+        // sort this hand
+        this.currentHand.sort((c1, c2) -> {
             int suitCompare = c1.suit().compareTo(c2.suit());
             if (suitCompare != 0) {
                 return suitCompare;
             }
-            return c2.rank().compareTo(c1.rank()); // hoog naar laag
+            return c2.rank().compareTo(c1.rank()); // High to low
         });
-        this.currentHand.addAll(hand);
     }
 
     /**
