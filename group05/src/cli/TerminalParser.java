@@ -52,8 +52,8 @@ public class TerminalParser {
      * Simply returns the string, but ensures it's not null/empty.
      */
     public String parseString(String input) {
-        if (input == null || input.isBlank()) {
-            throw new IllegalArgumentException("Input cannot be null or empty.");
+        if (input == null ) {
+            throw new IllegalArgumentException("Input cannot be null.");
         }
         return input.trim();
     }

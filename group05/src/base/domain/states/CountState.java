@@ -7,6 +7,7 @@ import base.domain.actions.NumberListAction;
 import base.domain.actions.TextAction;
 import base.domain.events.ErrorEvent;
 import base.domain.events.countEvents.*;
+import base.domain.events.errorEvents.NumberListErrorEvent;
 import base.domain.player.Player;
 import base.domain.events.GameEvent;
 import base.domain.bid.*;
@@ -115,16 +116,25 @@ public class CountState extends State {
      * @return QuestionEvent who won the bid or how many tricks were won
     * */
     private GameEvent handleSelectPlayers(GameAction action) {
-        if (!(action instanceof NumberListAction(ArrayList<Integer> indices) )) {
-            return null; //IllegalActionEvent
+        if (!(action instanceof NumberListAction(ArrayList<Integer> indices))) {
+            return null;
         }
+
+        // --- VALIDATION CHECK BEFORE ADVANCING PHASE ---
+        // If not Miserie and more than 1 player selected, return error and STAY in this phase
+        if (numberBid != 7 && numberBid != 8 && indices.size() > 1) {
+            PlayersInBidEvent tempEvent = new PlayersInBidEvent(getPlayerNames());
+            return new NumberListErrorEvent(tempEvent::isValid);
+        }
+
+        // If valid, save data and move forward
         this.participatingPlayers = indices;
         currentPhase = CountPhase.CALCULATE;
-        //going to next bid confirmed
+
         if (numberBid == 7 || numberBid == 8) {
             return new MiserieWinnerEvent(getPlayerNames());
-
         }
+
         return new TrickWonEvent();
     }
 

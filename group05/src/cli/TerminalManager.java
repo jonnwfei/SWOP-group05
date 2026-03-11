@@ -6,6 +6,7 @@ import base.domain.actions.NumberListAction;
 import base.domain.actions.TextAction;
 import base.domain.events.GameEvent;
 import base.domain.events.errorEvents.NumberErrorEvent;
+import base.domain.events.errorEvents.NumberListErrorEvent;
 import cli.elements.Response;
 
 import java.util.ArrayList;
@@ -43,9 +44,11 @@ public class TerminalManager {
                 NumberErrorEvent errorEvent = new NumberErrorEvent(e.getMessage(), intEvent::isValid);
                 return handle(errorEvent);
             }
-
-            // Fallback for non-integer errors
-            throw e;
+            if(event.getInputType() == String.class){
+                return handle(event);
+            }
+            GameEvent<ArrayList<Integer>> listEvent = (GameEvent<ArrayList<Integer>>) event;
+            return handle(new NumberListErrorEvent(listEvent::isValid));
         }
     }
 
