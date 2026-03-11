@@ -70,6 +70,8 @@ public class TerminalRenderer {
     private void renderBidTurnEvent(BidTurnEvent event) {
         System.out.println("\n=== BIDDING TURN: " + event.playerName().toUpperCase() + " ===");
         System.out.println("Dealt Trump: " + event.dealtTrump().toString());
+        System.out.println("Your hand: ");
+        System.out.println(event.playerHand());
         if(event.currentHighestBidType() == null) {
             System.out.println("You are the first to bid!");
         }
@@ -90,7 +92,7 @@ public class TerminalRenderer {
         System.out.println("\n" + event.playerName() + ", you chose " + event.pendingType().name() + ".");
         System.out.println("All Options:");
         for (int i = 0; i < event.suits().length; i++) {
-            System.out.println("   [" + i + "] " + event.suits()[i].name());
+            System.out.println("   [" + (i+1) + "] " + event.suits()[i].name());
         }
         System.out.print("Your choice: ");
     }
