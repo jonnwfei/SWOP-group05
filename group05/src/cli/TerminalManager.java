@@ -12,14 +12,21 @@ import cli.elements.Response;
 import java.util.ArrayList;
 import java.util.Scanner;
 
+/**
+ * Orchestrates the I/O flow between the user terminal and the domain logic.
+ * Manages the render-input-validate loop and handles recursive error recovery.
+ *
+ * @author Stan Kestens
+ * @since 08/03/2026
+ */
 public class TerminalManager {
 
     private final Scanner scanner;
     private final TerminalRenderer renderer;
     private final TerminalParser parser;
+
     /**
-     *
-     *
+     * Initializes the manager with a standard system input scanner.
      */
     public TerminalManager() {
         this.scanner = new Scanner(System.in);
@@ -28,7 +35,10 @@ public class TerminalManager {
     }
 
     /**
-     * Method is now PUBLIC so App can actually run IO tasks.
+     * Processes a GameEvent by rendering it and possibly dealing with the input
+     * recursivly shows an error message until the right data is entered
+     * * @param event The event to process.
+     * @return A Response containing the validated user action.
      */
     public Response handle(GameEvent<?> event) {
         try {
@@ -38,46 +48,48 @@ public class TerminalManager {
             }
             return new Response(false, null);
         } catch (IllegalStateException e) {
-
+            // Handle Integer errors
             if (event.getInputType() == Integer.class) {
                 GameEvent<Integer> intEvent = (GameEvent<Integer>) event;
                 NumberErrorEvent errorEvent = new NumberErrorEvent(e.getMessage(), intEvent::isValid);
                 return handle(errorEvent);
             }
+            // Handle String errors (Retry original event)
             if(event.getInputType() == String.class){
                 return handle(event);
             }
+            // Handle List errors
+            @SuppressWarnings("unchecked")
             GameEvent<ArrayList<Integer>> listEvent = (GameEvent<ArrayList<Integer>>) event;
             return handle(new NumberListErrorEvent(listEvent::isValid));
         }
     }
 
     /**
-     * Reads the terminal and translates text into pure Domain data types.
+     * Reads raw input and delegating parsing based on the event's required type.
+     * @param event The event requesting input.
+     * @return A Response object wrapping the parsed GameAction.
+     * @throws IllegalStateException if the input type is unsupported or validation fails.
      */
     private Response getResponse(GameEvent<?> event) {
         String rawInput = scanner.nextLine().trim();
         try {
-            // 1. Handle "Press Enter to Continue" (No parsing needed!)
             if (event.getInputType() == Void.class) {
                 return new Response(true, new ContinueAction());
             }
 
-            // 2. Handle String Inputs
             if (event.getInputType() == String.class) {
                 String parsed = parser.parseString(rawInput);
                 validateOrThrow(event, parsed);
                 return new Response(true, new TextAction(parsed));
             }
 
-            // 3. Handle Integer Inputs
             else if (event.getInputType() == Integer.class) {
                 Integer parsed = parser.parseNumberInput(rawInput);
                 validateOrThrow(event, parsed);
                 return new Response(true, new NumberAction(parsed));
             }
 
-            // 4. Handle List Inputs (ArrayList<Integer>)
             else if (event.getInputType().equals(ArrayList.class) ||
                     event.getInputType().getName().contains("ArrayList")) {
                 ArrayList<Integer> parsed = parser.parseNumbersInput(rawInput);
@@ -88,13 +100,15 @@ public class TerminalManager {
             throw new IllegalStateException("Unsupported input type: " + event.getInputType());
 
         } catch (IllegalArgumentException e) {
-            // If the parser fails or validation fails, wrap it in IllegalStateException
             throw new IllegalStateException("Invalid input: " + e.getMessage());
         }
     }
 
     /**
-     * Helper to bridge your boolean isValid check with the Exception-based flow.
+     * Validates parsed input against the event's domain rules.
+     * @param event The event containing validation logic.
+     * @param parsed The parsed data object to check.
+     * @throws IllegalArgumentException if validation fails.
      */
     private <T> void validateOrThrow(GameEvent<T> event, Object parsed) {
         @SuppressWarnings("unchecked")

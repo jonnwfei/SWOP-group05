@@ -12,7 +12,19 @@ import base.domain.trick.Turn;
 
 import java.util.List;
 
+/**
+ * Responsible for translating Domain the GameEvents objects into visual
+ * representations in the terminal.
+ *
+ * @author Tommy Wu
+ * @since 10/03/2026
+ */
 public class TerminalRenderer {
+
+    /**
+     * Dispatches the given event to its specific rendering method.
+     * * @param event the GameEvent it received from the Domain Layer
+     */
     public void render(GameEvent event) {
         switch (event) {
             case BidTurnEvent e -> renderBidTurnEvent(e);
@@ -42,14 +54,97 @@ public class TerminalRenderer {
             case EndOfTurnEvent e -> renderEndOfTurnEvent(e);
             case NumberErrorEvent e -> renderNumberErrorEvent(e);
             case NumberListErrorEvent e -> renderNumberListErrorEvent(e);
-            default -> System.out.println("[WARNING] Unknown event type!");  }
+            default -> System.out.println("[WARNING] Unknown event type!");
+        }
     }
+
+    // --- ERROR RENDERING ---
 
     private void renderNumberListErrorEvent(NumberListErrorEvent e) {
         System.out.print("Give valid input! ");
     }
+
     private void renderNumberErrorEvent(NumberErrorEvent e) {
         System.out.println(e.errorMessage());
+    }
+
+    private void renderErrorEvent(ErrorEvent event) {
+        System.out.println("Please give a number between " + event.lowerBound() + " and " + event.upperBound());
+    }
+
+    // --- GAMEPLAY RENDERING ---
+
+    /**
+     * Renders the bidding interface, including the player's current hand
+     * and the available Whist contract options.
+     */
+    private void renderBidTurnEvent(BidTurnEvent event) {
+        System.out.println("\n=== BIDDING TURN: " + event.playerName().toUpperCase() + " ===");
+        System.out.println("Dealt Trump: " + event.dealtTrump().toString());
+        System.out.println("Your hand: ");
+        System.out.println(event.playerHand());
+        if(event.currentHighestBidType() == null) {
+            System.out.println("You are the first to bid!");
+        }
+        else System.out.println("Current Highest: " + event.currentHighestBidType());
+        System.out.println("All Options:");
+        for (int i = 0; i < event.bidTypes().length; i++) {
+            System.out.println("   [" + (i+1) + "] " + event.bidTypes()[i].name());
+        }
+        System.out.print("Your choice: ");
+    }
+
+    /**
+     * Renders the card-picking interface.
+     * <p>Handles special visibility rules, such as revealing an exposed hand
+     * during an 'Open Miserie' contract.</p>
+     */
+    private void renderPickCardEvent(PickCardEvent event) {
+        System.out.println("\n-------------- CARDS ON TABLE ---------------");
+
+        if(event.cardsOnTable().isEmpty()) {
+            System.out.println("(No cards played yet)");
+        } else {
+            for(Card card : event.cardsOnTable()) {
+                System.out.println("- " + card.toString());
+            }
+        }
+
+        if (event.isOpenMiserie()) {
+            System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: " + event.exposedPlayerName() + ") ---");
+            System.out.println(event.formattedExposedHand());
+        }
+        System.out.println("---------------------------------------------");
+
+        System.out.println("Trick: " + event.trickNumber() + " | " + event.currentPlayerName() + "'s turn.");
+        System.out.println("[0] Show last played Trick.");
+        System.out.println("Your hand: ");
+
+        List<Card> hand = event.currentPlayerHand();
+        for (int i = 0; i < hand.size(); i++) {
+            System.out.println("   [" + (i + 1) + "] " + hand.get(i));
+        }
+
+        System.out.print("Choose Card via index: ");
+    }
+
+    // --- SCORE & STATE RENDERING ---
+
+    /**
+     * Displays the current scoreboard and provides navigation options.
+     */
+    private void renderScoreBoardEvent(ScoreBoardEvent event) {
+        System.out.println("============== SCORES ==============");
+        List<String> names = event.playerNames();
+        List<Integer> scores = event.scores();
+
+        for (int i = 0; i < names.size(); i++) {
+            System.out.println(names.get(i) + ": " + scores.get(i) + " points");
+        }
+        System.out.println("====================================");
+        System.out.println("Do you want to:");
+        System.out.println("(1) Simulate another round\n(2) Go back to the main menu");
+        System.out.print("Your choice: ");
     }
 
     private void renderEndOfTurnEvent(EndOfTurnEvent event) {
@@ -65,22 +160,6 @@ public class TerminalRenderer {
 
     private void renderBiddingCompleteEvent() {
         System.out.println("-----BIDDING COMPLETE-----");
-    }
-
-    private void renderBidTurnEvent(BidTurnEvent event) {
-        System.out.println("\n=== BIDDING TURN: " + event.playerName().toUpperCase() + " ===");
-        System.out.println("Dealt Trump: " + event.dealtTrump().toString());
-        System.out.println("Your hand: ");
-        System.out.println(event.playerHand());
-        if(event.currentHighestBidType() == null) {
-            System.out.println("You are the first to bid!");
-        }
-        else System.out.println("Current Highest: " + event.currentHighestBidType());
-        System.out.println("All Options:");
-        for (int i = 0; i < event.bidTypes().length; i++) {
-            System.out.println("   [" + (i+1) + "] " + event.bidTypes()[i].name());
-        }
-        System.out.print("Your choice: ");
     }
 
     private void renderRejectedProposalEvent(RejectedProposalEvent event) {
@@ -107,49 +186,11 @@ public class TerminalRenderer {
         System.out.println(event.playerName() + " played " + event.card().toString());
         System.out.println(event.winnerName() + " won the trick!");
         System.out.println("\n============== NEXT TRICK ==============");
-        }
+    }
 
     private void renderInitiateTurnEvent (InitiateTurnEvent event) {
         System.out.println("============== Pass the turn to " + event.playerName() + " ==============");
         System.out.println("\nPress ENTER to reveal your hand...");
-    }
-
-    private void renderPickCardEvent(PickCardEvent event) {
-        System.out.println("\n-------------- CARDS ON TABLE ---------------");
-
-        if(event.cardsOnTable().isEmpty()) {
-            System.out.println("(No cards played yet)");
-        } else {
-            for(Card card : event.cardsOnTable()) {
-                System.out.println("- " + card.toString());
-            }
-        }
-
-        // The 'if (false)' is replaced with our pure boolean data!
-        if (event.isOpenMiserie()) {
-            System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: " + event.exposedPlayerName() + ") ---");
-            System.out.println(event.formattedExposedHand());
-        }
-        System.out.println("---------------------------------------------");
-
-        // Fixed the math concatenation bug by putting the math in parentheses!
-        System.out.println("Trick: " + event.trickNumber() + " | " + event.currentPlayerName() + "'s turn.");
-
-        System.out.println("[0] Show last played Trick.");
-        System.out.println("Your hand: ");
-
-        // Fixed the <= out of bounds bug.
-        // Notice we start formatting at [1] because [0] is reserved for "Show last trick"
-        List<Card> hand = event.currentPlayerHand();
-        for (int i = 0; i < hand.size(); i++) {
-            System.out.println("   [" + (i + 1) + "] " + hand.get(i));
-        }
-
-        System.out.print("Choose Card via index: ");
-    }
-
-    private void renderErrorEvent(ErrorEvent event) {
-        System.out.println("Please give a number between " + event.lowerBound() + " and " + event.upperBound());
     }
 
     private void renderGetSuitEvent() {
@@ -176,20 +217,6 @@ public class TerminalRenderer {
             System.out.println((i + 1) + ". " + names.get(i));
         }
         System.out.print("Your choice (comma-separated): ");
-    }
-
-    private void renderScoreBoardEvent(ScoreBoardEvent event) {
-        System.out.println("============== SCORES ==============");
-        List<String> names = event.playerNames();
-        List<Integer> scores = event.scores();
-
-        for (int i = 0; i < names.size(); i++) {
-            System.out.println(names.get(i) + ": " + scores.get(i) + " points");
-        }
-        System.out.println("====================================");
-        System.out.println("Do you want to:");
-        System.out.println("(1) Simulate another round\n(2) Go back to the main menu");
-        System.out.print("Your choice: ");
     }
 
     private void renderTrickWonEvent() {
@@ -223,7 +250,6 @@ public class TerminalRenderer {
     }
 
     private void renderPlayerNameEvent(PlayerNameEvent event) {
-        // Using print instead of println so they type on the same line
         System.out.print("Give the name of player " + event.playerIndex() + ": ");
     }
 
@@ -233,8 +259,6 @@ public class TerminalRenderer {
         for (int i = 0; i < names.size(); i++) {
             System.out.println((i + 1) + ". " + names.get(i));
         }
-        // Note: I didn't add "Your choice:" here because usually, printing
-        // names is just informational. If this event requires input, add it!
     }
 
     private void renderWelcomeMenuEvent() {

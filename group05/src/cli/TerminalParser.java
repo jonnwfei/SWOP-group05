@@ -2,59 +2,60 @@ package cli;
 
 import java.util.ArrayList;
 
+/**
+ * Utility for parsing and sanitizing terminal input into structured data.
+ * * @author Stan Kestens
+ * @since 02/03/2026
+ */
 public class TerminalParser {
 
     /**
-     * Converts string to a single integer.
-     * Throws IllegalArgumentException if not a number.
+     * Parses a string into an integer.
+     * @param input Raw string from scanner.
+     * @return Parsed integer.
+     * @throws IllegalArgumentException if blank or non-numeric.
      */
     public int parseNumberInput(String input) {
         if (input == null || input.isBlank()) {
-            throw new IllegalArgumentException("Input cannot be null or empty.");
+            throw new IllegalArgumentException("Input cannot be empty.");
         }
         try {
             return Integer.parseInt(input.trim());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("'" + input + "' is not a valid number.");
+            throw new IllegalArgumentException("'" + input + "' is not a number.");
         }
     }
 
     /**
-     * Converts a comma-separated string into a list of integers.
+     * Parses a comma-separated string into a list of integers.
+     * @param input String like "1, 2, 3".
+     * @return List of parsed integers. (like [1,2,3])
      */
     public ArrayList<Integer> parseNumbersInput(String input) {
-        // We only check for null to avoid a crash;
-        // blank strings just result in an empty list.
-        if (input == null || input.isBlank()) {
-            return new ArrayList<>();
-        }
+        if (input == null || input.isBlank()) return new ArrayList<>();
 
         String[] parts = input.split(",");
         ArrayList<Integer> result = new ArrayList<>();
 
         for (String part : parts) {
             String trimmed = part.trim();
-
-            // Skip empty segments like "1,,3" instead of throwing an error
             if (trimmed.isEmpty()) continue;
-
             try {
                 result.add(Integer.parseInt(trimmed));
             } catch (NumberFormatException e) {
-                // We still throw this because we can't turn "abc" into an Integer
-                throw new IllegalArgumentException("'" + trimmed + "' is not a valid number.");
+                throw new IllegalArgumentException("'" + trimmed + "' is not a number.");
             }
         }
         return result;
     }
 
     /**
-     * Simply returns the string, but ensures it's not null/empty.
+     * Trims whitespace and ensures non-null.
+     * @param input Raw string.
+     * @return Cleaned string.
      */
     public String parseString(String input) {
-        if (input == null ) {
-            throw new IllegalArgumentException("Input cannot be null.");
-        }
+        if (input == null) throw new IllegalArgumentException("Input cannot be null.");
         return input.trim();
     }
 }
