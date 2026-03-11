@@ -170,8 +170,10 @@ public class Player {
         List<Card> hand = this.getHand();
 
         for (int i = 0; i < hand.size(); i++) {
-            // i + 1 ensures the terminal list starts at 1 instead of 0
-            if (showIdx) sb.append("(").append(i + 1).append(") ").append(hand.get(i).toString()).append("\n");
+            if (showIdx) {
+                sb.append("(").append(i + 1).append(") ");
+            }
+            sb.append(hand.get(i).toString()).append("\n"); // Always print the card!
         }
         return sb.toString();
     }
