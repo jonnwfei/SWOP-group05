@@ -2,8 +2,15 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.actions.GameAction;
+import base.domain.actions.NumberAction;
+import base.domain.actions.TextAction;
+import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
 import base.domain.bid.Bid;
+import base.domain.events.playevents.PlayAgainPromptEvent;
+import base.domain.player.Player;
+
+import java.util.List;
 
 /**
  * EndRoundState, mini menu state where the player can restart Round (12a)
@@ -38,24 +45,29 @@ public class ScoreBoardState extends State {
      */
     @Override
     public GameEvent executeState(GameAction action) {
-        if (input != null && !input.isEmpty()) {
-            if (input.equals("1")) {
+        // 1. Process User Input
+        if (action instanceof NumberAction numAction) {
+            int choice = numAction.value();
+
+            if (choice == 1) {
                 userWantsToRestart = true;
-                return new TextEvent("Starting new round...");
-            } else if (input.equals("2")) {
+                return new MessageEvent("Starting new round...");
+            } else if (choice == 2) {
                 userWantsToQuit = true;
-                return new TextEvent("Returning to main menu...");
+                return new MessageEvent("Returning to main menu...");
             } else {
-                return new QuestionEvent("Invalid input. (0) Next Round or (1) Quit: ");
+                return new ErrorEvent(1, 2);
             }
         }
 
-        String prompt = getGame().printScore() + "\n\n" +
-                "Do you want to:\n\n" +
-                "(1) Play another round\n" +
-                "(2) Quit to main menu\n" +
-                "Your choice: ";
-        return new QuestionEvent(prompt);
+        // 2. Catch invalid typing
+        if (action instanceof TextAction) {
+            return new ErrorEvent(1, 2);
+        }
+
+        List<String> playerNames = getGame().getPlayers().stream().map(Player::getName).toList();
+        List<Integer> playerScores = getGame().getPlayers().stream().map(Player::getScore).toList();
+        return new PlayAgainPromptEvent(playerNames, playerScores);
     }
 
     /**
@@ -69,7 +81,6 @@ public class ScoreBoardState extends State {
         if (userWantsToQuit) {
             return new MenuState(getGame());
         } else if (userWantsToRestart) {
-            // TODO: needs to setup game, as to set the nextDealer as the person next to the dealer/ this is done by bidState
             getGame().advanceDealer();
 
             if (targetRestartTarget == RestartTarget.BID_STATE) {

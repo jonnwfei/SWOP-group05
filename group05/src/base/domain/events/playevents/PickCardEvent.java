@@ -11,13 +11,13 @@ import base.domain.events.GameEvent;
 import java.util.List;
 
 public record PickCardEvent(
-        List<String> cardsOnTable,      // e.g., ["Player1 played ACE of SPADES", ...]
+        List<Card> cardsOnTable,      // e.g., ["Player1 played ACE of SPADES", ...]
         boolean isOpenMiserie,         // Tells the UI whether to draw the exposed hand
         String exposedPlayerName,      // Who is playing Open Miserie
-        String formattedExposedHand,   // The actual cards to show everyone
+        List<Card> formattedExposedHand,   // The actual cards to show everyone
         int trickNumber,
         String currentPlayerName,
-        List<String> currentPlayerHand // Formatted strings of the cards they can play
+        List<Card> currentPlayerHand // Formatted strings of the cards they can play
 ) implements GameEvent {
     public PickCardEvent {
         cardsOnTable = List.copyOf(cardsOnTable);

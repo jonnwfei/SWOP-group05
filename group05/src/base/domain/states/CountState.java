@@ -69,11 +69,10 @@ public class CountState extends State {
      *
      * */
     private GameEvent handleSelectBid(GameAction action) {
-        if (!(action instanceof NumberAction numAction)) {
+        if (!(action instanceof NumberAction(int choice))) {
             return null; //illegalActionTypeEvent
         }
 
-        int choice = numAction.value();
         if (choice < 1 || choice > 10) {
             return new ErrorEvent(1, 10);
         }
@@ -90,11 +89,10 @@ public class CountState extends State {
      * @return QuestionEvent which players played the bid
      * */
     private GameEvent handleSelectTrump(GameAction action) {
-        if (!(action instanceof NumberAction numAction)) {
+        if (!(action instanceof NumberAction(int choice))) {
             return null; //illegalActionTypeEvent
         }
 
-        int choice = numAction.value();
         this.trumpSuit = switch (choice) {
             case 1 -> Suit.HEARTS;
             case 2 -> Suit.CLUBS;
@@ -160,10 +158,9 @@ public class CountState extends State {
         }
         // Other bids (Tricks won)
         else {
-            if (!(action instanceof NumberAction numAction)) {
+            if (!(action instanceof NumberAction(int tricks))) {
                 return new ErrorEvent(0, 13); // Min 0 tricks, Max 13 tricks
             }
-            int tricks = numAction.value();
             if (tricks < 0 || tricks > 13) {
                 return new ErrorEvent(0, 13);
             }
@@ -181,11 +178,10 @@ public class CountState extends State {
      * Handles the prompt that asks: [1] Count Again, [2] Menu
      */
     private GameEvent handlePromptNextState(GameAction action) {
-        if (!(action instanceof NumberAction numAction)) {
+        if (!(action instanceof NumberAction(int choice))) {
             return new ErrorEvent(1, 2);
         }
 
-        int choice = numAction.value();
         if (choice < 1 || choice > 2) {
             return new ErrorEvent(1, 2);
         }
