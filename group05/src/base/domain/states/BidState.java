@@ -122,7 +122,7 @@ public class BidState extends State {
         }
 
         // 5. Generate Next Turn Prompt (Null highest bid gracefully handles the first player)
-        return new BidTurnEvent(currentPlayer.getName(), trumpSuit, currentHighestBidType, BidType.values());
+        return new BidTurnEvent(currentPlayer.getName(), trumpSuit, currentHighestBidType, BidType.values(), currentPlayer.getHand());
     }
 
     @Override
@@ -171,7 +171,7 @@ public class BidState extends State {
             return new ErrorEvent(1, allSuits.length);
         }
 
-        Suit chosenSuit = allSuits[choice];
+        Suit chosenSuit = allSuits[choice-1];
         Bid finalizedBid = pendingBidType.instantiate(currentPlayer, chosenSuit);
 
         commitBid(finalizedBid);
@@ -182,9 +182,9 @@ public class BidState extends State {
     private GameEvent handleRejectedProposal(int choice) {
         BidType decision;
 
-        if (choice == 0) decision = BidType.PASS;
-        else if (choice == 1) decision = BidType.SOLO_PROPOSAL;
-        else return new ErrorEvent(0, 1);
+        if (choice == 1) decision = BidType.PASS;
+        else if (choice == 2) decision = BidType.SOLO_PROPOSAL;
+        else return new ErrorEvent(1, 2);
 
         replaceProposalBid(decision);
         this.currentHighestBidType = decision;
