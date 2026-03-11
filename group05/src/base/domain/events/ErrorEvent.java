@@ -4,7 +4,7 @@ public record ErrorEvent(int lowerBound, int upperBound) implements GameEvent<In
 
     @Override
     public Class<Integer> getInputType() {
-        return null;
+        return Integer.class;
     }
 
     @Override
@@ -14,6 +14,6 @@ public record ErrorEvent(int lowerBound, int upperBound) implements GameEvent<In
 
     @Override
     public boolean needsInput() {
-        return false;
+        return true;
     }
 }

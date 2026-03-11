@@ -111,7 +111,7 @@ public class TerminalRenderer {
 
     private void renderInitiateTurnEvent (InitiateTurnEvent event) {
         System.out.println("============== Pass the turn to " + event.playerName() + " ==============");
-        System.out.println("\nPress ANY BUTTON to reveal your hand...");
+        System.out.println("\nPress ENTER to reveal your hand...");
     }
 
     private void renderPickCardEvent(PickCardEvent event) {
