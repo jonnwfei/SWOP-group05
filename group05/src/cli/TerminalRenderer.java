@@ -1,5 +1,6 @@
 package cli;
 
+import base.domain.card.Card;
 import base.domain.events.*;
 import base.domain.events.bidevents.*;
 import base.domain.events.countEvents.*;
@@ -33,8 +34,13 @@ public class TerminalRenderer {
             case WelcomeMenuEvent e -> renderWelcomeMenuEvent();
             case LastTrickEvent e -> renderLastTrickEvent(e);
             case PlayAgainPromptEvent e -> renderPlayAgainPromptEvent(e);
+            case BiddingCompleteEvent e -> renderBiddingCompleteEvent();
 
             default -> System.out.println("[WARNING] Unknown event type!");  }
+    }
+
+    private void renderBiddingCompleteEvent() {
+        System.out.println("-----BIDDING COMPLETE-----");
     }
 
     private void renderBidTurnEvent(BidTurnEvent event) {
@@ -87,8 +93,8 @@ public class TerminalRenderer {
         if(event.cardsOnTable().isEmpty()) {
             System.out.println("(No cards played yet)");
         } else {
-            for(String cardStr : event.cardsOnTable()) {
-                System.out.println("- " + cardStr);
+            for(Card card : event.cardsOnTable()) {
+                System.out.println("- " + card.toString());
             }
         }
 
@@ -107,7 +113,7 @@ public class TerminalRenderer {
 
         // Fixed the <= out of bounds bug.
         // Notice we start formatting at [1] because [0] is reserved for "Show last trick"
-        List<String> hand = event.currentPlayerHand();
+        List<Card> hand = event.currentPlayerHand();
         for (int i = 0; i < hand.size(); i++) {
             System.out.println("   [" + (i + 1) + "] " + hand.get(i));
         }

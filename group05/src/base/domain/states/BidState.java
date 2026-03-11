@@ -188,15 +188,15 @@ public class BidState extends State {
 
         replaceProposalBid(decision);
         this.currentHighestBidType = decision;
-        return new TextEvent("\n=== BIDDING COMPLETE ===");
+        return new BiddingCompleteEvent();
     }
 
     private GameEvent handleEndOfBidding() {
         if (currentHighestBidType == BidType.PROPOSAL) {
             Player proposer = findBid(BidType.PROPOSAL).getPlayer();
-            return new RejectedProposalEvent(proposer);
+            return new RejectedProposalEvent(proposer.getName());
         }
-        return new TextEvent("\n=== BIDDING COMPLETE ==="); //EndStateEvent
+        return new BiddingCompleteEvent(); //EndStateEvent
     }
 
     private void commitBid(Bid finalizedBid) {
