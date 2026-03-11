@@ -26,7 +26,7 @@ public record PickCardEvent(
 
     @Override
     public boolean isValid(Integer input) {
-        return input >= 1 && input <= currentPlayerHand.size();
+        return input >= 0 && input <= currentPlayerHand.size();
     }
     @Override
     public boolean needsInput(){

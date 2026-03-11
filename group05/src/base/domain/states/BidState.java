@@ -146,10 +146,10 @@ public class BidState extends State {
             return new ErrorEvent(1, allBids.length);
         }
 
-        BidType chosenBidType = allBids[choice];
+        BidType chosenBidType = allBids[choice-1];
 
         if (!isLegalBidType(chosenBidType)) {
-            return new ErrorEvent(chosenBidType.ordinal(), allBids.length);//illegalMoveEvent
+            return new ErrorEvent(1, allBids.length);//illegalMoveEvent
         }
 
         if (chosenBidType.getRequiresSuit()) {

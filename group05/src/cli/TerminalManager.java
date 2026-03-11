@@ -55,21 +55,26 @@ public class TerminalManager {
     private Response getResponse(GameEvent<?> event) {
         String rawInput = scanner.nextLine().trim();
         try {
-            // 1. Handle String Inputs
+            // 1. Handle "Press Enter to Continue" (No parsing needed!)
+            if (event.getInputType() == Void.class) {
+                return new Response(true, new ContinueAction());
+            }
+
+            // 2. Handle String Inputs
             if (event.getInputType() == String.class) {
                 String parsed = parser.parseString(rawInput);
                 validateOrThrow(event, parsed);
                 return new Response(true, new TextAction(parsed));
             }
 
-            // 2. Handle Integer Inputs
+            // 3. Handle Integer Inputs
             else if (event.getInputType() == Integer.class) {
                 Integer parsed = parser.parseNumberInput(rawInput);
                 validateOrThrow(event, parsed);
                 return new Response(true, new NumberAction(parsed));
             }
 
-            // 3. Handle List Inputs (ArrayList<Integer>)
+            // 4. Handle List Inputs (ArrayList<Integer>)
             else if (event.getInputType().equals(ArrayList.class) ||
                     event.getInputType().getName().contains("ArrayList")) {
                 ArrayList<Integer> parsed = parser.parseNumbersInput(rawInput);

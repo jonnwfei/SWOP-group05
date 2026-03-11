@@ -10,7 +10,7 @@ public record AmountOfBotsEvent() implements GameEvent<Integer> {
 
     @Override
     public boolean isValid(Integer input) {
-        if (input < 1 || input > 4) {
+        if (input < 0 || input > 3) {
             return false;
         }
         else{

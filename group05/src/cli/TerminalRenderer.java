@@ -57,14 +57,14 @@ public class TerminalRenderer {
         else System.out.println("Current Highest: " + event.currentHighestBidType());
         System.out.println("All Options:");
         for (int i = 0; i < event.bidTypes().length; i++) {
-            System.out.println("   [" + i + "] " + event.bidTypes()[i].name());
+            System.out.println("   [" + (i+1) + "] " + event.bidTypes()[i].name());
         }
         System.out.print("Your choice: ");
     }
 
     private void renderRejectedProposalEvent(RejectedProposalEvent event) {
         System.out.println(event.proposerName() + ": no one accepted your proposal.");
-        System.out.println("Choose [0] PASS or [1] SOLO_PROPOSAL:");
+        System.out.println("Choose [1] PASS or [2] SOLO_PROPOSAL:");
     }
 
     private void renderSuitPromptEvent(SuitPromptEvent event) {

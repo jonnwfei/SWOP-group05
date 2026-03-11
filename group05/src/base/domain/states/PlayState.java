@@ -124,7 +124,8 @@ public class PlayState extends State {
             currentTrick.playCard(currentPlayer, playedCard);
         } catch (IllegalArgumentException e) {
             // Domain rule violation (e.g., must follow suit)
-            return new ErrorEvent(0, maxChoice);
+            //TODO : seperate error message, this is just asking for the same event to fix the problem
+            return buildPickCardEvent(currentPlayer);
         }
 
         // Success! Reset phase for the next player and process outcome
