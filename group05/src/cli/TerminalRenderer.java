@@ -4,6 +4,8 @@ import base.domain.card.Card;
 import base.domain.events.*;
 import base.domain.events.bidevents.*;
 import base.domain.events.countEvents.*;
+import base.domain.events.errorEvents.NumberErrorEvent;
+import base.domain.events.errorEvents.NumberListErrorEvent;
 import base.domain.events.menuEvents.*;
 import base.domain.events.playevents.*;
 import base.domain.trick.Turn;
@@ -35,15 +37,29 @@ public class TerminalRenderer {
             case LastTrickEvent e -> renderLastTrickEvent(e);
             case PlayAgainPromptEvent e -> renderPlayAgainPromptEvent(e);
             case BiddingCompleteEvent e -> renderBiddingCompleteEvent();
-            case ScoreBoardCompleteEvent e -> renderScoreBoardCompleteEvent();
+            case ScoreBoardCompleteEvent e -> renderScoreBoardCompleteEvent(e);
             case EndOfCountStateEvent e -> renderEndOfCountStateEvent();
+            case EndOfTurnEvent e -> renderEndOfTurnEvent(e);
+            case NumberErrorEvent e -> renderNumberErrorEvent(e);
+            case NumberListErrorEvent e -> renderNumberListErrorEvent(e);
             default -> System.out.println("[WARNING] Unknown event type!");  }
+    }
+
+    private void renderNumberListErrorEvent(NumberListErrorEvent e) {
+        System.out.print("\n[!] Enter numbers between (" + e.lowerBound() + "-" + e.upperBound() + ") or -1 for none: ");
+    }
+    private void renderNumberErrorEvent(NumberErrorEvent e) {
+        System.out.println(e.errorMessage());
+    }
+
+    private void renderEndOfTurnEvent(EndOfTurnEvent event) {
+        System.out.println(event.playerName() + " played " + event.card().toString());
     }
 
     private void renderEndOfCountStateEvent() {
     }
 
-    private void renderScoreBoardCompleteEvent() {
+    private void renderScoreBoardCompleteEvent(ScoreBoardCompleteEvent e) {
         System.out.println("\nLoading next screen...");
     }
 
@@ -87,6 +103,7 @@ public class TerminalRenderer {
 
     private void renderEndOfTrickEvent(EndOfTrickEvent event) {
         System.out.println(event.playerName() + " played " + event.card().toString());
+        System.out.println(event.winnerName() + " won the trick!");
         System.out.println("\n============== NEXT TRICK ==============");
         }
 

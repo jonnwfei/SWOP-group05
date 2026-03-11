@@ -8,14 +8,10 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
-import base.domain.events.playevents.LastTrickEvent;
+import base.domain.events.playevents.*;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
-import base.domain.events.playevents.EndOfRoundEvent;
-import base.domain.events.playevents.EndOfTrickEvent;
-import base.domain.events.playevents.InitiateTurnEvent;
-import base.domain.events.playevents.PickCardEvent;
 import base.domain.trick.Turn;
 
 import java.util.ArrayList;
@@ -59,17 +55,23 @@ public class PlayState extends State {
     public GameEvent executeState(GameAction action) {
         Player currentPlayer = currentRound.getCurrentPlayer();
 
-        // 1. Process BOT Turn (Requires no human interaction phases)
+        // 1. Process BOT Turn
         if (!currentPlayer.getRequiresConfirmation()) {
             Card botCard = currentPlayer.chooseCard(currentTrick.getLeadingSuit());
             currentTrick.playCard(currentPlayer, botCard);
 
-            processTurnOutcome();
+            // Capture state before processing
+            boolean trickFinished = currentTrick.isCompleted();
+            String trickWinner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
+
+            processTurnOutcome(); // Resets the trick
 
             if (roundOver) {
                 return new EndOfRoundEvent(currentPlayer.getName(), botCard);
+            } else if (trickFinished) {
+                return new EndOfTrickEvent(currentPlayer.getName(), botCard, trickWinner);
             } else {
-                return new EndOfTrickEvent(currentPlayer.getName(), botCard);
+                return new EndOfTurnEvent(currentPlayer.getName(), botCard);
             }
         }
 
@@ -82,7 +84,6 @@ public class PlayState extends State {
     }
 
     // --- PHASE HANDLERS ---
-
     private GameEvent handlePromptPlayer(Player currentPlayer) {
         currentPhase = TurnPhase.REVEAL_HAND;
         return new InitiateTurnEvent(currentPlayer.getName());
@@ -114,6 +115,7 @@ public class PlayState extends State {
             if (lastTrick == null) {
                 return new ErrorEvent(1, maxChoice); // 0 is invalid if no last trick exists
             } else {
+
                 return new LastTrickEvent(lastTrick);
             }
         }
@@ -128,14 +130,21 @@ public class PlayState extends State {
             return buildPickCardEvent(currentPlayer);
         }
 
+        // --- NEW LOGIC: Capture state BEFORE processing the outcome ---
+        boolean trickFinished = currentTrick.isCompleted();
+        String trickWinner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
+
         // Success! Reset phase for the next player and process outcome
         currentPhase = TurnPhase.PROMPT_PLAYER;
-        processTurnOutcome();
+        processTurnOutcome(); // This resets this.currentTrick
 
         if (roundOver) {
             return new EndOfRoundEvent(currentPlayer.getName(), playedCard);
+        } else if (trickFinished) {
+            // Use the saved variables here!
+            return new EndOfTrickEvent(currentPlayer.getName(), playedCard, trickWinner);
         } else {
-            return new EndOfTrickEvent(currentPlayer.getName(), playedCard);
+            return new EndOfTurnEvent(currentPlayer.getName(), playedCard);
         }
     }
 
