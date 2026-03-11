@@ -101,7 +101,7 @@ public class StartNewCount {
         WhistGame game = runIntegrationTest(
                 "2", "P1", "P2", "P3", "P4",
                 "3", "2", "1", "10", "1",
-                "7", "1", "1", "2"
+                "7", "1", "1", "1"
         );
 
         assertEquals(2, game.getRounds().size());
@@ -157,5 +157,17 @@ public class StartNewCount {
         assertTrue(game.getPlayers().get(0).getScore() != 0, "Scores van ronde 1 zijn behouden");
         assertTrue(game.getPlayers().get(1).getScore() > 0, "Scores van ronde 2 zijn toegevoegd");
         assertEquals(0, game.getPlayers().stream().mapToInt(Player::getScore).sum(), "Totaal blijft zero-sum");
+    }
+    @Test
+    void testMiserieTotalFailureAndQuit() throws Exception {
+        // Menu -> Names -> Miserie (7) -> Hearts (1) -> P1 & P2 (1, 2) -> Everyone loses (-1) -> Quit (2)
+        WhistGame game = runIntegrationTest(
+                "2", "P1", "P2", "P3", "P4",
+                "7","1, 2", "-1"
+        );
+
+        assertTrue(game.getPlayers().get(0).getScore() < 0, "P1 should lose points");
+        assertTrue(game.getPlayers().get(1).getScore() < 0, "P2 should lose points");
+        assertEquals(0, game.getPlayers().stream().mapToInt(Player::getScore).sum());
     }
 }

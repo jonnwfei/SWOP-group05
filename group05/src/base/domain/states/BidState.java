@@ -41,9 +41,9 @@ public class BidState extends State {
         int dealerIdx = game.getPlayers().indexOf(dealerPlayer);
         this.currentPlayer = game.getPlayers().get((dealerIdx + 1) % game.getPlayers().size());
         this.trumpSuit = null;
-
-        dealCards();
         initializeRound();
+        dealCards();
+
     }
 
     /**
@@ -57,6 +57,7 @@ public class BidState extends State {
             allPlayers.get(i).setHand(hands.get(i));
         }
         trumpSuit = allPlayers.getLast().getHand().getLast().suit();
+        getGame().getCurrentRound().setTrumpSuit(trumpSuit);
     }
 
     /**
