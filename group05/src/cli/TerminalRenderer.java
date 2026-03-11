@@ -46,7 +46,7 @@ public class TerminalRenderer {
     }
 
     private void renderNumberListErrorEvent(NumberListErrorEvent e) {
-        System.out.print("\n[!] Enter numbers between (" + e.lowerBound() + "-" + e.upperBound() + ") or -1 for none: ");
+        System.out.print("Give valid input! ");
     }
     private void renderNumberErrorEvent(NumberErrorEvent e) {
         System.out.println(e.errorMessage());
