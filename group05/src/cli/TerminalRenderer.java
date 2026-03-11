@@ -1,5 +1,6 @@
 package cli;
 
+import base.domain.card.Card;
 import base.domain.events.*;
 import base.domain.events.bidevents.*;
 import base.domain.events.countEvents.*;
@@ -19,7 +20,6 @@ public class TerminalRenderer {
             case EndOfTrickEvent e -> renderEndOfTrickEvent(e);
             case InitiateTurnEvent e -> renderInitiateTurnEvent(e);
             case PickCardEvent e -> renderPickCardEvent(e);
-            case ErrorEvent e -> renderErrorEvent(e);
             case GetSuitEvent e -> renderGetSuitEvent();
             case MiserieWinnerEvent e -> renderMiserieWinnerEvent(e);
             case PlayersInBidEvent e -> renderPlayersInBidEvent(e);
@@ -87,7 +87,7 @@ public class TerminalRenderer {
         if(event.cardsOnTable().isEmpty()) {
             System.out.println("(No cards played yet)");
         } else {
-            for(String cardStr : event.cardsOnTable()) {
+            for(Card cardStr : event.cardsOnTable()) {
                 System.out.println("- " + cardStr);
             }
         }
@@ -113,10 +113,6 @@ public class TerminalRenderer {
         }
 
         System.out.print("Choose Card via index: ");
-    }
-
-    private void renderErrorEvent(ErrorEvent event) {
-        System.out.println("Please give a number between " + event.lowerBound() + " and " + event.upperBound());
     }
 
     private void renderGetSuitEvent() {
