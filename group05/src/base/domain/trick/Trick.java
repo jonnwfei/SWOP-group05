@@ -3,17 +3,16 @@ package base.domain.trick;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.card.Card;
-
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The type Trick.
- *
+ * Represents a single trick in a Whist round
  * @author John Cai
  * @since 25/02/2026
  */
 public class Trick {
+    /** The maximum number of players/cards in a single trick. */
     public static final int MAX_TURNS = 4;
 
     private final Suit trumpSuit;
@@ -22,15 +21,14 @@ public class Trick {
     private final List<Turn> turns;
 
     /**
-     * Instantiates a new Trick.
-     *
-     * @param startingPlayer starting player of this trick
-     * @param trumpSuit      the trump suit
-     * @throws IllegalArgumentException if Trick constructor is called without a starting player
+     * Initializes a new trick.
+     * @param startingPlayer The player who leads the trick.
+     * @param trumpSuit The trump suit for the current round (can be null).
+     * @throws IllegalArgumentException if startingPlayer is null.
      */
     public Trick(Player startingPlayer, Suit trumpSuit) {
         if (startingPlayer == null)
-            throw new IllegalArgumentException("Trick: Starting player must exist, cannot be null");
+            throw new IllegalArgumentException("Trick: Starting player must exist.");
 
         this.trumpSuit = trumpSuit;
         this.startingPlayer = startingPlayer;
@@ -39,96 +37,75 @@ public class Trick {
     }
 
     /**
-     * Gets the leading suit of this Trick. (suit of first card played)
-     *
-     * @return the leadingSuit or null if Trick is empty
+     * Identifies the suit of the first card played in this trick.
+     * @return The leading suit, or null if no cards have been played.
      */
     public Suit getLeadingSuit() {
         if (turns.isEmpty()) return null;
-        // get(0) instead of getFirst() for compatibility with earlier version of jdk
-        Card firstCard = turns.get(0).playedCard();
-        return firstCard.suit();
+        return turns.get(0).playedCard().suit();
     }
 
-    /**
-     * Gets starting player.
-     *
-     * @return starting Player
-     */
+    /** @return The player who started the trick. */
     public Player getStartingPlayer() {
         return this.startingPlayer;
     }
 
-    /**
-     * Gets winning player.
-     *
-     * @return winning player
-     */
+    /** @return The player who won the trick (null until 4 cards are played). */
     public Player getWinningPlayer() {
         return this.winningPlayer;
     }
 
-    /**
-     * Gets a shallow copy of the list of turns in this Trick
-     *
-     * @return list of turns
-     */
+    /** @return A shallow, immutable copy of the turns played so far. */
     public List<Turn> getTurns() {
         return List.copyOf(this.turns);
     }
 
-    /**
-     * Gets status of the game. (now >= to include an error case when more than MAX_TURNS were played)
-     *
-     * @return true if MAX_TURNS have been played out, else false
-     */
+    /** @return true if the trick contains the maximum number of turns. */
     public boolean isCompleted() {
         return this.turns.size() >= MAX_TURNS;
     }
 
     /**
-     * Given player plays the given playedCard, adds Turn [Player,Card] to list of turns
-     * and checks whether the play is valid or not.
-     * I.e.
-     *
-     * @param player     that plays a card
-     * @param playedCard to be played
-     * @throws IllegalArgumentException if the same Player tries to play more than once in the same trick
+     * Processes a player's move, validates rules, and removes the card from their hand.
+     * @param player The player attempting to play.
+     * @param playedCard The card to be played.
+     * @throws IllegalArgumentException if the player already played, the move is illegal
+     * (not following suit), or the trick is full.
      */
     public void playCard(Player player, Card playedCard) {
-        if (player == null) throw new IllegalArgumentException("Trick: Player must exist, cannot be null");
-        if (playedCard == null) throw new IllegalArgumentException("Trick: PlayedCard must exist, cannot be null");
+        if (player == null || playedCard == null)
+            throw new IllegalArgumentException("Trick: Player and Card must exist.");
 
-
+        // Rule: One card per player
         if (turns.stream().anyMatch(t -> t.player().equals(player))) {
-            throw new IllegalArgumentException("Trick: Player already played in this trick");
+            throw new IllegalArgumentException("Trick: Player already played in this trick.");
         }
-        if (!turns.isEmpty()) { // Cards have been played, get leading suit // TODO: idk if this should do any of this?
-            Suit leadingSuit = getLeadingSuit();
 
+        // Rule: Must follow leading suit if possible
+        if (!turns.isEmpty()) {
+            Suit leadingSuit = getLeadingSuit();
             if (playedCard.suit() != leadingSuit && player.hasSuit(leadingSuit)) {
-                throw new IllegalArgumentException(
-                        "Trick: Illegal move: You must follow the leading suit (" + leadingSuit + ").");
+                throw new IllegalArgumentException("Trick: You must follow the leading suit (" + leadingSuit + ").");
             }
         }
 
         if (turns.size() >= MAX_TURNS) {
-            throw new IllegalArgumentException("Trick: Cannot play card" + playedCard + ", this trick already has 4 cards");
+            throw new IllegalArgumentException("Trick: This trick is already full.");
         }
 
         turns.add(new Turn(player, playedCard));
-        player.removeCard(playedCard); // Trick only calls that player has to remove this card from its hand, Trick doesn't know how to do this
+        player.removeCard(playedCard);
+
         if (turns.size() == MAX_TURNS) {
             determineWinner();
         }
     }
 
     /**
-     * Determines the winning player of this trick and sets field: winningPlayer
+     * Evaluates all turns based on Trump priority and Rank to identify the winner.
      */
     private void determineWinner() {
         Suit leadingSuit = getLeadingSuit();
-
         Player currentWinner = null;
         Card bestCard = null;
 
@@ -146,25 +123,19 @@ public class Trick {
             boolean isBestCardTrump = (this.trumpSuit != null && bestCard.suit() == this.trumpSuit);
 
             if (isNewCardTrump) {
-                if (!isBestCardTrump) { // If new domain.card.Card is Trump it automatically beats all non-trumps
+                // Trump always beats non-trump; highest trump beats lower trump
+                if (!isBestCardTrump || playedCard.rank().compareTo(bestCard.rank()) > 0) {
                     currentWinner = player;
                     bestCard = playedCard;
-                } else {                // If both TrumpCards, then highest trump wins
-                    if (playedCard.rank().compareTo(bestCard.rank()) > 0) {
-                        currentWinner = player;
-                        bestCard = playedCard;
-                    }
                 }
-            } else {
-                if (!isBestCardTrump) { // If neither are TrumpCards, highest rank wins
-                    if (playedCard.suit() == leadingSuit && playedCard.rank().compareTo(bestCard.rank()) > 0) {
-                        currentWinner = player;
-                        bestCard = playedCard;
-                    }
+            } else if (!isBestCardTrump) {
+                // If no trump is involved, highest rank of the leading suit wins
+                if (playedCard.suit() == leadingSuit && playedCard.rank().compareTo(bestCard.rank()) > 0) {
+                    currentWinner = player;
+                    bestCard = playedCard;
                 }
             }
         }
         this.winningPlayer = currentWinner;
     }
-
 }

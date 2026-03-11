@@ -1,8 +1,8 @@
 package base.domain;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
 import base.domain.actions.GameAction;
 import base.domain.deck.Deck;
 import base.domain.player.*;
@@ -11,7 +11,8 @@ import base.domain.states.*;
 import base.domain.events.GameEvent;
 
 /**
- * @author Stan Kestens
+ * Represents a game of Whist
+ * * @author Stan Kestens
  * @since 28/02/2026
  */
 public class WhistGame {
@@ -23,6 +24,9 @@ public class WhistGame {
     private Player dealerPlayer;
     private Deck deck;
 
+    /**
+     * Initializes a new game session starting in the {@link MenuState}.
+     */
     public WhistGame(){
         this.state = new MenuState(this);
         this.players = new ArrayList<>();
@@ -31,158 +35,125 @@ public class WhistGame {
         this.dealerPlayer = null;
     }
 
-    /**
-     * Gets a shallow copy of the list of Players
-     *
-     * @return list of Player
-     */
+    /** @return A shallow copy of the list of players registered in the game. */
     public List<Player> getPlayers(){
         return new ArrayList<>(this.players);
     }
 
-    /**
-     * Gives the deck of the game
-     * @return the deck
-     */
+    /** @return The current deck being used for dealing. */
     public Deck getDeck(){
         return this.deck;
     }
 
-    /**
-     * Gets a shallow copy of the list of Rounds
-     *
-     * @return list of Rounds
-     */
+    /** @return A shallow copy of all completed and active rounds. */
     public List<Round> getRounds(){
         return new ArrayList<>(this.rounds);
     }
 
-    /**
-     * Gets the active player of Game
-     *
-     * @return currentPlayer of Game
-     */
+    /** @return The player whose turn it currently is. */
     public Player getCurrentPlayer(){
         return this.currentPlayer;
     }
 
-    /**
-     * Gets the dealer of this Game
-     *
-     * @return dealerPlayer of this Game
-     */
+    /** @return The player currently designated as the dealer. */
     public Player getDealerPlayer(){
         return this.dealerPlayer;
     }
 
     /**
-     * Gets the winner from the last Round, if no Rounds exist, return null
-     *
-     * @return Last Round's Winner
+     * Determines the winner of the most recent round.
+     * @return The winning {@link Player}, or null if no rounds have finished.
      */
     public Player getLastRoundWinner() {
         if (this.rounds.isEmpty()) return null;
         List<Player> winningPlayers = rounds.getLast().getWinningPlayers();
         if (winningPlayers.isEmpty()) return null;
-
         return winningPlayers.getFirst();
     }
+
     /**
-     * Gets the active round of the Game
-     *
-     * @return current round or null if no rounds have been played yet
-     * */
+     * Retrieves the round currently being played.
+     * @return The active round, or null of there is non
+     */
     public Round getCurrentRound(){
         if (rounds.isEmpty()) return null;
         return this.rounds.getLast();
     }
 
+    /** @param deck The deck to be used for the upcoming deal. */
     public void setDeck(Deck deck){
         this.deck = deck;
     }
 
+    /**
+     * Triggers a transition to the next game state based on internal logic.
+     */
     public void nextState(){
         this.state = state.nextState();
     }
 
-    public GameEvent executeState(GameAction response){
+    /**
+     * Delegates the provided action to the current state for processing.
+     * @param response The user action to process.
+     * @return A {@link GameEvent} describing the outcome of the action.
+     */
+    public GameEvent<?> executeState(GameAction response){
         return state.executeState(response);
     }
 
-    /**
-     * Adds given player to this Game, players
-     *
-     * @param player to add
-     */
+    /** @param player The player to add to the game session. */
     public void addPlayer(Player player){
         this.players.add(player);
     }
-    /**
-     * Adds given round to this Game, rounds
-     *
-     * @param round to add
-     */
+
+    /** @param round The round to add to the game history. */
     public void addRound (Round round){
         this.rounds.add(round);
     }
 
-    /**
-     * resets the players
-     */
+    /** Clears all players from the game. */
     public void resetPlayers(){
         this.players = new ArrayList<>();
     }
 
-    /**
-     * resets the rounds
-     */
+    /** Clears the round history. */
     public void resetRounds(){
         this.rounds = new ArrayList<>();
     }
 
-
     /**
-     * Sets the current player.
-     *
-     * @param player the player that should become the current player
-     * @throws IllegalArgumentException if the player is null or not part of the game
-     * @throws IllegalStateException if the players list is not initialized
+     * Sets the active player.
+     * @param player The player to set as current.
+     * @throws IllegalArgumentException if player is null or not in the game.
+     * @throws IllegalStateException if players list is not initialized.
      */
     public void setCurrentPlayer(Player player) {
-        if (player == null) {
-            throw new IllegalArgumentException("Player cannot be null");
-        }
-
-        if (players == null) {
-            throw new IllegalStateException("Players list is not initialized");
-        }
-
-        if (!players.contains(player)) {
-            throw new IllegalArgumentException("Player must be part of the players list");
-        }
+        if (player == null) throw new IllegalArgumentException("Player cannot be null");
+        if (players == null) throw new IllegalStateException("Players list is not initialized");
+        if (!players.contains(player)) throw new IllegalArgumentException("Player not in game");
 
         this.currentPlayer = player;
     }
 
     /**
-     * Helper function that sets the dealerPlayer randomly, only called upon first Round
-     * @throws IllegalArgumentException when trying to set a randomDealer when no player list has been initialized
+     * Randomly selects a dealer from the player list. Used for the initial round.
+     * @throws IllegalArgumentException if no players have been added.
      */
     public void setRandomDealer() {
-        if (players.isEmpty()) throw new IllegalArgumentException("Cannot set randomDealer, Players list is not initialized");
+        if (players.isEmpty()) throw new IllegalArgumentException("Players list is empty");
         int randIdx = new Random().nextInt(players.size());
         this.dealerPlayer = players.get(randIdx);
     }
 
     /**
-     * Helper function that advances the dealer by one player
-     * @throws IllegalArgumentException when trying to advance the dealer when no player list has been initialized or
-     * dealer is null
+     * Advances the dealer designation to the next player in the rotation.
+     * @throws IllegalStateException if players are missing or no dealer is set.
      */
     public void advanceDealer() {
-        if (players.isEmpty() || dealerPlayer == null) throw new IllegalStateException("Cannot advanceDealer, " +
-                "Players list is not initialized or dealer is null");
-        int currentIdx =  players.indexOf(dealerPlayer);
-        this.dealerPlayer = players.get((currentIdx + 1)% players.size());
+        if (players.isEmpty() || dealerPlayer == null) {
+            throw new IllegalStateException("Cannot advance dealer: missing players or current dealer.");
+        }
+        int currentIdx = players.indexOf(dealerPlayer);
+        this.dealerPlayer = players.get((currentIdx + 1) % players.size());
     }
 }
