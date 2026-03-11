@@ -10,5 +10,10 @@ public interface GameEvent<T> {
      * Returns true if the input meets the rules, false otherwise.
      */
     boolean isValid(T input);
+
+    /**
+     *
+     * @return bool depending if the event needs input or not
+     */
     boolean needsInput();
 }

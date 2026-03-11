@@ -3,6 +3,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import base.domain.actions.GameAction;
 import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.domain.round.Round;
@@ -104,7 +105,7 @@ public class WhistGame {
         this.state = state.nextState();
     }
 
-    public GameEvent executeState(String response){
+    public GameEvent executeState(GameAction response){
         return state.executeState(response);
     }
 

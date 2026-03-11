@@ -8,7 +8,7 @@ import base.domain.player.LowBotStrategy;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
-import cli.elements.GameEvent;
+import base.domain.events.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
