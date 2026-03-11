@@ -84,14 +84,10 @@ public class BidState extends State {
 
     /**
      * Processes pure Domain Actions and advances the bidding state machine.
+     * doesn't expect TextAction
      */
     @Override
     public GameEvent executeState(GameAction action) {
-
-        // 1. Catch View Errors
-        if (action instanceof TextAction textAction) {
-            return new ErrorEvent();//InvalidActionEvent
-        }
 
         // 2. Route Number Actions based on context
         if (action instanceof NumberAction(int choice)) {
@@ -153,7 +149,7 @@ public class BidState extends State {
         BidType chosenBidType = allBids[choice];
 
         if (!isLegalBidType(chosenBidType)) {
-            return new ErrorEvent();//illegalMoveEvent
+            return new ErrorEvent(chosenBidType.ordinal(), allBids.length);//illegalMoveEvent
         }
 
         if (chosenBidType.getRequiresSuit()) {

@@ -32,6 +32,7 @@ public class TerminalRenderer {
             case PrintNamesEvent e -> renderPrintNamesEvent(e);
             case WelcomeMenuEvent e -> renderWelcomeMenuEvent();
             case LastTrickEvent e -> renderLastTrickEvent(e);
+            case PlayAgainPromptEvent e -> renderPlayAgainPromptEvent(e);
 
             default -> System.out.println("[WARNING] Unknown event type!");  }
     }
@@ -217,5 +218,12 @@ public class TerminalRenderer {
             System.out.println("- " + turn.toString());
         }
         System.out.println("------------------------------------------------");
+    }
+
+    private void renderPlayAgainPromptEvent(PlayAgainPromptEvent event) {
+        System.out.println("Do you want to:");
+        System.out.println("(1) Play another round");
+        System.out.println("(2) Quit to main menu");
+        System.out.print("Your choice: ");
     }
 }
