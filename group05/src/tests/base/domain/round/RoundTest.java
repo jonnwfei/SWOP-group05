@@ -42,7 +42,6 @@ class RoundTest {
         Card low3 = new Card(Suit.HEARTS, Rank.FOUR);
         Card winningCard = new Card(Suit.HEARTS, Rank.ACE);
 
-        // FIX: Wrap in ArrayList to prevent ImmutableCollection crashes in Player.setHand!
         p1.setHand(new ArrayList<>(List.of(winner == p1 ? winningCard : low1)));
         p2.setHand(new ArrayList<>(List.of(winner == p2 ? winningCard : low2)));
         p3.setHand(new ArrayList<>(List.of(winner == p3 ? winningCard : low3)));

@@ -67,7 +67,6 @@ class BidTypeTest {
 
     @Test
     void instantiate_Acceptance_ReturnsAcceptedBid() {
-        // Note: This test will FAIL until you fix the copy-paste bug in BidType.java!
         Bid bid = BidType.ACCEPTANCE.instantiate(testPlayer, null);
         assertInstanceOf(AcceptedBid.class, bid, "ACCEPTANCE should instantiate an AcceptedBid");
     }

@@ -144,19 +144,22 @@ class WhistGameTest {
 
         // Force the dealer to be P1
         game.setRandomDealer();
-        while(game.getDealerPlayer() != p1) {
-            game.setRandomDealer();
-        }
+        Player initialDealer = game.getDealerPlayer();
 
-        // Advance and test cycle
-        game.advanceDealer();
-        assertEquals(p2, game.getDealerPlayer());
+        List<Player> players = game.getPlayers();
+        int initialIdx =  players.indexOf(initialDealer);
 
-        game.advanceDealer();
-        assertEquals(p3, game.getDealerPlayer());
+        Player expectedNext = players.get((initialIdx + 1) % players.size());
+        Player expectedNextNext = players.get((initialIdx + 2) % players.size());
 
         game.advanceDealer();
-        assertEquals(p1, game.getDealerPlayer()); // Loops back to start
+        assertEquals(expectedNext, game.getDealerPlayer());
+
+        game.advanceDealer();
+        assertEquals(expectedNextNext, game.getDealerPlayer());
+
+        game.advanceDealer();
+        assertEquals(initialDealer, game.getDealerPlayer());
     }
 
     // -------- STRING FORMATTING TESTS --------
