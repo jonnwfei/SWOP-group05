@@ -210,9 +210,9 @@ public class BidState extends State {
      * @return boolean if the new bid is legal */
     private boolean isLegalBidType(BidType chosenBidType) {
         if (chosenBidType == BidType.PASS) return true;
-        if (currentHighestBidType == null) return true;
         if (chosenBidType == BidType.ACCEPTANCE && currentHighestBidType != BidType.PROPOSAL) return false;
         if (chosenBidType == BidType.SOLO_PROPOSAL && !isBiddingComplete()) return false;
+        if (currentHighestBidType == null) return true;
 
         int comparison = chosenBidType.compareTo(currentHighestBidType);
         if (comparison < 0) return false;
@@ -257,4 +257,6 @@ public class BidState extends State {
         current.setBids(this.bids);
         current.setTrumpSuit(trumpSuit);
     }
+
+
 }

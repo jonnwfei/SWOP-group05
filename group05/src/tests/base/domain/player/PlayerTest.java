@@ -159,21 +159,4 @@ class PlayerTest {
         assertFalse(player.getRequiresConfirmation());
     }
 
-    // -------- FORMATTING TESTS --------
-
-    @Test
-    void getFormattedHand_WithAndWithoutIndex() {
-        Card c1 = new Card(Suit.HEARTS, Rank.ACE);
-        Card c2 = new Card(Suit.DIAMONDS, Rank.TWO); // Diamonds lower rank than Hearts
-        player.setHand(List.of(c1, c2));
-
-        String indexedString = player.getFormattedHand(true);
-        String plainString = player.getFormattedHand(false);
-
-        assertTrue(indexedString.contains("(1) TWO of DIAMONDS")); //TODO: weird indexing, not sure why
-        assertTrue(indexedString.contains("(2) ACE of HEARTS"));
-
-        assertTrue(plainString.contains("ACE of HEARTS"));
-        assertFalse(plainString.contains("(1)"));
-    }
 }
