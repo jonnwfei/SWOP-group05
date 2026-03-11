@@ -7,14 +7,14 @@ import base.domain.events.GameEvent;
  * The View should catch this, print a transition message, and break its
  * input loop to allow the Controller to transition to the PlayState.
  */
-public record BiddingCompleteEvent() implements GameEvent {
+public record BiddingCompleteEvent() implements GameEvent<String> {
     @Override
     public Class getInputType() {
         return null;
     }
 
     @Override
-    public boolean isValid(Object input) {
+    public boolean isValid(String input) {
         return true;
     }
 

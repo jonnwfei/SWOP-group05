@@ -8,6 +8,7 @@ import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
 import base.domain.bid.Bid;
 import base.domain.events.playevents.PlayAgainPromptEvent;
+import base.domain.events.playevents.ScoreBoardCompleteEvent;
 import base.domain.player.Player;
 
 import java.util.List;
@@ -51,10 +52,10 @@ public class ScoreBoardState extends State {
 
             if (choice == 1) {
                 userWantsToRestart = true;
-                return new MessageEvent("Starting new round...");
+                return new ScoreBoardCompleteEvent();
             } else if (choice == 2) {
                 userWantsToQuit = true;
-                return new MessageEvent("Returning to main menu...");
+                return new ScoreBoardCompleteEvent();
             } else {
                 return new ErrorEvent(1, 2);
             }

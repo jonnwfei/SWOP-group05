@@ -35,8 +35,13 @@ public class TerminalRenderer {
             case LastTrickEvent e -> renderLastTrickEvent(e);
             case PlayAgainPromptEvent e -> renderPlayAgainPromptEvent(e);
             case BiddingCompleteEvent e -> renderBiddingCompleteEvent();
+            case ScoreBoardCompleteEvent e -> renderScoreBoardCompleteEvent();
 
             default -> System.out.println("[WARNING] Unknown event type!");  }
+    }
+
+    private void renderScoreBoardCompleteEvent() {
+        System.out.println("\nLoading next screen...");
     }
 
     private void renderBiddingCompleteEvent() {
