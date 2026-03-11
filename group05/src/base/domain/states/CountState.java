@@ -4,7 +4,6 @@ import base.domain.WhistGame;
 import base.domain.actions.GameAction;
 import base.domain.actions.NumberAction;
 import base.domain.actions.NumberListAction;
-import base.domain.actions.TextAction;
 import base.domain.events.ErrorEvent;
 import base.domain.events.countEvents.*;
 import base.domain.events.errorEvents.NumberListErrorEvent;
@@ -15,7 +14,6 @@ import base.domain.card.Suit;
 import base.domain.round.Round;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import static base.domain.bid.BidType.*;
 
@@ -80,8 +78,17 @@ public class CountState extends State {
         }
 
         this.numberBid = choice;
-        currentPhase = CountPhase.SELECT_TRUMP;
-        return new GetSuitEvent();
+        if (choice == 7 || choice == 8){
+            currentPhase = CountPhase.SELECT_PLAYERS;
+            return new PlayersInBidEvent(getPlayerNames());
+
+        }
+        else {
+            currentPhase = CountPhase.SELECT_TRUMP;
+            return new GetSuitEvent();
+        }
+
+
     }
 
     /**
@@ -167,7 +174,9 @@ public class CountState extends State {
                 // Standard validation: check if indices exist in the current participants
                 for (int idx : winnerIndices) {
                     if (!participatingPlayers.contains(idx)) {
-                        return new ErrorEvent(1, getGame().getPlayers().size());
+                        // Borrow the logic from MiserieWinnerEvent to create a specialized List Error
+                        MiserieWinnerEvent tempEvent = new MiserieWinnerEvent(getPlayerNames());
+                        return new NumberListErrorEvent(tempEvent::isValid);
                     }
                 }
                 // Map 1-based indices to 0-based objects
