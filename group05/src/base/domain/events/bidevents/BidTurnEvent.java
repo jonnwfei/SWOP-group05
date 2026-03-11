@@ -16,12 +16,7 @@ public record BidTurnEvent(String playerName, Suit dealtTrump, BidType currentHi
 
     @Override
     public boolean isValid(Integer input) {
-        if (input < 1 || input > 16) {
-            return false;
-        }
-        else{
-            return true;
-        }
+        return input >= 1 && input <= bidTypes.length;
     }
     @Override
     public boolean needsInput(){
