@@ -150,34 +150,8 @@ public class Player {
         return this.decisionStrategy.requiresConfirmation();
     }
 
-    /**
-     * Method Overloading getFormattedHand for appending handIdx in the output
-     *
-     * @return a formatted string of currentHand without handIdx
-     */
-    public String getFormattedHand() {
-        return this.getFormattedHand(false);
-    }
 
-    /**
-     * If showIdx isTrue returns a formatted, 1-indexed string of the player's current hand.
-     * Else returns a formatted non-indexed string of the player
-     * <br>
-     * Example: "(1) ACE of HEARTS \n (2) TEN of HEARTS"
-     * @param showIdx boolean to show Card Idx or not
-     * @return a formatted string of currentHand
-     */
-    public String getFormattedHand(boolean showIdx) {
-        StringBuilder sb = new StringBuilder();
-        List<Card> hand = this.getHand();
 
-        for (int i = 0; i < hand.size(); i++) {
-            if (showIdx) {
-                sb.append("(").append(i + 1).append(") ");
-            }
-            sb.append(hand.get(i).toString()).append("\n"); // Always print the card!
-        }
-        return sb.toString();
-    }
+
 }
 

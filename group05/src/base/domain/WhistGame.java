@@ -3,11 +3,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import base.domain.actions.GameAction;
 import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.domain.round.Round;
 import base.domain.states.*;
-import cli.elements.GameEvent;
+import base.domain.events.GameEvent;
 
 /**
  * @author Stan Kestens
@@ -104,7 +105,7 @@ public class WhistGame {
         this.state = state.nextState();
     }
 
-    public GameEvent executeState(String response){
+    public GameEvent executeState(GameAction response){
         return state.executeState(response);
     }
 
@@ -138,24 +139,7 @@ public class WhistGame {
     public void resetRounds(){
         this.rounds = new ArrayList<>();
     }
-    /**
-     * Returns a formatted string of the players in this game as follows:
-     * <pre>
-     * Players in this game:
-     * 1. player1
-     * 2. player2
-     * etc.
-     * </pre>
-     *
-     * @return the formatted player names
-     */
-    public String printNames() {
-        String result = "Players in this game:\n";
-        for (int i = 0; i < players.size(); i++) {
-            result += (i + 1) + ". " + players.get(i).getName() + "\n";
-        }
-        return result;
-    }
+
 
     /**
      * Sets the current player.

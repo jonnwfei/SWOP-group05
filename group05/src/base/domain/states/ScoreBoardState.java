@@ -1,10 +1,18 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.actions.GameAction;
+import base.domain.actions.NumberAction;
+import base.domain.actions.TextAction;
+import base.domain.events.ErrorEvent;
+import base.domain.events.GameEvent;
 import base.domain.bid.Bid;
-import cli.elements.GameEvent;
-import cli.elements.QuestionEvent;
-import cli.elements.TextEvent;
+import base.domain.events.countEvents.ScoreBoardEvent;
+import base.domain.events.playevents.PlayAgainPromptEvent;
+import base.domain.events.playevents.ScoreBoardCompleteEvent;
+import base.domain.player.Player;
+
+import java.util.List;
 
 /**
  * EndRoundState, mini menu state where the player can restart Round (12a)
@@ -12,75 +20,53 @@ import cli.elements.TextEvent;
  * @author John Cai
  * @since 02/03/2026
  */
+
 public class ScoreBoardState extends State {
-    public enum RestartTarget {
-        BID_STATE, COUNT_STATE
-    }
+    private final RestartTarget targetRestartTarget;
+    private int choice = 0; // 0 = hasn't chosen, 1 = restart, 2 = quit
 
-    private boolean userWantsToQuit = false;
-    private boolean userWantsToRestart = false;
-    private final RestartTarget targetRestartTarget; // Can hold either new BidState or CountState
-
-    /**
-     * Constructs a ScoreBordState for prompting the player whether to restart or quit to the menu. (Can be used for either
-     * PlayState and CountState, avoiding double code)
-     * @param game that will hold this state
-     * @param targetRestartTarget can either be new CountState or new BidState
-     */
     public ScoreBoardState(WhistGame game, RestartTarget targetRestartTarget) {
         super(game);
         this.targetRestartTarget = targetRestartTarget;
     }
-
-    /**
-     *
-     * @param input the user's response on the previous QuestionEvent
-     * @return GameEvent either TextEvent which calls nextState, or QuestionEvent which returns the currentState
-     */
+    public enum RestartTarget {
+        BID_STATE,   // "Take me back to the bidding phase"
+        COUNT_STATE  // "Take me back to the calculator phase"
+    }
     @Override
-    public GameEvent executeState(String input) {
-        if (input != null && !input.isEmpty()) {
-            if (input.equals("1")) {
-                userWantsToRestart = true;
-                return new TextEvent("Starting new round...");
-            } else if (input.equals("2")) {
-                userWantsToQuit = true;
-                return new TextEvent("Returning to main menu...");
-            } else {
-                return new QuestionEvent("Invalid input. (0) Next Round or (1) Quit: ");
+    public GameEvent executeState(GameAction action) {
+        // If we have a NumberAction, the user has already seen the scoreboard and answered
+        if (action instanceof NumberAction numAction) {
+            int input = numAction.value();
+            if (input == 1 || input == 2) {
+                this.choice = input;
+                return new ScoreBoardCompleteEvent(); // Signal the end of this state
             }
+            return new ErrorEvent(1, 2);
         }
 
-        String prompt = getGame().printScore() + "\n\n" +
-                "Do you want to:\n\n" +
-                "(1) Play another round\n" +
-                "(2) Quit to main menu\n" +
-                "Your choice: ";
-        return new QuestionEvent(prompt);
+        // If no action yet, show the ScoreBoard and the prompt
+        List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
+        List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
+        return new ScoreBoardEvent(names, scores);
     }
 
-    /**
-     * Method to transition onwards to the nextState, following a ScoreBoardState can either be a MenuState, CountState
-     * or BidState.
-     *
-     * @return nextState
-     */
     @Override
     public State nextState() {
-        if (userWantsToQuit) {
+        if (choice == 2) {
             return new MenuState(getGame());
-        } else if (userWantsToRestart) {
-            // TODO: needs to setup game, as to set the nextDealer as the person next to the dealer/ this is done by bidState
+        }
+
+        if (choice == 1) {
             getGame().advanceDealer();
 
-            if (targetRestartTarget == RestartTarget.BID_STATE) {
-                return new BidState(getGame());
-            }
-            else {
-                return new CountState(getGame());
-            }
-        } else {
-            return this;
+            // Use the instance variable 'targetRestartTarget'
+            // compared against the Enum constant
+            return (this.targetRestartTarget == RestartTarget.BID_STATE)
+                    ? new BidState(getGame())
+                    : new CountState(getGame());
         }
+
+        return this;
     }
 }

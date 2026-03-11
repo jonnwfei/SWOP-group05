@@ -1,21 +1,26 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.actions.GameAction;
+import base.domain.actions.NumberAction;
+import base.domain.actions.NumberListAction;
+import base.domain.events.ErrorEvent;
+import base.domain.events.countEvents.*;
+import base.domain.events.errorEvents.NumberListErrorEvent;
 import base.domain.player.Player;
-import cli.elements.GameEvent;
-import cli.elements.QuestionEvent;
-import cli.elements.TextEvent;
+import base.domain.events.GameEvent;
 import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.round.Round;
-import java.util.Arrays;
+
+import java.util.ArrayList;
 import java.util.List;
 import static base.domain.bid.BidType.*;
 
 public class CountState extends State {
 
     private enum CountPhase {
-        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, CALCULATE, FINISH
+        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, CALCULATE, PROMPT_NEXT_STATE
     }
 
     private CountPhase currentPhase = CountPhase.START;
@@ -30,31 +35,22 @@ public class CountState extends State {
     }
 
     /**
-     *Executes the count state
+     * Executes the count state
      *
-     * @param  input the users response to the previous QuestionEvent
-     * @return the next QuestionEvent or TextEvent
-     * @throws IllegalStateException getting in a unknown state
+     * @param action@return the next QuestionEvent or TextEvent
+     * @throws IllegalStateException getting in an unknown state
      */
     @Override
-    public GameEvent executeState(String input) {
-        try {
-            return switch (currentPhase) {
-                case START          -> handleStart();
-                case SELECT_BID     -> handleSelectBid(input);
-                case SELECT_TRUMP   -> handleSelectTrump(input);
-                case SELECT_PLAYERS -> handleSelectPlayers(input);
-                case CALCULATE     -> handleCalculate(input);
-                case FINISH        -> handleFinish(input);
-            };
-        } catch (NumberFormatException e) {
-            return new QuestionEvent("That's not a valid number. Please try again:");
-        } catch (Exception e) {
-            System.err.println("Unexpected error in " + currentPhase + ": " + e.getMessage());
-            return new QuestionEvent("An error occurred. Please repeat your last input:");
-        }
+    public GameEvent executeState(GameAction action) {
+        return switch (currentPhase) {
+            case START             -> handleStart();
+            case SELECT_BID        -> handleSelectBid(action);
+            case SELECT_TRUMP      -> handleSelectTrump(action);
+            case SELECT_PLAYERS    -> handleSelectPlayers(action);
+            case CALCULATE         -> handleCalculate(action);
+            case PROMPT_NEXT_STATE -> handlePromptNextState(action);
+        };
     }
-
     // --- HELPER METHODS ---
     /**
      * First questionEvent the Count State
@@ -62,149 +58,169 @@ public class CountState extends State {
      * @return QuestionEvent what bid was played
     * */
     private GameEvent handleStart() {
-        String msg = """
-                ===== WELCOME TO THE COUNT ====\s
-                 WHICH ROUND WAS PLAYED?\s
-                Proposal:\s
-                (1) Alone    (2) With Partner
-                Abondance:
-                (3) 9   (4) 10   (5) 11   (6) 12
-                Miserie:
-                (7) Normal       (8) Open
-                Solo:
-                (9) Normal       (10) Solo Slim
-                """;
         currentPhase = CountPhase.SELECT_BID;
-        return new QuestionEvent(msg);
+        return new WelcomeCountEvent();
     }
     /**
      * Second questionEvent the Count State
      * handles de bid, and asks what the trump is
-     * @param  input  answer of the user to what bid is played
+     * @param action of the user to what bid is played
      * @return QuestionEvent what is the trump suit
      *
      * */
-    private GameEvent handleSelectBid(String input) {
-        int choice = Integer.parseInt(input);
-        if (choice < 1 || choice > 10) return new QuestionEvent("Invalid choice (1-10):");
+    private GameEvent handleSelectBid(GameAction action) {
+        if (!(action instanceof NumberAction(int choice))) {
+            return null; //illegalActionTypeEvent
+        }
+
+        if (choice < 1 || choice > 10) {
+            return new ErrorEvent(1, 10);
+        }
+
         this.numberBid = choice;
-        currentPhase = CountPhase.SELECT_TRUMP;
-        return new QuestionEvent("What Suit is the trump suit?\n(1) Hearts (2) Clubs (3) Diamonds (4) Spades");
+        if (choice == 7 || choice == 8){
+            currentPhase = CountPhase.SELECT_PLAYERS;
+            return new PlayersInBidEvent(getPlayerNames());
+
+        }
+        else {
+            currentPhase = CountPhase.SELECT_TRUMP;
+            return new GetSuitEvent();
+        }
+
+
     }
 
     /**
      * Third questionEvent the Count State
      * Handles the trump and asks for the players who played the bid
-     * @param  input  answer from user what suit trump is
+     * @param  action  answer from user what suit trump is
      * @return QuestionEvent which players played the bid
      * */
-    private GameEvent handleSelectTrump(String input) {
-        int choice = Integer.parseInt(input);
+    private GameEvent handleSelectTrump(GameAction action) {
+        if (!(action instanceof NumberAction(int choice))) {
+            return null; //illegalActionTypeEvent
+        }
+
         this.trumpSuit = switch (choice) {
-            case 1 -> Suit.HEARTS; case 2 -> Suit.CLUBS;
-            case 3 -> Suit.DIAMONDS; case 4 -> Suit.SPADES;
+            case 1 -> Suit.HEARTS;
+            case 2 -> Suit.CLUBS;
+            case 3 -> Suit.DIAMONDS;
+            case 4 -> Suit.SPADES;
             default -> null;
         };
-        if (this.trumpSuit == null) return new QuestionEvent("Invalid suit (1-4):");
+
+        if (this.trumpSuit == null) {
+            return new ErrorEvent(1, 4);
+        }
+
         currentPhase = CountPhase.SELECT_PLAYERS;
-        return new QuestionEvent("Which player numbers played this bid?\n" + getGame().printNames());
+        return new PlayersInBidEvent(getPlayerNames());
     }
     /**
      * Handles the players that played in the bid, asks depending on the bid the amount of tricks of which players won
-     * @param  input  answer from user to which players were playing this bid
+     * @param  action  answer from user to which players were playing this bid
      * @return QuestionEvent who won the bid or how many tricks were won
     * */
-    private GameEvent handleSelectPlayers(String input) {
-        this.participatingPlayers = parseIndices(input);
-        if (participatingPlayers.isEmpty()) {
-            return new QuestionEvent("Select at least one player:");
-        }
-        for (int idx : participatingPlayers) {
-            if (idx < 0 || idx >= getGame().getPlayers().size()) {
-                return new QuestionEvent("Invalid player index: " + idx);
-            }
-        }
-        if (numberBid == 2 && participatingPlayers.size() != 2) {
-            return new QuestionEvent("Select exactly two players:\n" + getGame().printNames());
-        }
-        else if (numberBid != 2&&numberBid != 7 && numberBid !=8 && participatingPlayers.size() != 1){
-            return new QuestionEvent("Select exactly one player:\n" + getGame().printNames());
-        }
-        currentPhase = CountPhase.CALCULATE;
-        //going to next bid confirmed
-        if (numberBid == 7 || numberBid == 8) {
-            return new QuestionEvent("Which players won their bid? (Got 0 tricks): \n" + getGame().printNames());
+    private GameEvent handleSelectPlayers(GameAction action) {
+        if (!(action instanceof NumberListAction(ArrayList<Integer> indices))) {
+            return null;
         }
 
-        return new QuestionEvent("How many tricks did the player(s) win?");
+        // --- VALIDATION CHECK BEFORE ADVANCING PHASE ---
+        // If not Miserie and more than 1 player selected, return error and STAY in this phase
+        if (numberBid != 7 && numberBid != 8 && indices.size() > 1) {
+            PlayersInBidEvent tempEvent = new PlayersInBidEvent(getPlayerNames());
+            return new NumberListErrorEvent(tempEvent::isValid);
+        }
+
+        // If valid, save data and move forward
+        this.participatingPlayers = indices;
+        currentPhase = CountPhase.CALCULATE;
+
+        if (numberBid == 7 || numberBid == 8) {
+            return new MiserieWinnerEvent(getPlayerNames());
+        }
+
+        return new TrickWonEvent();
     }
 
     /**
      *Handles the results of the bid and calculates the scores, prints them and asks what state to go next to
-     * @param input answer from user to question who won the bid or how many tricks were won
+     * @param action answer from user to question who won the bid or how many tricks were won
      * @return QuestionEvent about if the users wants to count another round
      */
-    private GameEvent handleCalculate(String input) {
-        //prep
+    private GameEvent handleCalculate(GameAction action) {
         List<Player> participants = participatingPlayers.stream()
-                .map(idx -> getGame().getPlayers().get(idx)).toList();
+                .map(idx -> getGame().getPlayers().get(idx - 1)).toList();
 
         createBidObject(participants.getFirst());
         Round round = new Round(getGame().getPlayers(), getGame().getPlayers().getFirst(), 1);
         round.setHighestBid(bid);
         getGame().addRound(round);
-        //case of miserie
+
+        // Case of Miserie (7 or 8)
         if (numberBid == 7 || numberBid == 8) {
-            List<Integer> winnerIndices = parseIndices(input);
-            if (winnerIndices.isEmpty()) {
-                return new QuestionEvent("Select at least one winning player:");
+            if (!(action instanceof NumberListAction(ArrayList<Integer> winnerIndices))) {
+                return null;
             }
-            for (int idx : winnerIndices) {
-                if (idx < 0 || idx >= getGame().getPlayers().size()) {
-                    return new QuestionEvent("Invalid player index: " + idx);
+
+            List<Player> winners;
+
+            // Check for the "Everyone Lost" special case (-1)
+            if (winnerIndices.size() == 1 && winnerIndices.get(0) == -1) {
+                winners = new ArrayList<>(); // Empty list means no winners, so everyone in participants loses
+            } else {
+                // Standard validation: check if indices exist in the current participants
+                for (int idx : winnerIndices) {
+                    if (!participatingPlayers.contains(idx)) {
+                        // Borrow the logic from MiserieWinnerEvent to create a specialized List Error
+                        MiserieWinnerEvent tempEvent = new MiserieWinnerEvent(getPlayerNames());
+                        return new NumberListErrorEvent(tempEvent::isValid);
+                    }
                 }
-                if (!participatingPlayers.contains(idx)) {
-                    return new QuestionEvent("Winners must be among the participating players:");
-                }
+                // Map 1-based indices to 0-based objects
+                winners = winnerIndices.stream()
+                        .map(idx -> getGame().getPlayers().get(idx - 1))
+                        .toList();
             }
-            List<Player> winners = winnerIndices.stream().map(idx -> getGame().getPlayers().get(idx)).toList();
+
             round.calculateScoresForCount(0, participants, winners);
-        }//other cases
+        }
+        // Other bids (Tricks won)
         else {
-            int tricks = Integer.parseInt(input);
-            if (tricks < 0 || tricks > 13) return new QuestionEvent("Tricks must be 0-13:");
+            if (!(action instanceof NumberAction(int tricks))) {
+                return new ErrorEvent(0, 13);
+            }
+            if (tricks < 0 || tricks > 13) {
+                return new ErrorEvent(0, 13);
+            }
             round.calculateScoresForCount(tricks, participants, null);
         }
 
-        currentPhase = CountPhase.FINISH;
-        return new QuestionEvent(getGame().printScore() + "\n" +
-                "Do you want to: \n(1) Simulate another round\n(2) Go back to the main menu");
+        currentPhase = CountPhase.PROMPT_NEXT_STATE;
+
+        List<Integer> playerScores = getGame().getPlayers().stream().map(Player::getScore).toList();
+        return new ScoreBoardEvent(getPlayerNames(), playerScores);
     }
 
     /**
-     * Defensive programming for final state
-     * @param input wrong input for nextState
-     * @return QuestionEvent about what to do next
+     * Handles the prompt that asks: [1] Count Again, [2] Menu
      */
-    private GameEvent handleFinish(String input) {
-        keuze = Integer.parseInt(input);
-        if (keuze != 1 && keuze != 2) return new QuestionEvent("Choose (1) or (2):");
-        return new TextEvent("Round finalized.");
-    }
+    private GameEvent handlePromptNextState(GameAction action) {
+        if (!(action instanceof NumberAction(int choice))) {
+            return new ErrorEvent(1, 2);
+        }
 
-    // --- UTILS ---
+        if (choice < 1 || choice > 2) {
+            return new ErrorEvent(1, 2);
+        }
 
-    /**
-     * Splits up the input to get the different numbers that were put in
-     * @param input (eg. 1,4)
-     * @return list containing those numbers (eg. [1,4])
-     */
-    private List<Integer> parseIndices(String input) {
-        return Arrays.stream(input.split("[^0-9]+"))
-                .filter(s -> !s.isEmpty())
-                .map(Integer::parseInt)
-                .map(i -> i - 1)
-                .toList();
+        // Successfully saved the user's choice!
+        this.keuze = choice;
+
+        // Return an event to break the inner UI loop (you might have a MessageEvent or EndOfStateEvent for this)
+        return new EndOfCountStateEvent(); // Adjust this return to whatever breaks your Controller loop!
     }
 
     /**
@@ -228,8 +244,12 @@ public class CountState extends State {
         };
     }
 
-    @Override
+    private List<String> getPlayerNames() {
+        return getGame().getPlayers().stream().map(Player::getName).toList();
+    }
 
+
+    @Override
     public State nextState(){
         return (keuze == 1) ? new CountState(getGame()) : new MenuState(getGame());
     }

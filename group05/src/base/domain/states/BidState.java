@@ -1,17 +1,20 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.actions.GameAction;
+import base.domain.actions.NumberAction;
+import base.domain.actions.TextAction;
 import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.events.*;
 import base.domain.player.Player;
 import base.domain.round.Round;
-import cli.elements.GameEvent;
-import cli.elements.QuestionEvent;
-import cli.elements.TextEvent;
+import base.domain.events.bidevents.*;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,61 +83,46 @@ public class BidState extends State {
     }
 
     /**
-     * Processes user/bot input and advances the bidding state machine.
-     * @param input The raw string input from the user (or injected for bots).
-     * @return A GameEvent (TextEvent or QuestionEvent) to be displayed to the UI.
+     * Processes pure Domain Actions and advances the bidding state machine.
+     * doesn't expect TextAction
      */
     @Override
-    public GameEvent executeState(String input) {
+    public GameEvent executeState(GameAction action) {
 
-        // Handle the "Rejected Proposal" Decision
-        // This occurs AFTER everyone has had a turn, and the highest was a PROPOSAL
-        if(isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
-            return handleRejectedProposal(input);
-        }
+        // 2. Route Number Actions based on context
+        if (action instanceof NumberAction(int choice)) {
 
-        // PROCESS INCOMING DATA
-        if(input != null && !input.trim().isEmpty()) {
+            // CONTEXT A: Are we resolving a rejected proposal?
+            if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
+                return handleRejectedProposal(choice);
+            }
 
-            QuestionEvent errorOrFollowUpPrompt;
-
-            // Route the input based on the current context (Multi-step prompt memory)
+            // CONTEXT B: Are we waiting for a suit selection?
             if (this.pendingBidType != null) {
-                errorOrFollowUpPrompt = handleSuitInput(input);
-            } else {
-                errorOrFollowUpPrompt = handleBidInput(input);
+                GameEvent error = handleSuitInput(choice);
+                if (error != null) return error;
             }
 
-            // If a helper caught an error or asked a follow-up question, return it immediately!
-            if (errorOrFollowUpPrompt != null) {
-                return errorOrFollowUpPrompt;
-            }
-
-            // CHECK END CONDITION
-            if (isBiddingComplete()) {
-                return handleEndOfBidding();
+            // CONTEXT C: Normal Bid Selection
+            else {
+                GameEvent followUpOrError = handleBidInput(choice);
+                if (followUpOrError != null) return followUpOrError; // SuitPromptEvent or ErrorEvent
             }
         }
 
-        //HANDLE PLAYER BOTS
+        // 3. Process Player Bots (Fast-forwards if the current player doesn't require UI input)
         while(!currentPlayer.getRequiresConfirmation() && !isBiddingComplete()) {
             Bid finalizedBid = new PassBid(currentPlayer);
             commitBid(finalizedBid);
         }
 
+        // 4. Check End Conditions
         if (isBiddingComplete()) {
             return handleEndOfBidding();
         }
 
-        //GENERATE NEXT PROMPT (First Player or Next Player)
-        String promptText;
-        if (this.bids.isEmpty()) {
-            promptText = buildFirstPlayerPrompt(currentPlayer);
-        } else {
-            promptText = buildStandardPrompt(currentPlayer);
-        }
-
-        return new QuestionEvent(promptText);
+        // 5. Generate Next Turn Prompt (Null highest bid gracefully handles the first player)
+        return new BidTurnEvent(currentPlayer.getName(), trumpSuit, currentHighestBidType, BidType.values(), currentPlayer.getHand());
     }
 
     @Override
@@ -149,65 +137,66 @@ public class BidState extends State {
         return new PlayState(getGame());
     }
 
-    private QuestionEvent handleBidInput(String input) {
-        try {
-            BidType chosenBidType = parseBidType(input);
-
-            if (!isLegalBidType(chosenBidType)) {
-                return new QuestionEvent("Illegal Bid chosen.\nTry again: ");
-            }
-
-            if (chosenBidType.getRequiresSuit()) {
-                this.pendingBidType = chosenBidType;
-                return new QuestionEvent("You chose " + chosenBidType.name() + ".\n\n" +
-                        buildOptions(Suit.values()) + "Your choice: ");
-            }
-
-            Bid finalizedBid = chosenBidType.instantiate(currentPlayer, null);
-            commitBid(finalizedBid);
-            return null;
-
-        } catch (IllegalArgumentException error) {
-            return new QuestionEvent(error.getMessage() + "\nTry again: ");
+    /**
+     * @return An ErrorEvent or SuitPromptEvent if action is required, or null if successful.
+     */
+    private GameEvent handleBidInput(int choice) {
+        BidType[] allBids = BidType.values();
+        if (choice < 1 || choice > allBids.length) {
+            return new ErrorEvent(1, allBids.length);
         }
+
+        BidType chosenBidType = allBids[choice-1];
+
+        if (!isLegalBidType(chosenBidType)) {
+            return new ErrorEvent(1, allBids.length);//illegalMoveEvent
+        }
+
+        if (chosenBidType.getRequiresSuit()) {
+            this.pendingBidType = chosenBidType;
+            return new SuitPromptEvent(currentPlayer.getName(), chosenBidType, Suit.values());
+        }
+
+        Bid finalizedBid = chosenBidType.instantiate(currentPlayer, null);
+        commitBid(finalizedBid);
+        return null;
     }
 
-    private QuestionEvent handleSuitInput(String input) {
-        try {
-            Suit chosenSuit = parseSuit(input);
-            Bid finalizedBid = pendingBidType.instantiate(currentPlayer, chosenSuit);
-
-            commitBid(finalizedBid);
-            this.pendingBidType = null;
-            return null;
-
-        } catch (IllegalArgumentException error) {
-            return new QuestionEvent(error.getMessage() + "\nTry again: ");
+    /**
+     * @return An ErrorEvent if illegal, or null if successful.
+     */
+    private GameEvent handleSuitInput(int choice) {
+        Suit[] allSuits = Suit.values();
+        if (choice < 1 || choice > allSuits.length) {
+            return new ErrorEvent(1, allSuits.length);
         }
+
+        Suit chosenSuit = allSuits[choice-1];
+        Bid finalizedBid = pendingBidType.instantiate(currentPlayer, chosenSuit);
+
+        commitBid(finalizedBid);
+        this.pendingBidType = null;
+        return null;
     }
 
-    private GameEvent handleRejectedProposal(String input) {
-        try {
-            int choice = Integer.parseInt(input.trim());
-            BidType decision;
+    private GameEvent handleRejectedProposal(int choice) {
+        BidType decision;
 
-            if (choice == 0) decision = BidType.PASS;
-            else if (choice == 1) decision = BidType.SOLO_PROPOSAL;
-            else return new QuestionEvent("Invalid choice. Choose [0] PASS or [1] SOLO_PROPOSAL: ");
-            replaceProposalBid(decision);
-            this.currentHighestBidType = decision;
-            return new TextEvent("\n=== BIDDING COMPLETE ===");
-        } catch (Exception e) {
-            return new QuestionEvent("Please enter 0 or 1: ");
-        }
+        if (choice == 1) decision = BidType.PASS;
+        else if (choice == 2) decision = BidType.SOLO_PROPOSAL;
+        else return new ErrorEvent(1, 2);
+
+        replaceProposalBid(decision);
+        this.currentHighestBidType = decision;
+        return new BiddingCompleteEvent();
     }
 
     private GameEvent handleEndOfBidding() {
         if (currentHighestBidType == BidType.PROPOSAL) {
             Player proposer = findBid(BidType.PROPOSAL).getPlayer();
-            return new QuestionEvent("\n" + proposer.getName() + ": No one accepted. [0] PASS or [1] SOLO_PROPOSAL?");
+            return new RejectedProposalEvent(proposer.getName());
         }
-        return new TextEvent("\n=== BIDDING COMPLETE ===");
+        return new BiddingCompleteEvent(); //EndStateEvent
     }
 
     private void commitBid(Bid finalizedBid) {
@@ -235,44 +224,17 @@ public class BidState extends State {
         bids.set(index, chosenBidType.instantiate(proposalBid.getPlayer(), null));
     }
 
-    private BidType parseBidType(String input) {
-        int choiceIndex;
-        try {choiceIndex = Integer.parseInt(input.trim());}
-        catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid input! Please enter a number.");
-        }
-
-        BidType[] allBids = BidType.values();
-        if (choiceIndex < 0 || choiceIndex >= allBids.length) {
-            throw new IllegalArgumentException("That number is not on the options.");
-        }
-        return allBids[choiceIndex];
-    }
-
-    private Suit parseSuit(String input) {
-        int choiceIndex;
-        try {choiceIndex = Integer.parseInt(input.trim());}
-        catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid input! Please enter a number.");
-        }
-
-        Suit[] allSuits = Suit.values();
-        if (choiceIndex < 0 || choiceIndex >= allSuits.length) {
-            throw  new IllegalArgumentException("That number is not on the options.");
-        }
-        return allSuits[choiceIndex];
-    }
-
     private boolean isLegalBidType(BidType chosenBidType) {
         if(chosenBidType == BidType.PASS) {return true;}
-        //If there is no highest bid yet, any bid is legal
         if (currentHighestBidType == null) {return true;}
         if (chosenBidType == BidType.ACCEPTANCE && currentHighestBidType != BidType.PROPOSAL) {return false;}
         if (chosenBidType == BidType.SOLO_PROPOSAL && !isBiddingComplete()) {return false;}
+
         int comparison = chosenBidType.compareTo(currentHighestBidType);
         if (comparison < 0) {return false;}
-        if (chosenBidType.getCategory() != BidCategory.MISERIE)
+        if (chosenBidType.getCategory() != BidCategory.MISERIE) {
             return comparison != 0;
+        }
         return true;
     }
 
@@ -284,35 +246,7 @@ public class BidState extends State {
         return bids.stream()
                 .filter(b -> b.getType() == bidType)
                 .findFirst()
-                .orElse(null); // Or throw an exception
-    }
-
-    private String buildFirstPlayerPrompt(Player player) {
-        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
-                "Dealt Trump: " + trumpSuit.name() + "\n" +
-                "Your Hand\n" + player.getFormattedHand() + "\n" +
-                "---------------------------------------\n" +
-                "Status: You are the first to bid!\n\n" +
-                buildOptions(BidType.values()) + "\n" +
-                "Your choice: ";
-    }
-
-    private String buildStandardPrompt(Player player) {
-        return "\n=== BIDDING TURN: " + player.getName().toUpperCase() + " ===\n" +
-                "Dealt Trump: " + trumpSuit.name() + "\n" +
-                "Your Hand\n" + player.getFormattedHand() + "\n" +
-                "---------------------------------------\n" +
-                "Current Highest: " + currentHighestBidType.name() + "\n\n" +
-                buildOptions(BidType.values()) + "\n" +
-                "Your choice: ";
-    }
-
-    private String buildOptions(Enum<?>[] optionsArray) {
-        StringBuilder options = new StringBuilder("All Options:\n");
-        for (int i = 0; i < optionsArray.length; i++) {
-            options.append("   [").append(i).append("] ").append(optionsArray[i].name()).append("\n");
-        }
-        return options.toString();
+                .orElse(null);
     }
 
     private void setRoundReadyForPlayState() {
@@ -330,5 +264,4 @@ public class BidState extends State {
         game.getCurrentRound().setBids(this.bids);
         game.getCurrentRound().setTrumpSuit(trumpSuit);
     }
-
 }

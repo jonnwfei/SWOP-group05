@@ -1,7 +1,9 @@
 package base;
 import base.domain.WhistGame;
+import base.domain.actions.ContinueAction;
+import base.domain.actions.GameAction;
 import cli.TerminalManager;
-import cli.elements.GameEvent;
+import base.domain.events.GameEvent;
 import cli.elements.Response;
 /**
  * @author stankestens
@@ -20,14 +22,14 @@ public class GameController {
 
 
     public void run(){
-        while(true) {
-            Boolean game_running = true;
-            String answer = "";
-            while (game_running) {
+        while(isRunning) {
+            Boolean state_running = true;
+            GameAction answer = new ContinueAction();
+            while (state_running) {
                 GameEvent event = game.executeState(answer);
                 Response response = terminalManager.handle(event); // response : boolean keeprunnig, answer str
-                game_running = response.getContinue();
-                answer = response.getContent();
+                state_running = response.getContinue();
+                answer = response.getAction();
             }
             game.nextState();
         }
