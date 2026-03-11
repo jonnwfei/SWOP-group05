@@ -162,12 +162,13 @@ public class Round {
      * </ul>
      *
      * @return A list of the winning players, or an empty list if the round is not yet finished.
+     * @throws IllegalStateException when highestBid is null
      */
     public List<Player> getWinningPlayers() {
-        if (highestBid == null) throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
         if (!isFinished()) {
             return new ArrayList<>(); // The round isn't over yet!
         }
+        if (highestBid == null) throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
 
         List<Player> bidders = getBiddingTeam();
 
