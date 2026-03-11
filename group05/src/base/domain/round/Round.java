@@ -10,8 +10,10 @@ import base.domain.trick.Trick;
 import java.util.*;
 
 /**
- * Round class, containing List of Players, currentPlayer whose turn it is, List of Played Tricks, List of bids, the highestBid
- * this round's trumpSuit and the multiplier in case all Players PASS.
+ * Represents a single Round in a game of Whist.
+ * A Round consists of a Bidding phase followed by a Play phase of exactly 13 Tricks.
+ * This class acts as the Information Expert for managing turn order, tracking played tricks,
+ * resolving the winning team, and correctly calculating and distributing points based on the highest bid.
  *
  * @author Seppe De Houwer
  * @since 24/02/26
@@ -22,16 +24,19 @@ public class Round {
     private final List<Player> players;
     private Player currentPlayer;
 
-    private List<Trick> playedTricks = new ArrayList<>();
+    private final List<Trick> playedTricks;
 
     private List<Bid> bids;
     private Bid highestBid;
     private Suit trumpSuit;
-    private int multiplier;
+    private final int multiplier;
 
     /**
+     * Constructs a new Round of Whist
+     *
      * @param players        a list of the players
      * @param startingPlayer the player who starts playing first
+     * @param multiplier     the score multiplier for this round (e.g. 2 if all PASS last round)
      * @throws IllegalArgumentException if players or dealer is null
      * @throws IllegalArgumentException if there are more than 4 players
      */
@@ -59,10 +64,19 @@ public class Round {
         this.currentPlayer = players.get((currentIdx + 1) % 4);
     }
 
+    /**
+     * Registers a completed Trick to this Round's history.
+     * The winner of the registered trick automatically becomes the current player for the next trick.
+     * If this is the final trick of the round, scores are automatically calculated and distributed.
+     *
+     * @param trick The completed trick to be added.
+     * @throws IllegalArgumentException If the trick has not received exactly 4 turns yet.
+     * @throws IllegalStateException    If the round has already reached the maximum number of tricks.
+     */
     public void registerCompletedTrick(Trick trick) {
-        if (trick.getTurns().size() != Trick.MAX_TURNS) {
-            throw new IllegalArgumentException("Trick is not completed yet");
-        }
+        if (trick == null) throw new IllegalArgumentException("Trick must not be null.");
+        if (trick.getTurns().size() != Trick.MAX_TURNS) throw new IllegalArgumentException("Trick is not completed yet");
+        if (this.playedTricks.size() >= MAX_TRICKS) throw new IllegalStateException("Cannot add trick: The round is already finished");
         this.playedTricks.add(trick);
         this.currentPlayer = trick.getWinningPlayer();
 
@@ -72,17 +86,20 @@ public class Round {
     }
 
     /**
-     * Calculates the scores for the count useCase, updating each player's score field
+     * Calculates and distributes the scores for a simulated round (Score Counting Use Case).
+     * This bypasses the need to actually play 13 tricks and relies on user-provided outcomes.
      *
      * @param tricksWon             amount of tricks won by the bidding side (ignored for Miserie)
      * @param participants          the players that joined the bid (1 for Solo/Abondance, 2 for Proposal/Acceptance)
      * @param winningMiseriePlayers only used for Miserie: the players from the participants list who got 0 tricks
+     * @throws IllegalStateException    if no highest bid has been set for this round
+     * @throws IllegalArgumentException Miserie requires at least one participant
      */
     public void calculateScoresForCount(int tricksWon, List<Player> participants, List<Player> winningMiseriePlayers) {
         if (highestBid == null) {
-            System.err.println("highestBid is null in Round.");
             throw new IllegalStateException("Cannot calculate scores without a bid.");
         }
+
         // --- CASE 1: MISERIE (Normal or Open), NO TRICKS WON ---
         if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
             if (participants == null || participants.isEmpty()) {
@@ -91,14 +108,15 @@ public class Round {
             for (Player p : participants) {
                 boolean hasWon = winningMiseriePlayers != null && winningMiseriePlayers.contains(p);
                 int basePoints = hasWon ? highestBid.calculateBasePoints(0)
-                        : highestBid.calculateBasePoints(1); // Gives positive or negative points already
+                        : highestBid.calculateBasePoints(1);
 
-                // Distribute points to players who are NOT participants in this bid
-                distributeMiserieScores(p, basePoints * multiplier, participants);
+                distributeScores(basePoints, List.of(p));
             }
         } else {
             // --- CASE 2: ALL OTHER BIDS (Solo & Partner Bids) ---
-            // 'participants' is either size 1 or 2. distributeScores() automatically handles the math
+            if (participants == null || participants.isEmpty()) {
+                throw new IllegalArgumentException("Non-Miserie requires at least one participating player.");
+            }
             int points = highestBid.calculateBasePoints(tricksWon);
             distributeScores(points, participants);
         }
@@ -106,12 +124,17 @@ public class Round {
 
 
     /**
-     * Calculates the gained or lost scores for each player, updating them each respectively.
+     * Calculates the points gained or lost based on the tricks played, and updates each player's score accordingly.
+     * Miserie bids are calculated individually against the defending players, while other bids are calculated as a team.
+     *
+     * @throws IllegalStateException if the round has not yet completed playing all 13 tricks
      */
     public void calculateScores() {
         if (playedTricks.size() != MAX_TRICKS) {
-            return;
+            throw new IllegalStateException("Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got "
+                    + playedTricks.size());
         }
+        if (highestBid == null) throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
         // --- CASE 1: MISERIE ---
         if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
             List<Player> miseriePlayers = getBiddingTeam();
@@ -119,7 +142,7 @@ public class Round {
                 // Check tricks for THIS specific player only!
                 int tricks = getTricksWonBy(List.of(p));
                 int basePoints = highestBid.calculateBasePoints(tricks);
-                distributeMiserieScores(p, basePoints * multiplier, miseriePlayers);
+                distributeScores(basePoints, List.of(p));
             }
         }
         // --- CASE 2: NORMAL BIDS (Solo, Partners) ---
@@ -134,15 +157,20 @@ public class Round {
     }
 
     /**
-     * Determines which players won the round based on the final trick count.
-     * @return A list of the winning players.
-     * <li>For normal bids: Returns the bidders if they met their contract, otherwise returns the other players.</li>
+     * Determines which players successfully won the round based on the final trick count.
+     * <ul>
+     * <li>For normal bids: Returns the bidding team if they met their contract, otherwise returns the defending team.</li>
      * <li>For Miserie: Returns only the specific Miserie players who successfully took 0 tricks.</li>
+     * </ul>
+     *
+     * @return A list of the winning players, or an empty list if the round is not yet finished.
+     * @throws IllegalStateException when highestBid is null
      */
     public List<Player> getWinningPlayers() {
         if (!isFinished()) {
             return new ArrayList<>(); // The round isn't over yet!
         }
+        if (highestBid == null) throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
 
         List<Player> bidders = getBiddingTeam();
 
@@ -173,36 +201,10 @@ public class Round {
     }
 
     /**
-     * Helper method to distribute Scores to Miserie players and non-participants of this bid
+     * Helper method to distribute scores for standard team-based bids (1v3 or 2v2).
      *
-     * @param miseriePlayer     The specific player who played Miserie
-     * @param multipliedPoints  Base points multiplied by the multiplier 1x or 2x max
-     * @param allMiseriePlayers all The list of players who bid Miserie this round
-     */
-    private void distributeMiserieScores(Player miseriePlayer, int multipliedPoints, List<Player> allMiseriePlayers) {
-        if (miseriePlayer == null) throw new IllegalArgumentException("Miserie cannot be null.");
-        if (allMiseriePlayers == null || allMiseriePlayers.size() > this.players.size())
-            throw new IllegalArgumentException("AllMiseriePlayer list cannot be null.");
-
-        int numberOfNonParticipants = this.players.size() - allMiseriePlayers.size();
-        if (numberOfNonParticipants == 0) {
-            miseriePlayer.updateScore(multipliedPoints);
-            return;
-        }
-
-        miseriePlayer.updateScore(multipliedPoints);
-
-        for (Player p : this.players) {
-            if (!allMiseriePlayers.contains(p)) {
-                p.updateScore((multipliedPoints * -1) / numberOfNonParticipants);
-            }
-        }
-
-    }
-
-
-    /**
-     * handles 1vs3 and 2vs2
+     * @param basePoints The calculated points to be awarded or deducted.
+     * @param bidders    The list of players who form the attacking team.
      */
     private void distributeScores(int basePoints, List<Player> bidders) {
         for (Player p : this.players) {
@@ -221,7 +223,10 @@ public class Round {
     }
 
     /**
-     * Extracts the players responsible for the highest bid.
+     * Extracts the team of players responsible for the highest bid.
+     * Automatically handles teaming up the Proposer and Acceptor.
+     *
+     * @return A list containing the attacking team members.
      */
     private List<Player> getBiddingTeam() {
         List<Player> attackers = new ArrayList<>();
@@ -244,7 +249,10 @@ public class Round {
     }
 
     /**
-     * Counts how many tricks a specific group of players won.
+     * Counts how many total tricks were won by a specific list of players.
+     *
+     * @param team The list of players to evaluate.
+     * @return The number of tricks won by the provided team.
      */
     private int getTricksWonBy(List<Player> team) {
         int count = 0;
@@ -257,26 +265,47 @@ public class Round {
     }
 
     /**
-     * Retrieves a shallow list copy of this round's players
-     * @return Shallow copy of the list of player
+     * Retrieves a shallow copy of this round's players.
+     *
+     * @return An unmodifiable list of the 4 players in this round.
      */
     public List<Player> getPlayers() {
         return List.copyOf(players);
     }
 
     /**
-     * Retrieves this round's currentPlayer
+     * Retrieves the player whose turn it currently is to bid or play a card.
      *
-     * @return
+     * @return The current active Player.
      */
     public Player getCurrentPlayer() {
         return currentPlayer;
     }
 
+    /**
+     * Sets the current active player.
+     *
+     * @param player The player whose turn it will be.
+     */
+    public void setCurrentPlayer(Player player) {
+        this.currentPlayer = player;
+    }
+
+    /**
+     * Retrieves a shallow copy of all bids placed during this round.
+     *
+     * @return An unmodifiable list of bids.
+     */
     public List<Bid> getBids() {
         return List.copyOf(bids);
     }
 
+    /**
+     * Sets the list of bids for this round.
+     *
+     * @param bids The list of bids to set.
+     * @throws IllegalArgumentException If the provided list is null.
+     */
     public void setBids(List<Bid> bids) {
         if (bids == null) {
             throw new IllegalArgumentException("Bids list cannot be null.");
@@ -284,38 +313,69 @@ public class Round {
         this.bids = new ArrayList<>(bids);
     }
 
-    public boolean isFinished() {
-        return playedTricks.size() == MAX_TRICKS;
-    }
-
+    /**
+     * Retrieves the highest bid that won the bidding phase.
+     *
+     * @return The highest Bid, or null if the bidding phase is not yet complete.
+     */
     public Bid getHighestBid() {
         return highestBid;
     }
 
+    /**
+     * Sets the highest winning bid for this round.
+     *
+     * @param highestBid The winning bid to set.
+     */
     public void setHighestBid(Bid highestBid) {
         this.highestBid = highestBid;
     }
 
+    /**
+     * Retrieves the active trump suit for this round.
+     *
+     * @return The trump Suit, or null if it has not been determined yet.
+     */
     public Suit getTrumpSuit() {
         return trumpSuit;
     }
 
+    /**
+     * Sets the active trump suit for this round.
+     *
+     * @param trump The trump Suit to set.
+     */
     public void setTrumpSuit(Suit trump) {
         this.trumpSuit = trump;
     }
 
-    public void setCurrentPlayer(Player player) {
-        this.currentPlayer = player;
-    }
-
+    /**
+     * Retrieves a shallow copy of all tricks played so far in this round.
+     *
+     * @return An unmodifiable list of played Tricks.
+     */
     public List<Trick> getTricks() {
         return List.copyOf(playedTricks);
     }
 
+    /**
+     * Retrieves the most recently completed trick.
+     *
+     * @return The last played Trick, or null if no tricks have been played yet.
+     */
     public Trick getLastPlayedTrick() {
         if (playedTricks.isEmpty()) {
             return null;
         }
         return playedTricks.getLast();
+    }
+
+    /**
+     * Checks whether all 13 tricks have been played, signaling the end of the round.
+     *
+     * @return true if the round is finished, false otherwise.
+     */
+    public boolean isFinished() {
+        return playedTricks.size() == MAX_TRICKS;
     }
 }

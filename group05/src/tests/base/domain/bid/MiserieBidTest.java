@@ -12,61 +12,77 @@ class MiserieBidTest {
 
     private Player testPlayer;
     private BidType miserieNormal;
+    private MiserieBid bid;
 
     @BeforeEach
     void setUp() {
         testPlayer = new Player(new HumanStrategy(), "Jane Doe");
-        // TODO: Controleer of 'MISERIE' de juiste naam is in jouw BidType Enum
+        // Assuming BidType.MISERIE exists and falls under BidCategory.MISERIE
         miserieNormal = BidType.MISERIE;
+        bid = new MiserieBid(testPlayer, miserieNormal);
     }
 
     @Test
     void constructor_InvalidCategory_ThrowsException() {
-        // Test de GRASP invariant: mag geen ABONDANCE aanmaken in een MiserieBid
-        assertThrows(IllegalArgumentException.class, () ->
+        // Enforce GRASP invariant: Cannot instantiate a MiserieBid with a non-Miserie BidType
+        // Assuming ABONDANCE_9 belongs to BidCategory.ABONDANCE, not MISERIE
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 new MiserieBid(testPlayer, BidType.ABONDANCE_9)
         );
+        assertTrue(exception.getMessage().contains("MISERIE category"));
+    }
+
+    @Test
+    void getPlayer_ReturnsPlayer() {
+        assertEquals(testPlayer, bid.getPlayer());
+    }
+
+    @Test
+    void getType_ReturnsBidType() {
+        assertEquals(miserieNormal, bid.getType());
     }
 
     @Test
     void getChosenTrump_AlwaysReturnsNull() {
-        MiserieBid bid = new MiserieBid(testPlayer, miserieNormal);
-        // Bij miserie wordt er altijd 'sans atout' (zonder troef) gespeeld
+        // Miserie is always played "Sans Atout" (No Trumps), so this must explicitly return null
         assertNull(bid.getChosenTrump(Suit.SPADES));
         assertNull(bid.getChosenTrump(null));
     }
 
     @Test
     void calculateBasePoints_Success_ZeroTricks() {
-        MiserieBid bid = new MiserieBid(testPlayer, miserieNormal);
         int expectedPoints = miserieNormal.getBasePoints();
+        int target = miserieNormal.getTargetTricks(); // Should evaluate to 0
 
-        // Scenario: 0 slagen gehaald (Perfecte miserie)
-        assertEquals(expectedPoints, bid.calculateBasePoints(0));
+        // Case 1: Achieved exactly the target tricks (0 tricks for a perfect Miserie)
+        assertEquals(expectedPoints, bid.calculateBasePoints(target));
     }
 
     @Test
     void calculateBasePoints_Failure_OneOrMoreTricks() {
-        MiserieBid bid = new MiserieBid(testPlayer, miserieNormal);
         int negativePoints = -1 * miserieNormal.getBasePoints();
+        int target = miserieNormal.getTargetTricks();
 
-        // Scenario: 1 slag gehaald (Miserie kapot)
-        // TODO: In sommige Whist-varianten verlies je meer per extra slag,
-        // maar jouw code geeft nu een vaste negatieve waarde.
-        assertEquals(negativePoints, bid.calculateBasePoints(1));
+        // Case 2: Took more tricks than the target (Miserie contract broken)
+        assertEquals(negativePoints, bid.calculateBasePoints(target + 1));
+
+        // Extreme case: Took all 13 tricks
         assertEquals(negativePoints, bid.calculateBasePoints(13));
     }
 
     @Test
     void calculateBasePoints_NegativeInput_ThrowsException() {
-        MiserieBid bid = new MiserieBid(testPlayer, miserieNormal);
-        assertThrows(IllegalArgumentException.class, () -> bid.calculateBasePoints(-1));
+        // Edge case: tricks won can never be mathematically negative
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                bid.calculateBasePoints(-1)
+        );
+        assertTrue(exception.getMessage().contains("negative tricks won"));
     }
 
     @Test
-    void getPlayerAndType() {
-        MiserieBid bid = new MiserieBid(testPlayer, miserieNormal);
-        assertEquals(testPlayer, bid.getPlayer());
-        assertEquals(miserieNormal, bid.getType());
+    void testRecordAccessors() {
+        // Testing native record accessors for 100% method coverage
+        assertEquals(testPlayer, bid.player());
+        assertEquals(miserieNormal, bid.bidType());
     }
 }
