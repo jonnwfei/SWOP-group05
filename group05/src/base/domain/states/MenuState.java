@@ -84,10 +84,10 @@ public class MenuState extends State {
 
     private GameEvent handleMainChoice(GameAction action) {
         if (!(action instanceof NumberAction(int value))) {
-            return new ErrorEvent(0, 1); // Min 0 tricks, Max 13 tricks
+            return new ErrorEvent(1, 2); // Min 0 tricks, Max 13 tricks
         }
         keuze = value;
-        if (keuze < 0 || keuze > 1) {
+        if (keuze < 1 || keuze > 2) {
             return new ErrorEvent(0, 1);
         }
 

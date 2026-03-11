@@ -18,13 +18,20 @@ public record MiserieWinnerEvent(List<String> playerNames) implements GameEvent<
         if (input == null || input.isEmpty()) {
             return false;
         }
-        // Logic: Every winner index must be a valid index in the playerNames list
+
+        // Special Case: If the list is exactly [-1], it is valid (e.g., "No Winners")
+        if (input.size() == 1 && input.getFirst() == -1) {
+            return true;
+        }
+
+        // Standard Case: Check every index against the player list
         for (Integer winnerIndex : input) {
             if (winnerIndex < 1 || winnerIndex > playerNames.size()) {
                 return false;
             }
         }
-        // Optional: Check for duplicates if one person can't win twice
+
+        // Ensure no duplicate player indices (e.g., [1, 1, 2] is invalid)
         long uniqueCount = input.stream().distinct().count();
         return uniqueCount == input.size();
     }

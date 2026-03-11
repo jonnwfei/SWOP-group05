@@ -3,6 +3,7 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.actions.GameAction;
 import base.domain.actions.NumberAction;
+import base.domain.actions.NumberListAction;
 import base.domain.actions.TextAction;
 import base.domain.events.ErrorEvent;
 import base.domain.events.countEvents.*;
@@ -114,10 +115,10 @@ public class CountState extends State {
      * @return QuestionEvent who won the bid or how many tricks were won
     * */
     private GameEvent handleSelectPlayers(GameAction action) {
-        if (!(action instanceof TextAction)) {
+        if (!(action instanceof NumberListAction(ArrayList<Integer> indices) )) {
             return null; //IllegalActionEvent
         }
-        this.participatingPlayers = parseIndices((TextAction) action);
+        this.participatingPlayers = indices;
         currentPhase = CountPhase.CALCULATE;
         //going to next bid confirmed
         if (numberBid == 7 || numberBid == 8) {
@@ -134,32 +135,43 @@ public class CountState extends State {
      */
     private GameEvent handleCalculate(GameAction action) {
         List<Player> participants = participatingPlayers.stream()
-                .map(idx -> getGame().getPlayers().get(idx)).toList();
+                .map(idx -> getGame().getPlayers().get(idx - 1)).toList();
 
         createBidObject(participants.getFirst());
         Round round = new Round(getGame().getPlayers(), getGame().getPlayers().getFirst(), 1);
         round.setHighestBid(bid);
         getGame().addRound(round);
 
-        // Case of Miserie
+        // Case of Miserie (7 or 8)
         if (numberBid == 7 || numberBid == 8) {
-            List<Integer> winnerIndices = extractIndices(action);
-
-            if (winnerIndices.isEmpty()) {
-                return new ErrorEvent(1, getGame().getPlayers().size());
+            if (!(action instanceof NumberListAction(ArrayList<Integer> winnerIndices))) {
+                return null;
             }
 
-            for (int idx : winnerIndices) {
-                if (!participatingPlayers.contains(idx)) {
-                    return new ErrorEvent(1, getGame().getPlayers().size());                }
+            List<Player> winners;
+
+            // Check for the "Everyone Lost" special case (-1)
+            if (winnerIndices.size() == 1 && winnerIndices.get(0) == -1) {
+                winners = new ArrayList<>(); // Empty list means no winners, so everyone in participants loses
+            } else {
+                // Standard validation: check if indices exist in the current participants
+                for (int idx : winnerIndices) {
+                    if (!participatingPlayers.contains(idx)) {
+                        return new ErrorEvent(1, getGame().getPlayers().size());
+                    }
+                }
+                // Map 1-based indices to 0-based objects
+                winners = winnerIndices.stream()
+                        .map(idx -> getGame().getPlayers().get(idx - 1))
+                        .toList();
             }
-            List<Player> winners = winnerIndices.stream().map(idx -> getGame().getPlayers().get(idx)).toList();
+
             round.calculateScoresForCount(0, participants, winners);
         }
         // Other bids (Tricks won)
         else {
             if (!(action instanceof NumberAction(int tricks))) {
-                return new ErrorEvent(0, 13); // Min 0 tricks, Max 13 tricks
+                return new ErrorEvent(0, 13);
             }
             if (tricks < 0 || tricks > 13) {
                 return new ErrorEvent(0, 13);
@@ -169,7 +181,6 @@ public class CountState extends State {
 
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
 
-        // This event should probably show the scoreboard AND ask: "[1] Count Again, [2] Menu"
         List<Integer> playerScores = getGame().getPlayers().stream().map(Player::getScore).toList();
         return new ScoreBoardEvent(getPlayerNames(), playerScores);
     }
@@ -190,22 +201,9 @@ public class CountState extends State {
         this.keuze = choice;
 
         // Return an event to break the inner UI loop (you might have a MessageEvent or EndOfStateEvent for this)
-        return new TrickWonEvent(); // Adjust this return to whatever breaks your Controller loop!
+        return new EndOfCountStateEvent(); // Adjust this return to whatever breaks your Controller loop!
     }
 
-    // --- UTILS ---
-    /**
-     * Splits up the input to get the different numbers that were put in
-     * @param textAction (eg. 1,4)
-     * @return list containing those numbers (eg. [1,4])
-     */
-    private List<Integer> parseIndices(TextAction textAction) {
-        return Arrays.stream(textAction.text().split("[^0-9]+"))
-                .filter(s -> !s.isEmpty())
-                .map(Integer::parseInt)
-                .map(i -> i - 1)
-                .toList();
-    }
     /**
      * creates the bid depending on numberBid and the player thats given (for less code cluttering seperated)
      * @param bidder player that plays the bid
@@ -231,21 +229,6 @@ public class CountState extends State {
         return getGame().getPlayers().stream().map(Player::getName).toList();
     }
 
-    /**
-     * Safely handles BOTH NumberAction (e.g. "1") and TextAction (e.g. "1, 2")
-     */
-    private List<Integer> extractIndices(GameAction action) {
-        if (action instanceof NumberAction(int value)) {
-            return List.of(value - 1);
-        } else if (action instanceof TextAction(String text)) {
-            return Arrays.stream(text.split("[^0-9]+"))
-                    .filter(s -> !s.isEmpty())
-                    .map(Integer::parseInt)
-                    .map(i -> i - 1)
-                    .toList();
-        }
-        return new ArrayList<>();
-    }
 
     @Override
     public State nextState(){
