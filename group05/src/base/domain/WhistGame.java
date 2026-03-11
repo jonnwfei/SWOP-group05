@@ -1,12 +1,14 @@
 package base.domain;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
+import base.domain.actions.GameAction;
 import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.domain.round.Round;
 import base.domain.states.*;
-import cli.elements.GameEvent;
+import base.domain.events.GameEvent;
 
 /**
  * @author Stan Kestens
@@ -56,21 +58,21 @@ public class WhistGame {
     }
 
     /**
-     * Gets the dealer of this Game
-     *
-     * @return dealerPlayer of this Game
-     */
-    public Player getDealerPlayer(){
-        return this.dealerPlayer;
-    }
-
-    /**
      * Gets the active player of Game
      *
      * @return currentPlayer of Game
      */
     public Player getCurrentPlayer(){
         return this.currentPlayer;
+    }
+
+    /**
+     * Gets the dealer of this Game
+     *
+     * @return dealerPlayer of this Game
+     */
+    public Player getDealerPlayer(){
+        return this.dealerPlayer;
     }
 
     /**
@@ -91,9 +93,8 @@ public class WhistGame {
      * @return current round or null if no rounds have been played yet
      * */
     public Round getCurrentRound(){
-        Round round = this.rounds.getLast();
         if (rounds.isEmpty()) return null;
-        return round;
+        return this.rounds.getLast();
     }
 
     public void setDeck(Deck deck){
@@ -104,7 +105,7 @@ public class WhistGame {
         this.state = state.nextState();
     }
 
-    public GameEvent executeState(String response){
+    public GameEvent executeState(GameAction response){
         return state.executeState(response);
     }
 
@@ -138,24 +139,7 @@ public class WhistGame {
     public void resetRounds(){
         this.rounds = new ArrayList<>();
     }
-    /**
-     * Returns a formatted string of the players in this game as follows:
-     * <pre>
-     * Players in this game:
-     * 1. player1
-     * 2. player2
-     * etc.
-     * </pre>
-     *
-     * @return the formatted player names
-     */
-    public String printNames() {
-        String result = "Players in this game:\n";
-        for (int i = 0; i < players.size(); i++) {
-            result += (i + 1) + ". " + players.get(i).getName() + "\n";
-        }
-        return result;
-    }
+
 
     /**
      * Sets the current player.
@@ -178,6 +162,28 @@ public class WhistGame {
         }
 
         this.currentPlayer = player;
+    }
+
+    /**
+     * Helper function that sets the dealerPlayer randomly, only called upon first Round
+     * @throws IllegalArgumentException when trying to set a randomDealer when no player list has been initialized
+     */
+    public void setRandomDealer() {
+        if (players.isEmpty()) throw new IllegalArgumentException("Cannot set randomDealer, Players list is not initialized");
+        int randIdx = new Random().nextInt(players.size());
+        this.dealerPlayer = players.get(randIdx);
+    }
+
+    /**
+     * Helper function that advances the dealer by one player
+     * @throws IllegalArgumentException when trying to advance the dealer when no player list has been initialized or
+     * dealer is null
+     */
+    public void advanceDealer() {
+        if (players.isEmpty() || dealerPlayer == null) throw new IllegalStateException("Cannot advanceDealer, " +
+                "Players list is not initialized or dealer is null");
+        int currentIdx =  players.indexOf(dealerPlayer);
+        this.dealerPlayer = players.get((currentIdx + 1)% players.size());
     }
     /**
      * Returns a formatted string of the players and their current score

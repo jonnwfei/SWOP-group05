@@ -17,7 +17,7 @@ class SoloBidTest {
     @BeforeEach
     void setUp() {
         testPlayer = new Player(new HumanStrategy(), "SoloPlayer");
-        // TODO: Controleer of 'SOLO' de juiste naam is in jouw BidType Enum
+        // Gaat ervan uit dat BidType.SOLO bestaat en onder de categorie SOLO valt
         soloNormal = BidType.SOLO;
         chosenTrump = Suit.DIAMONDS;
     }
@@ -31,9 +31,21 @@ class SoloBidTest {
     }
 
     @Test
+    void getPlayer_ReturnsPlayer() {
+        SoloBid bid = new SoloBid(testPlayer, soloNormal, chosenTrump);
+        assertEquals(testPlayer, bid.getPlayer());
+    }
+
+    @Test
+    void getType_ReturnsBidType() {
+        SoloBid bid = new SoloBid(testPlayer, soloNormal, chosenTrump);
+        assertEquals(soloNormal, bid.getType());
+    }
+
+    @Test
     void getChosenTrump_ReturnsSetTrump() {
         SoloBid bid = new SoloBid(testPlayer, soloNormal, chosenTrump);
-        // De 'dealtTrump' wordt genegeerd ten gunste van de gekozen troef
+        // De 'dealtTrump' (bijv. SPADES) wordt genegeerd ten gunste van de gekozen troef (DIAMONDS)
         assertEquals(chosenTrump, bid.getChosenTrump(Suit.SPADES));
     }
 
@@ -43,8 +55,9 @@ class SoloBidTest {
         int base = soloNormal.getBasePoints();
         int target = soloNormal.getTargetTricks();
 
-        // Scenario: Behaald of meer
+        // Scenario: Exact behaald
         assertEquals(base, bid.calculateBasePoints(target));
+        // Scenario: Meer dan behaald (overtricks hebben geen extra waarde in basis Solo wiskunde hier)
         assertEquals(base, bid.calculateBasePoints(target + 1));
     }
 
@@ -61,6 +74,9 @@ class SoloBidTest {
     @Test
     void calculateBasePoints_NegativeInput_ThrowsException() {
         SoloBid bid = new SoloBid(testPlayer, soloNormal, chosenTrump);
-        assertThrows(IllegalArgumentException.class, () -> bid.calculateBasePoints(-1));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                bid.calculateBasePoints(-1)
+        );
+        assertTrue(exception.getMessage().contains("negative tricks"));
     }
 }

@@ -5,6 +5,8 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -56,7 +58,19 @@ public class Player {
      */
     public void setHand(List<Card> hand) {
         if (hand == null) throw new IllegalArgumentException("The given hand can't be null");
+
+        // First clear then Add the cards to the player's internal hand
+        this.currentHand.clear();
         this.currentHand.addAll(hand);
+
+        // sort this hand
+        this.currentHand.sort((c1, c2) -> {
+            int suitCompare = c1.suit().compareTo(c2.suit());
+            if (suitCompare != 0) {
+                return suitCompare;
+            }
+            return c2.rank().compareTo(c1.rank()); // High to low
+        });
     }
 
     /**
@@ -136,30 +150,8 @@ public class Player {
         return this.decisionStrategy.requiresConfirmation();
     }
 
-    /**
-     * Method Overloading getFormattedHand for appending handIdx in the output
-     *
-     * @return a formatted string of currentHand without handIdx
-     */
-    public String getFormattedHand() {
-        return this.getFormattedHand(false);
-    }
 
-    /**
-     * Returns a formatted, 1-indexed string of the player's current hand.
-     * <br>
-     * Example: "(1) ACE of HEARTS \n (2) TEN of HEARTS"
-     * @return a formatted string of currentHand
-     */
-    public String getFormattedHand(boolean showIdx) {
-        StringBuilder sb = new StringBuilder();
-        List<Card> hand = this.getHand();
 
-        for (int i = 0; i < hand.size(); i++) {
-            // i + 1 ensures the terminal list starts at 1 instead of 0
-            if (showIdx) sb.append("(").append(i + 1).append(") ").append(hand.get(i).toString()).append("\n");
-        }
-        return sb.toString();
-    }
+
 }
 
