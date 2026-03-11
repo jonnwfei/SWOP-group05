@@ -1,4 +1,7 @@
 package base.domain.actions;
 
-// For when the user types letters (e.g., entering their player name)
+/**
+ * Action carrying raw text input.
+ * @param text The string entered by the user.
+ */
 public record TextAction(String text) implements GameAction {}

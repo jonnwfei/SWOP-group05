@@ -1,4 +1,8 @@
 package base.domain.actions;
 
-// For when the user just presses Enter to advance the prompt
+import base.domain.events.GameEvent;
+
+/**
+ * Marker for "Press Enter" or passive screen transitions.
+ */
 public record ContinueAction() implements GameAction {}
