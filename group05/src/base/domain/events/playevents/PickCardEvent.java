@@ -17,7 +17,7 @@ public record PickCardEvent(
         List<Card> formattedExposedHand,   // The actual cards to show everyone
         int trickNumber,
         String currentPlayerName,
-        List<String> currentPlayerHand // Formatted strings of the cards they can play
+        List<Card> currentPlayerHand // Formatted strings of the cards they can play
 ) implements GameEvent<Integer> {
     @Override
     public Class<Integer> getInputType() {

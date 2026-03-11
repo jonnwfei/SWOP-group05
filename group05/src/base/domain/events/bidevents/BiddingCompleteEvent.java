@@ -8,4 +8,19 @@ import base.domain.events.GameEvent;
  * input loop to allow the Controller to transition to the PlayState.
  */
 public record BiddingCompleteEvent() implements GameEvent {
+    @Override
+    public Class getInputType() {
+        return null;
+    }
+
+    @Override
+    public boolean isValid(Object input) {
+        return true;
+    }
+
+    @Override
+    public boolean needsInput() {
+        return false;
+    }
+
 }
