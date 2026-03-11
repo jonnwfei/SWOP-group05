@@ -185,17 +185,4 @@ public class WhistGame {
         int currentIdx =  players.indexOf(dealerPlayer);
         this.dealerPlayer = players.get((currentIdx + 1)% players.size());
     }
-    /**
-     * Returns a formatted string of the players and their current score
-     * */
-    public String printScore(){
-        String result = "============== SCORES ==============\n";
-        for (Player p : players) {
-            result += p.getName() + ": " + p.getScore() + " points\n";
-        }
-        result += "====================================";
-        return result;
-    }
-
-
 }

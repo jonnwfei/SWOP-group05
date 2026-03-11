@@ -11,7 +11,6 @@ import base.domain.player.HumanStrategy;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
-import cli.elements.GameEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -160,33 +159,6 @@ class WhistGameTest {
 
         game.advanceDealer();
         assertEquals(initialDealer, game.getDealerPlayer());
-    }
-
-    // -------- STRING FORMATTING TESTS --------
-
-    @Test
-    void printNames_FormatsCorrectly() {
-        game.addPlayer(p1);
-        game.addPlayer(p2);
-
-        String expected = "Players in this game:\n1. Stan\n2. Seppe\n";
-        assertEquals(expected, game.printNames());
-    }
-
-    @Test
-    void printScore_FormatsCorrectly() {
-        p1.updateScore(42);
-        p2.updateScore(-14);
-
-        game.addPlayer(p1);
-        game.addPlayer(p2);
-
-        String expected = "============== SCORES ==============\n" +
-                "Stan: 42 points\n" +
-                "Seppe: -14 points\n" +
-                "====================================";
-
-        assertEquals(expected, game.printScore());
     }
 
     // -------- WINNER RESOLUTION TESTS --------
