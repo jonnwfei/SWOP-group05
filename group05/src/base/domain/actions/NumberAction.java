@@ -1,4 +1,7 @@
 package base.domain.actions;
 
-// For when the user types a number (e.g., choosing a bid, suit, or card index)
+/**
+ * Action carrying a single menu choice or index.
+ * @param value The integer selected by the user.
+ */
 public record NumberAction(int value) implements GameAction {}
