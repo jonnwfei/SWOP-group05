@@ -77,6 +77,7 @@ class DeckTest {
 
         // Ensure the deck contains the exact same cards, just in a different order
         assertTrue(afterShuffle.containsAll(beforeShuffle));
+        assertTrue(beforeShuffle.containsAll(afterShuffle));
 
         // Note: With 52! (factorial) possible permutations, the chance of the deck
         // shuffling into the exact same order is statistically impossible.
