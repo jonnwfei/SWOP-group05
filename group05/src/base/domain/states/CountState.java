@@ -105,11 +105,25 @@ public class CountState extends State {
     /** Identifies which players were involved in the bid.
      * @return GameEvent
      * */
+    /**
+     * Identifies which players were involved in the bid.
+     * @param action the indices of the players
+     * @return GameEvent
+     */
     private GameEvent<?> handleSelectPlayers(GameAction action) {
         if (!(action instanceof NumberListAction(ArrayList<Integer> indices))) return null;
 
-        // Validation: Only Miserie allows multiple participants in this specific wizard flow
-        if (numberBid != 7 && numberBid != 8 && indices.size() > 1) {
+        // --- UPDATED VALIDATION ---
+        // Allow multiple players for Miserie (7, 8) AND Proposal/Acceptance (2)
+        boolean isMultiPlayerBid = (numberBid == 7 || numberBid == 8 || numberBid == 2);
+
+        if (!isMultiPlayerBid && indices.size() > 1) {
+            PlayersInBidEvent tempEvent = new PlayersInBidEvent(getPlayerNames());
+            return new NumberListErrorEvent(tempEvent::isValid);
+        }
+
+        // Ensure choice 2 actually HAS two players
+        if (numberBid == 2 && indices.size() != 2) {
             PlayersInBidEvent tempEvent = new PlayersInBidEvent(getPlayerNames());
             return new NumberListErrorEvent(tempEvent::isValid);
         }
