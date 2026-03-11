@@ -110,11 +110,13 @@ public class Round {
                 int basePoints = hasWon ? highestBid.calculateBasePoints(0)
                         : highestBid.calculateBasePoints(1);
 
-                // FIX: Evaluate every Miserie player independently as a 1vs3 game!
                 distributeScores(basePoints, List.of(p));
             }
         } else {
             // --- CASE 2: ALL OTHER BIDS (Solo & Partner Bids) ---
+            if (participants == null || participants.isEmpty()) {
+                throw new IllegalArgumentException("Non-Miserie requires at least one participating player.");
+            }
             int points = highestBid.calculateBasePoints(tricksWon);
             distributeScores(points, participants);
         }

@@ -160,9 +160,11 @@ public class Player {
     }
 
     /**
-     * Returns a formatted, 1-indexed string of the player's current hand.
+     * If showIdx isTrue returns a formatted, 1-indexed string of the player's current hand.
+     * Else returns a formatted non-indexed string of the player
      * <br>
      * Example: "(1) ACE of HEARTS \n (2) TEN of HEARTS"
+     * @param showIdx boolean to show Card Idx or not
      * @return a formatted string of currentHand
      */
     public String getFormattedHand(boolean showIdx) {
