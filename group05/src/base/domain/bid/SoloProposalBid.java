@@ -6,6 +6,12 @@ import base.domain.trick.Trick;
 
 import java.util.List;
 
+/**
+ * Contract for a proposer who chooses to play alone after their initial proposal is rejected.
+ * The trump suit defaults to the originally dealt trump.
+ *
+ * @param player The original proposer now playing solo.
+ */
 public record SoloProposalBid(Player player) implements Bid {
     @Override
     public Player getPlayer() {return player;}

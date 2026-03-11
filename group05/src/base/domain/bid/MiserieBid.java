@@ -5,7 +5,6 @@ import base.domain.player.Player;
 
 import java.util.List;
 
-// CHANGE 1: It now takes a List<Player> instead of a single Player!
 public record MiserieBid(Player player, BidType bidType) implements Bid {
 
     public MiserieBid {

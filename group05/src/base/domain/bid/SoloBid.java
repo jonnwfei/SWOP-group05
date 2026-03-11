@@ -5,6 +5,12 @@ import base.domain.player.Player;
 
 import java.util.List;
 
+/**
+ * Represents a contract where a player bids to play alone to win all tricks.
+ * @param player The player attempting the contract.
+ * @param bidType The specific SOLO rank (e.g., SOLO, SOLO_SLIM).
+ * @param trump The trump suit for this contract.
+ */
 public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid {
     public SoloBid {
         if (bidType.getCategory() != BidCategory.SOLO) {

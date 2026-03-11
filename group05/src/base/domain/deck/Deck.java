@@ -8,10 +8,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Represents a standard 52-card playing deck.
+ */
 public class Deck {
 
     private final List<Card> cards;
 
+    /**
+     * Constructs a new Deck, populating it with all 52 combinations
+     * of Suit and Rank, and immediately shuffles it.
+     */
     public Deck() {
         this.cards = new ArrayList<>();
         initializeDeck();
@@ -30,8 +37,11 @@ public class Deck {
     }
 
     /**
-     * Deals the cards to the 4 players
-     * @return A list of 4 lists containing the whole deck dealt correctly
+     * Distributes the entire 52-card deck to 4 players.
+     * Adheres to dealing rules: batches of 4,
+     * then another batch of 4, and a final batch of 5 cards per player.
+     *
+     * @return A list containing 4 hands, each represented as a List of 13 cards.
      */
     public List<List<Card>> deal() {
         List<List<Card>> hands = new ArrayList<>();
@@ -52,9 +62,16 @@ public class Deck {
         }
         return hands;
     }
+    /**
+     * @return A shallow copy of the internal cards list.
+     */
     public List<Card> getCards() {
         return new ArrayList<>(cards);
     }
+
+    /**
+     * Randomizes the order of the cards currently in the deck.
+     */
     public void shuffle(){
         Collections.shuffle(cards);
     }
