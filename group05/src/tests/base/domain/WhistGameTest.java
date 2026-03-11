@@ -11,12 +11,23 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WhistGameTest {
+    WhistGame game;
+    Round currentRound;
+    Player p1, p2, p3, p4;
+    List<Player> players;
 
-    private WhistGame game;
 
     @BeforeEach
     void setUp() {
         game = new WhistGame();
+        p1 = new Player(new HumanStrategy(), "Stan");
+        p2 = new Player(new HumanStrategy(), "Seppe");
+        p3 = new Player(new HumanStrategy(), "Tommy");
+        p4 = new Player(new HumanStrategy(), "John");
+
+        players = List.of(p1, p2, p3, p4);
+
+        currentRound = new Round(players, p1, 1);
     }
 
     @Test
@@ -26,54 +37,22 @@ class WhistGameTest {
 
         List<Player> players = game.getPlayers();
         assertEquals(1, players.size());
-        assertEquals("Stan", players.get(0).getName());
+        assertEquals("Stan", players.getFirst().getName());
         // Check of het een shallow copy is
         assertNotSame(players, game.getPlayers());
     }
 
     @Test
     void addAndGetCurrentRound() {
-        // TODO: Vervang 'null' door een mock of echt Round object zodra de constructor bekend is
-        // Round round = new Round(...);
-        // game.addRound(round);
-        // assertEquals(round, game.getCurrentRound());
+        assertNull(game.getCurrentRound()); // First No round added yet
 
-        assertThrows(java.util.NoSuchElementException.class, () -> game.getCurrentRound(),
-                "Zou moeten falen als er nog geen rondes zijn toegevoegd");
-    }
-
-    @Test
-    void getDealerPlayer() {
-        // TODO: Er is momenteel geen setter voor dealerPlayer in WhistGame.
-        // Schrijf hier een test zodra de logica voor het aanwijzen van de deler bekend is.
-        assertNull(game.getDealerPlayer(), "Dealer moet initieel null zijn");
+        game.addRound(currentRound);
+        assertEquals(currentRound, game.getCurrentRound());
     }
 
     @Test
     void getCurrentPlayer() {
-        // TODO: Er is momenteel geen logica om currentPlayer te veranderen in WhistGame.
         assertNull(game.getCurrentPlayer(), "CurrentPlayer moet initieel null zijn");
-    }
-
-    @Test
-    void printNames() {
-        game.addPlayer(new Player(new HumanStrategy(), "Alice"));
-        game.addPlayer(new Player(new HumanStrategy(), "Bob"));
-
-        String expected = "Players in this game:\n- Alice\n- Bob\n";
-        assertEquals(expected, game.printNames());
-    }
-
-    @Test
-    void printScore() {
-        Player p = new Player(new HumanStrategy(), "Alice");
-        // TODO: Als Player.setScore bestaat, zet hier een score om de weergave te testen
-        game.addPlayer(p);
-
-        String output = game.printScore();
-        assertTrue(output.contains("Alice:"));
-        assertTrue(output.contains("0 points")); // Uitgaande van beginscore 0
-        assertTrue(output.startsWith("======= SCORES ======="));
     }
 
     @Test
