@@ -7,8 +7,9 @@ import base.domain.trick.Trick;
 import java.util.List;
 
 /**
- * Represents an unresolved request for a partner.
- * MUST be linked with AcceptedBid or solved into SoloProposalBid/PassBid before the Playing Phase.
+ * Represents a player's initial offer to form a partnership.
+ * Acts as a transitional contract that must be resolved (accepted, passed,
+ * or upgraded to a Solo Proposal) before the Playing Phase begins.
  */
 public record ProposalBid(Player proposer) implements Bid {
 

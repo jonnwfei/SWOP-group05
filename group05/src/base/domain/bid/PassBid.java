@@ -8,8 +8,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Represents a player choosing not to bid. 
- * Acts as a safe "Null Object" during the Bidding Phase.
+ * Represents a player's decision to pass during the auction.
+ * Functions as a fallback bid when a player opts out of the current contract.
  */
 public record PassBid(Player player) implements Bid {
 

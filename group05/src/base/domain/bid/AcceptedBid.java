@@ -6,6 +6,12 @@ import base.domain.trick.Trick;
 
 import java.util.List;
 
+/**
+ * Represents a contract where a player accepts another player's Proposal.
+ * @param acceptor The player who agreed to the proposal.
+ * @author Tommy
+ * @since 25/02/2026
+ */
 public record AcceptedBid(Player acceptor) implements Bid {
     @Override
     public Player getPlayer() {return acceptor;}

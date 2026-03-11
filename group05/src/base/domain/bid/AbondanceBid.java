@@ -5,10 +5,20 @@ import base.domain.player.Player;
 
 import java.util.List;
 
+/**
+ * Contract for Abondance bids (9 to 12 tricks) with a custom trump suit if applicable.
+ * @param player The proposer of the bid.
+ * @param bidType Specific ABONDANCE level (e.g., ABONDANCE_9).
+ * @param trump The user-defined trump suit for the round.
+ * @author Tommy
+ * @since 25/02/2026
+ */
 public record AbondanceBid(Player player, BidType bidType, Suit trump) implements Bid {
 
-    // PERFECT GRASP: The Compact Constructor ensures the Class Invariant.
-    // It runs automatically right before the object is created.
+    /**
+     * Compact Constructor: Enforces that the {@code bidType} belongs
+     * to the ABONDANCE category.
+     */
     public AbondanceBid {
         if (bidType.getCategory() != BidCategory.ABONDANCE) {
             throw new IllegalArgumentException("AbondanceBid requires an ABONDANCE rank!");
