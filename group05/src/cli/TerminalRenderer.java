@@ -36,8 +36,11 @@ public class TerminalRenderer {
             case PlayAgainPromptEvent e -> renderPlayAgainPromptEvent(e);
             case BiddingCompleteEvent e -> renderBiddingCompleteEvent();
             case ScoreBoardCompleteEvent e -> renderScoreBoardCompleteEvent();
-
+            case EndOfCountStateEvent e -> renderEndOfCountStateEvent();
             default -> System.out.println("[WARNING] Unknown event type!");  }
+    }
+
+    private void renderEndOfCountStateEvent() {
     }
 
     private void renderScoreBoardCompleteEvent() {
@@ -137,7 +140,7 @@ public class TerminalRenderer {
     }
 
     private void renderMiserieWinnerEvent(MiserieWinnerEvent event) {
-        System.out.println("Which players won their bid? (Got 0 tricks): ");
+        System.out.println("Which players got 0 tricks (-1 if none):  ");
         System.out.println("Players in this game:");
         List<String> names = event.playerNames();
         for (int i = 0; i < names.size(); i++) {

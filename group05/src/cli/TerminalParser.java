@@ -23,8 +23,10 @@ public class TerminalParser {
      * Converts a comma-separated string into a list of integers.
      */
     public ArrayList<Integer> parseNumbersInput(String input) {
+        // We only check for null to avoid a crash;
+        // blank strings just result in an empty list.
         if (input == null || input.isBlank()) {
-            throw new IllegalArgumentException("Input cannot be null or empty.");
+            return new ArrayList<>();
         }
 
         String[] parts = input.split(",");
@@ -32,12 +34,14 @@ public class TerminalParser {
 
         for (String part : parts) {
             String trimmed = part.trim();
-            if (trimmed.isEmpty()) {
-                throw new IllegalArgumentException("Found an empty value between commas.");
-            }
+
+            // Skip empty segments like "1,,3" instead of throwing an error
+            if (trimmed.isEmpty()) continue;
+
             try {
                 result.add(Integer.parseInt(trimmed));
             } catch (NumberFormatException e) {
+                // We still throw this because we can't turn "abc" into an Integer
                 throw new IllegalArgumentException("'" + trimmed + "' is not a valid number.");
             }
         }
