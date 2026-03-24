@@ -13,8 +13,8 @@ import java.util.List;
 public record PickCardEvent(
         List<Card> cardsOnTable,      // e.g., ["Player1 played ACE of SPADES", ...]
         boolean isOpenMiserie,         // Tells the UI whether to draw the exposed hand
-        String exposedPlayerName,      // Who is playing Open Miserie
-        List<Card> formattedExposedHand,   // The actual cards to show everyone
+        List<String> exposedPlayerName,      // Who is playing Open Miserie
+        List<List<Card>> formattedExposedHand,   // The actual cards to show everyone
         int trickNumber,
         String currentPlayerName,
         List<Card> currentPlayerHand // Formatted strings of the cards they can play

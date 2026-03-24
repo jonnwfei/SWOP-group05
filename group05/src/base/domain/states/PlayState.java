@@ -3,6 +3,7 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.actions.GameAction;
 import base.domain.actions.NumberAction;
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.events.ErrorEvent;
@@ -154,13 +155,17 @@ public class PlayState extends State {
         boolean isOpenMiserie = currentRound.getHighestBid() != null &&
                 currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
 
-        String exposedName = "";
-        List<Card> exposedHand = new ArrayList<>();
+        List<String> exposedName = new ArrayList<>();
+        List<List<Card>> exposedHand = new ArrayList<>();
 
         if (isOpenMiserie) {
-            Player proposer = currentRound.getHighestBid().getPlayer();
-            exposedName = proposer.getName();
-            exposedHand = proposer.getHand();
+            for (Bid bid : currentRound.getBids()) {
+                if (bid.getType() == BidType.OPEN_MISERIE) {
+                    Player proposer = bid.getPlayer();
+                    exposedName.add(proposer.getName());
+                    exposedHand.add(proposer.getHand());
+                }
+            }
         }
 
         List<Card> tableCards = currentTrick.getTurns().stream().map(Turn::playedCard).toList();

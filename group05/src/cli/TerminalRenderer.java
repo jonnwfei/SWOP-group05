@@ -111,8 +111,11 @@ public class TerminalRenderer {
         }
 
         if (event.isOpenMiserie()) {
-            System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: " + event.exposedPlayerName() + ") ---");
-            System.out.println(event.formattedExposedHand());
+            for (int i = 0; i < event.exposedPlayerName().size(); i++) {
+                System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: "
+                        + event.exposedPlayerName().get(i) + ") ---");
+                System.out.println(event.formattedExposedHand().get(i));
+            }
         }
         System.out.println("---------------------------------------------");
 
