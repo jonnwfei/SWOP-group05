@@ -118,6 +118,20 @@ public enum BidType {
         }
     },
 
+    TROEL(8, 4,BidCategory.TROEL , false) {
+        @Override
+        public Bid instantiate(Player player, Suit TrumpSuit) {
+            return null;
+        }
+    },
+
+    TROELA(9, 4, BidCategory.TROEL, false) {
+        @Override
+        public Bid instantiate(Player player, Suit TrumpSuit) {
+            return null;
+        }
+    },
+
     /** play alone requiring exactly 0 tricks. The player's cards must be revealed after the first trick, multiple players can play simultaneously. */
     OPEN_MISERIE(0, 42, BidCategory.MISERIE, false) {
         @Override

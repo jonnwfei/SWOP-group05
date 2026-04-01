@@ -10,5 +10,6 @@ public enum BidCategory {
     ACCEPTANCE, // Partnering with a Proposer
     SOLO,       // Playing alone with dealt trump
     ABONDANCE,  // Playing alone, choosing trump (9+ tricks)
+    TROEL,      // Forced bids, played with partner when having 3 or more aces
     MISERIE     // Playing alone to win exactly 0 tricks
 }
