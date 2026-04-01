@@ -17,7 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Manages the active gameplay phase where players play cards to complete tricks.
+ * Manages the active gameplay phase where players play cards to complete
+ * tricks.
  *
  * @author Stan Kestens
  * @since 01/03/2026
@@ -33,10 +34,12 @@ public class PlayState extends State {
     private enum TurnPhase {
         PROMPT_PLAYER, REVEAL_HAND, WAIT_FOR_INPUT
     }
+
     private TurnPhase currentPhase = TurnPhase.PROMPT_PLAYER;
 
     /**
      * Initializes the PlayState and sets up the first trick.
+     * 
      * @param game The current game instance.
      * @throws IllegalStateException if no round is currently active.
      */
@@ -52,6 +55,7 @@ public class PlayState extends State {
 
     /**
      * Executes a single turn.
+     * 
      * @param action The user action (typically a card selection or "Continue").
      * @return The event to be rendered by the UI.
      */
@@ -69,46 +73,59 @@ public class PlayState extends State {
 
             processTurnOutcome();
 
-            if (roundOver) return new EndOfRoundEvent(currentPlayer.getName(), botCard);
-            if (trickFinished) return new EndOfTrickEvent(currentPlayer.getName(), botCard, trickWinner);
+            if (roundOver)
+                return new EndOfRoundEvent(currentPlayer.getName(), botCard);
+            if (trickFinished)
+                return new EndOfTrickEvent(currentPlayer.getName(), botCard, trickWinner);
             return new EndOfTurnEvent(currentPlayer.getName(), botCard);
         }
 
         // 2. Process HUMAN Turn via internal Phase Machine
         return switch (currentPhase) {
-            case PROMPT_PLAYER  -> handlePromptPlayer(currentPlayer);
-            case REVEAL_HAND    -> handleRevealHand(currentPlayer);
+            case PROMPT_PLAYER -> handlePromptPlayer(currentPlayer);
+            case REVEAL_HAND -> handleRevealHand(currentPlayer);
             case WAIT_FOR_INPUT -> handleWaitForInput(currentPlayer, action);
         };
     }
 
-    /** Prepares the "Pass device" screen.
+    /**
+     * Prepares the "Pass device" screen.
+     * 
      * @return GameEvent
-     * */
+     */
     private GameEvent<?> handlePromptPlayer(Player currentPlayer) {
         currentPhase = TurnPhase.REVEAL_HAND;
         return new InitiateTurnEvent(currentPlayer.getName());
     }
 
-    /** Transitions to the card selection screen after user confirmation.
+    /**
+     * Transitions to the card selection screen after user confirmation.
+     * 
      * @return GameEvent
-     * */
+     */
     private GameEvent<?> handleRevealHand(Player currentPlayer) {
         currentPhase = TurnPhase.WAIT_FOR_INPUT;
         return buildPickCardEvent(currentPlayer);
     }
 
-    /** Validates the card choice, plays it, and checks for trick/round completion.
+    /**
+     * Validates the card choice, plays it, and checks for trick/round completion.
+     * 
      * @return GameEvent
-     * */
+     */
     private GameEvent<?> handleWaitForInput(Player currentPlayer, GameAction action) {
-        if (!(action instanceof NumberAction(int choice))) {
+        Integer choice = switch (action) {
+            case NumberAction(int value) -> value;
+            default -> null;
+        };
+        if (choice == null) {
             return new ErrorEvent(0, currentPlayer.getHand().size());
         }
 
         int maxChoice = currentPlayer.getHand().size();
 
-        if (choice < 0 || choice > maxChoice) return new ErrorEvent(0, maxChoice);
+        if (choice < 0 || choice > maxChoice)
+            return new ErrorEvent(0, maxChoice);
 
         // Option [0]: View the previous trick
         if (choice == 0) {
@@ -129,12 +146,17 @@ public class PlayState extends State {
         currentPhase = TurnPhase.PROMPT_PLAYER;
         processTurnOutcome();
 
-        if (roundOver) return new EndOfRoundEvent(currentPlayer.getName(), playedCard);
-        if (trickFinished) return new EndOfTrickEvent(currentPlayer.getName(), playedCard, trickWinner);
+        if (roundOver)
+            return new EndOfRoundEvent(currentPlayer.getName(), playedCard);
+        if (trickFinished)
+            return new EndOfTrickEvent(currentPlayer.getName(), playedCard, trickWinner);
         return new EndOfTurnEvent(currentPlayer.getName(), playedCard);
     }
 
-    /** Updates the round state and initializes the next trick if the current one is full. */
+    /**
+     * Updates the round state and initializes the next trick if the current one is
+     * full.
+     */
     private void processTurnOutcome() {
         if (currentTrick.isCompleted()) {
             Player winningPlayer = currentTrick.getWinningPlayer();
@@ -148,9 +170,12 @@ public class PlayState extends State {
         }
     }
 
-    /** Data-mapping helper to create a PickCardEvent with all table and hand details.
+    /**
+     * Data-mapping helper to create a PickCardEvent with all table and hand
+     * details.
+     * 
      * @return PickCardEvent
-     * */
+     */
     private PickCardEvent buildPickCardEvent(Player currentPlayer) {
         boolean isOpenMiserie = currentRound.getHighestBid() != null &&
                 currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
@@ -177,13 +202,14 @@ public class PlayState extends State {
                 exposedHand,
                 currentRound.getTricks().size() + 1,
                 currentPlayer.getName(),
-                currentPlayer.getHand()
-        );
+                currentPlayer.getHand());
     }
 
     /**
      * Determines the next state based on whether all tricks have been played.
-     * @return ScoreBoardState if the round is finished, otherwise remains in PlayState.
+     * 
+     * @return ScoreBoardState if the round is finished, otherwise remains in
+     *         PlayState.
      */
     @Override
     public State nextState() {

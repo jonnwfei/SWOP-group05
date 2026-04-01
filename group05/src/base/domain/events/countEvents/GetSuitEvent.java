@@ -13,13 +13,13 @@ public record GetSuitEvent() implements GameEvent<Integer> {
     public boolean isValid(Integer input) {
         if (input < 1 || input > 16) {
             return false;
-        }
-        else{
+        } else {
             return true;
         }
     }
+
     @Override
-    public boolean needsInput(){
+    public boolean needsInput() {
         return true;
     }
 }

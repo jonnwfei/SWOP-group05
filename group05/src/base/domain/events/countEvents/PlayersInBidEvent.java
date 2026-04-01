@@ -27,8 +27,9 @@ public record PlayersInBidEvent(List<String> playerNames) implements GameEvent<A
         long uniqueCount = input.stream().distinct().count();
         return uniqueCount == input.size();
     }
+
     @Override
-    public boolean needsInput(){
+    public boolean needsInput() {
         return true;
     }
 }

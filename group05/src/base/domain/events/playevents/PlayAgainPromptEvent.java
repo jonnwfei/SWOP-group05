@@ -11,8 +11,7 @@ import java.util.List;
  */
 public record PlayAgainPromptEvent(
         List<String> playerNames,
-        List<Integer> scores
-) implements GameEvent<Integer> {
+        List<Integer> scores) implements GameEvent<Integer> {
 
     @Override
     public Class<Integer> getInputType() {

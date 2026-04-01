@@ -11,7 +11,9 @@ import base.domain.player.Player;
 import java.util.List;
 
 /**
- * Handles the end-of-round scoreboard display and provides options for where they can go next.
+ * Handles the end-of-round scoreboard display and provides options for where
+ * they can go next.
+ * 
  * @author John Cai
  * @since 09/03/2026
  */
@@ -21,6 +23,7 @@ public class ScoreBoardState extends State {
 
     /**
      * Initializes the scoreboard state.
+     * 
      * @param game The current game instance.
      */
     public ScoreBoardState(WhistGame game) {
@@ -29,28 +32,32 @@ public class ScoreBoardState extends State {
 
     /**
      * Processes the scoreboard interaction.
+     * 
      * @param action The user action
      * @return a GameEvent
      */
     @Override
     public GameEvent<?> executeState(GameAction action) {
-        // If we have a NumberAction, the user is responding to the restart prompt
-        if (action instanceof NumberAction(int input)) {
-            if (input == 1 || input == 2) {
-                this.choice = input;
-                return new ScoreBoardCompleteEvent();
+        switch (action) {
+            case NumberAction(int input) -> {
+                if (input == 1 || input == 2) {
+                    this.choice = input;
+                    return new ScoreBoardCompleteEvent();
+                }
+                return new ErrorEvent(1, 2);
             }
-            return new ErrorEvent(1, 2);
+            default -> {
+                // Initial entry: gather data and show the scoreboard
+                List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
+                List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
+                return new ScoreBoardEvent(names, scores);
+            }
         }
-
-        // Initial entry: gather data and show the scoreboard
-        List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
-        List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-        return new ScoreBoardEvent(names, scores);
     }
 
     /**
      * Determines the next state based on the user's selection.
+     * 
      * @return The next state
      */
     @Override

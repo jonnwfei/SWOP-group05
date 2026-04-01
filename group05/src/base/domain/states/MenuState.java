@@ -15,7 +15,8 @@ import base.domain.deck.Deck;
 import java.util.List;
 
 /**
- * Handles the initial setup of the game, including mode selection and player registration.
+ * Handles the initial setup of the game, including mode selection and player
+ * registration.
  *
  * @author Stan Kestens
  * @since 28/02/2026
@@ -41,9 +42,10 @@ public class MenuState extends State {
 
     /**
      * Initializes the menu state with zeroed counters.
+     * 
      * @param game The main game instance.
      */
-    public MenuState(WhistGame game){
+    public MenuState(WhistGame game) {
         super(game);
         this.botCount = 0;
         this.humanCount = 0;
@@ -51,19 +53,31 @@ public class MenuState extends State {
 
     /**
      * Routes the user action to the appropriate internal setup handler.
+     * 
      * @param action The user input (number or text).
      * @return The next event to display in the terminal.
-     * @throws IllegalStateException if the flow encounters an unhandled setup phase.
+     * @throws IllegalStateException if the flow encounters an unhandled setup
+     *                               phase.
      */
     @Override
     public GameEvent<?> executeState(GameAction action) {
         try {
             switch (state) {
-                case WELCOME -> { return showWelcome(); }
-                case CHOOSE_MODE -> { return handleMainChoice(action); }
-                case CHOOSE_BOTS -> { return handleBotAmount(action); }
-                case ENTER_HUMANS -> { return handleHumanInput(action); }
-                case ENTER_BOTS -> { return handleBotInput(action); }
+                case WELCOME -> {
+                    return showWelcome();
+                }
+                case CHOOSE_MODE -> {
+                    return handleMainChoice(action);
+                }
+                case CHOOSE_BOTS -> {
+                    return handleBotAmount(action);
+                }
+                case ENTER_HUMANS -> {
+                    return handleHumanInput(action);
+                }
+                case ENTER_BOTS -> {
+                    return handleBotInput(action);
+                }
                 default -> throw new IllegalStateException("Unexpected state: " + state);
             }
         } catch (IllegalArgumentException e) {
@@ -73,6 +87,7 @@ public class MenuState extends State {
 
     /**
      * Resets game data and prepares the main menu display.
+     * 
      * @return GameEvent
      */
     private GameEvent<?> showWelcome() {
@@ -84,12 +99,17 @@ public class MenuState extends State {
 
     /**
      * Processes the choice between playing a game or counting scores.
+     * 
      * @return GameEvent
      */
     private GameEvent<?> handleMainChoice(GameAction action) {
-        if (!(action instanceof NumberAction(int value))) {
+        int value = switch (action) {
+            case NumberAction(int selected) -> selected;
+            default -> -1;
+        };
+        if (value == -1)
             return new ErrorEvent(1, 2);
-        }
+
         keuze = value;
         if (keuze < 1 || keuze > 2) {
             return new ErrorEvent(1, 2);
@@ -107,10 +127,15 @@ public class MenuState extends State {
 
     /**
      * Validates and saves the number of bots
+     * 
      * @return GameEvent
      */
     private GameEvent<?> handleBotAmount(GameAction action) {
-        if (!(action instanceof NumberAction(int bots)) || bots < 0 || bots > 4) {
+        int bots = switch (action) {
+            case NumberAction(int selected) -> selected;
+            default -> -1;
+        };
+        if (bots < 0 || bots > 4) {
             return new ErrorEvent(0, 4);
         }
         totalBots = bots;
@@ -119,13 +144,18 @@ public class MenuState extends State {
     }
 
     /**
-     * Recursively collects names for human players until the 4-player limit is reached.
+     * Recursively collects names for human players until the 4-player limit is
+     * reached.
+     * 
      * @return GameEvent
      */
     private GameEvent<?> handleHumanInput(GameAction action) {
-        if (!(action instanceof TextAction(String name))) {
+        String name = switch (action) {
+            case TextAction(String playerName) -> playerName;
+            default -> null;
+        };
+        if (name == null)
             return new PrintNamesEvent(getPlayerNames());
-        }
 
         getGame().addPlayer(new Player(new HumanStrategy(), name));
         humanCount++;
@@ -144,10 +174,15 @@ public class MenuState extends State {
 
     /**
      * Recursively sets strategies for bots.
+     * 
      * @return GameEvent
      */
     private GameEvent<?> handleBotInput(GameAction action) {
-        if (!(action instanceof NumberAction(int strategy)) || strategy < 1 || strategy > 2) {
+        int strategy = switch (action) {
+            case NumberAction(int selected) -> selected;
+            default -> -1;
+        };
+        if (strategy < 1 || strategy > 2) {
             return new ErrorEvent(1, 2);
         }
 
@@ -173,12 +208,14 @@ public class MenuState extends State {
     }
 
     /**
-     * Transitions to BidState for active gameplay or CountState for score simulation.
+     * Transitions to BidState for active gameplay or CountState for score
+     * simulation.
+     * 
      * @return The next State for the GameController.
      */
     @Override
-    public State nextState(){
-        if (keuze == 1){
+    public State nextState() {
+        if (keuze == 1) {
             getGame().setDeck(new Deck());
             getGame().setRandomDealer();
             return new BidState(getGame());

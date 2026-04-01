@@ -2,7 +2,6 @@ package base.domain.events.bidevents;
 
 import base.domain.bid.BidType;
 import base.domain.card.Suit;
-import base.domain.player.Player;
 import base.domain.events.GameEvent;
 
 /**
@@ -14,9 +13,9 @@ import base.domain.events.GameEvent;
  *
  * @param playerName  The name of the player currently making the selection.
  * @param pendingType The specific {@link BidType} that was previously chosen
- * and is currently awaiting a suit assignment.
+ *                    and is currently awaiting a suit assignment.
  * @param suits       An array of available {@link Suit} values (Hearts, Clubs,
- * Diamonds, Spades) to be rendered as menu options.
+ *                    Diamonds, Spades) to be rendered as menu options.
  */
 public record SuitPromptEvent(String playerName, BidType pendingType, Suit[] suits) implements GameEvent<Integer> {
     @Override
@@ -28,8 +27,9 @@ public record SuitPromptEvent(String playerName, BidType pendingType, Suit[] sui
     public boolean isValid(Integer input) {
         return input >= 1 && input <= suits.length;
     }
+
     @Override
-    public boolean needsInput(){
+    public boolean needsInput() {
         return true;
     }
 }

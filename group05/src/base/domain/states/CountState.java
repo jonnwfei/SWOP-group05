@@ -41,36 +41,47 @@ public class CountState extends State {
 
     /**
      * Routes the user action to the current phase of the scoring wizard.
+     * 
      * @param action The user input.
      * @return The next event in the scoring sequence.
      */
     @Override
     public GameEvent<?> executeState(GameAction action) {
         return switch (currentPhase) {
-            case START             -> handleStart();
-            case SELECT_BID        -> handleSelectBid(action);
-            case SELECT_TRUMP      -> handleSelectTrump(action);
-            case SELECT_PLAYERS    -> handleSelectPlayers(action);
-            case CALCULATE         -> handleCalculate(action);
+            case START -> handleStart();
+            case SELECT_BID -> handleSelectBid(action);
+            case SELECT_TRUMP -> handleSelectTrump(action);
+            case SELECT_PLAYERS -> handleSelectPlayers(action);
+            case CALCULATE -> handleCalculate(action);
             case PROMPT_NEXT_STATE -> handlePromptNextState(action);
         };
     }
 
-    /** Initializes the wizard flow.
+    /**
+     * Initializes the wizard flow.
+     * 
      * @return GameEvent
-     * */
+     */
     private GameEvent<?> handleStart() {
         currentPhase = CountPhase.SELECT_BID;
         return new WelcomeCountEvent();
     }
 
-    /** Processes the selected bid type (1-10).
+    /**
+     * Processes the selected bid type (1-10).
+     * 
      * @return GameEvent
-     * */
+     */
     private GameEvent<?> handleSelectBid(GameAction action) {
-        if (!(action instanceof NumberAction(int choice))) return null;
+        Integer choice = switch (action) {
+            case NumberAction(int value) -> value;
+            default -> null;
+        };
+        if (choice == null)
+            return null;
 
-        if (choice < 1 || choice > 10) return new ErrorEvent(1, 10);
+        if (choice < 1 || choice > 10)
+            return new ErrorEvent(1, 10);
 
         this.numberBid = choice;
         if (choice == 7 || choice == 8) {
@@ -82,11 +93,18 @@ public class CountState extends State {
         }
     }
 
-    /** Processes the trump suit selection.
+    /**
+     * Processes the trump suit selection.
+     * 
      * @return GameEvent
-     * */
+     */
     private GameEvent<?> handleSelectTrump(GameAction action) {
-        if (!(action instanceof NumberAction(int choice))) return null;
+        Integer choice = switch (action) {
+            case NumberAction(int value) -> value;
+            default -> null;
+        };
+        if (choice == null)
+            return null;
 
         this.trumpSuit = switch (choice) {
             case 1 -> Suit.HEARTS;
@@ -96,19 +114,28 @@ public class CountState extends State {
             default -> null;
         };
 
-        if (this.trumpSuit == null) return new ErrorEvent(1, 4);
+        if (this.trumpSuit == null)
+            return new ErrorEvent(1, 4);
 
         currentPhase = CountPhase.SELECT_PLAYERS;
         return new PlayersInBidEvent(getPlayerNames());
     }
 
-    /** Identifies which players were involved in the bid.
+    /**
+     * Identifies which players were involved in the bid.
+     * 
      * @return GameEvent
-     * */
+     */
     private GameEvent<?> handleSelectPlayers(GameAction action) {
-        if (!(action instanceof NumberListAction(ArrayList<Integer> indices))) return null;
+        ArrayList<Integer> indices = switch (action) {
+            case NumberListAction(ArrayList<Integer> values) -> values;
+            default -> null;
+        };
+        if (indices == null)
+            return null;
 
-        // Validation: Only Miserie allows multiple participants in this specific wizard flow
+        // Validation: Only Miserie allows multiple participants in this specific wizard
+        // flow
         if (numberBid != 7 && numberBid != 8 && indices.size() > 1) {
             PlayersInBidEvent tempEvent = new PlayersInBidEvent(getPlayerNames());
             return new NumberListErrorEvent(tempEvent::isValid);
@@ -119,9 +146,11 @@ public class CountState extends State {
         return (numberBid == 7 || numberBid == 8) ? new MiserieWinnerEvent(getPlayerNames()) : new TrickWonEvent();
     }
 
-    /** Performs final score calculation based on tricks won or miserie results.
+    /**
+     * Performs final score calculation based on tricks won or miserie results.
+     * 
      * @return GameEvent
-     * */
+     */
     private GameEvent<?> handleCalculate(GameAction action) {
         List<Player> participants = participatingPlayers.stream()
                 .map(idx -> getGame().getPlayers().get(idx - 1)).toList();
@@ -132,7 +161,12 @@ public class CountState extends State {
         getGame().addRound(round);
 
         if (numberBid == 7 || numberBid == 8) {
-            if (!(action instanceof NumberListAction(ArrayList<Integer> winnerIndices))) return null;
+            ArrayList<Integer> winnerIndices = switch (action) {
+                case NumberListAction(ArrayList<Integer> values) -> values;
+                default -> null;
+            };
+            if (winnerIndices == null)
+                return null;
 
             List<Player> winners;
             if (winnerIndices.size() == 1 && winnerIndices.get(0) == -1) {
@@ -148,7 +182,11 @@ public class CountState extends State {
             }
             round.calculateScoresForCount(0, participants, winners);
         } else {
-            if (!(action instanceof NumberAction(int tricks)) || tricks < 0 || tricks > 13) {
+            Integer tricks = switch (action) {
+                case NumberAction(int value) -> value;
+                default -> null;
+            };
+            if (tricks == null || tricks < 0 || tricks > 13) {
                 return new ErrorEvent(0, 13);
             }
             round.calculateScoresForCount(tricks, participants, null);
@@ -159,11 +197,17 @@ public class CountState extends State {
         return new ScoreBoardEvent(getPlayerNames(), playerScores);
     }
 
-    /** Final prompt to decide whether to count another round or exit.
+    /**
+     * Final prompt to decide whether to count another round or exit.
+     * 
      * @return GameEvent
-     * */
+     */
     private GameEvent<?> handlePromptNextState(GameAction action) {
-        if (!(action instanceof NumberAction(int choice)) || choice < 1 || choice > 2) {
+        Integer choice = switch (action) {
+            case NumberAction(int value) -> value;
+            default -> null;
+        };
+        if (choice == null || choice < 1 || choice > 2) {
             return new ErrorEvent(1, 2);
         }
         this.keuze = choice;
@@ -193,7 +237,7 @@ public class CountState extends State {
 
     /** Returns to a fresh CountState or the Main Menu. */
     @Override
-    public State nextState(){
+    public State nextState() {
         return (keuze == 1) ? new CountState(getGame()) : new MenuState(getGame());
     }
 }
