@@ -121,14 +121,14 @@ public enum BidType {
     TROEL(8, 4,BidCategory.TROEL , false) {
         @Override
         public Bid instantiate(Player player, Suit TrumpSuit) {
-            return null;
+            return new TroelBid(player, this);
         }
     },
 
     TROELA(9, 4, BidCategory.TROEL, false) {
         @Override
         public Bid instantiate(Player player, Suit TrumpSuit) {
-            return null;
+            return new TroelBid(player, this);
         }
     },
 
@@ -170,7 +170,7 @@ public enum BidType {
      * @param targetTricks The exact number of tricks required to win the contract (e.g., 0 for Miserie, 9 for Abondance).
      * @param basePoints   The point value awarded on victory, or deducted on defeat.
      * @param bidCategory  The broader classification of the bid used for object validation.
-     * @param requiresSuit The
+     * @param requiresSuit The boolean flag indicating if the player must actively choose a new trump suit
      */
     BidType(int targetTricks, int basePoints, BidCategory bidCategory, boolean requiresSuit) {
         this.targetTricks = targetTricks;
@@ -188,7 +188,7 @@ public enum BidType {
     /**
      * Polymorphically instantiates the correct Bid implementation for this specific BidType.
      * @param player The player making the bid.
-     * @param TrumpSuit The suit chosen by the player (if requiresSuit is true).
+     * @param trumpSuit The suit chosen by the player (if requiresSuit is true).
      * @return A fully instantiated, immutable Bid object.
      */
-    public abstract Bid instantiate(Player player, Suit TrumpSuit);}
+    public abstract Bid instantiate(Player player, Suit trumpSuit);}

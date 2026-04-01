@@ -13,6 +13,10 @@ import java.util.List;
  */
 public record ProposalBid(Player proposer) implements Bid {
 
+    public ProposalBid {
+        if (proposer == null) {throw new IllegalArgumentException("Proposer cannot be null.");}
+    }
+
     @Override
     public Player getPlayer() {return proposer;}
 
@@ -21,6 +25,7 @@ public record ProposalBid(Player proposer) implements Bid {
 
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {
+        if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
         return dealtTrump;
     }
 

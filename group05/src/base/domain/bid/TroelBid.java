@@ -11,26 +11,16 @@ import java.util.List;
 public record TroelBid(Player player, BidType bidType) implements Bid {
 
     public TroelBid {
-        if (player == null) {
-            throw new IllegalArgumentException("player can't be null");
-        }
-        if (bidType.getCategory() != BidCategory.TROEL) {
-            throw new IllegalArgumentException("TroelBid requires a TROEL category!");
-        }
+        if (player == null) {throw new IllegalArgumentException("player can't be null");}
+        if (bidType.getCategory() != BidCategory.TROEL) {throw new IllegalArgumentException("TroelBid requires a TROEL category!");}
 
         long aceCount = player.getHand().stream()
                 .filter(card -> card.rank() == Rank.ACE)
                 .count();
 
-        if (aceCount < 3) {
-            throw new IllegalArgumentException("Player doesn't meet conditions");
-        }
-        if (aceCount == 4 && bidType == BidType.TROEL) {
-            throw new IllegalArgumentException("wrong bidType given");
-        }
-        if (aceCount == 3 && bidType == BidType.TROELA) {
-            throw new IllegalArgumentException("wrong bidType given");
-        }
+        if (aceCount < 3) {throw new IllegalArgumentException("Player doesn't meet conditions");}
+        if (aceCount == 4 && bidType == BidType.TROEL) {throw new IllegalArgumentException("wrong bidType given");}
+        if (aceCount == 3 && bidType == BidType.TROELA) {throw new IllegalArgumentException("wrong bidType given");}
     }
 
     @Override

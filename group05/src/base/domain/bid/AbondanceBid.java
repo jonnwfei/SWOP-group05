@@ -20,9 +20,9 @@ public record AbondanceBid(Player player, BidType bidType, Suit trump) implement
      * to the ABONDANCE category.
      */
     public AbondanceBid {
-        if (bidType.getCategory() != BidCategory.ABONDANCE) {
-            throw new IllegalArgumentException("AbondanceBid requires an ABONDANCE rank!");
-        }
+        if (player == null) {throw new IllegalArgumentException("Proposer cannot be null.");}
+        if (bidType.getCategory() != BidCategory.ABONDANCE) {throw new IllegalArgumentException("AbondanceBid requires an ABONDANCE rank!");}
+        if (trump == null) {throw new IllegalArgumentException("Player cannot be null.");}
     }
 
     @Override

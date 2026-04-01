@@ -13,6 +13,11 @@ import java.util.List;
  * @since 25/02/2026
  */
 public record AcceptedBid(Player acceptor) implements Bid {
+
+    public AcceptedBid {
+        if (acceptor == null) {throw new IllegalArgumentException("Proposer cannot be null.");}
+    }
+
     @Override
     public Player getPlayer() {return acceptor;}
 
@@ -21,6 +26,7 @@ public record AcceptedBid(Player acceptor) implements Bid {
 
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {
+        if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
         return dealtTrump;
     }
 

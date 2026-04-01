@@ -13,6 +13,11 @@ import java.util.List;
  * @param player The original proposer now playing solo.
  */
 public record SoloProposalBid(Player player) implements Bid {
+
+    public SoloProposalBid {
+        if (player == null) {throw new IllegalArgumentException("Player cannot be null.");}
+    }
+
     @Override
     public Player getPlayer() {return player;}
 
@@ -20,7 +25,10 @@ public record SoloProposalBid(Player player) implements Bid {
     public BidType getType() {return BidType.SOLO_PROPOSAL;}
 
     @Override
-    public Suit getChosenTrump(Suit dealtTrump) {return dealtTrump;}
+    public Suit getChosenTrump(Suit dealtTrump) {
+        if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
+        return dealtTrump;
+    }
 
     @Override
     public int calculateBasePoints(int tricksWon) {

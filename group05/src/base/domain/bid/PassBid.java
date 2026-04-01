@@ -13,6 +13,11 @@ import java.util.List;
  */
 public record PassBid(Player player) implements Bid {
 
+    public PassBid {
+        if (player == null) {throw new IllegalArgumentException("Proposer cannot be null.");}
+
+    }
+
     @Override
     public Player getPlayer() {return player;}
 
