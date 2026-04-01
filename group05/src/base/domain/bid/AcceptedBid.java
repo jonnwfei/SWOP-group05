@@ -42,7 +42,7 @@ public record AcceptedBid(Player acceptor) implements Bid {
             points = -1 * points;
             return points;
         }
-
+        points += extra;
         if (tricksWon == 13) {points = 2*points;}
         return points;
     }

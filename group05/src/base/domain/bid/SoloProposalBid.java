@@ -39,6 +39,7 @@ public record SoloProposalBid(Player player) implements Bid {
             points = -1 * points;
             return points;
         }
+        points += 3*extra;
         if (tricksWon == 13) {points = 2*points;}
         return points;
     }
