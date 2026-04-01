@@ -12,6 +12,7 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
 
     public TroelBid {
         if (player == null) {throw new IllegalArgumentException("player can't be null");}
+        if (bidType == null) {throw new IllegalArgumentException("bidType can't be null");}
         if (bidType.getCategory() != BidCategory.TROEL) {throw new IllegalArgumentException("TroelBid requires a TROEL category!");}
 
         long aceCount = player.getHand().stream()
@@ -32,8 +33,8 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
     @Override
     public int calculateBasePoints(int tricksWon) {
         if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
-        int points = BidType.TROEL.getBasePoints();
-        int extra = tricksWon - BidType.TROEL.getTargetTricks();
+        int points = bidType.getBasePoints();
+        int extra = tricksWon - bidType.getTargetTricks();
         if (extra < 0) {
             points = -1 * points;
             return points;
@@ -56,7 +57,7 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
                 .orElseThrow(() -> new IllegalStateException("Missing 4th ace not found"));    }
 
     private List<Suit> getAces() {
-       return player.getHand().stream().filter(card -> card.rank() == Rank.ACE).map(Card::suit).toList();
+        return player.getHand().stream().filter(card -> card.rank() == Rank.ACE).map(Card::suit).toList();
     }
 
 }

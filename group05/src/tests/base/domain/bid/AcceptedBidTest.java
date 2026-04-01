@@ -22,6 +22,16 @@ class AcceptedBidTest {
     }
 
     @Test
+    void constructor_InvalidParameters_ThrowsException() {
+        // Enforce GRASP invariant: Cannot instantiate an AbondanceBid with a non-Abondance BidType
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                new AcceptedBid(null)
+        );
+        assertTrue(exception.getMessage().contains("null"));
+
+    }
+
+    @Test
     void getPlayer_ReturnsPlayer() {
         assertEquals(acceptor, bid.getPlayer());
     }
@@ -39,6 +49,14 @@ class AcceptedBidTest {
     }
 
     @Test
+    void getChosenTrump_ThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                bid.getChosenTrump(null)
+        );
+        assertTrue(exception.getMessage().contains("null"));
+    }
+
+    @Test
     void calculateBasePoints_Success_Normal() {
         int base = BidType.ACCEPTANCE.getBasePoints();
         int target = BidType.ACCEPTANCE.getTargetTricks();
@@ -49,8 +67,8 @@ class AcceptedBidTest {
         // Case 2: Overtricks (but not a full slam).
         // Extra points for overtricks are usually calculated at the round level,
         // the bid itself just validates the base points.
-        assertEquals(base, bid.calculateBasePoints(target + 1));
-        assertEquals(base, bid.calculateBasePoints(12));
+        assertEquals(base + 1, bid.calculateBasePoints(target + 1));
+        assertEquals(base + 4, bid.calculateBasePoints(12));
     }
 
     @Test
@@ -70,7 +88,7 @@ class AcceptedBidTest {
         int base = BidType.ACCEPTANCE.getBasePoints();
 
         // Case 3: Taking all 13 tricks doubles the points!
-        assertEquals(2 * base, bid.calculateBasePoints(13));
+        assertEquals(14, bid.calculateBasePoints(13));
     }
 
     @Test

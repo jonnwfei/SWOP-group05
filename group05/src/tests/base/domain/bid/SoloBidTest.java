@@ -13,6 +13,7 @@ class SoloBidTest {
     private Player testPlayer;
     private BidType soloNormal;
     private Suit chosenTrump;
+    private SoloBid bid;
 
     @BeforeEach
     void setUp() {
@@ -20,6 +21,19 @@ class SoloBidTest {
         // Gaat ervan uit dat BidType.SOLO bestaat en onder de categorie SOLO valt
         soloNormal = BidType.SOLO;
         chosenTrump = Suit.DIAMONDS;
+        bid = new SoloBid(testPlayer, BidType.SOLO, chosenTrump);
+    }
+
+    @Test
+    void constructor_NullParameters_ThrowsException() {
+        // Enforce GRASP invariant: defensief programmeren tegen null-waardes
+        assertThrows(IllegalArgumentException.class, () ->
+                new SoloBid(null, soloNormal, chosenTrump)
+        );
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new SoloBid(testPlayer, null, chosenTrump)
+        );
     }
 
     @Test
@@ -78,5 +92,13 @@ class SoloBidTest {
                 bid.calculateBasePoints(-1)
         );
         assertTrue(exception.getMessage().contains("negative tricks"));
+    }
+
+    @Test
+    void testRecordAccessors() {
+        // Testing de native record accessors (player(), bidType(), trump()) voor 100% method coverage
+        assertEquals(testPlayer, bid.player());
+        assertEquals(soloNormal, bid.bidType());
+        assertEquals(chosenTrump, bid.trump()); // <-- Deze ontbrak!
     }
 }

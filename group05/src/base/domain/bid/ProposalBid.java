@@ -31,7 +31,7 @@ public record ProposalBid(Player proposer) implements Bid {
 
     @Override
     public int calculateBasePoints(int tricksWon) {
-        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
+        if (tricksWon < 0 || tricksWon > 13) {throw new IllegalArgumentException("tricks won is out of bound, min 0 max 13");}
         int points = BidType.ACCEPTANCE.getBasePoints();
 
         int extra = tricksWon - BidType.ACCEPTANCE.getTargetTricks();
@@ -39,7 +39,7 @@ public record ProposalBid(Player proposer) implements Bid {
             points = -1 * points;
             return points;
         }
-
+        points += extra;
         if (tricksWon == 13) {points = 2*points;}
         return points;
     }

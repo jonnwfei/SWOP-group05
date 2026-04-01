@@ -27,12 +27,21 @@ class AbondanceBidTest {
     }
 
     @Test
-    void constructor_InvalidCategory_ThrowsException() {
+    void constructor_InvalidParameters_ThrowsException() {
         // Enforce GRASP invariant: Cannot instantiate an AbondanceBid with a non-Abondance BidType
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 new AbondanceBid(testPlayer, BidType.MISERIE, testTrump)
         );
         assertTrue(exception.getMessage().contains("ABONDANCE rank"));
+
+        exception = assertThrows(IllegalArgumentException.class, () ->
+                new AbondanceBid(null, BidType.ABONDANCE_9, testTrump)
+        );
+        assertTrue(exception.getMessage().contains("null"));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new AbondanceBid(testPlayer, null, null)
+        );
     }
 
     @Test

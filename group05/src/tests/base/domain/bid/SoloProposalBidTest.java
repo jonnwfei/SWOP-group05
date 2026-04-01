@@ -22,6 +22,14 @@ class SoloProposalBidTest {
     }
 
     @Test
+    void constructor_NullPlayer_ThrowsException() {
+        // Enforce GRASP invariant: Cannot instantiate a bid without a valid player
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                new SoloProposalBid(null)
+        );
+    }
+
+    @Test
     void getPlayer_ReturnsPlayer() {
         assertEquals(testPlayer, bid.getPlayer());
     }
@@ -32,6 +40,20 @@ class SoloProposalBidTest {
     }
 
     @Test
+    void getChosenTrump_NullDealtTrump_ThrowsException() {
+        // Enforce GRASP invariant: A Proposal bid relies on the dealt trump, which cannot be null.
+        Player testPlayer = new Player(new HumanStrategy(), "Proposer");
+        SoloProposalBid bid = new SoloProposalBid(testPlayer);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                bid.getChosenTrump(null)
+        );
+
+        assertTrue(exception.getMessage().toLowerCase().contains("null"),
+                "Exception message should mention null.");
+    }
+
+    @Test
     void getChosenTrump_ReturnsDealtTrump() {
         // A solo proposal uses the dealt trump suit, so it should just return what was dealt
         assertEquals(dealtTrump, bid.getChosenTrump(dealtTrump));
@@ -39,24 +61,29 @@ class SoloProposalBidTest {
 
     @Test
     void calculateBasePoints_Success_Normal() {
-        int base = BidType.SOLO_PROPOSAL.getBasePoints();
-        int target = BidType.SOLO_PROPOSAL.getTargetTricks();
+        int base = BidType.SOLO_PROPOSAL.getBasePoints();     // 6
+        int target = BidType.SOLO_PROPOSAL.getTargetTricks(); // 5
 
-        // Case 1: Exact target achieved
+        // Case 1: Exact target achieved (5 tricks = 6 points)
         assertEquals(base, bid.calculateBasePoints(target));
 
         // Case 2: Overtricks (but not all 13).
-        // According to the implementation, overtricks don't award extra points unless it's a full slam.
-        assertEquals(base, bid.calculateBasePoints(target + 1));
-        assertEquals(base, bid.calculateBasePoints(12));
+        // +3 points for each excess trick
+        assertEquals(base + 3, bid.calculateBasePoints(target + 1)); // 6 tricks = 9 points
+        assertEquals(base + (3 * 7), bid.calculateBasePoints(12));   // 12 tricks = 6 + 21 = 27 points
     }
 
     @Test
     void calculateBasePoints_Success_Slam() {
-        int base = BidType.SOLO_PROPOSAL.getBasePoints();
+        int base = BidType.SOLO_PROPOSAL.getBasePoints();     // 6
+        int target = BidType.SOLO_PROPOSAL.getTargetTricks(); // 5
 
-        // Case 3: Taking all 13 tricks doubles the points!
-        assertEquals(2 * base, bid.calculateBasePoints(13));
+        // Case 3: Taking all 13 tricks doubles the TOTAL points!
+        int excessTricks = 13 - target; // 8
+        int expectedBeforeDouble = base + (excessTricks * 3); // 6 + 24 = 30
+        int expectedSlamPoints = expectedBeforeDouble * 2;    // 60
+
+        assertEquals(expectedSlamPoints, bid.calculateBasePoints(13));
     }
 
     @Test

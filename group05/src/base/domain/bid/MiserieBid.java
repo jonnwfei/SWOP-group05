@@ -8,7 +8,8 @@ import java.util.List;
 public record MiserieBid(Player player, BidType bidType) implements Bid {
 
     public MiserieBid {
-        if (player == null) {throw new IllegalArgumentException("Proposer cannot be null.");}
+        if (player == null) {throw new IllegalArgumentException("player cannot be null.");}
+        if (bidType == null) {throw new IllegalArgumentException("BidType cannot be null.");}
         if (bidType.getCategory() != BidCategory.MISERIE) {throw new IllegalArgumentException("MiserieBid requires a MISERIE category!");}
     }
 

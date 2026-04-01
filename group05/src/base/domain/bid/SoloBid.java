@@ -15,8 +15,8 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
 
     public SoloBid {
         if (player == null) {throw new IllegalArgumentException("Player cannot be null.");}
+        if (bidType == null) {throw new IllegalArgumentException("BidType cannot be null.");}
         if (bidType.getCategory() != BidCategory.SOLO) {throw new IllegalArgumentException("SoloBid requires a SOLO category!");}
-        if (trump == null) {throw new IllegalArgumentException("Player cannot be null.");}
     }
 
     @Override
@@ -39,4 +39,6 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
         }
             return points;
         }
+
+
 }

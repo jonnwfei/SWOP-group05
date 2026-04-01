@@ -14,7 +14,7 @@ import java.util.List;
 public record PassBid(Player player) implements Bid {
 
     public PassBid {
-        if (player == null) {throw new IllegalArgumentException("Proposer cannot be null.");}
+        if (player == null) {throw new IllegalArgumentException("Player cannot be null.");}
 
     }
 
