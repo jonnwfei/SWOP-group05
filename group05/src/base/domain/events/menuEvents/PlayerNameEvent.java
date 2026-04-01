@@ -12,8 +12,9 @@ public record PlayerNameEvent(int playerIndex) implements GameEvent<String> {
     public boolean isValid(String input) {
         return !input.isEmpty();
     }
+
     @Override
-    public boolean needsInput(){
+    public boolean needsInput() {
         return true;
     }
 }

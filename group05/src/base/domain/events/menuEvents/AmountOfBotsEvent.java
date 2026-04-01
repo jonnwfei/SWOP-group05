@@ -12,13 +12,13 @@ public record AmountOfBotsEvent() implements GameEvent<Integer> {
     public boolean isValid(Integer input) {
         if (input < 0 || input > 3) {
             return false;
-        }
-        else{
+        } else {
             return true;
         }
     }
+
     @Override
-    public boolean needsInput(){
+    public boolean needsInput() {
         return true;
     }
 }

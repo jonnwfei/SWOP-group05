@@ -2,11 +2,10 @@ package base.domain.events.playevents;
 
 import base.domain.events.GameEvent;
 import base.domain.trick.Trick;
-import base.domain.trick.Turn;
 
 public record LastTrickEvent(Trick trick) implements GameEvent<String> {
     @Override
-    public  Class<String> getInputType() {
+    public Class<String> getInputType() {
         return String.class;
     }
 
@@ -20,4 +19,3 @@ public record LastTrickEvent(Trick trick) implements GameEvent<String> {
         return false;
     }
 }
-

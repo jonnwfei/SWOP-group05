@@ -1,8 +1,11 @@
 package base.domain.actions;
 
 /**
- * Marker interface for UI inputs processed via {@code executeState(GameAction)}.
+ * Sealed protocol for UI inputs processed via {@code executeState(GameAction)}.
+ *
+ * <p>Keeping this closed allows exhaustive switch handling in states.
+ *
  * @author Tommy
  * @since 10/03/2026
- * */
-public interface GameAction {}
+ */
+public sealed interface GameAction permits ContinueAction, NumberAction, NumberListAction, TextAction {}

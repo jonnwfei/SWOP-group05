@@ -12,8 +12,9 @@ public record WelcomeMenuEvent() implements GameEvent<Integer> {
     public boolean isValid(Integer input) {
         return input >= 1 && input <= 2;
     }
+
     @Override
-    public boolean needsInput(){
+    public boolean needsInput() {
         return true;
     }
 }

@@ -1,7 +1,6 @@
 package base.domain.events.countEvents;
 
 import base.domain.events.GameEvent;
-import base.domain.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,8 +34,9 @@ public record MiserieWinnerEvent(List<String> playerNames) implements GameEvent<
         long uniqueCount = input.stream().distinct().count();
         return uniqueCount == input.size();
     }
+
     @Override
-    public boolean needsInput(){
+    public boolean needsInput() {
         return true;
     }
 }

@@ -5,8 +5,7 @@ import java.util.ArrayList;
 import java.util.function.Predicate;
 
 public record NumberListErrorEvent(
-        Predicate<ArrayList<Integer>> validationLogic
-) implements GameEvent<ArrayList<Integer>> {
+        Predicate<ArrayList<Integer>> validationLogic) implements GameEvent<ArrayList<Integer>> {
 
     @Override
     public Class<ArrayList<Integer>> getInputType() {

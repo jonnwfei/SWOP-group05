@@ -6,7 +6,7 @@ package base.domain.events;
  * type of input it expects in return.
  *
  * @param <T> The expected data type of the user's response
- * (e.g., Integer, String, or Void for no input).
+ *            (e.g., Integer, String, or Void for no input).
  */
 public interface GameEvent<T> {
 
@@ -30,7 +30,7 @@ public interface GameEvent<T> {
      * Determines if the Event requires the View to pause and wait for user input.
      *
      * @return true if input is required; false if it is merely a transitional
-     * or informational marker.
+     *         or informational marker.
      */
     boolean needsInput();
 }

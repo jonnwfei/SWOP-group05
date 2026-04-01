@@ -9,7 +9,7 @@ import base.domain.events.GameEvent;
  */
 public record BiddingCompleteEvent() implements GameEvent<Void> {
     @Override
-    public Class getInputType() {
+    public Class<Void> getInputType() {
         return Void.class;
     }
 
