@@ -12,11 +12,7 @@ public record ScoreBoardEvent(List<String> playerNames, List<Integer> scores) im
 
     @Override
     public boolean isValid(Integer input) {
-        if (input < 1 || input > 2) {
-            return false;
-        } else {
-            return true;
-        }
+        return input >= 1 && input <= 3;
     }
 
     @Override
