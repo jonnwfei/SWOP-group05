@@ -86,6 +86,22 @@ public class WhistGame {
     }
 
     /**
+     * Restores the dealer from persisted data.
+     *
+     * @param dealer The dealer player, or null for count sessions.
+     */
+    public void setDealerPlayer(Player dealer) {
+        if (dealer == null) {
+            this.dealerPlayer = null;
+            return;
+        }
+        if (!players.contains(dealer)) {
+            throw new IllegalArgumentException("Dealer not in game");
+        }
+        this.dealerPlayer = dealer;
+    }
+
+    /**
      * Triggers a transition to the next game state based on internal logic.
      */
     public void nextState(){
