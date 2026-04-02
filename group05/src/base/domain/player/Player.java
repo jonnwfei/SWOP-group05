@@ -150,8 +150,18 @@ public class Player {
         return this.decisionStrategy.requiresConfirmation();
     }
 
+    /** Checks if the player holds a specific card */
+    public boolean hasCard(Card card) {
+        return currentHand.stream().anyMatch(card::equals);
+    }
 
-
-
+    /** Returns the highest rank of a given suit, or null if the player is void in that suit */
+    public base.domain.card.Rank getHighestRankOfSuit(Suit suit) {
+        return currentHand.stream()
+                .filter(c -> c.suit() == suit)
+                .map(Card::rank)
+                .max(base.domain.card.Rank::compareTo)
+                .orElse(null);
+    }
 }
 

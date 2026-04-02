@@ -8,14 +8,15 @@ import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
+import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.events.*;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.events.bidevents.*;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-
 /**
  * Manages the Bidding phase of the Whist game.
  *
@@ -39,12 +40,15 @@ public class BidState extends State {
         this.bids = new ArrayList<>();
         this.currentHighestBidType = null;
         Player dealerPlayer = game.getDealerPlayer();
+
         int dealerIdx = game.getPlayers().indexOf(dealerPlayer);
         this.currentPlayer = game.getPlayers().get((dealerIdx + 1) % game.getPlayers().size());
+
         this.trumpSuit = null;
 
         dealCards();
         initializeRound();
+        applyForcedBids();
     }
 
     /**
@@ -65,12 +69,59 @@ public class BidState extends State {
      * previous round was passed.
      */
     private void initializeRound() {
-        WhistGame game = this.getGame();
+        WhistGame game = getGame();
         int multiplier = 1;
         if (!game.getRounds().isEmpty()) {
             multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
         }
         game.addRound(new Round(game.getPlayers(), currentPlayer, multiplier));
+    }
+
+    /**
+     * Scans all players for 3 or 4 Aces. If found, automatically registers the
+     * forced Troel/Troela bid before normal bidding begins.
+     */
+    private void applyForcedBids() {
+        for (Player player : getGame().getPlayers()) {
+
+            long aceCount = player.getHand().stream()
+                    .filter(card -> card.rank() == Rank.ACE)
+                    .count();
+
+            if (aceCount == 3) {
+                Bid forcedBid = BidType.TROEL.instantiate(player, null);
+                commitBid(forcedBid);
+
+                Card missingAce = new Card(forcedBid.getChosenTrump(null), Rank.ACE);
+
+                //find player with the missing ace card
+                Player partner = getGame().getPlayers().stream()
+                        .filter( p -> p.hasCard(missingAce))
+                        .findFirst()
+                        .orElse(null);
+
+                Bid forcedPartnerBid = BidType.TROEL.instantiate(partner, null);
+                commitBid(forcedPartnerBid);
+                break;
+            }
+            if (aceCount == 4) {
+                Bid forcedBid = BidType.TROEL.instantiate(player, null);
+                commitBid(forcedBid);
+
+                //find player with the highest card in the suit of hearts
+                Player partner = getGame().getPlayers().stream()
+                        .filter( p -> !p.equals(player))
+                        .max(Comparator.comparing(
+                                p -> p.getHighestRankOfSuit(Suit.HEARTS),
+                                Comparator.nullsFirst(Comparator.naturalOrder())
+                        ))
+                        .orElse(null);
+
+                Bid forcedPartnerBid = BidType.TROELA.instantiate(partner, null);
+                commitBid(forcedPartnerBid);
+                break;
+            }
+        }
     }
 
     /**
