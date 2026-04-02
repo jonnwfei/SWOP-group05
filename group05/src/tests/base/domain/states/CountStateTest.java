@@ -174,7 +174,7 @@ class CountStateTest {
         countState.executeState(new NumberListAction(new ArrayList<>(List.of(1))));
         countState.executeState(new NumberAction(5)); // Won 5 tricks, moves to PROMPT_NEXT_STATE
 
-        assertInstanceOf(ErrorEvent.class, countState.executeState(new NumberAction(3)), "Only choices 1 and 2 are allowed");
+        assertInstanceOf(ErrorEvent.class, countState.executeState(new NumberAction(4)), "Only choices 1, 2 and 3 are allowed");
     }
 
     // =========================================================================

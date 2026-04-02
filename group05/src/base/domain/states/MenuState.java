@@ -6,6 +6,8 @@ import base.domain.actions.NumberAction;
 import base.domain.actions.TextAction;
 import base.domain.events.ErrorEvent;
 import base.domain.events.menuEvents.*;
+import base.storage.GamePersistenceService;
+import base.domain.snapshots.SaveMode;
 import base.domain.player.HighBotStrategy;
 import base.domain.player.HumanStrategy;
 import base.domain.player.LowBotStrategy;
@@ -26,6 +28,9 @@ public class MenuState extends State {
     private int totalBots;
     private int botCount;
     private int humanCount;
+    private State resumeTargetState;
+    private List<String> availableSaves;
+    private final GamePersistenceService persistenceService;
 
     /**
      * Defines the internal phases of the menu setup flow.
@@ -33,6 +38,7 @@ public class MenuState extends State {
     private enum SetupState {
         WELCOME,
         CHOOSE_MODE,
+        RESUME_SELECT,
         CHOOSE_BOTS,
         ENTER_HUMANS,
         ENTER_BOTS
@@ -49,6 +55,9 @@ public class MenuState extends State {
         super(game);
         this.botCount = 0;
         this.humanCount = 0;
+        this.resumeTargetState = null;
+        this.availableSaves = List.of();
+        this.persistenceService = new GamePersistenceService();
     }
 
     /**
@@ -68,6 +77,9 @@ public class MenuState extends State {
                 }
                 case CHOOSE_MODE -> {
                     return handleMainChoice(action);
+                }
+                case RESUME_SELECT -> {
+                    return handleResumeSelect(action);
                 }
                 case CHOOSE_BOTS -> {
                     return handleBotAmount(action);
@@ -108,21 +120,53 @@ public class MenuState extends State {
             default -> -1;
         };
         if (value == -1)
-            return new ErrorEvent(1, 2);
+            return new ErrorEvent(1, 3);
 
         keuze = value;
-        if (keuze < 1 || keuze > 2) {
-            return new ErrorEvent(1, 2);
+        if (keuze < 1 || keuze > 3) {
+            return new ErrorEvent(1, 3);
         }
 
         if (keuze == 1) {
             state = SetupState.CHOOSE_BOTS;
             return new AmountOfBotsEvent();
-        } else {
+        } else if (keuze == 2) {
             totalBots = 0;
             state = SetupState.ENTER_HUMANS;
             return new PlayerNameEvent(1);
         }
+
+        availableSaves = persistenceService.listDescriptions();
+        if (availableSaves.isEmpty()) {
+            state = SetupState.CHOOSE_MODE;
+            return new WelcomeMenuEvent();
+        }
+        state = SetupState.RESUME_SELECT;
+        return new ResumeSaveEvent(availableSaves);
+    }
+
+    private GameEvent<?> handleResumeSelect(GameAction action) {
+        Integer selection = switch (action) {
+            case NumberAction(int selected) -> selected;
+            default -> null;
+        };
+        if (selection == null || selection < 1 || selection > availableSaves.size()) {
+            return new ErrorEvent(1, availableSaves.size());
+        }
+
+        String description = availableSaves.get(selection - 1);
+        SaveMode loadedMode = persistenceService.loadIntoGame(getGame(), description);
+        if (loadedMode == null) {
+            state = SetupState.CHOOSE_MODE;
+            return new WelcomeMenuEvent();
+        }
+
+        if (loadedMode == SaveMode.GAME) {
+            resumeTargetState = new BidState(getGame());
+        } else {
+            resumeTargetState = new CountState(getGame());
+        }
+        return new PrintNamesEvent(getPlayerNames());
     }
 
     /**
@@ -215,6 +259,11 @@ public class MenuState extends State {
      */
     @Override
     public State nextState() {
+        if (resumeTargetState != null) {
+            State next = resumeTargetState;
+            resumeTargetState = null;
+            return next;
+        }
         if (keuze == 1) {
             getGame().setDeck(new Deck());
             getGame().setRandomDealer();

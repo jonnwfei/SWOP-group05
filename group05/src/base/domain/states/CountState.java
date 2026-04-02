@@ -7,6 +7,9 @@ import base.domain.actions.NumberListAction;
 import base.domain.events.ErrorEvent;
 import base.domain.events.countEvents.*;
 import base.domain.events.errorEvents.NumberListErrorEvent;
+import base.domain.events.menuEvents.SaveDescriptionEvent;
+import base.storage.GamePersistenceService;
+import base.domain.snapshots.SaveMode;
 import base.domain.player.Player;
 import base.domain.events.GameEvent;
 import base.domain.bid.*;
@@ -25,7 +28,7 @@ import static base.domain.bid.BidType.*;
 public class CountState extends State {
 
     private enum CountPhase {
-        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, CALCULATE, PROMPT_NEXT_STATE
+        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION
     }
 
     private CountPhase currentPhase = CountPhase.START;
@@ -34,9 +37,11 @@ public class CountState extends State {
     private Bid bid;
     private Suit trumpSuit;
     private List<Integer> participatingPlayers;
+    private final GamePersistenceService persistenceService;
 
     public CountState(WhistGame game) {
         super(game);
+        this.persistenceService = new GamePersistenceService();
     }
 
     /**
@@ -54,6 +59,7 @@ public class CountState extends State {
             case SELECT_PLAYERS -> handleSelectPlayers(action);
             case CALCULATE -> handleCalculate(action);
             case PROMPT_NEXT_STATE -> handlePromptNextState(action);
+            case SAVE_DESCRIPTION -> handleSaveDescription(action);
         };
     }
 
@@ -207,11 +213,31 @@ public class CountState extends State {
             case NumberAction(int value) -> value;
             default -> null;
         };
-        if (choice == null || choice < 1 || choice > 2) {
-            return new ErrorEvent(1, 2);
+        if (choice == null || choice < 1 || choice > 3) {
+            return new ErrorEvent(1, 3);
         }
+        if (choice == 3) {
+            currentPhase = CountPhase.SAVE_DESCRIPTION;
+            return new SaveDescriptionEvent("count");
+        }
+
         this.keuze = choice;
         return new EndOfCountStateEvent();
+    }
+
+    private GameEvent<?> handleSaveDescription(GameAction action) {
+        String description = switch (action) {
+            case base.domain.actions.TextAction(String text) -> text;
+            default -> null;
+        };
+        if (description == null || description.isBlank()) {
+            return new SaveDescriptionEvent("count");
+        }
+
+        persistenceService.save(getGame(), SaveMode.COUNT, description);
+        currentPhase = CountPhase.PROMPT_NEXT_STATE;
+        List<Integer> playerScores = getGame().getPlayers().stream().map(Player::getScore).toList();
+        return new ScoreBoardEvent(getPlayerNames(), playerScores);
     }
 
     /** Helper to instantiate the correct Bid object for score calculation. */
