@@ -86,7 +86,7 @@ public class WhistGame {
     /**
      * Creates and initializes the next round, automatically calculating the score multiplier
      * based on whether the previous round was passed.
-     * * @param startingPlayer The player who gets the first turn.
+     * @param startingPlayer The player who gets the first turn.
      * @throws IllegalArgumentException if the starting player is null or not actively in the game.
      * @throws IllegalStateException if the game does not have exactly 4 players.
      */
@@ -112,7 +112,7 @@ public class WhistGame {
 
     /**
      * Deals 13 cards to each player and determines the initial dealt trump suit.
-     * * @return The originally dealt trump suit (the suit of the last card dealt).
+     * @return The originally dealt trump suit (the suit of the last card dealt).
      * @throws IllegalStateException if the deck is not set, if there are not exactly 4 players,
      * or if the deck deals invalid hands.
      */
