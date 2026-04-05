@@ -79,7 +79,7 @@ public class BidState extends State {
 
     /**
      * Scans all players for 3 or 4 Aces. If found, automatically registers the
-     * forced Troel/Troela bid before normal bidding begins.
+     * forced Troel/Troela bid for that player before normal bidding begins.
      */
     private void applyForcedBids() {
         for (Player player : getGame().getPlayers()) {
@@ -91,34 +91,11 @@ public class BidState extends State {
             if (aceCount == 3) {
                 Bid forcedBid = BidType.TROEL.instantiate(player, null);
                 commitBid(forcedBid);
-
-                Card missingAce = new Card(forcedBid.getChosenTrump(null), Rank.ACE);
-
-                //find player with the missing ace card
-                Player partner = getGame().getPlayers().stream()
-                        .filter( p -> p.hasCard(missingAce))
-                        .findFirst()
-                        .orElse(null);
-
-                Bid forcedPartnerBid = BidType.TROEL.instantiate(partner, null);
-                commitBid(forcedPartnerBid);
                 break;
             }
-            if (aceCount == 4) {
-                Bid forcedBid = BidType.TROEL.instantiate(player, null);
+            else if (aceCount == 4) {
+                Bid forcedBid = BidType.TROELA.instantiate(player, null);
                 commitBid(forcedBid);
-
-                //find player with the highest card in the suit of hearts
-                Player partner = getGame().getPlayers().stream()
-                        .filter( p -> !p.equals(player))
-                        .max(Comparator.comparing(
-                                p -> p.getHighestRankOfSuit(Suit.HEARTS),
-                                Comparator.nullsFirst(Comparator.naturalOrder())
-                        ))
-                        .orElse(null);
-
-                Bid forcedPartnerBid = BidType.TROELA.instantiate(partner, null);
-                commitBid(forcedPartnerBid);
                 break;
             }
         }
@@ -324,12 +301,21 @@ public class BidState extends State {
                 this.currentHighestBidType.getCategory() == BidCategory.SOLO) {
             firstPlayer = findBid(currentHighestBidType).getPlayer();
         }
+        else if (this.currentHighestBidType.getCategory() == BidCategory.TROEL) {
+            Bid troelBid = findBid(currentHighestBidType);
+            // Find the partner by filtering out the original bidder from the team list
+            firstPlayer = troelBid.getTeam(this.bids, players).stream()
+                    .filter(p -> !p.equals(troelBid.getPlayer()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("No partner found in the Troel team!"));
+        }
 
         Round current = game.getCurrentRound();
         current.setCurrentPlayer(firstPlayer);
         current.setHighestBid(findBid(currentHighestBidType));
         current.setBids(this.bids);
         current.setTrumpSuit(trumpSuit);
+        current.resolveTeams();
     }
 
 }

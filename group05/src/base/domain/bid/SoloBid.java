@@ -23,6 +23,15 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
     public Player getPlayer() {return player;}
 
     @Override
+    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
+        int totalCards = allPlayers.stream().mapToInt(p -> p.getHand().size()).sum();
+        if (totalCards != 52) {
+            throw new IllegalStateException("getTeam() can only be called before the play phase begins!");
+        }
+        return List.of(player);
+    }
+
+    @Override
     public BidType getType() {return bidType;}
 
     @Override

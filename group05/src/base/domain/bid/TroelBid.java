@@ -6,6 +6,7 @@ import base.domain.card.Suit;
 import base.domain.player.Player;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 public record TroelBid(Player player, BidType bidType) implements Bid {
@@ -26,6 +27,33 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
 
     @Override
     public Player getPlayer() {return player;}
+
+    @Override
+    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
+        Player partner;
+        switch (bidType) {
+            //find player with the missing ace card
+            case TROEL -> {
+                Card missingAce = new Card(this.getChosenTrump(null), Rank.ACE);
+                partner = allPlayers.stream()
+                          .filter(p -> p.hasCard(missingAce))
+                          .findFirst()
+                          .orElse(null);
+            }
+
+            //find player with the highest card in the suit of hearts
+            case TROELA -> partner = allPlayers.stream()
+                                     .filter( p -> !p.equals(player))
+                                     .max(Comparator.comparing(p -> p.getHighestRankOfSuit(Suit.HEARTS), Comparator.nullsFirst(Comparator.naturalOrder())))
+                                     .orElse(null);
+
+            default -> throw new IllegalArgumentException("wrong bidType given");
+        }
+
+        if (partner == null) {throw new IllegalStateException("Partner not found. This method must be called before cards are played from hands.");}
+
+        return List.of(player, partner);
+    }
 
     @Override
     public BidType getType() {return bidType;}

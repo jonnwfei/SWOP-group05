@@ -22,11 +22,12 @@ public class Round {
     public static final int MAX_TRICKS = 13;
 
     private final List<Player> players;
+    private final List<Player> biddingTeam;
     private Player currentPlayer;
 
     private final List<Trick> playedTricks;
 
-    private List<Bid> bids;
+    private final List<Bid> bids;
     private Bid highestBid;
     private Suit trumpSuit;
     private final int multiplier;
@@ -48,12 +49,31 @@ public class Round {
             throw new IllegalArgumentException("Starting Player must not be null and must be in the players list.");
         }
         this.players = new ArrayList<>(players);
+        this.biddingTeam = new ArrayList<>();
         this.currentPlayer = startingPlayer;
         this.playedTricks = new ArrayList<>();
         this.bids = new ArrayList<>();
         this.highestBid = null;
         this.trumpSuit = null;
         this.multiplier = multiplier;
+    }
+
+    /**
+     * Calculates the bidding team based on the highest bid.
+     * MUST be called at the end of the Bidding Phase, before any cards are played!
+     */
+    public void resolveTeams() {
+        if (this.bids.size() != this.players.size()) {
+            throw new IllegalStateException("biddings are not finalized, must be called at the end of bidding phase");
+        }
+
+        int totalCards = players.stream().mapToInt(p -> p.getHand().size()).sum();
+        if (totalCards != 52) {
+            throw new IllegalStateException("resolveTeam() can only be called before the play phase begins!");
+        }
+
+        // The bid knows how to build its own team.
+        this.biddingTeam.addAll(this.highestBid.getTeam(this.bids, this.players));
     }
 
     /**
@@ -224,28 +244,14 @@ public class Round {
 
     /**
      * Extracts the team of players responsible for the highest bid.
-     * Automatically handles teaming up the Proposer and Acceptor.
      *
-     * @return A list containing the attacking team members.
+     * @return A list containing the bidding team members.
      */
     private List<Player> getBiddingTeam() {
-        List<Player> attackers = new ArrayList<>();
-        if (highestBid.getType() == BidType.ACCEPTANCE) {
-            for (Bid b : bids) {
-                if (b.getType() == BidType.PROPOSAL || b.getType() == BidType.ACCEPTANCE) {
-                    attackers.add(b.getPlayer());
-                }
-            }
-        } else if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
-            for (Bid b : bids) {
-                if (b.getType().getCategory() == BidCategory.MISERIE) {
-                    attackers.add(b.getPlayer());
-                }
-            }
-        } else {
-            attackers.add(highestBid.getPlayer());
+        if (this.biddingTeam == null) {
+            throw new IllegalStateException("Teams have not been resolved yet!");
         }
-        return attackers;
+        return this.biddingTeam;
     }
 
     /**
@@ -310,7 +316,8 @@ public class Round {
         if (bids == null) {
             throw new IllegalArgumentException("Bids list cannot be null.");
         }
-        this.bids = new ArrayList<>(bids);
+        this.bids.clear();
+        this.bids.addAll(bids);
     }
 
     /**

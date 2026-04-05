@@ -2,7 +2,6 @@ package base.domain.bid;
 
 import base.domain.card.Suit;
 import base.domain.player.Player;
-import base.domain.trick.Trick;
 
 import java.util.List;
 
@@ -19,6 +18,17 @@ public record ProposalBid(Player proposer) implements Bid {
 
     @Override
     public Player getPlayer() {return proposer;}
+
+    @Override
+    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
+        int totalCards = allPlayers.stream().mapToInt(p -> p.getHand().size()).sum();
+        if (totalCards != 52) {
+            throw new IllegalStateException("getTeam() can only be called before the play phase begins!");
+        }
+        Player acceptor = allBids.stream().filter(bid -> bid.getType() == BidType.ACCEPTANCE).map(Bid::getPlayer).findFirst().orElse(null);
+        if (acceptor == null) {throw new IllegalArgumentException("There was no acceptor found in allBids, it's impossible to have ProposalBid without AcceptedBid!");}
+        return List.of(proposer, acceptor);
+    }
 
     @Override
     public BidType getType() {return BidType.PROPOSAL;}

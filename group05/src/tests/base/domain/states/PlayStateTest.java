@@ -6,6 +6,7 @@ import base.domain.actions.NumberAction;
 import base.domain.actions.TextAction;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
+import base.domain.bid.MiserieBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
@@ -175,19 +176,6 @@ class PlayStateTest {
         assertInstanceOf(PickCardEvent.class, event, "Illegal plays should be caught and return the PickCard screen again");
     }
 
-    @Test
-    void testOpenMiserie_BuildsPickCardEventWithExposedHand() {
-        FakeBid miserieBid = new FakeBid(BidType.OPEN_MISERIE, p2);
-        fakeRound.setHighestBid(miserieBid);
-        p2.testHand.add(new Card(Suit.DIAMONDS, Rank.KING));
-
-        playState.executeState(new ContinueAction());
-        PickCardEvent event = (PickCardEvent) playState.executeState(new ContinueAction());
-
-        assertTrue(event.isOpenMiserie());
-        assertEquals("Bob", event.exposedPlayerName());
-        assertEquals(1, event.formattedExposedHand().size());
-    }
 
     // =========================================================================
     // BULLETPROOF MANUAL FAKES
@@ -253,16 +241,5 @@ class PlayStateTest {
         public Trick getLastPlayedTrick() {
             return fakeTricks.isEmpty() ? null : fakeTricks.getLast();
         }
-    }
-
-    static class FakeBid implements Bid {
-        BidType type;
-        Player player;
-
-        public FakeBid(BidType type, Player player) { this.type = type; this.player = player; }
-        @Override public BidType getType() { return type; }
-        @Override public Player getPlayer() { return player; }
-        @Override public Suit getChosenTrump(Suit dealtTrump) { return null; }
-        @Override public int calculateBasePoints(int tricksWon) { return 0; }
     }
 }

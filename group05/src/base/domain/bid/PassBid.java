@@ -2,9 +2,7 @@ package base.domain.bid;
 
 import base.domain.card.Suit;
 import base.domain.player.Player;
-import base.domain.trick.Trick;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -20,6 +18,15 @@ public record PassBid(Player player) implements Bid {
 
     @Override
     public Player getPlayer() {return player;}
+
+    @Override
+    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
+        int totalCards = allPlayers.stream().mapToInt(p -> p.getHand().size()).sum();
+        if (totalCards != 52) {
+            throw new IllegalStateException("getTeam() can only be called before the play phase begins!");
+        }
+        return List.of(player);
+    }
 
     @Override
     public BidType getType() {return BidType.PASS;}
