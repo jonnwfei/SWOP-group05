@@ -248,7 +248,7 @@ public class Round {
      * @return A list containing the bidding team members.
      */
     private List<Player> getBiddingTeam() {
-        if (this.biddingTeam == null) {
+        if (this.biddingTeam.isEmpty()) {
             throw new IllegalStateException("Teams have not been resolved yet!");
         }
         return this.biddingTeam;
