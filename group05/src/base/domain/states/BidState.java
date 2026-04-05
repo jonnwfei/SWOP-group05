@@ -15,7 +15,6 @@ import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.events.bidevents.*;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 /**
  * Manages the Bidding phase of the Whist game.
@@ -49,6 +48,11 @@ public class BidState extends State {
         dealCards();
         initializeRound();
         applyForcedBids();
+
+        // If the starting player got forced into Troel, skip them immediately!
+        if (bids.stream().anyMatch(bid -> bid.getPlayer().equals(currentPlayer))) {
+            updateCurrentPlayer();
+        }
     }
 
     /**
@@ -110,11 +114,6 @@ public class BidState extends State {
      */
     @Override
     public GameEvent<?> executeState(GameAction action) {
-        // If the current player already made a forced bid, just skip their turn!
-        if (bids.stream().anyMatch(bid -> bid.getPlayer().equals(currentPlayer))) {
-            updateCurrentPlayer();
-        }
-
         if (action instanceof NumberAction(int choice)) {
             // Context A: Resolving a proposal that no one accepted
             if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
@@ -133,6 +132,7 @@ public class BidState extends State {
         // Fast-forward BOT turns
         while (!currentPlayer.getRequiresConfirmation() && !isBiddingComplete()) {
             commitBid(new PassBid(currentPlayer));
+            updateCurrentPlayer();
         }
 
         if (isBiddingComplete())
@@ -178,6 +178,7 @@ public class BidState extends State {
         }
 
         commitBid(chosenBidType.instantiate(currentPlayer, null));
+        updateCurrentPlayer();
         return null;
     }
 
@@ -192,6 +193,7 @@ public class BidState extends State {
             return new ErrorEvent(1, allSuits.length);
 
         commitBid(pendingBidType.instantiate(currentPlayer, allSuits[choice - 1]));
+        updateCurrentPlayer();
         this.pendingBidType = null;
         return null;
     }
@@ -231,15 +233,19 @@ public class BidState extends State {
         if (currentHighestBidType == null || finalizedBid.getType().compareTo(currentHighestBidType) > 0) {
             currentHighestBidType = finalizedBid.getType();
         }
-        updateCurrentPlayer();
+        trumpSuit = finalizedBid.getChosenTrump(trumpSuit);
     }
 
     /**
-     * Updating the current player
+     * Advances the turn to the next player. Skips players who already have a forced bid.
      */
     private void updateCurrentPlayer() {
         List<Player> players = getGame().getPlayers();
-        this.currentPlayer = players.get((players.indexOf(currentPlayer) + 1) % players.size());
+
+        do {
+            this.currentPlayer = players.get((players.indexOf(currentPlayer) + 1) % players.size());
+            // Keep skipping IF the bidding isn't done AND the player we landed on already has a bid!
+        } while (!isBiddingComplete() && bids.stream().anyMatch(bid -> bid.getPlayer().equals(currentPlayer)));
     }
 
     /**
