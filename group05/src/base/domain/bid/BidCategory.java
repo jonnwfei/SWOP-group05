@@ -3,6 +3,8 @@ package base.domain.bid;
 /**
  * Defines the broad categories of Whist bids.
  * Used to group specific BidTypes for rule checks (e.g., finding a partner vs playing alone).
+ * @author Tommy Wu
+ * @since 01/03/2026
  */
 public enum BidCategory {
     PASS,       // No bid

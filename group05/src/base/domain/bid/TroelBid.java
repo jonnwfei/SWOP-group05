@@ -9,6 +9,15 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Represents a forced contract triggered when a player holds 3 or 4 Aces.
+ * The player forms a team with a forced partner (the holder of the 4th Ace, or the highest Heart).
+ *
+ * @param player  The player forced into the bid (holding the Aces).
+ * @param bidType The specific Troel rank (TROEL for 3 Aces, TROELA for 4 Aces).
+ * @author Tommy Wu
+ * @since 01/04/2026
+ */
 public record TroelBid(Player player, BidType bidType) implements Bid {
 
     public TroelBid {
@@ -28,6 +37,16 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
     @Override
     public Player getPlayer() {return player;}
 
+    /**
+     * Determines the attacking team by finding the forced partner.
+     * For TROEL: The partner is the player with the 4th (missing) Ace.
+     * For TROELA: The partner is the player with the highest card in Hearts.
+     *
+     * @param allBids    All bids placed during the round.
+     * @param allPlayers All players in the game.
+     * @return A list containing the Troel bidder and their forced partner.
+     * @throws IllegalStateException if called after cards have been played (partner's hand is empty).
+     */
     @Override
     public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
         Player partner;
@@ -58,6 +77,13 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
     @Override
     public BidType getType() {return bidType;}
 
+    /**
+     * Calculates the points won or lost based on tricks taken.
+     * Earns extra points (+2) for each overtrick, and doubles the total score if all 13 tricks are won.
+     *
+     * @param tricksWon The combined number of tricks won by the team.
+     * @return Positive calculated points if the contract was met, negative base points if failed.
+     */
     @Override
     public int calculateBasePoints(int tricksWon) {
         if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
@@ -72,7 +98,15 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
         return points;
     }
 
-
+    /**
+     * Automatically determines the trump suit for the Troel contract.
+     * For TROEL: The trump suit is the suit of the missing 4th Ace.
+     * For TROELA: The trump suit is forced to Hearts.
+     *
+     * @param dealtTrump The default trump suit dealt at the start (ignored for Troel).
+     * @return The calculated trump suit.
+     * @throws IllegalStateException if the missing Ace cannot be mathematically determined.
+     */
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {
         List<Suit> aces = getAces();
@@ -84,6 +118,10 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Missing 4th ace not found"));    }
 
+    /**
+     * Helper method to extract the suits of all Aces currently in the player's hand.
+     * @return A list of suits corresponding to the Aces held.
+     */
     private List<Suit> getAces() {
         return player.getHand().stream().filter(card -> card.rank() == Rank.ACE).map(Card::suit).toList();
     }

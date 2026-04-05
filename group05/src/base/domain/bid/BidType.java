@@ -9,7 +9,7 @@ import base.domain.player.Player;
  * associated with each bid type, such as the required number of tricks to win,
  * the base point value awarded (or penalized), and the broader category the bid belongs to.
  * @author Tommy Wu
- * @since 26/2/26
+ * @since 26/02/26
  */
 public enum BidType {
     /** The default null-bid when a player chooses not to participate. */
@@ -118,6 +118,9 @@ public enum BidType {
         }
     },
 
+    /** * A forced team bid triggered when a player holds exactly 3 Aces.
+     * The partner is the player holding the 4th missing Ace, playing together to win at least 8 tricks.
+     */
     TROEL(8, 4,BidCategory.TROEL , false) {
         @Override
         public Bid instantiate(Player player, Suit TrumpSuit) {
@@ -125,6 +128,9 @@ public enum BidType {
         }
     },
 
+    /** * A forced team bid triggered when a player holds all 4 Aces.
+     * The partner is the player holding the highest Heart, playing together to win at least 9 tricks.
+     */
     TROELA(9, 4, BidCategory.TROEL, false) {
         @Override
         public Bid instantiate(Player player, Suit TrumpSuit) {

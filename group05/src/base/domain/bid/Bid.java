@@ -10,7 +10,7 @@ import java.util.List;
  * Defines how a bid is ranked, who made it, its trump suit, and how it is scored.
  *
  * @author Seppe De Houwer, Tommy Wu
- * @since 24/2/26
+ * @since 24/02/26
  */
 public sealed interface Bid extends Comparable<Bid> permits
         PassBid,

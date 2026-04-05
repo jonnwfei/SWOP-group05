@@ -10,6 +10,8 @@ import java.util.List;
  * @param player The player attempting the contract.
  * @param bidType The specific SOLO rank (e.g., SOLO, SOLO_SLIM).
  * @param trump The trump suit for this contract.
+ * @author Tommy Wu
+ * @since 25/02/2026
  */
 public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid {
 
@@ -22,6 +24,14 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
     @Override
     public Player getPlayer() {return player;}
 
+    /**
+     * Determines the bidding team. In a Solo contract, the bidder always plays alone.
+     *
+     * @param allBids    All bids placed during the round.
+     * @param allPlayers All players in the game.
+     * @return A list containing only the solo bidder.
+     * @throws IllegalStateException if called after cards have been played.
+     */
     @Override
     public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
         int totalCards = allPlayers.stream().mapToInt(p -> p.getHand().size()).sum();
@@ -34,6 +44,12 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
     @Override
     public BidType getType() {return bidType;}
 
+    /**
+     * Retrieves the trump suit for this Solo round.
+     *
+     * @param dealtTrump The default trump suit dealt at the start.
+     * @return The specific trump suit associated with this Solo bid.
+     */
     @Override
     public Suit getChosenTrump(Suit dealtTrump) {return trump;}
 

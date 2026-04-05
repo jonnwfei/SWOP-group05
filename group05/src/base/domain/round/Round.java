@@ -15,7 +15,7 @@ import java.util.*;
  * This class acts as the Information Expert for managing turn order, tracking played tricks,
  * resolving the winning team, and correctly calculating and distributing points based on the highest bid.
  *
- * @author Seppe De Houwer
+ * @author Seppe De Houwer, Tommy Wu
  * @since 24/02/26
  */
 public class Round {
