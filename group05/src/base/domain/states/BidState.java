@@ -176,8 +176,9 @@ public class BidState extends State {
         if (decision == null)
             return new ErrorEvent(1, 2);
 
-        replaceProposalBid(decision);
-        this.currentHighestBidType = decision;
+        removeProposalBid(decision);
+        Bid chosenBid = decision.instantiate(currentPlayer, null);
+        commitBid(chosenBid);
         return new BiddingCompleteEvent();
     }
 
@@ -221,10 +222,9 @@ public class BidState extends State {
      * 
      * @param chosenBidType is the bid that was chosen
      */
-    private void replaceProposalBid(BidType chosenBidType) {
+    private void removeProposalBid(BidType chosenBidType) {
         Bid proposalBid = findBid(BidType.PROPOSAL);
-        int index = bids.indexOf(proposalBid);
-        bids.set(index, chosenBidType.instantiate(proposalBid.getPlayer(), null));
+        bids.remove(proposalBid);
     }
 
     /**
@@ -264,7 +264,7 @@ public class BidState extends State {
     /**
      *
      * @param bidType what bid we want to find
-     * @return Bid that is linked to the bidType
+     * @return Bid that is linked to the bidType or null if not found
      */
     private Bid findBid(BidType bidType) {
         return bids.stream().filter(b -> b.getType() == bidType).findFirst().orElse(null);

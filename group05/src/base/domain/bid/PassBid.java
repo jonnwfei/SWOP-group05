@@ -43,15 +43,9 @@ public record PassBid(Player player) implements Bid {
     @Override
     public BidType getType() {return BidType.PASS;}
 
-    /**
-     * Retrieves the trump suit.
-     * A PassBid will never win the Bidding Phase, so it never dictates the trump suit.
-     * @param dealtTrump The default trump suit dealt at the start.
-     * @return null, as passing does not affect the trump suit.
-     */
     @Override
     public Suit determineTrump(Suit dealtTrump) {
-        return null;
+        return dealtTrump;
     }
 
     /**
