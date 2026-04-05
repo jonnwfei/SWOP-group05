@@ -19,17 +19,31 @@ import java.util.*;
  * @since 24/02/26
  */
 public class Round {
+    /** The maximum number of tricks played in a single round. */
     public static final int MAX_TRICKS = 13;
 
+    /** The 4 players participating in this round. */
     private final List<Player> players;
+
+    /** The players who must fulfill the active bid contract. */
     private final List<Player> biddingTeam;
+
+    /** The player whose turn it currently is to bid or play a card. */
     private Player currentPlayer;
 
+    /** The record of all completed tricks in this round. */
     private final List<Trick> playedTricks;
 
+    /** The record of all bids made during the Bidding Phase. */
     private final List<Bid> bids;
+
+    /** The final, highest bid that dictates the scoring and rules of the round. */
     private Bid highestBid;
+
+    /** The active trump suit, determined by the dealer's last card or the winning bid. */
     private Suit trumpSuit;
+
+    /** The score multiplier for this round. */
     private final int multiplier;
 
     /**
