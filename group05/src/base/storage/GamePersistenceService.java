@@ -12,19 +12,22 @@ import java.util.List;
 
 /**
  * Application service that converts between live game data and snapshots.
+ *
+ * @author John Cai
+ * @since 06/04/2026
  */
 public class GamePersistenceService {
     private final SaveRepository repository;
 
     /**
-     * Initializes the service with a default repository implementation.
+     * Initializes the service with a default repository.
      */
     public GamePersistenceService() {
         this(new SaveRepository());
     }
 
     /**
-     * Initializes the service with a custom repository implementation.
+     * Initializes the service with a custom repository.
      * @param repository given repository
      * @throws IllegalArgumentException if the repository is null
      */
@@ -59,12 +62,17 @@ public class GamePersistenceService {
     }
 
     /**
-     * Loads a saved gameMode from the repository based on the provided description.
+     * Loads a saved gameMode from the repository based on the provided description and restores the game state into the given game instance.
      * @param game the game instance to restore the saved state into
      * @param description the name of the saveFile to load
      * @return the SaveMode of the loaded game, or null if no save with the given description was found
+     * @throws IllegalArgumentException if given game instance is null
+     * @throws IllegalArgumentException if given description is null
      */
     public SaveMode loadIntoGame(WhistGame game, String description) {
+        if (game == null) throw new IllegalArgumentException("Cannot load into a null game");
+        if (description == null) throw new IllegalArgumentException("Cannot from a null description");
+
         GameSnapshot snapshot = repository.loadByDescription(description);
         if (snapshot == null) {
             return null;
@@ -75,13 +83,13 @@ public class GamePersistenceService {
 
     /**
      * Constructs a GameSnapshot from the current state of the provided game instance, using the specified save mode and description.
-     * @param game
-     * @param mode
-     * @param description
-     * @return
+     * @param game the game instance to save
+     * @param mode the game mode to save (full game or count session)
+     * @param description description/alias or name for the save, used for choosing between saves when loading
+     * @return GameSnapshot representing the current state of the game
      */
     private GameSnapshot createSnapshot(WhistGame game, SaveMode mode, String description) {
-        String normalizedDescription = description == null ? "" : description.trim();
+        String normalizedDescription = description.trim();
         if (normalizedDescription.isEmpty()) {
             throw new IllegalArgumentException("Save description cannot be empty");
         }
@@ -89,16 +97,20 @@ public class GamePersistenceService {
         List<Player> players = game.getPlayers();
         List<PlayerSnapshot> snapshots = players.stream().map(this::toSnapshot).toList();
 
-        Integer dealerIndex = null;
         Player dealer = game.getDealerPlayer();
-        if (dealer != null) {
-            int index = players.indexOf(dealer);
-            dealerIndex = index >= 0 ? index : null;
-        }
+        if (dealer == null) throw new IllegalStateException("Cannot create snapshot of a game with a null dealer player");
+        int dealerIndex = players.indexOf(dealer);
+        if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list");
 
         return new GameSnapshot(normalizedDescription, mode, dealerIndex, snapshots);
     }
 
+    /**
+     * Restores the state of the provided game instance based on the data contained in the given GameSnapshot.
+     * This includes resetting the game's players and rounds, then re-adding the players with their respective strategies, names, and scores as specified in the snapshot.
+     * @param game the game instance to restore the snapshot into
+     * @param snapshot the snapshot containing the saved state to restore
+     */
     private void restoreGame(WhistGame game, GameSnapshot snapshot) {
         game.resetPlayers();
         game.resetRounds();
@@ -108,41 +120,61 @@ public class GamePersistenceService {
             player.updateScore(playerSnapshot.score());
             game.addPlayer(player);
         }
-
         if (snapshot.mode() == SaveMode.GAME) {
             game.setDeck(new Deck());
-            if (snapshot.dealerIndex() != null && snapshot.dealerIndex() >= 0 && snapshot.dealerIndex() < game.getPlayers().size()) {
-                game.setDealerPlayer(game.getPlayers().get(snapshot.dealerIndex()));
-            } else {
-                game.setRandomDealer();
-            }
-        } else {
-            game.setDealerPlayer(null);
         }
+
+        game.setDealerPlayer(game.getPlayers().get(snapshot.dealerIndex()));
     }
 
+    /**
+     * Constructs a snapshot of a player, containing their name, strategy type, and score from their current state in the game.
+     * @param player the player instance to create a snapshot from
+     * @return PlayerSnapshot of the provided player
+     */
     private PlayerSnapshot toSnapshot(Player player) {
+        if (player == null) throw new IllegalArgumentException("Cannot create a snapshot of a null player");
         return new PlayerSnapshot(
                 player.getName(),
                 toStrategyType(player.getDecisionStrategy()),
                 player.getScore());
     }
 
+    /**
+     * Converts a player's strategy instance into its corresponding StrategySnapshotType for mapping.
+     * @param strategy strategy instance to convert into a snapshot type
+     * @return StrategySnapshotType corresponding to the provided strategy instance
+     * @throws IllegalArgumentException when trying to convert a null strategy
+     */
     private StrategySnapshotType toStrategyType(Strategy strategy) {
-        if (strategy instanceof HumanStrategy) {
-            return StrategySnapshotType.HUMAN;
+        switch (strategy) {
+            case null -> throw new IllegalArgumentException("Cannot convert a null strategy");
+            case HumanStrategy _ -> {
+                return StrategySnapshotType.HUMAN;
+            }
+            case HighBotStrategy _ -> {
+                return StrategySnapshotType.HIGH_BOT;
+            }
+//            case SmartBotStrategy _ -> { // TODO: fixed by merge
+//                return StrategySnapshotType.SMART_BOT;
+//            }
+            default -> {
+                return StrategySnapshotType.LOW_BOT;
+            }
         }
-        if (strategy instanceof HighBotStrategy) {
-            return StrategySnapshotType.HIGH_BOT;
-        }
-        return StrategySnapshotType.LOW_BOT;
     }
 
+    /**
+     * Converts a StrategySnapshotType into its corresponding Strategy instance.
+     * @param strategyType strategyType instance to convert into a Strategy instance
+     * @return Strategy instance
+     */
     private Strategy toStrategy(StrategySnapshotType strategyType) {
         return switch (strategyType) {
             case HUMAN -> new HumanStrategy();
             case HIGH_BOT -> new HighBotStrategy();
             case LOW_BOT -> new LowBotStrategy();
+//            case SMART_BOT -> new SmartBotStrategy(); // TODO: will be fixed with merge of Strats
         };
     }
 }
