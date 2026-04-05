@@ -92,6 +92,7 @@ public class Round {
             throw new IllegalArgumentException("Cannot start play phase without a first player.");
         }
 
+        this.bids.clear();
         this.bids.addAll(finalBids);
         this.highestBid = highestBid;
         this.trumpSuit = trumpSuit;
@@ -216,12 +217,10 @@ public class Round {
      *
      * @throws IllegalStateException if the round has not yet completed playing all 13 tricks
      */
-    public void calculateScores() {
-        if (playedTricks.size() != MAX_TRICKS) {
-            throw new IllegalStateException("Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got "
-                    + playedTricks.size());
-        }
+    private void calculateScores() {
+        if (playedTricks.size() != MAX_TRICKS) {throw new IllegalStateException("Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got " + playedTricks.size());}
         if (highestBid == null) throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
+
         // --- CASE 1: MISERIE ---
         if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
             List<Player> miseriePlayers = getBiddingTeam();
@@ -292,8 +291,13 @@ public class Round {
      *
      * @param basePoints The calculated points to be awarded or deducted.
      * @param bidders    The list of players who form the attacking team.
+     * @throws IllegalStateException if basePoints is not divisible by 3 for a 1vs3 game
      */
     private void distributeScores(int basePoints, List<Player> bidders) {
+        if (bidders.size() == 1 && (basePoints * multiplier) % 3 != 0) {
+            throw new IllegalStateException("Base points must be divisible by 3 for a 1vs3 game to maintain zero-sum!");
+        }
+
         for (Player p : this.players) {
             if (bidders.contains(p)) {
                 p.updateScore(basePoints * multiplier);
