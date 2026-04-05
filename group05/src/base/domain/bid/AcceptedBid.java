@@ -14,7 +14,7 @@ import java.util.List;
 public record AcceptedBid(Player acceptor) implements Bid {
 
     public AcceptedBid {
-        if (acceptor == null) {throw new IllegalArgumentException("Proposer cannot be null.");}
+        if (acceptor == null) {throw new IllegalArgumentException("Acceptor cannot be null.");}
     }
 
     @Override

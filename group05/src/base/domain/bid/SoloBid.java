@@ -48,6 +48,4 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
         }
             return points;
         }
-
-
 }
