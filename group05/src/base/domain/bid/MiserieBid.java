@@ -22,8 +22,11 @@ public record MiserieBid(Player player, BidType bidType) implements Bid {
         if (totalCards != 52) {
             throw new IllegalStateException("getTeam() can only be called before the play phase begins!");
         }
-        return List.of(player);
-    }
+        // Find every player who made any type of Miserie bid this round
+        return allBids.stream()
+                .filter(bid -> bid.getType() == bidType)
+                .map(Bid::getPlayer)
+                .toList();    }
 
     @Override
     public BidType getType() {return bidType;}
