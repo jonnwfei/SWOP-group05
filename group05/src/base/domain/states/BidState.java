@@ -74,6 +74,7 @@ public class BidState extends State {
      */
     private void initializeRound() {
         WhistGame game = getGame();
+        game.getDeck().shuffle();
         int multiplier = 1;
         if (!game.getRounds().isEmpty()) {
             multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
@@ -149,9 +150,7 @@ public class BidState extends State {
     @Override
     public State nextState() {
         if (currentHighestBidType == BidType.PASS) {
-            getGame().getDeck().shuffle();
-            getGame().getCurrentRound().setHighestBid(findBid(BidType.PASS));
-            getGame().getPlayers().forEach(Player::flushHand);
+            getGame().getCurrentRound().abortWithAllPass(bids);
             return new BidState(getGame());
         }
         setRoundReadyForPlayState();
@@ -321,12 +320,8 @@ public class BidState extends State {
                     .orElseThrow(() -> new IllegalStateException("No partner found in the Troel team!"));
         }
 
-        Round current = game.getCurrentRound();
-        current.setCurrentPlayer(firstPlayer);
-        current.setHighestBid(findBid(currentHighestBidType));
-        current.setBids(this.bids);
-        current.setTrumpSuit(trumpSuit);
-        current.resolveTeams();
+        Bid winningBid = findBid(currentHighestBidType);
+        game.getCurrentRound().startPlayPhase(this.bids, winningBid, this.trumpSuit, firstPlayer);
     }
 
 }
