@@ -57,10 +57,10 @@ class SoloBidTest {
     }
 
     @Test
-    void getChosenTrump_ReturnsSetTrump() {
+    void determineTrump_ReturnsSetTrump() {
         SoloBid bid = new SoloBid(testPlayer, soloNormal, chosenTrump);
         // De 'dealtTrump' (bijv. SPADES) wordt genegeerd ten gunste van de gekozen troef (DIAMONDS)
-        assertEquals(chosenTrump, bid.getChosenTrump(Suit.SPADES));
+        assertEquals(chosenTrump, bid.determineTrump(Suit.SPADES));
     }
 
     @Test

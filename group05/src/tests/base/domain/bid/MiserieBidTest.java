@@ -59,10 +59,10 @@ class MiserieBidTest {
     }
 
     @Test
-    void getChosenTrump_AlwaysReturnsNull() {
+    void determineTrump_AlwaysReturnsNull() {
         // Miserie is always played "Sans Atout" (No Trumps), so this must explicitly return null
-        assertNull(bid.getChosenTrump(Suit.SPADES));
-        assertNull(bid.getChosenTrump(null));
+        assertNull(bid.determineTrump(Suit.SPADES));
+        assertNull(bid.determineTrump(null));
     }
 
     @Test

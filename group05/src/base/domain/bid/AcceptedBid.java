@@ -51,7 +51,7 @@ public record AcceptedBid(Player acceptor) implements Bid {
      * @throws IllegalArgumentException if dealtTrump is null.
      */
     @Override
-    public Suit getChosenTrump(Suit dealtTrump) {
+    public Suit determineTrump(Suit dealtTrump) {
         if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
         return dealtTrump;
     }

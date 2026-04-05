@@ -50,7 +50,7 @@ public record PassBid(Player player) implements Bid {
      * @return null, as passing does not affect the trump suit.
      */
     @Override
-    public Suit getChosenTrump(Suit dealtTrump) {
+    public Suit determineTrump(Suit dealtTrump) {
         return null;
     }
 

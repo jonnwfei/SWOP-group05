@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * Manages the Bidding phase of the Whist game.
  *
- * @author Stan Kestens
+ * @author Stan Kestens, Tommy Wu
  * @since 01/03/2026
  */
 public class BidState extends State {
@@ -233,7 +233,7 @@ public class BidState extends State {
         if (currentHighestBidType == null || finalizedBid.getType().compareTo(currentHighestBidType) > 0) {
             currentHighestBidType = finalizedBid.getType();
         }
-        trumpSuit = finalizedBid.getChosenTrump(trumpSuit);
+        trumpSuit = finalizedBid.determineTrump(trumpSuit);
     }
 
     /**

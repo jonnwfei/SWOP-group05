@@ -55,9 +55,9 @@ class AbondanceBidTest {
     }
 
     @Test
-    void getChosenTrump_ReturnsSetTrump() {
+    void determineTrump_ReturnsSetTrump() {
         // For an Abondance bid, the dealt trump is ignored; the player's chosen trump always applies
-        assertEquals(testTrump, bid.getChosenTrump(Suit.HEARTS));
+        assertEquals(testTrump, bid.determineTrump(Suit.HEARTS));
     }
 
     @Test

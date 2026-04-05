@@ -62,7 +62,7 @@ public sealed interface Bid extends Comparable<Bid> permits
      * @param dealtTrump The original trump suit dealt at the start of the round.
      * @return The chosen Trump {@link Suit} to be used as trump.
      */
-    Suit getChosenTrump(Suit dealtTrump);
+    Suit determineTrump(Suit dealtTrump);
 
     /**
      * Compares this bid to another to determine which is higher in the bidding phase.

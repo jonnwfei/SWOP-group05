@@ -42,16 +42,16 @@ class AcceptedBidTest {
     }
 
     @Test
-    void getChosenTrump_ReturnsDealtTrump() {
+    void determineTrump_ReturnsDealtTrump() {
         // An accepted bid always plays with the dealt trump suit, so it should return the input unchanged
-        assertEquals(dealtTrump, bid.getChosenTrump(dealtTrump));
-        assertEquals(Suit.DIAMONDS, bid.getChosenTrump(Suit.DIAMONDS));
+        assertEquals(dealtTrump, bid.determineTrump(dealtTrump));
+        assertEquals(Suit.DIAMONDS, bid.determineTrump(Suit.DIAMONDS));
     }
 
     @Test
-    void getChosenTrump_ThrowsException() {
+    void determineTrump_ThrowsException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                bid.getChosenTrump(null)
+                bid.determineTrump(null)
         );
         assertTrue(exception.getMessage().contains("null"));
     }

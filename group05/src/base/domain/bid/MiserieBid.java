@@ -53,7 +53,7 @@ public record MiserieBid(Player player, BidType bidType) implements Bid {
      * @return null, as Miserie has no trump.
      */
     @Override
-    public Suit getChosenTrump(Suit dealtTrump) {
+    public Suit determineTrump(Suit dealtTrump) {
         return null;
     }
 

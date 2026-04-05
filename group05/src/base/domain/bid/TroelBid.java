@@ -53,7 +53,7 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
         switch (bidType) {
             //find player with the missing ace card
             case TROEL -> {
-                Card missingAce = new Card(this.getChosenTrump(null), Rank.ACE);
+                Card missingAce = new Card(this.determineTrump(null), Rank.ACE);
                 partner = allPlayers.stream()
                           .filter(p -> p.hasCard(missingAce))
                           .findFirst()
@@ -108,7 +108,7 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
      * @throws IllegalStateException if the missing Ace cannot be mathematically determined.
      */
     @Override
-    public Suit getChosenTrump(Suit dealtTrump) {
+    public Suit determineTrump(Suit dealtTrump) {
         List<Suit> aces = getAces();
         if (aces.size() == 4) {
             return Suit.HEARTS;

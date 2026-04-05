@@ -50,7 +50,7 @@ public record AbondanceBid(Player player, BidType bidType, Suit trump) implement
      * @return The trump suit chosen by the Abondance bidder or the original trump suit.
      */
     @Override
-    public Suit getChosenTrump(Suit dealtTrump) {
+    public Suit determineTrump(Suit dealtTrump) {
         return trump;
     }
 

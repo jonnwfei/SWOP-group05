@@ -40,19 +40,19 @@ class ProposalBidTest {
     }
 
     @Test
-    void getChosenTrump_ReturnsDealtTrump() {
+    void determineTrump_ReturnsDealtTrump() {
         // Volgens de nieuwe implementatie wordt de originele troef gewoon teruggegeven
-        assertEquals(dealtTrump, bid.getChosenTrump(dealtTrump));
+        assertEquals(dealtTrump, bid.determineTrump(dealtTrump));
     }
 
     @Test
-    void getChosenTrump_NullDealtTrump_ThrowsException() {
+    void determineTrump_NullDealtTrump_ThrowsException() {
         // Enforce GRASP invariant: A Proposal bid relies on the dealt trump, which cannot be null.
         Player testPlayer = new Player(new HumanStrategy(), "Proposer");
         ProposalBid bid = new ProposalBid(testPlayer);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                bid.getChosenTrump(null)
+                bid.determineTrump(null)
         );
 
         assertTrue(exception.getMessage().toLowerCase().contains("null"),

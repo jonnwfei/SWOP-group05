@@ -40,13 +40,13 @@ class SoloProposalBidTest {
     }
 
     @Test
-    void getChosenTrump_NullDealtTrump_ThrowsException() {
+    void determineTrump_NullDealtTrump_ThrowsException() {
         // Enforce GRASP invariant: A Proposal bid relies on the dealt trump, which cannot be null.
         Player testPlayer = new Player(new HumanStrategy(), "Proposer");
         SoloProposalBid bid = new SoloProposalBid(testPlayer);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                bid.getChosenTrump(null)
+                bid.determineTrump(null)
         );
 
         assertTrue(exception.getMessage().toLowerCase().contains("null"),
@@ -54,9 +54,9 @@ class SoloProposalBidTest {
     }
 
     @Test
-    void getChosenTrump_ReturnsDealtTrump() {
+    void determineTrump_ReturnsDealtTrump() {
         // A solo proposal uses the dealt trump suit, so it should just return what was dealt
-        assertEquals(dealtTrump, bid.getChosenTrump(dealtTrump));
+        assertEquals(dealtTrump, bid.determineTrump(dealtTrump));
     }
 
     @Test

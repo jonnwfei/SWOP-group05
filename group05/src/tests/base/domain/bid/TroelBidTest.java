@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -107,23 +106,23 @@ class TroelBidTest {
     // -------- TRUMP SELECTION TESTS --------
 
     @Test
-    void getChosenTrump_Troel_ReturnsMissingAceSuit() {
+    void determineTrump_Troel_ReturnsMissingAceSuit() {
         // Player has Hearts, Spades, and Diamonds. Missing Clubs.
         setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS);
         TroelBid bid = new TroelBid(testPlayer, troelType);
 
         // Trump is the suit of the fourth ace [cite: 191-192]
-        assertEquals(Suit.CLUBS, bid.getChosenTrump(Suit.HEARTS));
+        assertEquals(Suit.CLUBS, bid.determineTrump(Suit.HEARTS));
     }
 
     @Test
-    void getChosenTrump_Troela_ReturnsHearts() {
+    void determineTrump_Troela_ReturnsHearts() {
         // Player has all 4 Aces
         setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS, Suit.CLUBS);
         TroelBid bid = new TroelBid(testPlayer, troelaType);
 
         // Trump is ALWAYS Hearts for Troela [cite: 194-195]
-        assertEquals(Suit.HEARTS, bid.getChosenTrump(Suit.SPADES));
+        assertEquals(Suit.HEARTS, bid.determineTrump(Suit.SPADES));
     }
 
     // -------- SCORING TESTS --------

@@ -42,10 +42,10 @@ class PassBidTest {
     }
 
     @Test
-    void getChosenTrump_ReturnsNull() {
+    void determineTrump_ReturnsNull() {
         // A PassBid never determines the trump suit, so it should always safely return null
-        assertNull(bid.getChosenTrump(Suit.HEARTS));
-        assertNull(bid.getChosenTrump(null));
+        assertNull(bid.determineTrump(Suit.HEARTS));
+        assertNull(bid.determineTrump(null));
     }
 
     @Test
