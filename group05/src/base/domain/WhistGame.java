@@ -87,8 +87,20 @@ public class WhistGame {
      * Creates and initializes the next round, automatically calculating the score multiplier
      * based on whether the previous round was passed.
      * * @param startingPlayer The player who gets the first turn.
+     * @throws IllegalArgumentException if the starting player is null or not actively in the game.
+     * @throws IllegalStateException if the game does not have exactly 4 players.
      */
     public void initializeNextRound(Player startingPlayer) {
+        if (this.players == null || this.players.size() != 4) {
+            throw new IllegalStateException("Cannot initialize round: The game must have exactly 4 players.");
+        }
+        if (startingPlayer == null) {
+            throw new IllegalArgumentException("Cannot initialize round: startingPlayer is null.");
+        }
+        if (!this.players.contains(startingPlayer)) {
+            throw new IllegalArgumentException("Cannot initialize round: startingPlayer must be one of the registered players.");
+        }
+
         int multiplier = 1;
         if (!this.rounds.isEmpty() && getCurrentRound().getHighestBid().getType() == BidType.PASS) {
             multiplier = 2;
@@ -101,10 +113,15 @@ public class WhistGame {
     /**
      * Deals 13 cards to each player and determines the initial dealt trump suit.
      * * @return The originally dealt trump suit (the suit of the last card dealt).
+     * @throws IllegalStateException if the deck is not set, if there are not exactly 4 players,
+     * or if the deck deals invalid hands.
      */
     public Suit dealCards() {
         if (this.deck == null) {
             throw new IllegalStateException("Cannot deal cards: Deck is not set.");
+        }
+        if (this.players == null || this.players.size() != 4) {
+            throw new IllegalStateException("Cannot deal cards: The game must have exactly 4 players.");
         }
 
         this.deck.shuffle();
