@@ -110,6 +110,11 @@ public class BidState extends State {
      */
     @Override
     public GameEvent<?> executeState(GameAction action) {
+        // If the current player already made a forced bid, just skip their turn!
+        if (bids.stream().anyMatch(bid -> bid.getPlayer().equals(currentPlayer))) {
+            updateCurrentPlayer();
+        }
+
         if (action instanceof NumberAction(int choice)) {
             // Context A: Resolving a proposal that no one accepted
             if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
