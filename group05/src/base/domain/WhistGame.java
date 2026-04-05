@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import base.domain.actions.GameAction;
+import base.domain.bid.BidType;
+import base.domain.card.Card;
+import base.domain.card.Suit;
 import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.domain.round.Round;
@@ -78,6 +81,41 @@ public class WhistGame {
     public Round getCurrentRound(){
         if (rounds.isEmpty()) return null;
         return this.rounds.getLast();
+    }
+
+    /**
+     * Creates and initializes the next round, automatically calculating the score multiplier
+     * based on whether the previous round was passed.
+     * * @param startingPlayer The player who gets the first turn.
+     */
+    public void initializeNextRound(Player startingPlayer) {
+        int multiplier = 1;
+        if (!this.rounds.isEmpty() && getCurrentRound().getHighestBid().getType() == BidType.PASS) {
+            multiplier = 2;
+        }
+
+        Round newRound = new Round(this.players, startingPlayer, multiplier);
+        addRound(newRound);
+    }
+
+    /**
+     * Deals 13 cards to each player and determines the initial dealt trump suit.
+     * * @return The originally dealt trump suit (the suit of the last card dealt).
+     */
+    public Suit dealCards() {
+        if (this.deck == null) {
+            throw new IllegalStateException("Cannot deal cards: Deck is not set.");
+        }
+
+        this.deck.shuffle();
+        List<List<Card>> hands = this.deck.deal();
+
+        for (int i = 0; i < this.players.size(); i++) {
+            this.players.get(i).setHand(hands.get(i));
+        }
+
+        // Return the suit of the very last card dealt
+        return this.players.getLast().getHand().getLast().suit();
     }
 
     /** @param deck The deck to be used for the upcoming deal. */

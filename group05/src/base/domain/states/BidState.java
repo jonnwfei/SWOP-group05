@@ -7,12 +7,10 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.bid.PassBid;
-import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.events.*;
 import base.domain.player.Player;
-import base.domain.round.Round;
 import base.domain.events.bidevents.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,43 +41,14 @@ public class BidState extends State {
         int dealerIdx = game.getPlayers().indexOf(dealerPlayer);
         this.currentPlayer = game.getPlayers().get((dealerIdx + 1) % game.getPlayers().size());
 
-        this.trumpSuit = null;
-
-        dealCards();
-        initializeRound();
+        this.trumpSuit = game.dealCards();
+        game.initializeNextRound(currentPlayer);
         applyForcedBids();
 
         // If the starting player got forced into Troel, skip them immediately!
         if (bids.stream().anyMatch(bid -> bid.getPlayer().equals(currentPlayer))) {
             updateCurrentPlayer();
         }
-    }
-
-    /**
-     * Deals 13 cards to each player and sets the trump suit based on the
-     * last card dealt to the last player.
-     */
-    private void dealCards() {
-        List<List<Card>> hands = getGame().getDeck().deal();
-        List<Player> allPlayers = getGame().getPlayers();
-        for (int i = 0; i < allPlayers.size(); i++) {
-            allPlayers.get(i).setHand(hands.get(i));
-        }
-        trumpSuit = allPlayers.getLast().getHand().getLast().suit();
-    }
-
-    /**
-     * Creates the Round object and applies a points multiplier if the
-     * previous round was passed.
-     */
-    private void initializeRound() {
-        WhistGame game = getGame();
-        game.getDeck().shuffle();
-        int multiplier = 1;
-        if (!game.getRounds().isEmpty()) {
-            multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
-        }
-        game.addRound(new Round(game.getPlayers(), currentPlayer, multiplier));
     }
 
     /**
