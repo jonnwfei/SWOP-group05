@@ -6,6 +6,7 @@ package base.domain.snapshots;
 public enum StrategySnapshotType {
     HUMAN,
     HIGH_BOT,
-    LOW_BOT
+    LOW_BOT,
+//    SMART_BOT, // TODO: will be fixed with merge of Strats
 }
 
