@@ -34,9 +34,7 @@ public record ProposalBid(Player proposer) implements Bid {
     @Override
     public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
         int totalCards = allPlayers.stream().mapToInt(p -> p.getHand().size()).sum();
-        if (totalCards != 52) {
-            throw new IllegalStateException("getTeam() can only be called before the play phase begins!");
-        }
+        if (totalCards != 52) {throw new IllegalStateException("getTeam() can only be called before the play phase begins!");}
         Player acceptor = allBids.stream().filter(bid -> bid.getType() == BidType.ACCEPTANCE).map(Bid::getPlayer).findFirst().orElse(null);
         if (acceptor == null) {throw new IllegalArgumentException("There was no acceptor found in allBids, it's impossible to have ProposalBid without AcceptedBid!");}
         return List.of(proposer, acceptor);

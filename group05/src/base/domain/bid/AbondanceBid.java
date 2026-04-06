@@ -35,9 +35,7 @@ public record AbondanceBid(Player player, BidType bidType, Suit trump) implement
     @Override
     public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
         int totalCards = allPlayers.stream().mapToInt(p -> p.getHand().size()).sum();
-        if (totalCards != 52) {
-            throw new IllegalStateException("getTeam() can only be called before the play phase begins!");
-        }
+        if (totalCards != 52) {throw new IllegalStateException("getTeam() can only be called before the play phase begins!");}
         return List.of(player);
     }
 
