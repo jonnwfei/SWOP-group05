@@ -34,6 +34,7 @@ public class MenuState extends State {
         WELCOME,
         CHOOSE_MODE,
         CHOOSE_BOTS,
+        CHOOSE_HUMANS,
         ENTER_HUMANS,
         ENTER_BOTS
     }
@@ -71,6 +72,9 @@ public class MenuState extends State {
                 }
                 case CHOOSE_BOTS -> {
                     return handleBotAmount(action);
+                }
+                case CHOOSE_HUMANS -> {
+                    return handleHumanAmount(action);
                 }
                 case ENTER_HUMANS -> {
                     return handleHumanInput(action);
@@ -120,8 +124,8 @@ public class MenuState extends State {
             return new AmountOfBotsEvent();
         } else {
             totalBots = 0;
-            state = SetupState.ENTER_HUMANS;
-            return new PlayerNameEvent(1);
+            state = SetupState.CHOOSE_HUMANS;
+            return new AmountOfHumansEvent();
         }
     }
 
@@ -139,6 +143,19 @@ public class MenuState extends State {
             return new ErrorEvent(0, 4);
         }
         totalBots = bots;
+        state = SetupState.CHOOSE_HUMANS;
+        return new AmountOfHumansEvent();
+    }
+
+    private GameEvent<?> handleHumanAmount(GameAction action) {
+        int humans = switch (action) {
+            case NumberAction(int selected) -> selected;
+            default -> -1;
+        };
+        if (humans < 0) {
+            return new ErrorEvent(0, 67);
+        }
+        this.humanCount = humans;
         state = SetupState.ENTER_HUMANS;
         return new PlayerNameEvent(1);
     }
@@ -158,10 +175,10 @@ public class MenuState extends State {
             return new PrintNamesEvent(getPlayerNames());
 
         getGame().addPlayer(new Player(new HumanStrategy(), name));
-        humanCount++;
 
-        if (humanCount < (4 - totalBots)) {
-            return new PlayerNameEvent(humanCount + 1);
+
+        if (getGame().getPlayers().size() < (humanCount)) {
+            return new PlayerNameEvent(getGame().getPlayers().size() + 1);
         }
 
         if (totalBots > 0) {

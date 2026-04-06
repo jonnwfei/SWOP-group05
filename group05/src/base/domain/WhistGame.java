@@ -19,6 +19,7 @@ public class WhistGame {
 
     private State state;
     private List<Player> players;
+    private List<Player> activePlayers;
     private List<Round> rounds;
     private Player currentPlayer;
     private Player dealerPlayer;
@@ -30,6 +31,7 @@ public class WhistGame {
     public WhistGame(){
         this.state = new MenuState(this);
         this.players = new ArrayList<>();
+        this.activePlayers = new ArrayList<>();
         this.rounds = new ArrayList<>();
         this.currentPlayer = null;
         this.dealerPlayer = null;
@@ -39,6 +41,12 @@ public class WhistGame {
     public List<Player> getPlayers(){
         return new ArrayList<>(this.players);
     }
+
+    /** @return A shallow copy of the list of active players registered in the game. */
+    public List<Player> getActivePlayers() { return new ArrayList<>(this.activePlayers); }
+
+    /**@param activePlayers a list of the active players */
+    public void setActivePlayers(List<Player> activePlayers){this.activePlayers = activePlayers; }
 
     /** @return The current deck being used for dealing. */
     public Deck getDeck(){

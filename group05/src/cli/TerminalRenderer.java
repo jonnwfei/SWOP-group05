@@ -42,6 +42,7 @@ public class TerminalRenderer {
             case TrickWonEvent e -> renderTrickWonEvent();
             case WelcomeCountEvent e -> renderWelcomeCountEvent();
             case AmountOfBotsEvent e -> renderAmountOfBotsEvent();
+            case AmountOfHumansEvent e -> renderAmountOfHumansEvent();
             case BotStrategyEvent e -> renderBotStrategyEvent(e);
             case PlayerNameEvent e -> renderPlayerNameEvent(e);
             case PrintNamesEvent e -> renderPrintNamesEvent(e);
@@ -243,6 +244,11 @@ public class TerminalRenderer {
 
     private void renderAmountOfBotsEvent() {
         System.out.println("How many bots will be playing? (0-3):");
+        System.out.print("Your choice: ");
+    }
+
+    private void renderAmountOfHumansEvent() {
+        System.out.println("How many players will be playing? (0-67):");
         System.out.print("Your choice: ");
     }
 

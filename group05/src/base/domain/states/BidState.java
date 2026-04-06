@@ -70,7 +70,7 @@ public class BidState extends State {
         if (!game.getRounds().isEmpty()) {
             multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
         }
-        game.addRound(new Round(game.getPlayers(), currentPlayer, multiplier));
+        game.addRound(new Round(game.getActivePlayers(), currentPlayer, multiplier));
     }
 
     /**
