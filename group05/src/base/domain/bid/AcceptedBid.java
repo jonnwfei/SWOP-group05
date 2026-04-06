@@ -26,13 +26,10 @@ public record AcceptedBid(Player acceptor) implements Bid {
      * @param allBids    All bids placed during the round to search for the Proposal.
      * @param allPlayers All players in the game.
      * @return A list containing both the Acceptor and the Proposer.
-     * @throws IllegalStateException if called after cards have been played.
      * @throws IllegalArgumentException if no Proposal bid is found in the bid history.
      */
     @Override
     public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        int totalCards = allPlayers.stream().mapToInt(p -> p.getHand().size()).sum();
-        if (totalCards != 52) {throw new IllegalStateException("getTeam() can only be called before the play phase begins!");}
         Player proposer = allBids.stream().filter(bid -> bid.getType() == BidType.PROPOSAL).map(Bid::getPlayer).findFirst().orElse(null);
         if  (proposer == null) {throw new IllegalArgumentException("There was no proposer found in allBids, it's impossible to have AcceptedBid without ProposalBid!");}
         return List.of(acceptor, proposer);

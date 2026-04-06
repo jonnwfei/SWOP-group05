@@ -30,12 +30,9 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
      * @param allBids    All bids placed during the round.
      * @param allPlayers All players in the game.
      * @return A list containing only the solo bidder.
-     * @throws IllegalStateException if called after cards have been played.
      */
     @Override
     public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        int totalCards = allPlayers.stream().mapToInt(p -> p.getHand().size()).sum();
-        if (totalCards != 52) {throw new IllegalStateException("getTeam() can only be called before the play phase begins!");}
         return List.of(player);
     }
 

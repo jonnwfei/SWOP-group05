@@ -37,9 +37,9 @@ public sealed interface Bid extends Comparable<Bid> permits
      * @param allBids    All bids made this round (used to resolve dependent bids like Acceptance).
      * @param allPlayers All players in the round (used to find forced partners like in Troel).
      * @return A list of players forming the bidding team.
-     * @throws IllegalStateException if the team cannot be determined (e.g., hands are already empty).
+     * @throws IllegalStateException if the team cannot be determined (e.g., partner not found).
      */
-    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers);
+    List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers);
 
     /**
      * Retrieves the specific type of the bid.

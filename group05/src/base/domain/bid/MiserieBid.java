@@ -26,16 +26,13 @@ public record MiserieBid(Player player, BidType bidType) implements Bid {
     public Player getPlayer() {return player;}
 
     /**
-     * Determines all players participating in the Miserie contract.
+     * Determines all players participating in the Miserie XOR Open Miserie contract.
      * @param allBids    All bids placed during the round.
      * @param allPlayers All players in the game.
      * @return A list of all players who made a Miserie bid.
-     * @throws IllegalStateException if called after cards have been played.
      */
     @Override
     public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        int totalCards = allPlayers.stream().mapToInt(p -> p.getHand().size()).sum();
-        if (totalCards != 52) {throw new IllegalStateException("getTeam() can only be called before the play phase begins!");}
         // Find every player who made any type of Miserie bid this round
         return allBids.stream()
                 .filter(bid -> bid.getType() == bidType)

@@ -45,31 +45,30 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
      * @param allBids    All bids placed during the round.
      * @param allPlayers All players in the game.
      * @return A list containing the Troel bidder and their forced partner.
-     * @throws IllegalStateException if called after cards have been played (partner's hand is empty).
+     * @throws IllegalStateException if the forced partner cannot be found (e.g., the deck is corrupted or missing cards).
      */
     @Override
     public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
         Player partner;
-        switch (bidType) {
-            //find player with the missing ace card
-            case TROEL -> {
-                Card missingAce = new Card(this.determineTrump(null), Rank.ACE);
-                partner = allPlayers.stream()
-                          .filter(p -> p.hasCard(missingAce))
-                          .findFirst()
-                          .orElse(null);
-            }
 
-            //find player with the highest card in the suit of hearts
-            case TROELA -> partner = allPlayers.stream()
-                                     .filter( p -> !p.equals(player))
-                                     .max(Comparator.comparing(p -> p.getHighestRankOfSuit(Suit.HEARTS), Comparator.nullsFirst(Comparator.naturalOrder())))
-                                     .orElse(null);
-
-            default -> throw new IllegalArgumentException("wrong bidType given");
+        if (bidType == BidType.TROEL) {
+            // Find the player with the missing Ace
+            Card missingAce = new Card(this.determineTrump(null), Rank.ACE);
+            partner = allPlayers.stream()
+                    .filter(p -> p.hasCard(missingAce))
+                    .findFirst()
+                    .orElse(null);
+        } else {
+            // Find the player with the highest card in the suit of Hearts (TROELA)
+            partner = allPlayers.stream()
+                    .filter(p -> !p.equals(player))
+                    .max(Comparator.comparing(p -> p.getHighestRankOfSuit(Suit.HEARTS), Comparator.nullsFirst(Comparator.naturalOrder())))
+                    .orElse(null);
         }
 
-        if (partner == null) {throw new IllegalStateException("Partner not found. This method must be called before cards are played from hands.");}
+        if (partner == null) {
+            throw new IllegalStateException("Partner not found. The deck might be corrupted or mis-dealt!");
+        }
 
         return List.of(player, partner);
     }
