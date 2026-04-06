@@ -24,7 +24,8 @@ public class BidState extends State {
     private final List<Bid> bids;
     private BidType currentHighestBidType;
     private Player currentPlayer;
-    private Suit trumpSuit;
+    private final Suit dealtTrumpSuit;
+    private Suit currentTrumpSuit;
     private BidType pendingBidType;
 
     /**
@@ -41,7 +42,8 @@ public class BidState extends State {
         int dealerIdx = game.getPlayers().indexOf(dealerPlayer);
         this.currentPlayer = game.getPlayers().get((dealerIdx + 1) % game.getPlayers().size());
 
-        this.trumpSuit = game.dealCards();
+        this.dealtTrumpSuit = game.dealCards();
+        this.currentTrumpSuit = dealtTrumpSuit;
         game.initializeNextRound(currentPlayer);
         applyForcedBids();
 
@@ -108,7 +110,7 @@ public class BidState extends State {
         if (isBiddingComplete())
             return handleEndOfBidding();
 
-        return new BidTurnEvent(currentPlayer.getName(), trumpSuit, currentHighestBidType,
+        return new BidTurnEvent(currentPlayer.getName(), currentTrumpSuit, currentHighestBidType,
                 BidType.values(), currentPlayer.getHand());
     }
 
@@ -202,7 +204,7 @@ public class BidState extends State {
         if (currentHighestBidType == null || finalizedBid.getType().compareTo(currentHighestBidType) > 0) {
             currentHighestBidType = finalizedBid.getType();
         }
-        trumpSuit = finalizedBid.determineTrump(trumpSuit);
+        currentTrumpSuit = finalizedBid.determineTrump(dealtTrumpSuit);
     }
 
     /**
@@ -290,7 +292,7 @@ public class BidState extends State {
         }
 
         Bid winningBid = findBid(currentHighestBidType);
-        game.getCurrentRound().startPlayPhase(this.bids, winningBid, this.trumpSuit, firstPlayer);
+        game.getCurrentRound().startPlayPhase(this.bids, winningBid, this.currentTrumpSuit, firstPlayer);
     }
 
 }
