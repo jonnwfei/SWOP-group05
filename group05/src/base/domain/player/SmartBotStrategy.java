@@ -1,17 +1,19 @@
 package base.domain.player;
 
 import base.domain.bid.Bid;
+import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.deck.Deck;
+import base.domain.observer.GameObserver;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class SmartBotStrategy implements Strategy {
+public class SmartBotStrategy implements Strategy, GameObserver {
 
     private enum Behavior {
         MISERIE,
@@ -20,9 +22,10 @@ public class SmartBotStrategy implements Strategy {
     }
 
     // --- Internal State (Memory) ---
+
     private Behavior currentBehavior = Behavior.NORMAL;
     private Suit currentTrump = null;
-    private List<Card> unplayedCards = new ArrayList<>();
+    private final List<Card> unplayedCards = new Deck().getCards();
     private final List<Bid> bidsMemory = new ArrayList<>();
 
     // --- Strategy Methods ---
@@ -70,6 +73,39 @@ public class SmartBotStrategy implements Strategy {
     @Override
     public boolean requiresConfirmation() {
         return false;
+    }
+
+    // --- Observer Methods (Updating Memory) ---
+
+    @Override
+    public void onRoundStarted() {
+        this.currentBehavior = Behavior.NORMAL;
+        this.currentTrump = null;
+        this.bidsMemory.clear();
+        this.unplayedCards.clear();
+        this.unplayedCards.addAll(new Deck().getCards()); // Reset to a full 52-card deck
+    }
+
+    @Override
+    public void onTrumpDetermined(Suit trumpSuit) {
+        this.currentTrump = trumpSuit;
+    }
+
+    @Override
+    public void onBidPlaced(Bid bid) {
+        this.bidsMemory.add(bid);
+
+        // Dynamically shift behavior if someone plays Miserie
+        if (bid.getType().getCategory() == BidCategory.MISERIE) {
+            //TODO: problem, how to differentiate this player from others?
+            this.currentBehavior = Behavior.ANTI_MISERIE;
+        }
+    }
+
+    @Override
+    public void onCardPlayed(Card card) {
+        // Remove the card from the unplayed tracker so the bot knows it's gone
+        this.unplayedCards.remove(card);
     }
 
     // --- Private Helpers ---
