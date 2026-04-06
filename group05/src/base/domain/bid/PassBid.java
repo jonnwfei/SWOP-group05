@@ -39,6 +39,7 @@ public record PassBid(Player player) implements Bid {
 
     @Override
     public Suit determineTrump(Suit dealtTrump) {
+        if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
         return dealtTrump;
     }
 

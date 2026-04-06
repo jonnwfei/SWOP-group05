@@ -46,6 +46,7 @@ public record AbondanceBid(Player player, BidType bidType, Suit trump) implement
      */
     @Override
     public Suit determineTrump(Suit dealtTrump) {
+        if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
         return trump;
     }
 

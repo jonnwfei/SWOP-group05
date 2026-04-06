@@ -46,7 +46,9 @@ public record SoloBid(Player player, BidType bidType, Suit trump) implements Bid
      * @return The specific trump suit associated with this Solo bid.
      */
     @Override
-    public Suit determineTrump(Suit dealtTrump) {return trump;}
+    public Suit determineTrump(Suit dealtTrump) {
+        if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
+        return trump;}
 
 
     @Override
