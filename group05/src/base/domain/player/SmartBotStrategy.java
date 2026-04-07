@@ -27,11 +27,13 @@ public class SmartBotStrategy implements Strategy, GameObserver {
     private Suit currentTrump = null;
     private final List<Card> unplayedCards = new Deck().getCards();
     private final List<Bid> bidsMemory = new ArrayList<>();
+    private Player myself;
 
     // --- Strategy Methods ---
 
     @Override
     public Bid determineBid(Player player) {
+        this.myself = player;
         BidType miserieBidType = evaluateMiserieEligibility(player.getHand());
         if (miserieBidType != null) {
             return miserieBidType.instantiate(player, null);
@@ -63,7 +65,7 @@ public class SmartBotStrategy implements Strategy, GameObserver {
 
     @Override
     public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
-        return switch (this.currentBehavior) {
+        return switch (currentBehavior) {
             case MISERIE       -> playMiserieLogic(currentHand, lead);
             case ANTI_MISERIE  -> playAntiMiserieLogic(currentHand, lead);
             case NORMAL        -> playNormalLogic(currentHand, lead);
@@ -97,14 +99,13 @@ public class SmartBotStrategy implements Strategy, GameObserver {
 
         // Dynamically shift behavior if someone plays Miserie
         if (bid.getType().getCategory() == BidCategory.MISERIE) {
-            //TODO: problem, how to differentiate this player from others?
+            if (bid.getPlayer().equals(myself)) {this.currentBehavior = Behavior.MISERIE;}
             this.currentBehavior = Behavior.ANTI_MISERIE;
         }
     }
 
     @Override
     public void onCardPlayed(Card card) {
-        // Remove the card from the unplayed tracker so the bot knows it's gone
         this.unplayedCards.remove(card);
     }
 
