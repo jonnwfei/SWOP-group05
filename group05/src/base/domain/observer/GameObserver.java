@@ -7,7 +7,7 @@ import base.domain.card.Suit;
 /**
  * Observer interface for entities that want to track the state of the game.
  */
-public interface TableObserver {
+public interface GameObserver {
     default void onBidPlaced(Bid bid) {}
     default void onTrumpDetermined(Suit trumpSuit) {}
     default void onCardPlayed(Card card) {}

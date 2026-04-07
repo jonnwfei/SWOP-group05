@@ -7,13 +7,13 @@ import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.deck.Deck;
-import base.domain.observer.TableObserver;
+import base.domain.observer.GameObserver;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class SmartBotStrategy implements Strategy, TableObserver {
+public class SmartBotStrategy implements Strategy, GameObserver {
 
     private enum Behavior {
         MISERIE,
