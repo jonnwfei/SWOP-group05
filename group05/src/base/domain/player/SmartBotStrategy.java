@@ -33,28 +33,33 @@ public class SmartBotStrategy implements Strategy, GameObserver {
 
     @Override
     public Bid determineBid(Player player) {
+        if (player == null) {throw new IllegalArgumentException("Player cannot be null.");}
+
         this.myself = player;
+
         BidType miserieBidType = evaluateMiserieEligibility(player.getHand());
         if (miserieBidType != null) {
             return miserieBidType.instantiate(player, null);
         }
 
-        int tricksWithDealtTrump = estimateWinningTricks(player.getHand(), currentTrump);
-        TrumpEvaluation bestEvaluation = findBestTrumpSuit(player.getHand(), tricksWithDealtTrump);
+        int tricksWithCurrentTrump = estimateWinningTricks(player.getHand(), currentTrump);
+        TrumpEvaluation bestEvaluation = findBestTrumpSuit(player.getHand(), tricksWithCurrentTrump);
 
         // CASE A: 9 to 13 tricks -> Solo / Abondance
+        // may choose Trump Suit
         if (bestEvaluation.expectedTricks() >= 9) {
             return mapToHighBid(player, bestEvaluation.expectedTricks(), bestEvaluation.suit());
         }
 
         // CASE B: 3 to 8 tricks -> Proposal / Acceptance
-        if (tricksWithDealtTrump >= 3) {
+        // plays with current Trump
+        if (tricksWithCurrentTrump >= 3) {
             boolean isProposalActive = this.bidsMemory.stream()
                     .anyMatch(bid -> bid.getType() == BidType.PROPOSAL);
 
             if (isProposalActive) {
                 return BidType.ACCEPTANCE.instantiate(player, null);
-            } else if (tricksWithDealtTrump >= 5) {
+            } else if (tricksWithCurrentTrump >= 5) {
                 return BidType.PROPOSAL.instantiate(player, null);
             }
         }
