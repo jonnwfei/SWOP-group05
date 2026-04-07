@@ -5,12 +5,11 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.bid.PassBid;
-import base.domain.card.Card;
+import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.commands.BidCommand;
 import base.domain.commands.ContinueCommand;
 import base.domain.commands.GameCommand;
-import base.domain.commands.PlaceBidCommand;
 import base.domain.commands.SuitCommand;
 import base.domain.player.Player;
 import base.domain.results.BidTurnResult;
@@ -18,7 +17,6 @@ import base.domain.results.BiddingCompleted;
 import base.domain.results.GameResult;
 import base.domain.results.ProposalRejected;
 import base.domain.results.SuitSelectionRequired;
-import base.domain.round.Round;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,19 +24,20 @@ import java.util.List;
 /**
  * Manages the Bidding phase of the Whist game.
  *
- * @author Stan Kestens
+ * @author Stan Kestens, Tommy Wu
  * @since 01/03/2026
  */
 public class BidState extends State {
     private final List<Bid> bids;
     private BidType currentHighestBidType;
     private Player currentPlayer;
-    private Suit trumpSuit;
+    private final Suit dealtTrumpSuit;
+    private Suit currentTrumpSuit;
     private BidType pendingBidType;
 
     /**
      * Initializes a new bidding round.
-     *
+     * 
      * @param game The main game instance.
      */
     public BidState(WhistGame game) {
@@ -46,38 +45,43 @@ public class BidState extends State {
         this.bids = new ArrayList<>();
         this.currentHighestBidType = null;
         Player dealerPlayer = game.getDealerPlayer();
+
         int dealerIdx = game.getPlayers().indexOf(dealerPlayer);
         this.currentPlayer = game.getPlayers().get((dealerIdx + 1) % game.getPlayers().size());
-        this.trumpSuit = null;
 
-        dealCards();
-        initializeRound();
+        this.dealtTrumpSuit = game.dealCards();
+        this.currentTrumpSuit = dealtTrumpSuit;
+        game.initializeNextRound(currentPlayer);
+        applyForcedBids();
+
+        // If the starting player got forced into Troel, skip them immediately!
+        if (bids.stream().anyMatch(bid -> bid.getPlayer().equals(currentPlayer))) {
+            updateCurrentPlayer();
+        }
     }
 
     /**
-     * Deals 13 cards to each player and sets the trump suit based on the
-     * last card dealt to the last player.
+     * Scans all players for 3 or 4 Aces. If found, automatically registers the
+     * forced Troel/Troela bid for that player before normal bidding begins.
      */
-    private void dealCards() {
-        List<List<Card>> hands = getGame().getDeck().deal();
-        List<Player> allPlayers = getGame().getPlayers();
-        for (int i = 0; i < allPlayers.size(); i++) {
-            allPlayers.get(i).setHand(hands.get(i));
-        }
-        trumpSuit = allPlayers.getLast().getHand().getLast().suit();
-    }
+    private void applyForcedBids() {
+        for (Player player : getGame().getPlayers()) {
 
-    /**
-     * Creates the Round object and applies a points multiplier if the
-     * previous round was passed.
-     */
-    private void initializeRound() {
-        WhistGame game = this.getGame();
-        int multiplier = 1;
-        if (!game.getRounds().isEmpty()) {
-            multiplier = game.getCurrentRound().getHighestBid().getType() == BidType.PASS ? 2 : 1;
+            long aceCount = player.getHand().stream()
+                    .filter(card -> card.rank() == Rank.ACE)
+                    .count();
+
+            if (aceCount == 3) {
+                Bid forcedBid = BidType.TROEL.instantiate(player, null);
+                commitBid(forcedBid);
+                break;
+            }
+            else if (aceCount == 4) {
+                Bid forcedBid = BidType.TROELA.instantiate(player, null);
+                commitBid(forcedBid);
+                break;
+            }
         }
-        game.addRound(new Round(game.getPlayers(), currentPlayer, multiplier));
     }
 
     /**
@@ -105,6 +109,7 @@ public class BidState extends State {
         // Fast-forward BOT turns
         while (!currentPlayer.getRequiresConfirmation() && !isBiddingComplete()) {
             commitBid(new PassBid(currentPlayer));
+            updateCurrentPlayer();
         }
 
         if (isBiddingComplete())
@@ -112,7 +117,7 @@ public class BidState extends State {
 
         return new BidTurnResult(
                 currentPlayer.getName(),
-                trumpSuit,
+                currentTrumpSuit,
                 currentHighestBidType,
                 BidType.values(),
                 currentPlayer.getHand()
@@ -126,9 +131,7 @@ public class BidState extends State {
     @Override
     public State nextState() {
         if (currentHighestBidType == BidType.PASS) {
-            getGame().getDeck().shuffle();
-            getGame().getCurrentRound().setHighestBid(findBid(BidType.PASS));
-            getGame().getPlayers().forEach(Player::flushHand);
+            getGame().getCurrentRound().abortWithAllPass(bids);
             return new BidState(getGame());
         }
         setRoundReadyForPlayState();
@@ -152,6 +155,7 @@ public class BidState extends State {
         }
 
         commitBid(chosenBidType.instantiate(currentPlayer, null));
+        updateCurrentPlayer();
         return null;
     }
 
@@ -174,9 +178,9 @@ public class BidState extends State {
      * @return GameResult
      */
     private GameResult handleRejectedProposal(BidType decision) {
-
-        replaceProposalBid(decision);
-        this.currentHighestBidType = decision;
+        removeProposalBid();
+        Bid chosenBid = decision.instantiate(currentPlayer, null);
+        commitBid(chosenBid);
         return new BiddingCompleted();
     }
 
@@ -199,27 +203,28 @@ public class BidState extends State {
         this.bids.add(finalizedBid);
         if (currentHighestBidType == null || finalizedBid.getType().compareTo(currentHighestBidType) > 0) {
             currentHighestBidType = finalizedBid.getType();
+            currentTrumpSuit = finalizedBid.determineTrump(dealtTrumpSuit);
         }
-        updateCurrentPlayer();
     }
 
     /**
-     * Advances currentPlayer to the next player in turn order.
+     * Advances the turn to the next player in turn order. Skips players who already have a forced bid.
      */
     private void updateCurrentPlayer() {
         List<Player> players = getGame().getPlayers();
-        this.currentPlayer = players.get((players.indexOf(currentPlayer) + 1) % players.size());
+
+        do {
+            this.currentPlayer = players.get((players.indexOf(currentPlayer) + 1) % players.size());
+            // Keep skipping IF the bidding isn't done AND the player we landed on already has a bid!
+        } while (!isBiddingComplete() && bids.stream().anyMatch(bid -> bid.getPlayer().equals(currentPlayer)));
     }
 
     /**
-     * Replaces a PROPOSAL bid with the proposer's fallback decision.
-     *
-     * @param chosenBidType the bid type to replace PROPOSAL with.
+     * Removes the PROPOSAL bid.
      */
-    private void replaceProposalBid(BidType chosenBidType) {
+    private void removeProposalBid() {
         Bid proposalBid = findBid(BidType.PROPOSAL);
-        int index = bids.indexOf(proposalBid);
-        bids.set(index, chosenBidType.instantiate(proposalBid.getPlayer(), null));
+        bids.remove(proposalBid);
     }
 
     /**
@@ -247,6 +252,8 @@ public class BidState extends State {
     }
 
     /**
+     * Checks if bidding is completed
+     *
      * @return true if all players have submitted a bid.
      */
     private boolean isBiddingComplete() {
@@ -254,8 +261,9 @@ public class BidState extends State {
     }
 
     /**
+     *
      * @param bidType the bid type to search for.
-     * @return the Bid matching that type, or null.
+     * @return Bid that is linked to the bidType or null if not found
      */
     private Bid findBid(BidType bidType) {
         return bids.stream().filter(b -> b.getType() == bidType).findFirst().orElse(null);
@@ -273,11 +281,16 @@ public class BidState extends State {
                 this.currentHighestBidType.getCategory() == BidCategory.SOLO) {
             firstPlayer = findBid(currentHighestBidType).getPlayer();
         }
+        else if (this.currentHighestBidType.getCategory() == BidCategory.TROEL) {
+            Bid troelBid = findBid(currentHighestBidType);
+            // Find the partner by filtering out the original bidder from the team list
+            firstPlayer = troelBid.getTeam(this.bids, players).stream()
+                    .filter(p -> !p.equals(troelBid.getPlayer()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("No partner found in the Troel team!"));
+        }
 
-        Round current = game.getCurrentRound();
-        current.setCurrentPlayer(firstPlayer);
-        current.setHighestBid(findBid(currentHighestBidType));
-        current.setBids(this.bids);
-        current.setTrumpSuit(trumpSuit);
+        Bid winningBid = findBid(currentHighestBidType);
+        game.getCurrentRound().startPlayPhase(this.bids, winningBid, this.currentTrumpSuit, firstPlayer);
     }
 }
