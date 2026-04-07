@@ -2,7 +2,9 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.actions.GameAction;
+import base.domain.commands.GameCommand;
 import base.domain.events.GameEvent;
+import base.domain.results.GameResult;
 
 /**
  * Common interface for all states.
@@ -27,5 +29,5 @@ public abstract class State {
      */
     public abstract State nextState();
 
-    public abstract GameEvent<?> executeState(GameAction action);
+    public abstract GameResult executeState(GameCommand action);
 }

@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import base.domain.actions.GameAction;
+import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
 import base.domain.player.*;
+import base.domain.results.GameResult;
 import base.domain.round.Round;
 import base.domain.states.*;
 import base.domain.events.GameEvent;
@@ -110,11 +112,11 @@ public class WhistGame {
 
     /**
      * Delegates the provided action to the current state for processing.
-     * @param response The user action to process.
+     * @param command The user action to process.
      * @return A {@link GameEvent} describing the outcome of the action.
      */
-    public GameEvent<?> executeState(GameAction response){
-        return state.executeState(response);
+    public GameResult executeState(GameCommand command){
+        return state.executeState(command);
     }
 
     /** @param player The player to add to the game session. */

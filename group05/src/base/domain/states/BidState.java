@@ -1,18 +1,25 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.actions.GameAction;
-import base.domain.actions.NumberAction;
 import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
-import base.domain.events.*;
+import base.domain.commands.BidCommand;
+import base.domain.commands.ContinueCommand;
+import base.domain.commands.GameCommand;
+import base.domain.commands.PlaceBidCommand;
+import base.domain.commands.SuitCommand;
 import base.domain.player.Player;
+import base.domain.results.BidTurnResult;
+import base.domain.results.BiddingCompleted;
+import base.domain.results.GameResult;
+import base.domain.results.ProposalRejected;
+import base.domain.results.SuitSelectionRequired;
 import base.domain.round.Round;
-import base.domain.events.bidevents.*;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +38,7 @@ public class BidState extends State {
 
     /**
      * Initializes a new bidding round.
-     * 
+     *
      * @param game The main game instance.
      */
     public BidState(WhistGame game) {
@@ -74,28 +81,26 @@ public class BidState extends State {
     }
 
     /**
-     * Processes bidding actions. Handles suit selection, rejected proposals,
+     * Processes bidding commands. Handles suit selection, rejected proposals,
      * and automates bot passing.
-     * 
-     * @param action The user's input (NumberAction for bid/suit choice).
-     * @return GameEvent
+     *
+     * @param command The domain command from the adapter.
+     * @return GameResult
      */
     @Override
-    public GameEvent<?> executeState(GameAction action) {
-        if (action instanceof NumberAction(int choice)) {
-            // Context A: Resolving a proposal that no one accepted
-            if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
-                return handleRejectedProposal(choice);
+    public GameResult executeState(GameCommand command) {
+        GameResult earlyReturn = switch (command) {
+            case BidCommand b -> {
+                if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
+                    yield handleRejectedProposal(b.bid());
+                }
+                yield handleBidInput(b.bid());
             }
+            case SuitCommand s -> handleSuitInput(s.suit());
+            case ContinueCommand ignored -> null;
+        };
 
-            // Context B/C handled by pending bid state
-            GameEvent<?> followUpOrError = switch (this.pendingBidType) {
-                case null -> handleBidInput(choice);
-                default -> handleSuitInput(choice);
-            };
-            if (followUpOrError != null)
-                return followUpOrError;
-        }
+        if (earlyReturn != null) return earlyReturn;
 
         // Fast-forward BOT turns
         while (!currentPlayer.getRequiresConfirmation() && !isBiddingComplete()) {
@@ -105,8 +110,13 @@ public class BidState extends State {
         if (isBiddingComplete())
             return handleEndOfBidding();
 
-        return new BidTurnEvent(currentPlayer.getName(), trumpSuit, currentHighestBidType,
-                BidType.values(), currentPlayer.getHand());
+        return new BidTurnResult(
+                currentPlayer.getName(),
+                trumpSuit,
+                currentHighestBidType,
+                BidType.values(),
+                currentPlayer.getHand()
+        );
     }
 
     /**
@@ -127,21 +137,18 @@ public class BidState extends State {
 
     /**
      * Validates and commits a bid selection.
-     * 
-     * @return GameEvent
+     *
+     * @param chosenBidType The bid type chosen by the player.
+     * @return GameResult or null to continue normal flow.
      */
-    private GameEvent<?> handleBidInput(int choice) {
-        BidType[] allBids = BidType.values();
-        if (choice < 1 || choice > allBids.length)
-            return new ErrorEvent(1, allBids.length);
-
-        BidType chosenBidType = allBids[choice - 1];
-        if (!isLegalBidType(chosenBidType))
-            return new ErrorEvent(1, allBids.length);
-
+    private GameResult handleBidInput(BidType chosenBidType) {
         if (chosenBidType.getRequiresSuit()) {
             this.pendingBidType = chosenBidType;
-            return new SuitPromptEvent(currentPlayer.getName(), chosenBidType, Suit.values());
+            return new SuitSelectionRequired(
+                    currentPlayer.getName(),
+                    chosenBidType,
+                    Suit.values()
+            );
         }
 
         commitBid(chosenBidType.instantiate(currentPlayer, null));
@@ -150,44 +157,39 @@ public class BidState extends State {
 
     /**
      * Validates and commits the suit for a pending bid.
-     * 
-     * @return GameEvent
+     *
+     * @param suit The suit chosen by the player.
+     * @return GameResult or null to continue normal flow.
      */
-    private GameEvent<?> handleSuitInput(int choice) {
-        Suit[] allSuits = Suit.values();
-        if (choice < 1 || choice > allSuits.length)
-            return new ErrorEvent(1, allSuits.length);
-
-        commitBid(pendingBidType.instantiate(currentPlayer, allSuits[choice - 1]));
+    private GameResult handleSuitInput(Suit suit) {
+        commitBid(pendingBidType.instantiate(currentPlayer, suit));
         this.pendingBidType = null;
         return null;
     }
 
     /**
      * Processes the choice of a proposer when their proposal is rejected.
-     * 
-     * @return GameEvent
+     *
+     * @param decision The bid type the proposer falls back to.
+     * @return GameResult
      */
-    private GameEvent<?> handleRejectedProposal(int choice) {
-        BidType decision = (choice == 1) ? BidType.PASS : (choice == 2) ? BidType.SOLO_PROPOSAL : null;
-        if (decision == null)
-            return new ErrorEvent(1, 2);
+    private GameResult handleRejectedProposal(BidType decision) {
 
         replaceProposalBid(decision);
         this.currentHighestBidType = decision;
-        return new BiddingCompleteEvent();
+        return new BiddingCompleted();
     }
 
     /**
-     * Handles the ending of the bidding.
-     * 
-     * @return GameEvent
+     * Handles the ending of the bidding phase.
+     *
+     * @return GameResult
      */
-    private GameEvent<?> handleEndOfBidding() {
+    private GameResult handleEndOfBidding() {
         if (currentHighestBidType == BidType.PROPOSAL) {
-            return new RejectedProposalEvent(findBid(BidType.PROPOSAL).getPlayer().getName());
+            return new ProposalRejected(findBid(BidType.PROPOSAL).getPlayer().getName());
         }
-        return new BiddingCompleteEvent();
+        return new BiddingCompleted();
     }
 
     /**
@@ -202,7 +204,7 @@ public class BidState extends State {
     }
 
     /**
-     * Updating the current player
+     * Advances currentPlayer to the next player in turn order.
      */
     private void updateCurrentPlayer() {
         List<Player> players = getGame().getPlayers();
@@ -210,9 +212,9 @@ public class BidState extends State {
     }
 
     /**
-     * Updating the proposal bid
-     * 
-     * @param chosenBidType is the bid that was chosen
+     * Replaces a PROPOSAL bid with the proposer's fallback decision.
+     *
+     * @param chosenBidType the bid type to replace PROPOSAL with.
      */
     private void replaceProposalBid(BidType chosenBidType) {
         Bid proposalBid = findBid(BidType.PROPOSAL);
@@ -222,8 +224,8 @@ public class BidState extends State {
 
     /**
      * Enforces the hierarchical rules of Whist bidding.
-     * 
-     * @return boolean if the new bid is legal
+     *
+     * @return true if the bid type is legal given current state.
      */
     private boolean isLegalBidType(BidType chosenBidType) {
         if (chosenBidType == BidType.PASS)
@@ -238,7 +240,6 @@ public class BidState extends State {
         int comparison = chosenBidType.compareTo(currentHighestBidType);
         if (comparison < 0)
             return false;
-        // Miserie can be bid over another miserie even if ranks are equal
         if (chosenBidType.getCategory() != BidCategory.MISERIE) {
             return comparison != 0;
         }
@@ -246,24 +247,23 @@ public class BidState extends State {
     }
 
     /**
-     * checks if bidding is complete
-     * 
-     * @return boolean true if trick is complete
+     * @return true if all players have submitted a bid.
      */
     private boolean isBiddingComplete() {
         return this.bids.size() == getGame().getPlayers().size();
     }
 
     /**
-     *
-     * @param bidType what bid we want to find
-     * @return Bid that is linked to the bidType
+     * @param bidType the bid type to search for.
+     * @return the Bid matching that type, or null.
      */
     private Bid findBid(BidType bidType) {
         return bids.stream().filter(b -> b.getType() == bidType).findFirst().orElse(null);
     }
 
-    /** Prepares the Round object with the winning bidder and trump suit. */
+    /**
+     * Prepares the Round object with the winning bidder and trump suit.
+     */
     private void setRoundReadyForPlayState() {
         WhistGame game = this.getGame();
         List<Player> players = game.getPlayers();
@@ -280,5 +280,4 @@ public class BidState extends State {
         current.setBids(this.bids);
         current.setTrumpSuit(trumpSuit);
     }
-
 }
