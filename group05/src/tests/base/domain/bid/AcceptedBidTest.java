@@ -22,6 +22,16 @@ class AcceptedBidTest {
     }
 
     @Test
+    void constructor_InvalidParameters_ThrowsException() {
+        // Enforce GRASP invariant: Cannot instantiate an AbondanceBid with a non-Abondance BidType
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                new AcceptedBid(null)
+        );
+        assertTrue(exception.getMessage().contains("null"));
+
+    }
+
+    @Test
     void getPlayer_ReturnsPlayer() {
         assertEquals(acceptor, bid.getPlayer());
     }
@@ -32,10 +42,18 @@ class AcceptedBidTest {
     }
 
     @Test
-    void getChosenTrump_ReturnsDealtTrump() {
+    void determineTrump_ReturnsDealtTrump() {
         // An accepted bid always plays with the dealt trump suit, so it should return the input unchanged
-        assertEquals(dealtTrump, bid.getChosenTrump(dealtTrump));
-        assertEquals(Suit.DIAMONDS, bid.getChosenTrump(Suit.DIAMONDS));
+        assertEquals(dealtTrump, bid.determineTrump(dealtTrump));
+        assertEquals(Suit.DIAMONDS, bid.determineTrump(Suit.DIAMONDS));
+    }
+
+    @Test
+    void determineTrump_ThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                bid.determineTrump(null)
+        );
+        assertTrue(exception.getMessage().contains("null"));
     }
 
     @Test
@@ -49,8 +67,8 @@ class AcceptedBidTest {
         // Case 2: Overtricks (but not a full slam).
         // Extra points for overtricks are usually calculated at the round level,
         // the bid itself just validates the base points.
-        assertEquals(base, bid.calculateBasePoints(target + 1));
-        assertEquals(base, bid.calculateBasePoints(12));
+        assertEquals(base + 1, bid.calculateBasePoints(target + 1));
+        assertEquals(base + 4, bid.calculateBasePoints(12));
     }
 
     @Test
@@ -70,7 +88,7 @@ class AcceptedBidTest {
         int base = BidType.ACCEPTANCE.getBasePoints();
 
         // Case 3: Taking all 13 tricks doubles the points!
-        assertEquals(2 * base, bid.calculateBasePoints(13));
+        assertEquals(14, bid.calculateBasePoints(13));
     }
 
     @Test

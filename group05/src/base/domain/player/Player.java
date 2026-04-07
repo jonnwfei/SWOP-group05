@@ -2,6 +2,7 @@ package base.domain.player;
 
 import base.domain.bid.Bid;
 import base.domain.card.Card;
+import base.domain.card.Rank;
 import base.domain.card.Suit;
 
 import java.util.ArrayList;
@@ -22,7 +23,7 @@ import java.util.List;
 public class Player {
     private final Strategy decisionStrategy;
     private final String name;
-    private List<Card> currentHand;
+    private final List<Card> currentHand;
     private Integer playerScore;
 
     /**
@@ -77,7 +78,7 @@ public class Player {
      * Empties the player's hand, typically called at the end of a round before redealing.
      */
     public void flushHand() {
-        this.currentHand = new ArrayList<>();
+        this.currentHand.clear();
     }
 
     /**
@@ -150,8 +151,20 @@ public class Player {
         return this.decisionStrategy.requiresConfirmation();
     }
 
+    /** Checks if the player holds a specific card */
+    public boolean hasCard(Card card) {
+        if (card == null) throw new IllegalArgumentException("card can't be null.");
+        return currentHand.stream().anyMatch(card::equals);
+    }
 
-
-
+    /** Returns the highest rank of a given suit, or null if the player is void in that suit */
+    public Rank getHighestRankOfSuit(Suit suit) {
+        if (suit == null) throw new IllegalArgumentException("suit can't be null.");
+        return currentHand.stream()
+                .filter(c -> c.suit() == suit)
+                .map(Card::rank)
+                .max(base.domain.card.Rank::compareTo)
+                .orElse(null);
+    }
 }
 

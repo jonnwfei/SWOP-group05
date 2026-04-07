@@ -176,9 +176,8 @@ public class MenuState extends State {
 
         getGame().addPlayer(new Player(new HumanStrategy(), name));
 
-
-        if (getGame().getPlayers().size() < (humanCount)) {
-            return new PlayerNameEvent(getGame().getPlayers().size() + 1);
+        if (getGame().getAllPlayers().size() < (humanCount)) {
+            return new PlayerNameEvent(getGame().getAllPlayers().size() + 1);
         }
 
         if (totalBots > 0) {
@@ -221,7 +220,7 @@ public class MenuState extends State {
      * Utility to extract current player names.
      */
     private List<String> getPlayerNames() {
-        return getGame().getPlayers().stream().map(Player::getName).toList();
+        return getGame().getAllPlayers().stream().map(Player::getName).toList();
     }
 
     /**
@@ -234,6 +233,7 @@ public class MenuState extends State {
     public State nextState() {
         if (keuze == 1) {
             getGame().setDeck(new Deck());
+            getGame().setPlayers(getGame().getAllPlayers().subList(0,4));
             getGame().setRandomDealer();
             return new BidState(getGame());
         } else {

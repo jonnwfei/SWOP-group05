@@ -157,7 +157,6 @@ public class CountState extends State {
 
         createBidObject(participants.getFirst());
         Round round = new Round(getGame().getPlayers(), getGame().getPlayers().getFirst(), 1);
-        round.setHighestBid(bid);
         getGame().addRound(round);
 
         if (numberBid == 7 || numberBid == 8) {
@@ -180,7 +179,7 @@ public class CountState extends State {
                 }
                 winners = winnerIndices.stream().map(idx -> getGame().getPlayers().get(idx - 1)).toList();
             }
-            round.calculateScoresForCount(0, participants, winners);
+            round.calculateScoresForCount(this.bid, 0, participants, winners);
         } else {
             Integer tricks = switch (action) {
                 case NumberAction(int value) -> value;
@@ -189,7 +188,7 @@ public class CountState extends State {
             if (tricks == null || tricks < 0 || tricks > 13) {
                 return new ErrorEvent(0, 13);
             }
-            round.calculateScoresForCount(tricks, participants, null);
+            round.calculateScoresForCount(this.bid, tricks, participants, null);
         }
 
         currentPhase = CountPhase.PROMPT_NEXT_STATE;

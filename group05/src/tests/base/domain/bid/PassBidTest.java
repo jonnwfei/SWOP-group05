@@ -20,6 +20,18 @@ class PassBidTest {
     }
 
     @Test
+    void constructor_NullPlayer_ThrowsException() {
+        // Enforce GRASP invariant: Cannot instantiate a bid without a valid player
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                new PassBid(null)
+        );
+
+        // Optional: verify the message mentions the player
+        assertTrue(exception.getMessage().toLowerCase().contains("player"),
+                "Exception message should mention the null player.");
+    }
+
+    @Test
     void getPlayer_ReturnsPlayer() {
         assertEquals(testPlayer, bid.getPlayer());
     }
@@ -30,10 +42,10 @@ class PassBidTest {
     }
 
     @Test
-    void getChosenTrump_ReturnsNull() {
+    void determineTrump_ReturnsNull() {
         // A PassBid never determines the trump suit, so it should always safely return null
-        assertNull(bid.getChosenTrump(Suit.HEARTS));
-        assertNull(bid.getChosenTrump(null));
+        assertNull(bid.determineTrump(Suit.HEARTS));
+        assertNull(bid.determineTrump(null));
     }
 
     @Test

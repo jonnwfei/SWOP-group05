@@ -1,8 +1,10 @@
 package base.domain.round;
 
+import base.domain.WhistGame;
 import base.domain.bid.Bid;
-import base.domain.bid.BidType;
 import base.domain.bid.BidCategory;
+import base.domain.bid.BidType;
+import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.trick.Trick;
@@ -15,20 +17,35 @@ import java.util.*;
  * This class acts as the Information Expert for managing turn order, tracking played tricks,
  * resolving the winning team, and correctly calculating and distributing points based on the highest bid.
  *
- * @author Seppe De Houwer
+ * @author Seppe De Houwer, Tommy Wu
  * @since 24/02/26
  */
 public class Round {
+    /** The maximum number of tricks played in a single round. */
     public static final int MAX_TRICKS = 13;
 
+    /** The 4 players participating in this round. */
     private final List<Player> players;
+
+    /** The players who must fulfill the active bid contract. */
+    private final List<Player> biddingTeam;
+
+    /** The player whose turn it currently is to bid or play a card. */
     private Player currentPlayer;
 
+    /** The record of all completed tricks in this round. */
     private final List<Trick> playedTricks;
 
-    private List<Bid> bids;
+    /** The record of all bids made during the Bidding Phase. */
+    private final List<Bid> bids;
+
+    /** The final, highest bid that dictates the scoring and rules of the round. */
     private Bid highestBid;
+
+    /** The active trump suit, determined by the dealer's last card or the winning bid. */
     private Suit trumpSuit;
+
+    /** The score multiplier for this round. */
     private final int multiplier;
 
     /**
@@ -48,12 +65,75 @@ public class Round {
             throw new IllegalArgumentException("Starting Player must not be null and must be in the players list.");
         }
         this.players = new ArrayList<>(players);
+        this.biddingTeam = new ArrayList<>();
         this.currentPlayer = startingPlayer;
         this.playedTricks = new ArrayList<>();
         this.bids = new ArrayList<>();
         this.highestBid = null;
         this.trumpSuit = null;
         this.multiplier = multiplier;
+    }
+
+    /**
+     * Finalizes the bidding phase and prepares the round for the playing phase.
+     * Validates the inputs, locks in the contracts, and resolves the teams.
+     *
+     * @param finalBids  The complete list of bids made this round.
+     * @param highestBid The winning contract.
+     * @param trumpSuit  The active trump suit for the play phase.
+     * @param firstPlayer The player who gets to lead the first trick.
+     */
+    public void startPlayPhase(List<Bid> finalBids, Bid highestBid, Suit trumpSuit, Player firstPlayer) {
+        if (finalBids == null || finalBids.size() != this.players.size()) {
+            throw new IllegalArgumentException("Must have exactly 4 final bids.");
+        } else if (highestBid == null) {
+            throw new IllegalArgumentException("Cannot start play phase without a winning bid.");
+        } else if (firstPlayer == null) {
+            throw new IllegalArgumentException("Cannot start play phase without a first player.");
+        }
+
+        this.bids.clear();
+        this.bids.addAll(finalBids);
+        this.highestBid = highestBid;
+        this.trumpSuit = trumpSuit;
+        this.currentPlayer = firstPlayer;
+
+        // Automatically build the teams now that the state is locked in!
+        resolveTeams();
+    }
+
+    /**
+     * Calculates the bidding team based on the highest bid.
+     * MUST be called at the end of the Bidding Phase, before any cards are played!
+     */
+    private void resolveTeams() {
+        if (this.bids.size() != this.players.size()) {
+            throw new IllegalStateException("biddings are not finalized, must be called at the end of bidding phase");
+        }
+
+        int totalCards = players.stream().mapToInt(p -> p.getHand().size()).sum();
+        if (totalCards != 52) {
+            throw new IllegalStateException("resolveTeam() can only be called before the play phase begins!");
+        }
+
+        // The bid knows how to build its own team.
+        this.biddingTeam.addAll(this.highestBid.getTeam(this.bids, this.players));
+    }
+
+    /**
+     * Aborts the round because all players passed.
+     * Records the final bids and sets the highest bid to PASS for the multiplier tracking.
+     *
+     * @param finalBids The 4 pass bids.
+     */
+    public void abortWithAllPass(List<Bid> finalBids) {
+        if (finalBids == null) {throw new IllegalArgumentException("finalBids must not be null.");}
+        if (finalBids.size() != this.players.size()) {throw new IllegalArgumentException("Must have exactly 4 final bids.");}
+        if (!finalBids.stream().allMatch(bid -> bid.getType() == BidType.PASS)) {throw new IllegalArgumentException("all bids must be PASS.");}
+
+        this.bids.addAll(finalBids);
+        this.highestBid = finalBids.getFirst();
+        this.players.forEach(Player::flushHand);
     }
 
     /**
@@ -89,35 +169,43 @@ public class Round {
      * Calculates and distributes the scores for a simulated round (Score Counting Use Case).
      * This bypasses the need to actually play 13 tricks and relies on user-provided outcomes.
      *
-     * @param tricksWon             amount of tricks won by the bidding side (ignored for Miserie)
-     * @param participants          the players that joined the bid (1 for Solo/Abondance, 2 for Proposal/Acceptance)
-     * @param winningMiseriePlayers only used for Miserie: the players from the participants list who got 0 tricks
-     * @throws IllegalStateException    if no highest bid has been set for this round
-     * @throws IllegalArgumentException Miserie requires at least one participant
+     * @param calculatedBid         The bid determining the scoring rules.
+     * @param tricksWon             Amount of tricks won by the bidding side (0-13, ignored for Miserie).
+     * @param participants          The players that joined the bid (1 for Solo/Abondance, 2 for Proposal/Acceptance).
+     * @param winningMiseriePlayers Only used for Miserie: the players from the participants list who got 0 tricks.
+     * @throws IllegalArgumentException If the bid is null, participants list is invalid, or tricks won is out of bounds.
      */
-    public void calculateScoresForCount(int tricksWon, List<Player> participants, List<Player> winningMiseriePlayers) {
-        if (highestBid == null) {
-            throw new IllegalStateException("Cannot calculate scores without a bid.");
+    //TODO: refactor function, too many parameters
+    public void calculateScoresForCount(Bid calculatedBid, int tricksWon, List<Player> participants, List<Player> winningMiseriePlayers) {
+        if (calculatedBid == null) {
+            throw new IllegalArgumentException("Cannot calculate scores without a bid.");
+        }
+        if (participants == null || participants.isEmpty() || participants.contains(null)) {
+            throw new IllegalArgumentException("Participants list cannot be null, empty, or contain null elements.");
+        }
+        if (participants.size() > 4) {
+            throw new IllegalArgumentException("Cannot have more than 4 participating players.");
         }
 
         // --- CASE 1: MISERIE (Normal or Open), NO TRICKS WON ---
-        if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
-            if (participants == null || participants.isEmpty()) {
-                throw new IllegalArgumentException("Miserie requires at least one participating player.");
+        if (calculatedBid.getType().getCategory() == BidCategory.MISERIE) {
+            if (winningMiseriePlayers != null && winningMiseriePlayers.contains(null)) {
+                throw new IllegalArgumentException("Winning Miserie players list cannot contain null elements.");
             }
             for (Player p : participants) {
                 boolean hasWon = winningMiseriePlayers != null && winningMiseriePlayers.contains(p);
-                int basePoints = hasWon ? highestBid.calculateBasePoints(0)
-                        : highestBid.calculateBasePoints(1);
+                int basePoints = hasWon ? calculatedBid.calculateBasePoints(0)
+                        : calculatedBid.calculateBasePoints(1);
 
                 distributeScores(basePoints, List.of(p));
             }
         } else {
             // --- CASE 2: ALL OTHER BIDS (Solo & Partner Bids) ---
-            if (participants == null || participants.isEmpty()) {
-                throw new IllegalArgumentException("Non-Miserie requires at least one participating player.");
+            if (tricksWon < 0 || tricksWon > Round.MAX_TRICKS) {
+                throw new IllegalArgumentException("Tricks won must be between 0 and " + Round.MAX_TRICKS + ".");
             }
-            int points = highestBid.calculateBasePoints(tricksWon);
+
+            int points = calculatedBid.calculateBasePoints(tricksWon);
             distributeScores(points, participants);
         }
     }
@@ -129,12 +217,10 @@ public class Round {
      *
      * @throws IllegalStateException if the round has not yet completed playing all 13 tricks
      */
-    public void calculateScores() {
-        if (playedTricks.size() != MAX_TRICKS) {
-            throw new IllegalStateException("Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got "
-                    + playedTricks.size());
-        }
+    private void calculateScores() {
+        if (playedTricks.size() != MAX_TRICKS) {throw new IllegalStateException("Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got " + playedTricks.size());}
         if (highestBid == null) throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
+
         // --- CASE 1: MISERIE ---
         if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
             List<Player> miseriePlayers = getBiddingTeam();
@@ -205,8 +291,13 @@ public class Round {
      *
      * @param basePoints The calculated points to be awarded or deducted.
      * @param bidders    The list of players who form the attacking team.
+     * @throws IllegalStateException if basePoints is not divisible by 3 for a 1vs3 game
      */
     private void distributeScores(int basePoints, List<Player> bidders) {
+        if (bidders.size() == 1 && (basePoints * multiplier) % 3 != 0) {
+            throw new IllegalStateException("Base points must be divisible by 3 for a 1vs3 game to maintain zero-sum!");
+        }
+
         for (Player p : this.players) {
             if (bidders.contains(p)) {
                 p.updateScore(basePoints * multiplier);
@@ -224,28 +315,14 @@ public class Round {
 
     /**
      * Extracts the team of players responsible for the highest bid.
-     * Automatically handles teaming up the Proposer and Acceptor.
      *
-     * @return A list containing the attacking team members.
+     * @return A list containing the bidding team members.
      */
     private List<Player> getBiddingTeam() {
-        List<Player> attackers = new ArrayList<>();
-        if (highestBid.getType() == BidType.ACCEPTANCE) {
-            for (Bid b : bids) {
-                if (b.getType() == BidType.PROPOSAL || b.getType() == BidType.ACCEPTANCE) {
-                    attackers.add(b.getPlayer());
-                }
-            }
-        } else if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
-            for (Bid b : bids) {
-                if (b.getType().getCategory() == BidCategory.MISERIE) {
-                    attackers.add(b.getPlayer());
-                }
-            }
-        } else {
-            attackers.add(highestBid.getPlayer());
+        if (this.biddingTeam.isEmpty()) {
+            throw new IllegalStateException("Teams have not been resolved yet!");
         }
-        return attackers;
+        return this.biddingTeam;
     }
 
     /**
@@ -283,34 +360,12 @@ public class Round {
     }
 
     /**
-     * Sets the current active player.
-     *
-     * @param player The player whose turn it will be.
-     */
-    public void setCurrentPlayer(Player player) {
-        this.currentPlayer = player;
-    }
-
-    /**
      * Retrieves a shallow copy of all bids placed during this round.
      *
      * @return An unmodifiable list of bids.
      */
     public List<Bid> getBids() {
         return List.copyOf(bids);
-    }
-
-    /**
-     * Sets the list of bids for this round.
-     *
-     * @param bids The list of bids to set.
-     * @throws IllegalArgumentException If the provided list is null.
-     */
-    public void setBids(List<Bid> bids) {
-        if (bids == null) {
-            throw new IllegalArgumentException("Bids list cannot be null.");
-        }
-        this.bids = new ArrayList<>(bids);
     }
 
     /**
@@ -323,30 +378,12 @@ public class Round {
     }
 
     /**
-     * Sets the highest winning bid for this round.
-     *
-     * @param highestBid The winning bid to set.
-     */
-    public void setHighestBid(Bid highestBid) {
-        this.highestBid = highestBid;
-    }
-
-    /**
      * Retrieves the active trump suit for this round.
      *
      * @return The trump Suit, or null if it has not been determined yet.
      */
     public Suit getTrumpSuit() {
         return trumpSuit;
-    }
-
-    /**
-     * Sets the active trump suit for this round.
-     *
-     * @param trump The trump Suit to set.
-     */
-    public void setTrumpSuit(Suit trump) {
-        this.trumpSuit = trump;
     }
 
     /**
