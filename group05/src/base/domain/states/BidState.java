@@ -203,8 +203,8 @@ public class BidState extends State {
         this.bids.add(finalizedBid);
         if (currentHighestBidType == null || finalizedBid.getType().compareTo(currentHighestBidType) > 0) {
             currentHighestBidType = finalizedBid.getType();
+            currentTrumpSuit = finalizedBid.determineTrump(dealtTrumpSuit);
         }
-        currentTrumpSuit = finalizedBid.determineTrump(dealtTrumpSuit);
     }
 
     /**
