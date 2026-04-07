@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 /**
  * File-based repository for game snapshots.
  *
- * @author johnc
+ * @author John Cai
  * @since 01/04/2026
  */
 public class SaveRepository {
@@ -58,9 +58,19 @@ public class SaveRepository {
         writeSnapshot(target, snapshot);
     }
 
+    /**
+     * Writes the given snapshot to the specified target path.
+     * @param target target Path to writeSnapshot to
+     * @param snapshot snapshot to write
+     * @throws IllegalArgumentException if target is null or snapshot is null
+     * @throws IllegalStateException if an IOException occurs during writing
+     * @throws IllegalStateException if the target path cannot be written to (e.g. if it's a directory or if
+     * permissions are insufficient)
+     */
     public void writeSnapshot(Path target, GameSnapshot snapshot) {
         if (target == null) throw new IllegalArgumentException("Cannot write to null");
         if (snapshot == null) throw new IllegalArgumentException("Cannot write a null snapshot");
+
         Properties properties = toProperties(snapshot);
         try (OutputStream outputStream = Files.newOutputStream(target)) {
             properties.store(outputStream, "Whist save file");
@@ -107,7 +117,7 @@ public class SaveRepository {
     /**
      * Ensures that the saveDirectory is instantiated.
      *
-     * @throws IllegalStateException if the save directory cannot be created or accessed.
+     * @throws IllegalStateException if IOException occurs, the save directory cannot be created or accessed.
      */
     private void ensureDirectory() {
         try {
@@ -120,6 +130,7 @@ public class SaveRepository {
     /**
      * Retrieves a list of saveFiles
      * @return list of Path's (saveFiles)
+     * @throws IllegalStateException if IOException occurs during listing of the saveDirectory
      */
     private List<Path> listSaveFiles() {
         try (Stream<Path> files = Files.list(savesDirectory)){
@@ -136,10 +147,9 @@ public class SaveRepository {
      *
      * @param saveFile to read from
      * @return Properties of a given saveFile
+     * @throws IllegalStateException if IOException occurs during reading of the saveFile
      */
     private Properties readProperties(Path saveFile) {
-        if (saveFile == null) throw new IllegalArgumentException("Cannot read properties from a null-saveFile");
-
         Properties properties = new Properties();
         try (InputStream inputStream = Files.newInputStream(saveFile)) {
             properties.load(inputStream);
@@ -150,16 +160,12 @@ public class SaveRepository {
     }
 
     /**
-     *
+     * Resolves the save path for a given description by slugifying it and appending the .properties extension.
      * @param description to resolve the path from
      * @return Path of this game's savesDirectory + slugified description + .properties extension
-     * @throws IllegalArgumentException if the description is null or empty after trimming
      */
     private Path resolveSavePath(String description) {
-        String normalized = description == null ? "" : description.trim();
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("Save description cannot be empty");
-        }
+        String normalized = description.trim();
         return savesDirectory.resolve(slugify(normalized) + SAVE_EXTENSION);
     }
 
@@ -170,12 +176,10 @@ public class SaveRepository {
      * @return properties of a Snapshot
      */
     private Properties toProperties(GameSnapshot snapshot) {
-        if (snapshot == null) throw new IllegalArgumentException("snapshot cannot be null");
-
         Properties properties = new Properties();
         properties.setProperty("description", snapshot.description());
         properties.setProperty("mode", snapshot.mode().name());
-        properties.setProperty("dealerIndex", String.valueOf(snapshot.dealerIndex() == null ? -1 : snapshot.dealerIndex()));
+        properties.setProperty("dealerIndex", String.valueOf(snapshot.dealerIndex()));
         properties.setProperty("player.count", String.valueOf(snapshot.players().size()));
 
         for (int i = 0; i < snapshot.players().size(); i++) {
@@ -196,8 +200,7 @@ public class SaveRepository {
     private GameSnapshot fromProperties(Properties properties) {
         String description = properties.getProperty("description", "Unnamed Save");
         SaveMode mode = SaveMode.valueOf(properties.getProperty("mode"));
-        int dealerIndexRaw = Integer.parseInt(properties.getProperty("dealerIndex", "-1"));
-        Integer dealerIndex = dealerIndexRaw < 0 ? null : dealerIndexRaw;
+        int dealerIndex = Integer.parseInt(properties.getProperty("dealerIndex"));
 
         int playerCount = Integer.parseInt(properties.getProperty("player.count", "0"));
         List<PlayerSnapshot> players = new ArrayList<>();
@@ -220,13 +223,13 @@ public class SaveRepository {
     private String fileNameWithoutExtension(Path path) {
         String fileName = path.getFileName().toString();
         int dotIndex = fileName.lastIndexOf('.');
-        return dotIndex >= 0 ? fileName.substring(0, dotIndex) : fileName;
+        return fileName.substring(0, dotIndex);
     }
 
     /**
      * Converts a string into a slug format suitable for file naming.
      * <br>
-     * Slugify, e.g. "My Save File!   ... = 1" -> "my-save-file-1"
+     * Slugify: e.g. "My Save File!   ... = 1" -> "my-save-file-1"
      *
      * @param value String to slugify
      * @return Slugified string
@@ -235,7 +238,7 @@ public class SaveRepository {
         String slug = value.trim().toLowerCase()
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("^-+|-+$", "");
-        return slug.isBlank() ? "save" : slug;
+        return slug.isBlank() ? "unnamed-save" : slug;
     }
 }
 
