@@ -7,13 +7,13 @@ import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.deck.Deck;
-import base.domain.observer.GameObserver;
+import base.domain.observer.TableObserver;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class SmartBotStrategy implements Strategy, GameObserver {
+public class SmartBotStrategy implements Strategy, TableObserver {
 
     private enum Behavior {
         MISERIE,
@@ -103,7 +103,7 @@ public class SmartBotStrategy implements Strategy, GameObserver {
         this.bidsMemory.add(bid);
 
         // Dynamically shift behavior if someone plays Miserie
-        if (bid.getType().getCategory() == BidCategory.MISERIE) {
+        if (bid.getType().getCategory() == BidCategory.MISERIE && currentBehavior != Behavior.MISERIE) {
             if (bid.getPlayer().equals(myself)) {this.currentBehavior = Behavior.MISERIE;}
             this.currentBehavior = Behavior.ANTI_MISERIE;
         }
