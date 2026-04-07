@@ -2,7 +2,6 @@ package base.domain.bid;
 
 import base.domain.player.Player;
 import base.domain.card.Suit;
-import base.domain.trick.Trick;
 
 import java.util.List;
 
@@ -11,15 +10,36 @@ import java.util.List;
  * Defines how a bid is ranked, who made it, its trump suit, and how it is scored.
  *
  * @author Seppe De Houwer, Tommy Wu
- * @since 24/2/26
+ * @since 24/02/26
  */
-public interface Bid extends Comparable<Bid> {
+public sealed interface Bid extends Comparable<Bid> permits
+        PassBid,
+        ProposalBid,
+        SoloProposalBid,
+        AcceptedBid,
+        AbondanceBid,
+        MiserieBid,
+        SoloBid,
+        TroelBid
+{
     /**
      * Retrieves the player who holds this bid contract.
      *
      * @return The {@link Player} who made the bid.
      */
     Player getPlayer();
+
+    /**
+     * Determines the bidding team for this bid based on its specific rules.
+     * Must be called immediately after the Bidding Phase,
+     * before any cards are played, as some bids rely on inspecting full hands.
+     *
+     * @param allBids    All bids made this round (used to resolve dependent bids like Acceptance).
+     * @param allPlayers All players in the round (used to find forced partners like in Troel).
+     * @return A list of players forming the bidding team.
+     * @throws IllegalStateException if the team cannot be determined (e.g., partner not found).
+     */
+    List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers);
 
     /**
      * Retrieves the specific type of the bid.
@@ -42,7 +62,7 @@ public interface Bid extends Comparable<Bid> {
      * @param dealtTrump The original trump suit dealt at the start of the round.
      * @return The chosen Trump {@link Suit} to be used as trump.
      */
-    Suit getChosenTrump(Suit dealtTrump);
+    Suit determineTrump(Suit dealtTrump);
 
     /**
      * Compares this bid to another to determine which is higher in the bidding phase.

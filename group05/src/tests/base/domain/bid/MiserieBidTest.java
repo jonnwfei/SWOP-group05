@@ -33,6 +33,22 @@ class MiserieBidTest {
     }
 
     @Test
+    void constructor_NullPlayer_ThrowsException() {
+        // Enforce GRASP invariant: Cannot instantiate a bid without a valid player
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                new MiserieBid(null, BidType.MISERIE)
+        );
+    }
+
+    @Test
+    void constructor_NullBidType_ThrowsException() {
+        // Enforce GRASP invariant: Cannot instantiate a bid without a valid player
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                new MiserieBid(testPlayer, null)
+        );
+    }
+
+    @Test
     void getPlayer_ReturnsPlayer() {
         assertEquals(testPlayer, bid.getPlayer());
     }
@@ -43,10 +59,10 @@ class MiserieBidTest {
     }
 
     @Test
-    void getChosenTrump_AlwaysReturnsNull() {
+    void determineTrump_AlwaysReturnsNull() {
         // Miserie is always played "Sans Atout" (No Trumps), so this must explicitly return null
-        assertNull(bid.getChosenTrump(Suit.SPADES));
-        assertNull(bid.getChosenTrump(null));
+        assertNull(bid.determineTrump(Suit.SPADES));
+        assertNull(bid.determineTrump(null));
     }
 
     @Test
