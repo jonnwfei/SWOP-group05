@@ -1,7 +1,9 @@
 package base.domain.results;
 
-import base.domain.states.State;
 
-public sealed interface GameResult permits BidTurnResult, BiddingCompleted, ProposalRejected, SuitSelectionRequired {
+public sealed interface GameResult permits BidSelectionResult, BidTurnResult, BiddingCompleted, PlayerSelectionResult, ProposalRejected, SaveDescriptionResult, ScoreBoardResult, SuitSelectionRequired, SuitSelectionResult, TrickInputResult {
 
 }
+
+
+

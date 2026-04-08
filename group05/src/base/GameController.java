@@ -1,6 +1,7 @@
 package base;
 
 import base.domain.WhistGame;
+import base.domain.commands.ContinueCommand;
 import base.domain.commands.GameCommand;
 import base.domain.commands.StartGameCommand;
 import base.domain.results.GameResult;
@@ -8,6 +9,7 @@ import cli.events.IOEvent;
 import cli.TerminalManager;
 import cli.elements.Response;
 import cli.Adapter;
+import cli.MenuFlow;
 
 /**
  * The main execution engine of the Whist application.
@@ -17,34 +19,34 @@ import cli.Adapter;
 public class GameController {
     private final WhistGame game;
     private final TerminalManager terminalManager;
-    private Boolean isRunning;
-    private Adapter adapter;
-    /**
-     * Initializes the controller with a new game instance and terminal handler.
-     */
-    public GameController(){
+    private final Adapter adapter;
+    private final MenuFlow menuFlow;
+
+    public GameController() {
         this.game = new WhistGame();
         this.terminalManager = new TerminalManager();
-        this.isRunning = true;
+        this.adapter = new Adapter();
+        this.menuFlow = new MenuFlow(terminalManager, game);
     }
 
-    /**
-     * Starts the main execution loop.
-     */
-    public void run(){
-        while(isRunning) {
-            Boolean state_running = true;
-            GameCommand command = new StartGameCommand();
+    public void run() {
+        menuFlow.run(); // only once, before everything
 
-            while (state_running) {
+        GameCommand command = new ContinueCommand();
+        boolean stateRunning = true;
+
+        while (!game.isOver()) {
+            while (stateRunning) {
                 GameResult result = game.executeState(command);
                 IOEvent event = adapter.handleResult(result);
-                state_running = event.getContinue();
+                stateRunning = event.shouldContinueState();
                 Response response = terminalManager.handle(event);
                 command = adapter.handleResponse(response, result);
             }
 
             game.nextState();
+            stateRunning = true;
+            command = new ContinueCommand();
         }
     }
 }

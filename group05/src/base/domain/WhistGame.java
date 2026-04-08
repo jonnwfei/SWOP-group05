@@ -229,4 +229,8 @@ public class WhistGame {
         int currentIdx = players.indexOf(dealerPlayer);
         this.dealerPlayer = players.get((currentIdx + 1) % players.size());
     }
+
+    public boolean isOver() {
+        return this.state == null; // or whatever terminal condition your game has
+    }
 }

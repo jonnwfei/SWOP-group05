@@ -9,6 +9,8 @@ import base.domain.events.errorEvents.NumberListErrorEvent;
 import base.domain.events.menuEvents.*;
 import base.domain.events.playevents.*;
 import base.domain.trick.Turn;
+import cli.events.IOEvent;
+import cli.events.InitializeGameIOEvent;
 
 import java.util.List;
 
@@ -25,39 +27,15 @@ public class TerminalRenderer {
      * Dispatches the given event to its specific rendering method.
      * * @param event the GameEvent it received from the Domain Layer
      */
-    public void render(GameEvent event) {
+    public void render(IOEvent event) {
         switch (event) {
-            case BidTurnEvent e -> renderBidTurnEvent(e);
-            case RejectedProposalEvent e -> renderRejectedProposalEvent(e);
-            case SuitPromptEvent e -> renderSuitPromptEvent(e);
-            case EndOfRoundEvent e -> renderEndOfRoundEvent(e);
-            case EndOfTrickEvent e -> renderEndOfTrickEvent(e);
-            case InitiateTurnEvent e -> renderInitiateTurnEvent(e);
-            case PickCardEvent e -> renderPickCardEvent(e);
-            case ErrorEvent e -> renderErrorEvent(e);
-            case GetSuitEvent e -> renderGetSuitEvent();
-            case MiserieWinnerEvent e -> renderMiserieWinnerEvent(e);
-            case PlayersInBidEvent e -> renderPlayersInBidEvent(e);
-            case ScoreBoardEvent e -> renderScoreBoardEvent(e);
-            case TrickWonEvent e -> renderTrickWonEvent();
-            case WelcomeCountEvent e -> renderWelcomeCountEvent();
-            case AmountOfBotsEvent e -> renderAmountOfBotsEvent();
-            case BotStrategyEvent e -> renderBotStrategyEvent(e);
-            case PlayerNameEvent e -> renderPlayerNameEvent(e);
-            case PrintNamesEvent e -> renderPrintNamesEvent(e);
-            case ResumeSaveEvent e -> renderResumeSaveEvent(e);
-            case SaveDescriptionEvent e -> renderSaveDescriptionEvent(e);
-            case WelcomeMenuEvent e -> renderWelcomeMenuEvent();
-            case LastTrickEvent e -> renderLastTrickEvent(e);
-            case PlayAgainPromptEvent e -> renderPlayAgainPromptEvent(e);
-            case BiddingCompleteEvent e -> renderBiddingCompleteEvent();
-            case ScoreBoardCompleteEvent e -> renderScoreBoardCompleteEvent(e);
-            case EndOfCountStateEvent e -> renderEndOfCountStateEvent();
-            case EndOfTurnEvent e -> renderEndOfTurnEvent(e);
-            case NumberErrorEvent e -> renderNumberErrorEvent(e);
-            case NumberListErrorEvent e -> renderNumberListErrorEvent(e);
-            default -> System.out.println("[WARNING] Unknown event type!");
+            case InitializeGameIOEvent ignored -> initializeGameEvent();
+            default -> throw new IllegalStateException("Unexpected value: " + event);
         }
+    }
+
+    private void initializeGameEvent() {
+
     }
 
     // --- ERROR RENDERING ---
