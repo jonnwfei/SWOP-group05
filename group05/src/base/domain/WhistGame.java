@@ -14,6 +14,7 @@ import base.domain.player.*;
 import base.domain.round.Round;
 import base.domain.states.*;
 import base.domain.events.GameEvent;
+import base.domain.trick.Turn;
 
 /**
  * Represents a game of Whist
@@ -94,7 +95,7 @@ public class WhistGame {
     }
 
     public void notifyRoundStarted() {
-        for (GameObserver observer : observers) observer.onRoundStarted();
+        for (GameObserver observer : observers) observer.onRoundStarted(players);
     }
 
     public void notifyTrumpDetermined(Suit trumpSuit) {
@@ -105,8 +106,8 @@ public class WhistGame {
         for (GameObserver observer : observers) observer.onBidPlaced(bid);
     }
 
-    public void notifyCardPlayed(Player player, Card card) {
-        for (GameObserver observer : observers) observer.onCardPlayed(player, card);
+    public void notifyTurnPlayed(Turn turn) {
+        for (GameObserver observer : observers) observer.onTurnPlayed(turn);
     }
 
     /**
@@ -194,12 +195,12 @@ public class WhistGame {
 
     /** Clears all players from the game. */
     public void resetPlayers(){
-        this.players = new ArrayList<>();
+        this.players.clear();
     }
 
     /** Clears the round history. */
     public void resetRounds(){
-        this.rounds = new ArrayList<>();
+        this.rounds.clear();
     }
 
     /**
