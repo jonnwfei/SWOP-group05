@@ -21,7 +21,9 @@ public class SmartBotStrategy implements Strategy, GameObserver {
         NORMAL
     }
 
-    // --- Internal State (Memory) ---
+    private record TrumpEvaluation(Suit suit, int expectedTricks) {}
+
+    // --- Internal Memory ---
 
     private Behavior currentBehavior = Behavior.NORMAL;
     private Suit currentTrump = null;
@@ -177,6 +179,4 @@ public class SmartBotStrategy implements Strategy, GameObserver {
     private Card playNormalLogic(List<Card> currentHand, Suit lead) {
         return null; // TODO
     }
-
-    private record TrumpEvaluation(Suit suit, int expectedTricks) {}
 }

@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import base.domain.actions.GameAction;
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.deck.Deck;
+import base.domain.observer.GameObserver;
 import base.domain.player.*;
 import base.domain.round.Round;
 import base.domain.states.*;
@@ -15,17 +17,18 @@ import base.domain.events.GameEvent;
 
 /**
  * Represents a game of Whist
- * * @author Stan Kestens
+ * @author Stan Kestens, Tommy Wu
  * @since 28/02/2026
  */
 public class WhistGame {
 
     private State state;
-    private List<Player> players;
-    private List<Round> rounds;
+    private Deck deck;
     private Player currentPlayer;
     private Player dealerPlayer;
-    private Deck deck;
+    private final List<Player> players;
+    private final List<Round> rounds;
+    private final List<GameObserver> observers;
 
     /**
      * Initializes a new game session starting in the {@link MenuState}.
@@ -34,6 +37,7 @@ public class WhistGame {
         this.state = new MenuState(this);
         this.players = new ArrayList<>();
         this.rounds = new ArrayList<>();
+        this.observers = new ArrayList<>();
         this.currentPlayer = null;
         this.dealerPlayer = null;
     }
@@ -81,6 +85,28 @@ public class WhistGame {
     public Round getCurrentRound(){
         if (rounds.isEmpty()) return null;
         return this.rounds.getLast();
+    }
+
+    // --- Observer Management ---
+
+    public void addObserver(GameObserver observer) {
+        this.observers.add(observer);
+    }
+
+    public void notifyRoundStarted() {
+        for (GameObserver observer : observers) observer.onRoundStarted();
+    }
+
+    public void notifyTrumpDetermined(Suit trumpSuit) {
+        for (GameObserver observer : observers) observer.onTrumpDetermined(trumpSuit);
+    }
+
+    public void notifyBidPlaced(Bid bid) {
+        for (GameObserver observer : observers) observer.onBidPlaced(bid);
+    }
+
+    public void notifyCardPlayed(Player player, Card card) {
+        for (GameObserver observer : observers) observer.onCardPlayed(player, card);
     }
 
     /**
