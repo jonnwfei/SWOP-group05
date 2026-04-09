@@ -142,7 +142,7 @@ class RoundTest {
     // -------- SCORE CALCULATION (END OF ROUND) --------
     @Test
     void calculateScoresThrowsRoundNotComplete() {
-        assertThrows(IllegalStateException.class, () -> round.calculateScores());
+        assertThrows(IllegalStateException.class, () -> round.calculateScores(1));
         assertEquals(0, p1.getScore());
     }
 

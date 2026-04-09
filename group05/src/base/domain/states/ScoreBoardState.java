@@ -160,7 +160,7 @@ public class ScoreBoardState extends State {
         if (index == -1 || index < 0 || index >= getGame().getRounds().size()) {
             return new RemoveRoundEvent(getGame().getRounds());
         }
-
+        getGame().getRounds().get(index).calculateScores(-1);
         getGame().removeRound(getGame().getRounds().get(index));
         phase = ScoreBoardPhase.SHOW_SCORES;
         choice = 0;
