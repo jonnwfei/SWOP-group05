@@ -159,7 +159,6 @@ public class MenuState extends State {
         state = SetupState.ENTER_HUMANS;
         return new PlayerNameEvent(1);
     }
-
     /**
      * Recursively collects names for human players until the 4-player limit is
      * reached.

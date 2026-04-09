@@ -47,6 +47,9 @@ public class TerminalRenderer {
             case PlayerNameEvent e -> renderPlayerNameEvent(e);
             case PrintNamesEvent e -> renderPrintNamesEvent(e);
             case WelcomeMenuEvent e -> renderWelcomeMenuEvent();
+            case AddPlayerEvent e -> renderAddPlayerEvent();
+            case RemovePlayerEvent e -> renderRemovePlayerEvent(e);
+            case RemoveRoundEvent e -> renderRemoveRoundEvent(e);
             case LastTrickEvent e -> renderLastTrickEvent(e);
             case PlayAgainPromptEvent e -> renderPlayAgainPromptEvent(e);
             case BiddingCompleteEvent e -> renderBiddingCompleteEvent();
@@ -147,7 +150,11 @@ public class TerminalRenderer {
         }
         System.out.println("====================================");
         System.out.println("Do you want to:");
-        System.out.println("(1) Simulate another round\n(2) Go back to the main menu");
+        System.out.println("(1) Simulate another round");
+        System.out.println("(2) Go back to the main menu");
+        System.out.println("(3) Add a player");
+        System.out.println("(4) Remove a player");
+        System.out.println("(5) Remove a round");
         System.out.print("Your choice: ");
     }
 
@@ -275,6 +282,26 @@ public class TerminalRenderer {
         System.out.println("Do you want to:");
         System.out.println("(1) Play a game?");
         System.out.println("(2) Count the scores for a game?");
+        System.out.print("Your choice: ");
+    }
+
+    private void renderAddPlayerEvent() {
+        System.out.print("Enter the name of the player to add: ");
+    }
+
+    private void renderRemovePlayerEvent(RemovePlayerEvent event) {
+        System.out.println("Select a player to remove:");
+        for (int i = 0; i < event.players().size(); i++) {
+            System.out.println("   [" + i + "] " + event.players().get(i).getName());
+        }
+        System.out.print("Your choice: ");
+    }
+
+    private void renderRemoveRoundEvent(RemoveRoundEvent event) {
+        System.out.println("Select a round to remove:");
+        for (int i = 0; i < event.rounds().size(); i++) {
+            System.out.println("   [" + i + "] Round " + (i + 1));
+        }
         System.out.print("Your choice: ");
     }
 

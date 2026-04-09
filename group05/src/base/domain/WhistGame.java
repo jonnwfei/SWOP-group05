@@ -144,7 +144,6 @@ public class WhistGame {
             throw new IllegalStateException("Cannot deal cards: The game cannnot have 0 players players.");
         }
         if (this.players.size() != 4) {
-            System.out.println(this.players.size());
             throw new IllegalStateException("Cannot deal cards: The game must have 4 players players.");
         }
 
@@ -185,9 +184,18 @@ public class WhistGame {
         this.allplayers.add(player);
     }
 
+    /** @param player*/
+    public void removePlayer(Player player){
+        this.allplayers.remove(player);
+    }
     /** @param round The round to add to the game history. */
     public void addRound (Round round){
         this.rounds.add(round);
+    }
+
+    /** @param round The round to remove from the game history. */
+    public void removeRound(Round round){
+        this.rounds.remove(round);
     }
 
     /** Clears all players from the game. */
