@@ -39,7 +39,7 @@ public class GameController {
             while (stateRunning) {
                 GameResult result = game.executeState(command);
                 IOEvent event = adapter.handleResult(result);
-                stateRunning = event.shouldContinueState();
+                stateRunning = event.getContinue();
                 Response response = terminalManager.handle(event);
                 command = adapter.handleResponse(response, result);
             }
