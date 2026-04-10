@@ -1,6 +1,7 @@
 package base.domain.trick;
 import base.domain.card.Card;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 
 
 /**
@@ -9,7 +10,7 @@ import base.domain.player.Player;
  * @author John Cai
  * @since 26/02/2026
  */
-public record Turn(Player player, Card playedCard) {
+public record Turn(PlayerId player, Card playedCard) {
     /**
      * Instantiates a new Turn.
      *
