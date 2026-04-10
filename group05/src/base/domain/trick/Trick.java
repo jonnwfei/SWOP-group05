@@ -3,6 +3,7 @@ package base.domain.trick;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.card.Card;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,7 +18,8 @@ public class Trick {
 
     private final Suit trumpSuit;
     private final Player startingPlayer;
-    private Player winningPlayer;
+    private Player WinningPlayer;
+    private Card currentWinningCard;
     private final List<Turn> turns;
 
     /**
@@ -32,7 +34,8 @@ public class Trick {
 
         this.trumpSuit = trumpSuit;
         this.startingPlayer = startingPlayer;
-        this.winningPlayer = null;
+        this.WinningPlayer = null;
+        this.currentWinningCard = null;
         this.turns = new ArrayList<>();
     }
 
@@ -42,7 +45,7 @@ public class Trick {
      */
     public Suit getLeadingSuit() {
         if (turns.isEmpty()) return null;
-        return turns.get(0).playedCard().suit();
+        return turns.getFirst().playedCard().suit();
     }
 
     /** @return The player who started the trick. */
@@ -50,9 +53,9 @@ public class Trick {
         return this.startingPlayer;
     }
 
-    /** @return The player who won the trick (null until 4 cards are played). */
+    /** @return The player who won the trick or is currently winning the trick if trick isn't finished yet. */
     public Player getWinningPlayer() {
-        return this.winningPlayer;
+        return this.WinningPlayer;
     }
 
     /** @return A shallow, immutable copy of the turns played so far. */
@@ -93,49 +96,44 @@ public class Trick {
             throw new IllegalArgumentException("Trick: This trick is already full.");
         }
 
-        turns.add(new Turn(player, playedCard));
+        turns.add(new Turn(player.getId(), playedCard));
         player.removeCard(playedCard);
 
-        if (turns.size() == MAX_TURNS) {
-            determineWinner();
+        determineWinner(player, playedCard);
+    }
+
+    /**
+     * Updates the state of the trick with the new winning player and card.
+     */
+    private void determineWinner(Player player, Card playedCard) {
+        if (this.WinningPlayer == null) {
+            this.WinningPlayer = player;
+            this.currentWinningCard = playedCard;
+            return;
+        }
+
+        if (beatsCurrentWinner(playedCard)) {
+            this.WinningPlayer = player;
+            this.currentWinningCard = playedCard;
         }
     }
 
     /**
-     * Evaluates all turns based on Trump priority and Rank to identify the winner.
+     * Evaluates if the played card beats this trick's current winning card.
      */
-    private void determineWinner() {
-        Suit leadingSuit = getLeadingSuit();
-        Player currentWinner = null;
-        Card bestCard = null;
+    private boolean beatsCurrentWinner(Card playedCard) {
+        boolean isPlayedCardTrump = (this.trumpSuit != null && playedCard.suit() == this.trumpSuit);
+        boolean isBestCardTrump = (this.trumpSuit != null && this.currentWinningCard.suit() == this.trumpSuit);
 
-        for (Turn turn : turns) {
-            Player player = turn.player();
-            Card playedCard = turn.playedCard();
-
-            if (bestCard == null) {
-                currentWinner = player;
-                bestCard = playedCard;
-                continue;
-            }
-
-            boolean isNewCardTrump = (this.trumpSuit != null && playedCard.suit() == this.trumpSuit);
-            boolean isBestCardTrump = (this.trumpSuit != null && bestCard.suit() == this.trumpSuit);
-
-            if (isNewCardTrump) {
-                // Trump always beats non-trump; highest trump beats lower trump
-                if (!isBestCardTrump || playedCard.rank().compareTo(bestCard.rank()) > 0) {
-                    currentWinner = player;
-                    bestCard = playedCard;
-                }
-            } else if (!isBestCardTrump) {
-                // If no trump is involved, highest rank of the leading suit wins
-                if (playedCard.suit() == leadingSuit && playedCard.rank().compareTo(bestCard.rank()) > 0) {
-                    currentWinner = player;
-                    bestCard = playedCard;
-                }
-            }
+        if (isPlayedCardTrump) {
+            // Trump always beats non-trump; highest trump beats lower trump
+            return !isBestCardTrump || playedCard.rank().compareTo(this.currentWinningCard.rank()) > 0;
         }
-        this.winningPlayer = currentWinner;
+        else if (!isBestCardTrump && playedCard.suit() == getLeadingSuit()) {
+            // If no trump is involved, highest rank of the leading suit wins
+            return playedCard.rank().compareTo(this.currentWinningCard.rank()) > 0;
+        }
+        // suit of played card is not trump suit nor leading suit
+        return false;
     }
 }
