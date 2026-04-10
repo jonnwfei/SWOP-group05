@@ -58,6 +58,12 @@ class GameSnapshotTest {
         assertThrows(IllegalArgumentException.class, () ->
             new GameSnapshot("Invalid", SaveMode.COUNT, playerSnapshots.size() + 1, playerSnapshots)
         );
+        List<PlayerSnapshot> playerSnapshots2 = new ArrayList<>(playerSnapshots);
+        playerSnapshots2.removeFirst();
+        playerSnapshots2.add(null);
+        assertThrows(IllegalArgumentException.class, () ->
+            new GameSnapshot("Invalid", SaveMode.COUNT, 0, playerSnapshots2)
+        );
 
     }
 

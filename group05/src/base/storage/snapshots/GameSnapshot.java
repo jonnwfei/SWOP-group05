@@ -25,14 +25,17 @@ public record GameSnapshot(String description, SaveMode mode, Integer dealerInde
      * @throws IllegalArgumentException if description is null
      * @throws IllegalArgumentException if mode is null
      * @throws IllegalArgumentException if dealer index is null
-     * @throws IllegalArgumentException if list of playerSnapshots is null
+     * @throws IllegalArgumentException if list of gameSnapshots is null
      */
     public GameSnapshot{
-        if (description == null) throw new IllegalArgumentException("Description of a playerSnapshot cannot be null");
-        if (mode == null) throw new IllegalArgumentException("Mode of a playerSnapshot cannot be null");
-        if (players == null) throw new IllegalArgumentException("Players of a playerSnapshot cannot be null");
-        if (dealerIndex == null) throw new IllegalArgumentException("Dealer index of a playerSnapshot cannot be null");
-        if (dealerIndex < 0) throw new IllegalArgumentException("Dealer index of a playerSnapshot cannot be negative");
+        if (description == null) throw new IllegalArgumentException("Description of a gameSnapshot cannot be null");
+        if (mode == null) throw new IllegalArgumentException("Mode of a gameSnapshot cannot be null");
+        if (players == null) throw new IllegalArgumentException("Players of a gameSnapshot cannot be null");
+        for (PlayerSnapshot player : players) {
+            if (player == null) throw new IllegalArgumentException("A PlayerSnapshot inside the list cannot be null");
+        }
+        if (dealerIndex == null) throw new IllegalArgumentException("Dealer index of a gameSnapshot cannot be null");
+        if (dealerIndex < 0) throw new IllegalArgumentException("Dealer index of a gameSnapshot cannot be negative");
         if (dealerIndex > players.size() - 1) throw new IllegalArgumentException("Dealer index of a playerSnapshot cannot exceed player count");
 
         players = List.copyOf(players);
