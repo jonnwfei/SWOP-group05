@@ -1,4 +1,4 @@
-package base.domain.snapshots;
+package base.storage.snapshots;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

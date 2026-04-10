@@ -2,10 +2,10 @@ package base.storage;
 
 import base.domain.WhistGame;
 import base.domain.deck.Deck;
-import base.domain.snapshots.GameSnapshot;
-import base.domain.snapshots.PlayerSnapshot;
-import base.domain.snapshots.SaveMode;
-import base.domain.snapshots.StrategySnapshotType;
+import base.storage.snapshots.GameSnapshot;
+import base.storage.snapshots.PlayerSnapshot;
+import base.storage.snapshots.SaveMode;
+import base.storage.snapshots.StrategySnapshotType;
 import base.domain.player.*;
 
 import java.util.List;

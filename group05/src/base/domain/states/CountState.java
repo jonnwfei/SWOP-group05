@@ -9,7 +9,7 @@ import base.domain.events.countEvents.*;
 import base.domain.events.errorEvents.NumberListErrorEvent;
 import base.domain.events.menuEvents.SaveDescriptionEvent;
 import base.storage.GamePersistenceService;
-import base.domain.snapshots.SaveMode;
+import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
 import base.domain.events.GameEvent;
 import base.domain.bid.*;

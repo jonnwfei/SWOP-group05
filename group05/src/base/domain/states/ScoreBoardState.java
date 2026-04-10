@@ -9,7 +9,7 @@ import base.domain.events.GameEvent;
 import base.domain.events.countEvents.ScoreBoardEvent;
 import base.domain.events.menuEvents.SaveDescriptionEvent;
 import base.storage.GamePersistenceService;
-import base.domain.snapshots.SaveMode;
+import base.storage.snapshots.SaveMode;
 import base.domain.events.playevents.ScoreBoardCompleteEvent;
 import base.domain.player.Player;
 import java.util.List;

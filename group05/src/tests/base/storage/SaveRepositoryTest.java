@@ -1,9 +1,9 @@
 package base.storage;
 
-import base.domain.snapshots.GameSnapshot;
-import base.domain.snapshots.PlayerSnapshot;
-import base.domain.snapshots.SaveMode;
-import base.domain.snapshots.StrategySnapshotType;
+import base.storage.snapshots.GameSnapshot;
+import base.storage.snapshots.PlayerSnapshot;
+import base.storage.snapshots.SaveMode;
+import base.storage.snapshots.StrategySnapshotType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

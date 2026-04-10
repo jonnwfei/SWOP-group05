@@ -7,7 +7,7 @@ import base.domain.actions.TextAction;
 import base.domain.events.ErrorEvent;
 import base.domain.events.menuEvents.*;
 import base.storage.GamePersistenceService;
-import base.domain.snapshots.SaveMode;
+import base.storage.snapshots.SaveMode;
 import base.domain.player.HighBotStrategy;
 import base.domain.player.HumanStrategy;
 import base.domain.player.LowBotStrategy;
