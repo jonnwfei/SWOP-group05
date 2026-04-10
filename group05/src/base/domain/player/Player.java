@@ -5,10 +5,7 @@ import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * Represents a participant in the trick-taking card game.
@@ -22,7 +19,8 @@ import java.util.List;
  */
 public class Player {
     private final Strategy decisionStrategy;
-    private final String name;
+    private final String playerName;
+    private final String playerId;
     private final List<Card> currentHand;
     private Integer playerScore;
 
@@ -36,7 +34,8 @@ public class Player {
     public Player(Strategy decisionStrategy, String name) {
         if (decisionStrategy == null || name == null) throw new IllegalArgumentException("Strategy and name can't be null");
         this.decisionStrategy = decisionStrategy;
-        this.name = name;
+        this.playerName = name;
+        this.playerId = UUID.randomUUID().toString();
         this.currentHand = new ArrayList<>();
         this.playerScore = 0;
     }
@@ -140,7 +139,13 @@ public class Player {
      *
      * @return the player's name.
      */
-    public String getName() {return this.name;}
+    public String getName() {return this.playerName;}
+
+    /**
+     * Retrieves the player's unique Id
+     * @return the player's Id.
+     */
+    public String getId() {return this.playerId;}
 
     /**
      * Retrieves boolean whether player needs confirmation or not.
