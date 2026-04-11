@@ -49,7 +49,7 @@ public class SmartBotMemory implements GameObserver {
     }
 
     @Override
-    public void onBidPlaced(PlayerId, BidType) {this.bidsMemory.add(bid);}
+    public void onBidPlaced(PlayerId playerId, BidType bidType) {this.bidsMemory.add(bid);}
 
     @Override
     public void onTurnPlayed(PlayTurn playTurn) {

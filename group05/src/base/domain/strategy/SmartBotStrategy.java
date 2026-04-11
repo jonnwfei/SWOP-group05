@@ -8,7 +8,6 @@ import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.observer.GameObserver;
 import base.domain.player.*;
-import base.domain.strategy.PlayTactic.PlayTactic;
 
 import java.util.Comparator;
 import java.util.List;
@@ -20,21 +19,28 @@ public final class SmartBotStrategy implements Strategy {
     private static final int MIN_TRICKS_FOR_PROPOSAL = 5;
     private static final int MIN_TRICKS_FOR_ABONDANCE = 9;
 
+    private enum PlayTactic {
+        NORMAL,
+        MISERIE,
+        ANTI_MISERIE
+    }
+
     // --- Internal Memory ---
+    private PlayTactic currentPlayTactic;
     private final SmartBotMemory memory;
     private final PlayerId myself;
 
     public SmartBotStrategy(PlayerId myself) {
         if (myself == null) {throw new IllegalArgumentException("PlayerId can't be null");}
         this.myself = myself;
-
         this.memory = new SmartBotMemory();
+        this.currentPlayTactic = PlayTactic.NORMAL;
     }
 
     /**
      * Exposes the bot's memory so the Game Engine can register it as an observer.
      */
-    public GameObserver getMemoryObserver() {
+    public GameObserver getGameObserver() {
         return this.memory;
     }
 
@@ -67,9 +73,14 @@ public final class SmartBotStrategy implements Strategy {
 
     @Override
     public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
-        // Pure delegation! The strategy asks the tactics to do the heavy lifting.
-        PlayTactic currentTactic = determineTactic();
-        return currentTactic.chooseCard(currentHand, lead, this.memory, this.myself);
+        // Always ensure the tactic is up-to-date before picking a card
+        updateCurrentTactic();
+
+        return switch (currentPlayTactic) {
+            case NORMAL        -> playNormalLogic(currentHand, lead);
+            case MISERIE       -> playMiserieLogic(currentHand, lead);
+            case ANTI_MISERIE  -> playAntiMiserieLogic(currentHand, lead);
+        };
     }
 
     @Override
@@ -122,7 +133,7 @@ public final class SmartBotStrategy implements Strategy {
             case 10 -> BidType.ABONDANCE_10.instantiate(player, chosenTrump);
             case 11 -> BidType.ABONDANCE_11.instantiate(player, chosenTrump);
             case 12 -> BidType.ABONDANCE_12_OT.instantiate(player, chosenTrump);
-            case 13 -> { // 13 Tricks
+            case 13 -> {
                 if (chosenTrump == memory.getCurrentTrump()) {
                     yield BidType.SOLO_SLIM.instantiate(player, chosenTrump);
                 } else {
@@ -133,18 +144,130 @@ public final class SmartBotStrategy implements Strategy {
         };
     }
 
-    // --- Routing Helper ---
+    // --- State Routing Helper ---
 
-    private PlayTactic determineTactic() {
+    private void updateCurrentTactic() {
         Bid highestBid = memory.getHighestBid();
-
         if (highestBid != null && highestBid.getType().getCategory() == BidCategory.MISERIE) {
-            if (highestBid.getPlayer().equals(myself)) {
-                return new MiserieTactic();
+            if (highestBid.getPlayer().getId().equals(myself)) {
+                this.currentPlayTactic = PlayTactic.MISERIE;
             } else {
-                return new AntiMiserieTactic();
+                this.currentPlayTactic = PlayTactic.ANTI_MISERIE;
+            }
+        } else {
+            this.currentPlayTactic = PlayTactic.NORMAL;
+        }
+    }
+
+    // --- Playing Helpers ---
+
+    private Card playNormalLogic(List<Card> currentHand, Suit lead) {
+        List<Card> legalCards = getLegalCards(currentHand, lead);
+
+        if (memory.isLeadPlayer()) {
+            return findHighestCard(legalCards);
+        }
+
+        if (memory.isTeamWinning(myself)) {
+            return findLowestCard(legalCards);
+        } else {
+            Card lowestTrump = findLowestTrump(legalCards, memory.getCurrentTrump());
+            if (lowestTrump != null) {
+                return lowestTrump;
+            }
+            return findHighestCard(legalCards);
+        }
+    }
+
+    private Card playMiserieLogic(List<Card> currentHand, Suit lead) {
+        List<Card> legalCards = getLegalCards(currentHand, lead);
+
+        if (memory.isLeadPlayer()) {
+            return findLowestCard(legalCards);
+        }
+
+        var winningTurn = memory.getCurrentWinningTurn();
+        Card currentWinningCard = winningTurn != null ? winningTurn.playedCard() : null;
+
+        Card highestSafeCard = legalCards.stream()
+                .filter(c -> !doesCardBeat(c, currentWinningCard, lead, null))
+                .max(Comparator.comparing(Card::rank))
+                .orElse(null);
+
+        if (highestSafeCard != null) {
+            return highestSafeCard;
+        } else {
+            return findHighestCard(legalCards);
+        }
+    }
+
+    private Card playAntiMiserieLogic(List<Card> currentHand, Suit lead) {
+        List<Card> legalCards = getLegalCards(currentHand, lead);
+        PlayerId miseriePlayerId = memory.getHighestBid().getPlayer().getId();
+
+        boolean amIPlayingBeforeEnemy = !memory.hasPlayerActedInCurrentTrick(miseriePlayerId);
+
+        if (amIPlayingBeforeEnemy) {
+            return findLowestCard(legalCards);
+        } else {
+            PlayerId currentWinnerId = memory.calculateCurrentWinnerId();
+
+            if (miseriePlayerId.equals(currentWinnerId)) {
+                Card enemyCard = memory.getCardPlayedBy(miseriePlayerId);
+                Card lowestSafeCard = legalCards.stream()
+                        .filter(c -> !doesCardBeat(c, enemyCard, lead, null))
+                        .min(Comparator.comparing(Card::rank))
+                        .orElse(null);
+
+                if (lowestSafeCard != null) {
+                    return lowestSafeCard;
+                } else {
+                    return findHighestCard(legalCards);
+                }
+            } else {
+                return findHighestCard(legalCards);
             }
         }
-        return new NormalTactic();
+    }
+
+    // --- Internal Math & Filtering Tools ---
+
+    private List<Card> getLegalCards(List<Card> hand, Suit lead) {
+        if (lead == null) return hand;
+
+        List<Card> followingCards = hand.stream()
+                .filter(card -> card.suit() == lead)
+                .toList();
+
+        return followingCards.isEmpty() ? hand : followingCards;
+    }
+
+    private Card findLowestCard(List<Card> cards) {
+        return cards.stream().min(Comparator.comparing(Card::rank)).orElse(null);
+    }
+
+    private Card findHighestCard(List<Card> cards) {
+        return cards.stream().max(Comparator.comparing(Card::rank)).orElse(null);
+    }
+
+    private Card findLowestTrump(List<Card> cards, Suit trumpSuit) {
+        return cards.stream()
+                .filter(c -> c.suit() == trumpSuit)
+                .min(Comparator.comparing(Card::rank))
+                .orElse(null);
+    }
+
+    private boolean doesCardBeat(Card challenger, Card currentBest, Suit leadSuit, Suit trumpSuit) {
+        if (currentBest == null) return true;
+
+        boolean isChallengerTrump = (trumpSuit != null && challenger.suit() == trumpSuit);
+        boolean isBestTrump = (trumpSuit != null && currentBest.suit() == trumpSuit);
+
+        if (isChallengerTrump) {
+            return !isBestTrump || challenger.rank().compareTo(currentBest.rank()) > 0;
+        } else if (!isBestTrump && challenger.suit() == leadSuit) {
+            return challenger.rank().compareTo(currentBest.rank()) > 0;
+        }
+        return false;
     }
 }
