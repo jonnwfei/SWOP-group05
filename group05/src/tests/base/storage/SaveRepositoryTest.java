@@ -2,6 +2,7 @@ package base.storage;
 
 import base.storage.snapshots.GameSnapshot;
 import base.storage.snapshots.PlayerSnapshot;
+import base.storage.snapshots.RoundSnapshot;
 import base.storage.snapshots.SaveMode;
 import base.storage.snapshots.StrategySnapshotType;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +29,7 @@ class SaveRepositoryTest {
     private SaveRepository saveRepository;
     private GameSnapshot testSnapshot;
     private List<PlayerSnapshot> players;
+    private List<RoundSnapshot> rounds;
 
     @BeforeEach
     void setUp() {
@@ -35,9 +37,10 @@ class SaveRepositoryTest {
 
         players = List.of(
                 new PlayerSnapshot("Tommy", StrategySnapshotType.HUMAN, 10),
-                new PlayerSnapshot("Seppe", StrategySnapshotType.HIGH_BOT, -10)
-        );
-        testSnapshot = new GameSnapshot("Friday Night Game", SaveMode.GAME, 0, players);
+                new PlayerSnapshot("Seppe", StrategySnapshotType.HIGH_BOT, -10));
+        rounds = List.of(
+                new RoundSnapshot(base.domain.bid.BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0)));
+        testSnapshot = new GameSnapshot("Friday Night Game", SaveMode.GAME, 0, players, rounds);
     }
 
     @Test
@@ -69,6 +72,7 @@ class SaveRepositoryTest {
         assertEquals(SaveMode.GAME, loadedSnapshot.mode());
         assertEquals(0, loadedSnapshot.dealerIndex());
         assertEquals(2, loadedSnapshot.players().size());
+        assertEquals(1, loadedSnapshot.rounds().size());
 
         assertEquals("Tommy", loadedSnapshot.players().get(0).name());
         assertEquals(StrategySnapshotType.HUMAN, loadedSnapshot.players().get(0).strategyType());
@@ -80,7 +84,8 @@ class SaveRepositoryTest {
     void testSaveDefensiveAndEdgeCases() {
         assertThrows(IllegalArgumentException.class, () -> saveRepository.save(null));
 
-        GameSnapshot weirdNameSnapshot = new GameSnapshot("  My Wacky!!! Save ???  ", SaveMode.COUNT, 0, players);
+        GameSnapshot weirdNameSnapshot = new GameSnapshot("  My Wacky!!! Save ???  ", SaveMode.COUNT, 0, players,
+                List.of());
         saveRepository.save(weirdNameSnapshot);
 
         assertTrue(Files.exists(tempSaveDirectory.resolve("my-wacky-save.properties")),
@@ -93,9 +98,10 @@ class SaveRepositoryTest {
         Path validPath = tempSaveDirectory.resolve("test.properties");
 
         assertAll("Defensive write constraints",
-                () -> assertThrows(IllegalArgumentException.class, () -> saveRepository.writeSnapshot(null, testSnapshot)),
-                () -> assertThrows(IllegalArgumentException.class, () -> saveRepository.writeSnapshot(validPath, null))
-        );
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> saveRepository.writeSnapshot(null, testSnapshot)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> saveRepository.writeSnapshot(validPath, null)));
     }
 
     @Test
@@ -105,10 +111,9 @@ class SaveRepositoryTest {
 
         List<PlayerSnapshot> players2 = List.of(
                 new PlayerSnapshot("Stan", StrategySnapshotType.HUMAN, 67),
-                new PlayerSnapshot("Seppe", StrategySnapshotType.LOW_BOT, -67)
-        );
+                new PlayerSnapshot("Seppe", StrategySnapshotType.LOW_BOT, -67));
 
-        GameSnapshot secondSnapshot = new GameSnapshot("Another Game", SaveMode.COUNT, 0, players2);
+        GameSnapshot secondSnapshot = new GameSnapshot("Another Game", SaveMode.COUNT, 0, players2, List.of());
         saveRepository.save(secondSnapshot);
 
         List<String> descriptions = saveRepository.listDescriptions();
@@ -136,7 +141,7 @@ class SaveRepositoryTest {
     @Test
     @DisplayName("Load by description handles null input defensively")
     void testSaveAlreadySlugified() {
-        testSnapshot = new GameSnapshot("  ", SaveMode.GAME, 0, players);
+        testSnapshot = new GameSnapshot("  ", SaveMode.GAME, 0, players, List.of());
         saveRepository.save(testSnapshot);
         assertTrue(Files.exists(tempSaveDirectory.resolve("unnamed-save.properties")),
                 "A description that slugifies to an empty string should default to 'unnamed-save'.");
@@ -174,7 +179,7 @@ class SaveRepositoryTest {
         Path trapFolder = tempDir.resolve("trap.properties");
         Files.createDirectories(trapFolder);
 
-        GameSnapshot trapSnapshot = new GameSnapshot("Trap", SaveMode.COUNT, 0, players);
+        GameSnapshot trapSnapshot = new GameSnapshot("Trap", SaveMode.COUNT, 0, players, List.of());
 
         assertThrows(IllegalStateException.class, () -> repo.save(trapSnapshot),
                 "Should throw IllegalStateException when trying to overwrite a directory with a file.");

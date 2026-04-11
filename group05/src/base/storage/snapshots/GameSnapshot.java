@@ -6,38 +6,56 @@ import java.util.List;
  * @author John Cai
  * @since 03/04/2026
  *
- * Serializable snapshot of all data required to continue a session.
- * containing:
- * <ul>
- *      <li>description of the save, name for example</li>
- *      <li>which mode (Count vs Game)</li>
- *      <li>Dealer index</li>
- *      <li>List of playerSnapshots</li>
- * </ul>
+ *        Serializable snapshot of all data required to continue a session.
+ *        containing:
+ *        <ul>
+ *        <li>description of the save, name for example</li>
+ *        <li>which mode (Count vs Game)</li>
+ *        <li>Dealer index</li>
+ *        <li>List of playerSnapshots</li>
+ *        </ul>
  */
-public record GameSnapshot(String description, SaveMode mode, Integer dealerIndex, List<PlayerSnapshot> players) {
+public record GameSnapshot(String description, SaveMode mode, Integer dealerIndex, List<PlayerSnapshot> players,
+        List<RoundSnapshot> rounds) {
     /**
      * Defensive constructor for GameSnapshot
-     * @param description description/alias/name for the save, used for choosing between saves when loading
-     * @param mode save mode, either full game save or count game save
-     * @param dealerIndex index of the dealer for the current round, used for determining turn order and game flow when loading
-     * @param players list of player snapshots, containing all player data
+     * 
+     * @param description description/alias/name for the save, used for choosing
+     *                    between saves when loading
+     * @param mode        save mode, either full game save or count game save
+     * @param dealerIndex index of the dealer for the current round, used for
+     *                    determining turn order and game flow when loading
+     * @param players     list of player snapshots, containing all player data
      * @throws IllegalArgumentException if description is null
      * @throws IllegalArgumentException if mode is null
      * @throws IllegalArgumentException if dealer index is null
      * @throws IllegalArgumentException if list of gameSnapshots is null
      */
-    public GameSnapshot{
-        if (description == null) throw new IllegalArgumentException("Description of a gameSnapshot cannot be null");
-        if (mode == null) throw new IllegalArgumentException("Mode of a gameSnapshot cannot be null");
-        if (players == null) throw new IllegalArgumentException("Players of a gameSnapshot cannot be null");
+    public GameSnapshot {
+        if (description == null)
+            throw new IllegalArgumentException("Description of a gameSnapshot cannot be null");
+        if (mode == null)
+            throw new IllegalArgumentException("Mode of a gameSnapshot cannot be null");
+        if (players == null)
+            throw new IllegalArgumentException("PlayerSnapshots of a gameSnapshot cannot be null");
         for (PlayerSnapshot player : players) {
-            if (player == null) throw new IllegalArgumentException("A PlayerSnapshot inside the list cannot be null");
+            if (player == null)
+                throw new IllegalArgumentException("A PlayerSnapshot inside the list cannot be null");
         }
-        if (dealerIndex == null) throw new IllegalArgumentException("Dealer index of a gameSnapshot cannot be null");
-        if (dealerIndex < 0) throw new IllegalArgumentException("Dealer index of a gameSnapshot cannot be negative");
-        if (dealerIndex > players.size() - 1) throw new IllegalArgumentException("Dealer index of a playerSnapshot cannot exceed player count");
+        if (rounds == null)
+            throw new IllegalArgumentException("RoundSnapshots of a gameSnapshot cannot be null");
+        for (RoundSnapshot round : rounds) {
+            if (round == null)
+                throw new IllegalArgumentException("A RoundSnapshot inside the list cannot be null");
+        }
+        if (dealerIndex == null)
+            throw new IllegalArgumentException("Dealer index of a gameSnapshot cannot be null");
+        if (dealerIndex < 0)
+            throw new IllegalArgumentException("Dealer index of a gameSnapshot cannot be negative");
+        if (dealerIndex > players.size() - 1)
+            throw new IllegalArgumentException("Dealer index of a playerSnapshot cannot exceed player count");
 
         players = List.copyOf(players);
+        rounds = List.copyOf(rounds);
     }
 }

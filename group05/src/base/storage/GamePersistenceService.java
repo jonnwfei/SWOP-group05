@@ -1,11 +1,11 @@
 package base.storage;
 
 import base.domain.WhistGame;
+import base.domain.bid.BidType;
+import base.domain.bid.Bid;
 import base.domain.deck.Deck;
-import base.storage.snapshots.GameSnapshot;
-import base.storage.snapshots.PlayerSnapshot;
-import base.storage.snapshots.SaveMode;
-import base.storage.snapshots.StrategySnapshotType;
+import base.domain.round.Round;
+import base.storage.snapshots.*;
 import base.domain.player.*;
 
 import java.util.List;
@@ -97,12 +97,15 @@ public class GamePersistenceService {
         List<Player> players = game.getPlayers();
         List<PlayerSnapshot> snapshots = players.stream().map(this::toSnapshot).toList();
 
+        List<Round> rounds = game.getRounds();
+        List<RoundSnapshot> roundSnapshots = rounds.stream().map(this::toSnapshot).toList();
+
         Player dealer = game.getDealerPlayer();
         if (dealer == null) throw new IllegalStateException("Cannot create snapshot of a game with a null dealer player");
         int dealerIndex = players.indexOf(dealer);
         if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list");
 
-        return new GameSnapshot(normalizedDescription, mode, dealerIndex, snapshots);
+        return new GameSnapshot(normalizedDescription, mode, dealerIndex, snapshots, roundSnapshots);
     }
 
     /**
@@ -120,6 +123,9 @@ public class GamePersistenceService {
             player.updateScore(playerSnapshot.score());
             game.addPlayer(player);
         }
+
+        restoreRoundHistory(game, snapshot.rounds());
+
         if (snapshot.mode() == SaveMode.GAME) {
             game.setDeck(new Deck());
         }
@@ -138,6 +144,89 @@ public class GamePersistenceService {
                 player.getName(),
                 toStrategyType(player.getDecisionStrategy()),
                 player.getScore());
+    }
+
+    /**
+     * Constructs a snapshot of a round for persistence.
+     * This currently captures stable metadata and round count compatibility fields.
+     * @param round the round instance to create a snapshot from
+     * @return RoundSnapshot of the provided round
+     */
+    private RoundSnapshot toSnapshot(Round round) {
+        if (round == null) throw new IllegalArgumentException("Cannot create a snapshot of a null round");
+
+        Bid highestBid = round.getHighestBid();
+        if (highestBid == null) throw new IllegalStateException("Cannot snapshot a round without a highest bid");
+
+        List<Player> roundPlayers = round.getPlayers();
+        if (roundPlayers.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
+
+        BidType bidType = highestBid.getType();
+        int bidderIndex = roundPlayers.indexOf(highestBid.getPlayer());
+        if (bidderIndex < 0) throw new IllegalStateException("Cannot snapshot round where bidder is not part of players");
+
+        List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()
+            .map(roundPlayers::indexOf)
+            .toList();
+        if (participantIndices.isEmpty()) {
+            throw new IllegalStateException("Cannot snapshot round without bidding team participants");
+        }
+        if (participantIndices.stream().anyMatch(index -> index < 0)) {
+            throw new IllegalStateException("Cannot snapshot round with participants outside players list");
+        }
+
+        List<Integer> miserieWinnerIndices = round.getCountMiserieWinners().stream()
+            .map(roundPlayers::indexOf)
+            .toList();
+        if (miserieWinnerIndices.stream().anyMatch(index -> index < 0)) {
+            throw new IllegalStateException("Cannot snapshot round with miserie winners outside players list");
+        }
+
+        List<Integer> scoreDeltas = round.getScoreDeltas();
+        if (scoreDeltas.size() != 4) {
+            throw new IllegalStateException("Cannot snapshot round without exactly 4 score deltas");
+        }
+
+        int tricksWon = round.getCountTricksWon();
+        if (tricksWon < 0) {
+            tricksWon = round.getBiddingTeamTricksWon();
+        }
+        if (tricksWon < -1 || tricksWon > 13) {
+            throw new IllegalStateException("Cannot snapshot round with invalid tricks won value: " + tricksWon);
+        }
+
+        return new RoundSnapshot(
+                bidType,
+                bidderIndex,
+                participantIndices,
+            tricksWon,
+            miserieWinnerIndices,
+            round.getMultiplier(),
+            scoreDeltas);
+    }
+
+    /**
+     * Rebuilds round history placeholders so round-based workflows keep functioning after load.
+     * @param game restored game
+     * @param roundSnapshots persisted round snapshots
+     */
+    private void restoreRoundHistory(WhistGame game, List<RoundSnapshot> roundSnapshots) {
+        if (roundSnapshots == null || roundSnapshots.isEmpty()) {
+            return;
+        }
+
+        List<Player> players = game.getPlayers();
+        if (players.size() != 4) {
+            throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
+        }
+
+        for (RoundSnapshot snapshot : roundSnapshots) {
+            int startIdx = snapshot.bidderIndex();
+            if (startIdx < 0 || startIdx >= players.size()) {
+                startIdx = 0;
+            }
+            game.addRound(new Round(players, players.get(startIdx), snapshot.multiplier()));
+        }
     }
 
     /**

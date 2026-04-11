@@ -7,6 +7,7 @@ import base.domain.player.LowBotStrategy;
 import base.domain.player.Player;
 import base.storage.snapshots.GameSnapshot;
 import base.storage.snapshots.PlayerSnapshot;
+import base.storage.snapshots.RoundSnapshot;
 import base.storage.snapshots.SaveMode;
 import base.storage.snapshots.StrategySnapshotType;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,6 +58,7 @@ class GamePersistenceServiceTest {
 
         when(mockGame.getPlayers()).thenReturn(List.of(mockPlayer));
         when(mockGame.getDealerPlayer()).thenReturn(mockPlayer);
+        when(mockGame.getRounds()).thenReturn(List.of());
 
         persistenceService.save(mockGame, mode, description);
 
@@ -84,7 +86,8 @@ class GamePersistenceServiceTest {
                 () -> assertThrows(IllegalArgumentException.class,
                         () -> persistenceService.save(mockGame, SaveMode.GAME, null)),
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> persistenceService.save(mockGame, SaveMode.GAME, "   ")) // Blank description check triggered by createSnapshot
+                        () -> persistenceService.save(mockGame, SaveMode.GAME, "   ")) // Blank description check
+                                                                                       // triggered by createSnapshot
         );
     }
 
@@ -97,6 +100,7 @@ class GamePersistenceServiceTest {
         when(mockGame.getPlayers()).thenReturn(List.of(highBot, lowBot));
 
         when(mockGame.getDealerPlayer()).thenReturn(highBot);
+        when(mockGame.getRounds()).thenReturn(List.of());
 
         persistenceService.save(mockGame, SaveMode.GAME, "Bot Save");
 
@@ -104,7 +108,7 @@ class GamePersistenceServiceTest {
         verify(mockRepository).save(captor.capture());
 
         GameSnapshot saved = captor.getValue();
-        assertEquals(0,saved.dealerIndex(), "Dealer index should be 0 for HighBot");
+        assertEquals(0, saved.dealerIndex(), "Dealer index should be 0 for HighBot");
         assertEquals(StrategySnapshotType.HIGH_BOT, saved.players().get(0).strategyType());
         assertEquals(StrategySnapshotType.LOW_BOT, saved.players().get(1).strategyType());
     }
@@ -115,11 +119,11 @@ class GamePersistenceServiceTest {
         Player mockPlayer = new Player(new HumanStrategy(), "Tommy");
         when(mockGame.getPlayers()).thenReturn(List.of(mockPlayer));
         when(mockGame.getDealerPlayer()).thenReturn(null);
+        when(mockGame.getRounds()).thenReturn(List.of());
 
         assertThrows(IllegalStateException.class,
                 () -> persistenceService.save(mockGame, SaveMode.GAME, "Null Dealer Save"),
-                "System should reject saving if the dealer is missing, as it breaks future player rotation."
-        );
+                "System should reject saving if the dealer is missing, as it breaks future player rotation.");
     }
 
     @Test
@@ -130,12 +134,11 @@ class GamePersistenceServiceTest {
 
         when(mockGame.getPlayers()).thenReturn(List.of(activePlayer));
         when(mockGame.getDealerPlayer()).thenReturn(ghostDealer);
-
+        when(mockGame.getRounds()).thenReturn(List.of());
 
         assertThrows(IllegalStateException.class,
                 () -> persistenceService.save(mockGame, SaveMode.GAME, "Ghost Save"),
-                "System should reject saving if the dealer isn't a registered player."
-        );
+                "System should reject saving if the dealer isn't a registered player.");
     }
 
     @Test
@@ -143,9 +146,8 @@ class GamePersistenceServiceTest {
     void testLoadIntoGameMainSuccessScenario() {
         String description = "Saved Game";
         List<PlayerSnapshot> playerSnapshots = List.of(
-                new PlayerSnapshot("Stan", StrategySnapshotType.HUMAN, 10)
-        );
-        GameSnapshot mockSnapshot = new GameSnapshot(description, SaveMode.GAME, 0, playerSnapshots);
+                new PlayerSnapshot("Stan", StrategySnapshotType.HUMAN, 10));
+        GameSnapshot mockSnapshot = new GameSnapshot(description, SaveMode.GAME, 0, playerSnapshots, List.of());
         when(mockRepository.loadByDescription(description)).thenReturn(mockSnapshot);
 
         // Backing list to emulate WhistGame internal state
@@ -169,7 +171,6 @@ class GamePersistenceServiceTest {
         verify(mockGame, times(1)).setDealerPlayer(restoredPlayers.get(0));
     }
 
-
     @Test
     @DisplayName("Use Case 4.5: Resume game/count - Negative and Edge Cases")
     void testLoadIntoGameDefensive() {
@@ -177,8 +178,7 @@ class GamePersistenceServiceTest {
                 () -> assertThrows(IllegalArgumentException.class,
                         () -> persistenceService.loadIntoGame(null, "Desc")),
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> persistenceService.loadIntoGame(mockGame, null))
-        );
+                        () -> persistenceService.loadIntoGame(mockGame, null)));
 
         when(mockRepository.loadByDescription("Unknown")).thenReturn(null);
         SaveMode mode = persistenceService.loadIntoGame(mockGame, "Unknown");
@@ -190,9 +190,9 @@ class GamePersistenceServiceTest {
     void testInternalMappingDefensive() {
         // Test null player in the list
         when(mockGame.getPlayers()).thenReturn(Collections.singletonList(null));
+        when(mockGame.getRounds()).thenReturn(List.of());
         assertThrows(IllegalArgumentException.class,
-                () -> persistenceService.save(mockGame, SaveMode.GAME, "Test")
-        );
+                () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
 
         // Test player with null strategy
         Player badPlayer = mock(Player.class);
@@ -200,9 +200,9 @@ class GamePersistenceServiceTest {
         when(badPlayer.getDecisionStrategy()).thenReturn(null); // Triggers toStrategyType(null)
 
         when(mockGame.getPlayers()).thenReturn(List.of(badPlayer));
+        when(mockGame.getRounds()).thenReturn(List.of());
         assertThrows(IllegalArgumentException.class,
-                () -> persistenceService.save(mockGame, SaveMode.GAME, "Test")
-        );
+                () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
     }
 
     @Test
@@ -210,10 +210,13 @@ class GamePersistenceServiceTest {
     void testLoadCountMode() {
         List<PlayerSnapshot> playerSnapshots = List.of(
                 new PlayerSnapshot("HighBot", StrategySnapshotType.HIGH_BOT, 5),
-                new PlayerSnapshot("LowBot", StrategySnapshotType.LOW_BOT, -5)
-        );
+                new PlayerSnapshot("LowBot", StrategySnapshotType.LOW_BOT, -5),
+                new PlayerSnapshot("Low2Bot", StrategySnapshotType.LOW_BOT, -5),
+                new PlayerSnapshot("Low3Bot", StrategySnapshotType.LOW_BOT, -5));
         // snapshot with dealerIndex 0
-        GameSnapshot countSnapshot = new GameSnapshot("Count Save", SaveMode.COUNT, 0, playerSnapshots);
+        List<RoundSnapshot> rounds = List.of(
+                new RoundSnapshot(base.domain.bid.BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0)));
+        GameSnapshot countSnapshot = new GameSnapshot("Count Save", SaveMode.COUNT, 0, playerSnapshots, rounds);
 
         when(mockRepository.loadByDescription("Count Save")).thenReturn(countSnapshot);
 
@@ -249,9 +252,8 @@ class GamePersistenceServiceTest {
     @DisplayName("Load GAME mode successfully sets a valid dealer")
     void testLoadGameSetsValidDealer() {
         List<PlayerSnapshot> playerSnapshots = List.of(
-                new PlayerSnapshot("Tommy", StrategySnapshotType.HUMAN, 0)
-        );
-        GameSnapshot gameSnapshot = new GameSnapshot("Valid Dealer Save", SaveMode.GAME, 0, playerSnapshots);
+                new PlayerSnapshot("Tommy", StrategySnapshotType.HUMAN, 0));
+        GameSnapshot gameSnapshot = new GameSnapshot("Valid Dealer Save", SaveMode.GAME, 0, playerSnapshots, List.of());
         when(mockRepository.loadByDescription("Valid Dealer Save")).thenReturn(gameSnapshot);
 
         // Use the backing list approach for consistency!
