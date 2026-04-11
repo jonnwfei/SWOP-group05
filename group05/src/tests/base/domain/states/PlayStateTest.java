@@ -11,7 +11,7 @@ import base.domain.card.Suit;
 import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
 import base.domain.events.playevents.*;
-import base.domain.player.HumanStrategy;
+import base.domain.strategy.HumanStrategy;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;

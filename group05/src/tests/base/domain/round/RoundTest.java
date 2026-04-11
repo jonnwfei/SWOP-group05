@@ -4,7 +4,7 @@ import base.domain.bid.*;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.player.LowBotStrategy;
+import base.domain.strategy.LowBotStrategy;
 import base.domain.player.Player;
 import base.domain.trick.Trick;
 import org.junit.jupiter.api.BeforeEach;

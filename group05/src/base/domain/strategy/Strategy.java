@@ -1,8 +1,9 @@
-package base.domain.player;
+package base.domain.strategy;
 
 import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.player.Player;
 
 import java.util.List;
 
@@ -17,7 +18,7 @@ import java.util.List;
  * @author Tommy Wu
  * @since 24/02/2026
  */
-public interface Strategy {
+public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotStrategy, SmartBotStrategy{
 
     /**
      * Determines the contract bid the player wishes to make during the Bidding Phase.

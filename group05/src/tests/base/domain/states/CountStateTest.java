@@ -9,12 +9,9 @@ import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
 import base.domain.events.countEvents.*;
 import base.domain.events.errorEvents.NumberListErrorEvent;
-import base.domain.player.HighBotStrategy;
+import base.domain.strategy.HighBotStrategy;
 import base.domain.player.Player;
 import base.domain.round.Round;
-import base.domain.states.CountState;
-import base.domain.states.MenuState;
-import base.domain.states.State;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

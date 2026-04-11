@@ -7,7 +7,7 @@ import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.deck.Deck;
-import base.domain.player.HumanStrategy;
+import base.domain.strategy.HumanStrategy;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;

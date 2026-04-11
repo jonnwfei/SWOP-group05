@@ -11,7 +11,7 @@ import base.domain.events.bidevents.BidTurnEvent;
 import base.domain.events.bidevents.BiddingCompleteEvent;
 import base.domain.events.bidevents.RejectedProposalEvent;
 import base.domain.events.bidevents.SuitPromptEvent;
-import base.domain.player.HighBotStrategy;
+import base.domain.strategy.HighBotStrategy;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.card.*;

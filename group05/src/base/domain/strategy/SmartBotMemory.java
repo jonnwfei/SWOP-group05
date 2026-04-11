@@ -1,4 +1,4 @@
-package base.domain.player;
+package base.domain.strategy;
 
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
@@ -6,6 +6,8 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
+import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 

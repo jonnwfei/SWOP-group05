@@ -1,4 +1,4 @@
-package base.domain.player;
+package base.domain.strategy;
 
 import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
@@ -7,19 +7,27 @@ import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.observer.GameObserver;
+import base.domain.player.*;
+import base.domain.strategy.PlayTactic.PlayTactic;
 
 import java.util.Comparator;
 import java.util.List;
 
-public class SmartBotStrategy implements Strategy {
+public final class SmartBotStrategy implements Strategy {
 
     private record TrumpEvaluation(Suit suit, int expectedTricks) {}
+    private static final int MIN_TRICKS_FOR_ACCEPTANCE = 3;
+    private static final int MIN_TRICKS_FOR_PROPOSAL = 5;
+    private static final int MIN_TRICKS_FOR_ABONDANCE = 9;
 
     // --- Internal Memory ---
     private final SmartBotMemory memory;
-    private Player myself;
+    private final PlayerId myself;
 
-    public SmartBotStrategy() {
+    public SmartBotStrategy(PlayerId myself) {
+        if (myself == null) {throw new IllegalArgumentException("PlayerId can't be null");}
+        this.myself = myself;
+
         this.memory = new SmartBotMemory();
     }
 
@@ -35,7 +43,6 @@ public class SmartBotStrategy implements Strategy {
     @Override
     public Bid determineBid(Player player) {
         if (player == null) {throw new IllegalArgumentException("Player cannot be null.");}
-        this.myself = player;
 
         BidType miserieBidType = evaluateMiserieEligibility(player.getHand());
         if (miserieBidType != null) {
@@ -45,13 +52,13 @@ public class SmartBotStrategy implements Strategy {
         int tricksWithCurrentTrump = estimateWinningTricks(player.getHand(), memory.getCurrentTrump());
         TrumpEvaluation bestEvaluation = findBestTrumpSuit(player.getHand(), tricksWithCurrentTrump);
 
-        if (bestEvaluation.expectedTricks() >= 9) {
+        if (bestEvaluation.expectedTricks() >= MIN_TRICKS_FOR_ABONDANCE) {
             return mapToHighBid(player, bestEvaluation.expectedTricks(), bestEvaluation.suit());
         }
 
-        if (tricksWithCurrentTrump >= 3 && memory.hasActiveProposal()) {
+        if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_ACCEPTANCE && memory.hasActiveProposal()) {
             return BidType.ACCEPTANCE.instantiate(player, null);
-        } else if (tricksWithCurrentTrump >= 5) {
+        } else if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_PROPOSAL) {
             return BidType.PROPOSAL.instantiate(player, null);
         }
 
@@ -115,7 +122,14 @@ public class SmartBotStrategy implements Strategy {
             case 10 -> BidType.ABONDANCE_10.instantiate(player, chosenTrump);
             case 11 -> BidType.ABONDANCE_11.instantiate(player, chosenTrump);
             case 12 -> BidType.ABONDANCE_12_OT.instantiate(player, chosenTrump);
-            default -> BidType.SOLO_SLIM.instantiate(player, memory.getCurrentTrump());
+            case 13 -> { // 13 Tricks
+                if (chosenTrump == memory.getCurrentTrump()) {
+                    yield BidType.SOLO_SLIM.instantiate(player, chosenTrump);
+                } else {
+                    yield BidType.SOLO.instantiate(player, chosenTrump);
+                }
+            }
+            default -> throw new IllegalArgumentException("Invalid tricks value");
         };
     }
 

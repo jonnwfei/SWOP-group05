@@ -4,6 +4,7 @@ import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
+import base.domain.strategy.Strategy;
 
 import java.util.*;
 

@@ -3,7 +3,7 @@ package base.domain.trick;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.player.HumanStrategy;
+import base.domain.strategy.HumanStrategy;
 import base.domain.player.Player;
 import base.domain.turn.PlayTurn;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,9 +1,11 @@
-package base.domain.player;
+package base.domain.strategy;
 
 import base.domain.bid.Bid;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.player.Player;
+
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -14,7 +16,7 @@ import java.util.List;
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public class HighBotStrategy implements Strategy {
+public final class HighBotStrategy implements Strategy {
 
     /**
      * Always returns a PassBid. Despite high play-play aggression, this bot

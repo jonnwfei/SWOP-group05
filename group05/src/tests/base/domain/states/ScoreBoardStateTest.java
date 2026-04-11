@@ -11,7 +11,7 @@ import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
 import base.domain.events.countEvents.ScoreBoardEvent;
 import base.domain.events.playevents.ScoreBoardCompleteEvent;
-import base.domain.player.HumanStrategy;
+import base.domain.strategy.HumanStrategy;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import org.junit.jupiter.api.BeforeEach;
