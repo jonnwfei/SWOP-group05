@@ -14,7 +14,13 @@ import base.domain.results.GameResult;
  */
 public abstract class State {
     private WhistGame game;
+
+    /**
+     * @param game
+     * @throws IllegalArgumentException if game is null
+     */
     public State(WhistGame game) {
+        if (game == null) throw new IllegalArgumentException("WhistGame cannot be null.");
         this.game = game;
     }
     public WhistGame getGame() {
