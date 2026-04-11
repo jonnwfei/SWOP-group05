@@ -87,16 +87,6 @@ public class CountState extends State {
         currentPhase = CountPhase.SELECT_BID;
         return new BidSelectionResult(values(), getGame().getPlayers());
     }
-    /**
-     * Initializes the wizard flow.
-     *
-     * @return GameEvent
-     */
-    private GameEvent<?> handleStart() {
-        currentPhase = CountPhase.SELECT_BID;
-        return new WelcomeCountEvent();
-    }
-
 
     /**
      * Processes the selected bid type
@@ -133,7 +123,7 @@ public class CountState extends State {
     private GameResult handlePlayerInput(List<Player> players) {
         if (currentPhase == CountPhase.SELECT_PLAYERS) {
             this.participatingPlayers = players;
-            this.bid = buildBid(participatingPlayers.getFirst()); // build here with correct player
+            this.bid = selectedBidType.instantiate(participatingPlayers.getFirst(), trumpSuit); // build here with correct player
 
             if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;
@@ -169,28 +159,6 @@ public class CountState extends State {
         return new ScoreBoardResult(getPlayerNames(), scores);
     }
 
-    /**
-     * Final prompt to decide whether to count another round or exit.
-     *
-     * @return GameEvent
-     */
-    private GameEvent<?> handlePromptNextState(GameAction action) {
-        Integer choice = switch (action) {
-            case NumberAction(int value) -> value;
-            default -> null;
-        };
-        if (choice == null || choice < 1 || choice > 3) {
-            return new ErrorEvent(1, 3);
-        }
-        if (choice == 3) {
-            currentPhase = CountPhase.SAVE_DESCRIPTION;
-            return new SaveDescriptionEvent("count");
-        }
-
-        this.keuze = choice;
-        return new EndOfCountStateEvent();
-    }
-
     private GameResult handleSaveDescription(String text) {
         persistenceService.save(getGame(), SaveMode.COUNT, text);
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
@@ -198,23 +166,6 @@ public class CountState extends State {
 
     }
 
-
-    // Bid construction stays in domain — it knows BidType, Player, Suit
-    private Bid buildBid(Player bidder) {
-        return switch (selectedBidType) {
-            case SOLO_PROPOSAL   -> new SoloProposalBid(bidder);
-            case PROPOSAL        -> new ProposalBid(bidder);
-            case ABONDANCE_9     -> new AbondanceBid(bidder, ABONDANCE_9, trumpSuit);
-            case ABONDANCE_10    -> new AbondanceBid(bidder, ABONDANCE_10, trumpSuit);
-            case ABONDANCE_11    -> new AbondanceBid(bidder, ABONDANCE_11, trumpSuit);
-            case ABONDANCE_12_OT -> new AbondanceBid(bidder, ABONDANCE_12_OT, trumpSuit);
-            case MISERIE         -> new MiserieBid(bidder, MISERIE);
-            case OPEN_MISERIE    -> new MiserieBid(bidder, OPEN_MISERIE);
-            case SOLO            -> new SoloBid(bidder, SOLO, trumpSuit);
-            case SOLO_SLIM       -> new SoloBid(bidder, SOLO_SLIM, trumpSuit);
-            default -> throw new IllegalStateException("Unknown BidType: " + selectedBidType);
-        };
-    }
     private List<String> getPlayerNames() {
         return getGame().getPlayers().stream().map(Player::getName).toList();
     }
