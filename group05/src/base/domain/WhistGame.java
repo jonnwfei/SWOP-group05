@@ -30,10 +30,10 @@ public class WhistGame {
     private Deck deck;
 
     /**
-     * Initializes a new game session starting in the {@link MenuState}.
+     * Initializes a new game session starting in the
      */
     public WhistGame(){
-        this.state = new MenuState(this);
+        this.state = null;
         this.players = new ArrayList<>();
         this.rounds = new ArrayList<>();
         this.currentPlayer = null;
@@ -233,4 +233,12 @@ public class WhistGame {
     public boolean isOver() {
         return this.state == null; // or whatever terminal condition your game has
     }
+    public void startGame() {
+        this.state = new BidState(this);
+    }
+
+    public void startCount() {
+        this.state = new CountState(this);
+    }
+
 }

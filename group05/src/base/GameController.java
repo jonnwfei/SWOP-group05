@@ -25,7 +25,7 @@ public class GameController {
     public GameController() {
         this.game = new WhistGame();
         this.terminalManager = new TerminalManager();
-        this.adapter = new Adapter();
+        this.adapter = new Adapter(this.game);
         this.menuFlow = new MenuFlow(terminalManager, game);
     }
 

@@ -10,15 +10,18 @@ import cli.elements.Response;
 import cli.events.*;
 import cli.events.CountEvents.*;
 import cli.events.BidEvents.*;
+import cli.events.PlayEvents.*;
 
 import java.util.List;
 
 public class Adapter {
 
     private final TerminalParser parser;
+    private WhistGame game;
+    public Adapter(WhistGame game) {
 
-    public Adapter() {
         this.parser = new TerminalParser();
+        this.game = game;
     }
 
     public IOEvent handleResult(GameResult result) {
@@ -33,7 +36,14 @@ public class Adapter {
             case TrickInputResult ignored      -> new TrickInputIOEvent();
             case ScoreBoardResult s            -> new ScoreBoardIOEvent(s.names(), s.scores());
             case SaveDescriptionResult ignored -> new SaveDescriptionIOEvent();
-            default -> throw new IllegalStateException("Unexpected value: " + result);
+            case ScoreBoardCompleteResult ignored -> new ScoreBoardCompleteIOEvent();
+            case PlayCardResult p -> new PlayCardIOEvent(p);
+            case EndOfTurnResult e           -> new EndOfTurnIOEvent(e);
+            case EndOfTrickResult e          -> new EndOfTrickIOEvent(e);
+            case EndOfRoundResult e          -> new EndOfRoundIOEvent(e);
+            case TrickHistoryResult t        -> new TrickHistoryIOEvent(t);
+            case ParticipatingPlayersResult p -> new ParticipatingPlayersIOEvent(p);
+            default -> throw    new IllegalStateException("Unexpected value: " + result);
         };
     }
 
@@ -71,11 +81,20 @@ public class Adapter {
                 yield new SuitCommand(Suit.values()[choice - 1]);
             }
 
-            case PlayerSelectionResult p -> {
-                yield new PlayerListCommand(p.players());
+            case PlayerSelectionResult ignored -> {
+                String trimmed = raw.trim();
+                if (trimmed.equals("0")) {
+                    yield new PlayerListCommand(List.of()); // empty list
+                }
+                List<Integer> indices = parser.parseNumbersInput(trimmed);
+                List<Player> players = indices.stream()
+                        .map(i -> game.getPlayers().get(i - 1))
+                        .toList();
+                yield new PlayerListCommand(players);
             }
 
             case TrickInputResult ignored -> {
+
                 int tricks = parser.parseNumberInput(raw);
                 yield new NumberCommand(tricks);
             }
@@ -88,6 +107,22 @@ public class Adapter {
             case SaveDescriptionResult ignored -> {
                 String text = parser.parseString(raw);
                 yield new TextCommand(text);
+            }
+            case EndOfTurnResult ignored     -> new ContinueCommand();
+            case EndOfTrickResult ignored    -> new ContinueCommand();
+            case EndOfRoundResult ignored    -> new ContinueCommand();
+            case TrickHistoryResult ignored  -> new ContinueCommand();
+            case ParticipatingPlayersResult p -> {
+                List<Integer> indices = parser.parseNumbersInput(raw);
+                List<Player> players = indices.stream()
+                        .map(i -> game.getPlayers().get(i - 1))
+                        .toList();
+                yield new PlayerListCommand(players);
+            }
+            case PlayCardResult p -> {
+                int choice = parser.parseNumberInput(raw);
+                if (choice == 0) yield new NumberCommand(0); // show last trick
+                yield new CardCommand(p.currentPlayerHand().get(choice - 1));
             }
             default -> throw new IllegalStateException("Unexpected value: " + result);
         };

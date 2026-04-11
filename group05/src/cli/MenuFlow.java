@@ -51,10 +51,20 @@ public class MenuFlow {
         terminalManager.handle(new PrintNamesIOEvent(
                 game.getPlayers().stream().map(Player::getName).toList()
         ));
+        game.startGame(); // WhistGame decides its own state
     }
 
     private void setupCount() {
-        // same pattern
+        for (int i = 1; i <= 4; i++) {
+            String name = askString(new PlayerNameIOEvent(i));
+            game.addPlayer(new Player(new HumanStrategy(), name));
+        }
+
+        terminalManager.handle(new PrintNamesIOEvent(
+                game.getPlayers().stream().map(Player::getName).toList()
+        ));
+
+        game.startCount();
     }
 
     private int askInt(IOEvent event) {

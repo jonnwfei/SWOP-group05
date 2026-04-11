@@ -14,11 +14,9 @@ import base.domain.results.GameResult;
  */
 public abstract class State {
     private WhistGame game;
-
     public State(WhistGame game) {
         this.game = game;
     }
-
     public WhistGame getGame() {
         return this.game;
     }
@@ -28,6 +26,5 @@ public abstract class State {
      * state to fetch some useful context data if needed.
      */
     public abstract State nextState();
-
     public abstract GameResult executeState(GameCommand action);
 }

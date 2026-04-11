@@ -71,7 +71,6 @@ public class CountState extends State {
 
     private GameResult handleNumberInput(int value) {
         if (currentPhase == CountPhase.CALCULATE) {
-            // normal bid path, no winners
             return finalizeCalculation(value, null);
         }
         // PROMPT_NEXT_STATE
@@ -80,7 +79,7 @@ public class CountState extends State {
             return new SaveDescriptionResult();
         }
         this.keuze = value;
-        return getScoreBoard();
+        return new ScoreBoardCompleteResult(); // signals inner loop to exit
     }
 
 
@@ -106,6 +105,7 @@ public class CountState extends State {
      */
     private GameResult handleBidType(BidType type) {
         this.selectedBidType = type;
+
         if (type == MISERIE || type == OPEN_MISERIE) {
             currentPhase = CountPhase.SELECT_PLAYERS;
             return new PlayerSelectionResult(getGame().getPlayers(), true);
@@ -133,14 +133,17 @@ public class CountState extends State {
     private GameResult handlePlayerInput(List<Player> players) {
         if (currentPhase == CountPhase.SELECT_PLAYERS) {
             this.participatingPlayers = players;
-            if (bid.getType() == MISERIE || bid.getType()  == OPEN_MISERIE) {
+            this.bid = buildBid(participatingPlayers.getFirst()); // build here with correct player
+
+            if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;
                 return new PlayerSelectionResult(getGame().getPlayers(), true);
             }
             currentPhase = CountPhase.CALCULATE;
             return new TrickInputResult();
         }
-        // SELECT_WINNERS
+
+        // SELECT_WINNERS — players here are the winners, participatingPlayers already set
         return finalizeCalculation(0, players);
     }
 
@@ -151,8 +154,6 @@ public class CountState extends State {
      */
     private GameResult finalizeCalculation(int tricks, List<Player> winners) {
         Player primaryBidder = participatingPlayers.getFirst();
-        Bid bid = buildBid(primaryBidder);
-
         Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
         round.setHighestBid(bid);
         getGame().addRound(round);
@@ -221,6 +222,12 @@ public class CountState extends State {
     /** Returns to a fresh CountState or the Main Menu. */
     @Override
     public State nextState() {
-        return (keuze == 1) ? new CountState(getGame()) : new MenuState(getGame());
+        if (keuze == 1){
+            return new CountState(getGame());
+        }
+        else{
+            System.out.println("get here");
+            return null;
+        }
     }
 }

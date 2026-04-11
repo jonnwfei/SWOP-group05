@@ -4,16 +4,20 @@ import base.domain.WhistGame;
 import base.domain.actions.GameAction;
 import base.domain.actions.NumberAction;
 import base.domain.actions.TextAction;
+import base.domain.commands.GameCommand;
+import base.domain.commands.TextCommand;
 import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
 import base.domain.events.countEvents.ScoreBoardEvent;
 import base.domain.events.menuEvents.SaveDescriptionEvent;
+import base.domain.results.GameResult;
 import base.storage.GamePersistenceService;
 import base.domain.snapshots.SaveMode;
 import base.domain.events.playevents.ScoreBoardCompleteEvent;
 import base.domain.player.Player;
 import java.util.List;
-
+import base.domain.commands.*;
+import base.domain.results.*;
 /**
  * Handles the end-of-round scoreboard display and provides options for where
  * they can go next.
@@ -39,48 +43,45 @@ public class ScoreBoardState extends State {
     /**
      * Processes the scoreboard interaction.
      * 
-     * @param action The user action
+     * @param command The user action
      * @return a GameEvent
      */
+
     @Override
-    public GameEvent<?> executeState(GameAction action) {
+    public GameResult executeState(GameCommand command) {
         if (awaitingSaveDescription) {
-            String description = switch (action) {
-                case TextAction(String text) -> text;
-                default -> null;
+            return switch (command) {
+                case TextCommand t -> {
+                    persistenceService.save(getGame(), SaveMode.GAME, t.text());
+                    awaitingSaveDescription = false;
+                    yield buildScoreBoard();
+                }
+                default -> new SaveDescriptionResult();
             };
-
-            if (description == null || description.isBlank()) {
-                return new SaveDescriptionEvent("game");
-            }
-
-            persistenceService.save(getGame(), SaveMode.GAME, description);
-            awaitingSaveDescription = false;
-            List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
-            List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-            return new ScoreBoardEvent(names, scores);
         }
 
-        switch (action) {
-            case NumberAction(int input) -> {
-                if (input == 1 || input == 2) {
-                    this.choice = input;
-                    return new ScoreBoardCompleteEvent();
+        return switch (command) {
+            case NumberCommand n -> {
+                if (n.choice() == 1 || n.choice() == 2) {
+                    this.choice = n.choice();
+                    yield new ScoreBoardCompleteResult();
                 }
-                if (input == 3) {
+                if (n.choice() == 3) {
                     awaitingSaveDescription = true;
-                    return new SaveDescriptionEvent("game");
+                    yield new SaveDescriptionResult();
                 }
-                return new ErrorEvent(1, 3);
+                yield buildScoreBoard();
             }
-            default -> {
-                // Initial entry: gather data and show the scoreboard
-                List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
-                List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-                return new ScoreBoardEvent(names, scores);
-            }
-        }
+            default -> buildScoreBoard();
+        };
     }
+
+    private GameResult buildScoreBoard() {
+        List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
+        List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
+        return new ScoreBoardResult(names, scores);
+    }
+
 
     /**
      * Determines the next state based on the user's selection.
@@ -90,7 +91,7 @@ public class ScoreBoardState extends State {
     @Override
     public State nextState() {
         if (choice == 2) {
-            return new MenuState(getGame());
+            return null;
         }
 
         if (choice == 1) {

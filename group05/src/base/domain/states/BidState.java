@@ -102,6 +102,7 @@ public class BidState extends State {
             }
             case SuitCommand s -> handleSuitInput(s.suit());
             case ContinueCommand ignored -> null;
+            default -> throw new IllegalStateException("Unexpected value: " + command);
         };
 
         if (earlyReturn != null) return earlyReturn;

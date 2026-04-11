@@ -6,15 +6,21 @@ import base.domain.actions.NumberAction;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
+import base.domain.commands.*;
+import base.domain.commands.GameCommand;
+import base.domain.commands.NumberCommand;
 import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
 import base.domain.events.playevents.*;
 import base.domain.player.Player;
+import base.domain.results.GameResult;
+import base.domain.results.TrickInputResult;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
 import base.domain.trick.Turn;
 import java.util.ArrayList;
 import java.util.List;
+import base.domain.results.*;
 
 /**
  * Manages the active gameplay phase where players play cards to complete
@@ -32,7 +38,7 @@ public class PlayState extends State {
      * Defines the internal workflow
      */
     private enum TurnPhase {
-        PROMPT_PLAYER, REVEAL_HAND, WAIT_FOR_INPUT
+        PROMPT_PLAYER, REVEAL_HAND
     }
 
     private TurnPhase currentPhase = TurnPhase.PROMPT_PLAYER;
@@ -56,127 +62,76 @@ public class PlayState extends State {
     /**
      * Executes a single turn.
      * 
-     * @param action The user action (typically a card selection or "Continue").
+     * @param command The user action (typically a card selection or "Continue").
      * @return The event to be rendered by the UI.
      */
     @Override
-    public GameEvent<?> executeState(GameAction action) {
+    public GameResult executeState(GameCommand command) {
         Player currentPlayer = currentRound.getCurrentPlayer();
 
-        // 1. Process BOT Turn: Bots play immediately without phases
+        //  BOT TURN
         if (!currentPlayer.getRequiresConfirmation()) {
-            Card botCard = currentPlayer.chooseCard(currentTrick.getLeadingSuit());
-            currentTrick.playCard(currentPlayer, botCard);
-
-            boolean trickFinished = currentTrick.isCompleted();
-            String trickWinner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
-
-            processTurnOutcome();
-
-            if (roundOver)
-                return new EndOfRoundEvent(currentPlayer.getName(), botCard);
-            if (trickFinished)
-                return new EndOfTrickEvent(currentPlayer.getName(), botCard, trickWinner);
-            return new EndOfTurnEvent(currentPlayer.getName(), botCard);
+            return handleBotTurn(currentPlayer);
         }
 
-        // 2. Process HUMAN Turn via internal Phase Machine
-        return switch (currentPhase) {
-            case PROMPT_PLAYER -> handlePromptPlayer(currentPlayer);
-            case REVEAL_HAND -> handleRevealHand(currentPlayer);
-            case WAIT_FOR_INPUT -> handleWaitForInput(currentPlayer, action);
-        };
+        //  HUMAN TURN
+        if (command == null) {
+            // No input yet → just tell UI what to render
+            return buildPickCardResult(currentPlayer);
+        }
+
+        // Input received → process immediately
+        return handlePlayerMove(currentPlayer, command);
     }
 
     /**
-     * Prepares the "Pass device" screen.
-     * 
-     * @return GameEvent
+     * Handles the player turn
+     * @param player
+     * @param command
+     * @return
      */
-    private GameEvent<?> handlePromptPlayer(Player currentPlayer) {
-        currentPhase = TurnPhase.REVEAL_HAND;
-        return new InitiateTurnEvent(currentPlayer.getName());
-    }
+    private GameResult handlePlayerMove(Player player, GameCommand command) {
 
-    /**
-     * Transitions to the card selection screen after user confirmation.
-     * 
-     * @return GameEvent
-     */
-    private GameEvent<?> handleRevealHand(Player currentPlayer) {
-        currentPhase = TurnPhase.WAIT_FOR_INPUT;
-        return buildPickCardEvent(currentPlayer);
-    }
-
-    /**
-     * Validates the card choice, plays it, and checks for trick/round completion.
-     * 
-     * @return GameEvent
-     */
-    private GameEvent<?> handleWaitForInput(Player currentPlayer, GameAction action) {
-        Integer choice = switch (action) {
-            case NumberAction(int value) -> value;
-            default -> null;
-        };
-        if (choice == null) {
-            return new ErrorEvent(0, currentPlayer.getHand().size());
-        }
-
-        int maxChoice = currentPlayer.getHand().size();
-
-        if (choice < 0 || choice > maxChoice)
-            return new ErrorEvent(0, maxChoice);
-
-        // Option [0]: View the previous trick
-        if (choice == 0) {
-            Trick lastTrick = getGame().getCurrentRound().getLastPlayedTrick();
-            return (lastTrick == null) ? new ErrorEvent(1, maxChoice) : new LastTrickEvent(lastTrick);
-        }
-
-        Card playedCard = currentPlayer.getHand().get(choice - 1);
-        try {
-            currentTrick.playCard(currentPlayer, playedCard);
-        } catch (IllegalArgumentException e) {
-            return buildPickCardEvent(currentPlayer);
-        }
-
-        boolean trickFinished = currentTrick.isCompleted();
-        String trickWinner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
-
-        currentPhase = TurnPhase.PROMPT_PLAYER;
-        processTurnOutcome();
-
-        if (roundOver)
-            return new EndOfRoundEvent(currentPlayer.getName(), playedCard);
-        if (trickFinished)
-            return new EndOfTrickEvent(currentPlayer.getName(), playedCard, trickWinner);
-        return new EndOfTurnEvent(currentPlayer.getName(), playedCard);
-    }
-
-    /**
-     * Updates the round state and initializes the next trick if the current one is
-     * full.
-     */
-    private void processTurnOutcome() {
-        if (currentTrick.isCompleted()) {
-            Player winningPlayer = currentTrick.getWinningPlayer();
-            currentRound.registerCompletedTrick(currentTrick);
-            if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
-                roundOver = true;
+        return switch (command) {
+            case NumberCommand n when n.choice() == 0 -> {
+                Trick last = currentRound.getLastPlayedTrick();
+                yield (last == null)
+                        ? buildPickCardResult(currentRound.getCurrentPlayer())
+                        : new TrickHistoryResult(last);
             }
-            this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
-        } else {
-            currentRound.advanceToNextPlayer();
-        }
+
+            case CardCommand c -> {
+                Card card = c.card();
+
+                if (!player.getHand().contains(card)) {
+                    yield buildPickCardResult(player);
+                }
+
+                try {
+                    currentTrick.playCard(player, card);
+                } catch (IllegalArgumentException e) {
+                    yield buildPickCardResult(player);
+                }
+
+                boolean trickFinished = currentTrick.isCompleted();
+                String winner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
+
+                processTurnOutcome();
+
+                if (roundOver)
+                    yield new EndOfRoundResult(player.getName(), card);
+
+                if (trickFinished)
+                    yield new EndOfTrickResult(player.getName(), card,  winner);
+
+                yield new EndOfTurnResult(player.getName(), card);
+            }
+
+            default -> buildPickCardResult(player);
+        };
     }
 
-    /**
-     * Data-mapping helper to create a PickCardEvent with all table and hand
-     * details.
-     * 
-     * @return PickCardEvent
-     */
-    private PickCardEvent buildPickCardEvent(Player currentPlayer) {
+    private GameResult buildPickCardResult(Player player) {
         boolean isOpenMiserie = currentRound.getHighestBid() != null &&
                 currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
 
@@ -195,14 +150,54 @@ public class PlayState extends State {
 
         List<Card> tableCards = currentTrick.getTurns().stream().map(Turn::playedCard).toList();
 
-        return new PickCardEvent(
+        return new PlayCardResult(
                 tableCards,
                 isOpenMiserie,
                 exposedName,
                 exposedHand,
                 currentRound.getTricks().size() + 1,
-                currentPlayer.getName(),
-                currentPlayer.getHand());
+                player.getName(),
+                player.getHand());
+    }
+
+
+    /**
+     * Handle a bot turn
+     */
+    private GameResult handleBotTurn(Player player) {
+        Card card = player.chooseCard(currentTrick.getLeadingSuit());
+        currentTrick.playCard(player, card);
+
+        boolean trickFinished = currentTrick.isCompleted();
+        String winner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
+
+        processTurnOutcome();
+
+        if (roundOver)
+            return new EndOfRoundResult(player.getName(), card);
+
+        if (trickFinished)
+            return new EndOfTrickResult(player.getName(), card, winner);
+
+        return new EndOfTurnResult(player.getName(), card);
+    }
+
+
+    /**
+     * Updates the round state and initializes the next trick if the current one is
+     * full.
+     */
+    private void processTurnOutcome() {
+        if (currentTrick.isCompleted()) {
+            Player winningPlayer = currentTrick.getWinningPlayer();
+            currentRound.registerCompletedTrick(currentTrick);
+            if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
+                roundOver = true;
+            }
+            this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
+        } else {
+            currentRound.advanceToNextPlayer();
+        }
     }
 
     /**

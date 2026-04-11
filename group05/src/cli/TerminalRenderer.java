@@ -1,11 +1,13 @@
 package cli;
 
 import base.domain.bid.BidType;
+import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import cli.events.IOEvent;
 import cli.events.BidEvents.*;
 import cli.events.CountEvents.*;
+import cli.events.PlayEvents.*;
 import cli.events.menu.*;
 
 import java.util.List;
@@ -14,6 +16,13 @@ public class TerminalRenderer {
 
     public void render(IOEvent event) {
         switch (event) {
+            // --- play state ---
+            case PlayCardIOEvent e -> renderPlayCardEvent(e);
+            case EndOfTurnIOEvent e          -> renderEndOfTurnEvent(e);
+            case EndOfTrickIOEvent e         -> renderEndOfTrickEvent(e);
+            case EndOfRoundIOEvent e         -> renderEndOfRoundEvent(e);
+            case TrickHistoryIOEvent t       -> renderTrickHistoryEvent(t);
+            case ParticipatingPlayersIOEvent e -> renderParticipatingPlayersEvent(e);
             // --- bid state ---
             case BidTurnIOEvent e              -> renderBidTurnEvent(e);
             case SuitSelectionIOEvent ignored  -> renderSuitSelectionEvent();
@@ -25,6 +34,7 @@ public class TerminalRenderer {
             case TrickInputIOEvent ignored     -> renderTrickInputEvent();
             case ScoreBoardIOEvent e           -> renderScoreBoardEvent(e);
             case SaveDescriptionIOEvent ignored -> renderSaveDescriptionEvent();
+            case ScoreBoardCompleteIOEvent ignored -> {}
             // --- menu ---
             case WelcomeMenuIOEvent ignored    -> renderWelcomeMenuEvent();
             case AmountOfBotsIOEvent ignored   -> renderAmountOfBotsEvent();
@@ -33,6 +43,36 @@ public class TerminalRenderer {
             case PrintNamesIOEvent e           -> renderPrintNamesEvent(e);
             default -> throw new IllegalStateException("Unhandled IOEvent: " + event);
         }
+    }
+
+    private void renderPlayCardEvent(PlayCardIOEvent event) {
+        base.domain.results.PlayCardResult data = event.data();
+        System.out.println("\n-------------- CARDS ON TABLE ---------------");
+        if (data.cardsOnTable().isEmpty()) {
+            System.out.println("(No cards played yet)");
+        } else {
+            for (Card card : data.cardsOnTable()) {
+                System.out.println("- " + card);
+            }
+        }
+
+        if (data.isOpenMiserie()) {
+            for (int i = 0; i < data.exposedPlayerName().size(); i++) {
+                System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: " + data.exposedPlayerName().get(i) + ") ---");
+                System.out.println(data.formattedExposedHand().get(i));
+            }
+        }
+
+        System.out.println("---------------------------------------------");
+        System.out.println("Trick: " + data.trickNumber() + " | " + data.currentPlayerName() + "'s turn.");
+        System.out.println("[0] Show last played trick.");
+        System.out.println("Your hand:");
+
+        List<Card> hand = data.currentPlayerHand();
+        for (int i = 0; i < hand.size(); i++) {
+            System.out.println("   [" + (i + 1) + "] " + hand.get(i));
+        }
+        System.out.print("Choose card via index: ");
     }
 
     // --- bid state ---
@@ -86,7 +126,7 @@ public class TerminalRenderer {
     }
 
     private void renderPlayerSelectionEvent(PlayerSelectionIOEvent event) {
-        System.out.println(event.multi() ? "Select all players involved (comma-separated):" : "Select the main bidder:");
+        System.out.println(event.multi() ? "Select all players involved (comma-separated, 0 for none):" : "Select the main bidder:");
         List<String> names = event.players()
                 .stream()
                 .map(Player::getName)
@@ -151,5 +191,36 @@ public class TerminalRenderer {
         for (int i = 0; i < names.size(); i++) {
             System.out.println((i + 1) + ". " + names.get(i));
         }
+    }
+
+    private void renderEndOfTurnEvent(EndOfTurnIOEvent event) {
+        System.out.println(event.data().name() + " played " + event.data().card());
+    }
+
+    private void renderEndOfTrickEvent(EndOfTrickIOEvent event) {
+        System.out.println(event.data().name() + " played " + event.data().card());
+        System.out.println(event.data().winner() + " won the trick!");
+        System.out.println("\n============== NEXT TRICK ==============");
+    }
+
+    private void renderEndOfRoundEvent(EndOfRoundIOEvent event) {
+        System.out.println(event.data().name() + " played " + event.data().card());
+        System.out.println("\n============== ROUND OVER ==============");
+        System.out.println("Calculating final scores...");
+    }
+
+    private void renderTrickHistoryEvent(TrickHistoryIOEvent event) {
+        System.out.println("-------------- LAST PLAYED TRICK ---------------");
+        event.data().trick().getTurns().forEach(t -> System.out.println("- " + t));
+        System.out.println("------------------------------------------------");
+    }
+
+    private void renderParticipatingPlayersEvent(ParticipatingPlayersIOEvent event) {
+        System.out.println("Select the participating players (comma-separated):");
+        List<String> names = event.data().playerNames();
+        for (int i = 0; i < names.size(); i++) {
+            System.out.println("   [" + (i + 1) + "] " + names.get(i));
+        }
+        System.out.print("Your choice: ");
     }
 }
