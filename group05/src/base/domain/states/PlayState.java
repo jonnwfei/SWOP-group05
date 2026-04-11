@@ -135,15 +135,15 @@ public class PlayState extends State {
         boolean isOpenMiserie = currentRound.getHighestBid() != null &&
                 currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
 
-        List<String> exposedName = new ArrayList<>();
-        List<List<Card>> exposedHand = new ArrayList<>();
+        List<String> exposedNames = new ArrayList<>();
+        List<List<Card>> exposedHands = new ArrayList<>();
 
         if (isOpenMiserie) {
             for (Bid bid : currentRound.getBids()) {
                 if (bid.getType() == BidType.OPEN_MISERIE) {
                     Player proposer = bid.getPlayer();
-                    exposedName.add(proposer.getName());
-                    exposedHand.add(proposer.getHand());
+                    exposedNames.add(proposer.getName());
+                    exposedHands.add(proposer.getHand());
                 }
             }
         }
@@ -153,8 +153,8 @@ public class PlayState extends State {
         return new PlayCardResult(
                 tableCards,
                 isOpenMiserie,
-                exposedName,
-                exposedHand,
+                exposedNames,
+                exposedHands,
                 currentRound.getTricks().size() + 1,
                 player.getName(),
                 player.getHand());

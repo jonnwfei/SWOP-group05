@@ -57,8 +57,8 @@ public class TerminalRenderer {
         }
 
         if (data.isOpenMiserie()) {
-            for (int i = 0; i < data.exposedPlayerName().size(); i++) {
-                System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: " + data.exposedPlayerName().get(i) + ") ---");
+            for (int i = 0; i < data.exposedPlayerNames().size(); i++) {
+                System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: " + data.exposedPlayerNames().get(i) + ") ---");
                 System.out.println(data.formattedExposedHand().get(i));
             }
         }

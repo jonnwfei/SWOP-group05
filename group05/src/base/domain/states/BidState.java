@@ -44,7 +44,7 @@ public class BidState extends State {
      */
     public BidState(WhistGame game) {
         super(game);
-        if (game.getPlayers() == null || game.getPlayers().isEmpty() || game.getPlayers().size() == 4) {
+        if (game.getPlayers() == null || game.getPlayers().isEmpty() || game.getPlayers().size() != 4) {
             throw new IllegalArgumentException("Cannot start BidState: Game has no players or no 4 players.");
         }
 
