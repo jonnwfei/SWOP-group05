@@ -1,11 +1,6 @@
 package base.domain.events.playevents;
 
-import base.domain.bid.Bid;
-import base.domain.bid.BidType;
 import base.domain.card.Card;
-import base.domain.player.Player;
-import base.domain.round.Round;
-import base.domain.trick.Turn;
 import base.domain.events.GameEvent;
 
 import java.util.List;

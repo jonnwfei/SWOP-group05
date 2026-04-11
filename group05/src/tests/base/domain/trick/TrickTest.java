@@ -6,6 +6,7 @@ import base.domain.card.Suit;
 import base.domain.player.HumanStrategy;
 import base.domain.player.LowBotStrategy;
 import base.domain.player.Player;
+import base.domain.turn.PlayTurn;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -99,8 +100,8 @@ class TrickTest {
         currentTrick.playCard(p2, new Card(Suit.HEARTS, Rank.QUEEN));
 
         assertEquals(2, currentTrick.getTurns().size());
-        assertEquals(new Turn(p1, new Card(Suit.HEARTS, Rank.ACE)), currentTrick.getTurns().getFirst());
-        assertEquals(new Turn(p2, new Card(Suit.HEARTS, Rank.QUEEN)), currentTrick.getTurns().get(1));
+        assertEquals(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.ACE)), currentTrick.getTurns().getFirst());
+        assertEquals(new PlayTurn(p2, new Card(Suit.HEARTS, Rank.QUEEN)), currentTrick.getTurns().get(1));
     }
 
     @Test

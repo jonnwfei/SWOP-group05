@@ -3,6 +3,7 @@ package base.domain.trick;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.card.Card;
+import base.domain.turn.PlayTurn;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +21,7 @@ public class Trick {
     private final Player startingPlayer;
     private Player WinningPlayer;
     private Card currentWinningCard;
-    private final List<Turn> turns;
+    private final List<PlayTurn> PlayTurns;
 
     /**
      * Initializes a new trick.
@@ -36,7 +37,7 @@ public class Trick {
         this.startingPlayer = startingPlayer;
         this.WinningPlayer = null;
         this.currentWinningCard = null;
-        this.turns = new ArrayList<>();
+        this.PlayTurns = new ArrayList<>();
     }
 
     /**
@@ -44,8 +45,8 @@ public class Trick {
      * @return The leading suit, or null if no cards have been played.
      */
     public Suit getLeadingSuit() {
-        if (turns.isEmpty()) return null;
-        return turns.getFirst().playedCard().suit();
+        if (PlayTurns.isEmpty()) return null;
+        return PlayTurns.getFirst().playedCard().suit();
     }
 
     /** @return The player who started the trick. */
@@ -59,13 +60,13 @@ public class Trick {
     }
 
     /** @return A shallow, immutable copy of the turns played so far. */
-    public List<Turn> getTurns() {
-        return List.copyOf(this.turns);
+    public List<PlayTurn> getTurns() {
+        return List.copyOf(this.PlayTurns);
     }
 
     /** @return true if the trick contains the maximum number of turns. */
     public boolean isCompleted() {
-        return this.turns.size() >= MAX_TURNS;
+        return this.PlayTurns.size() >= MAX_TURNS;
     }
 
     /**
@@ -80,23 +81,23 @@ public class Trick {
             throw new IllegalArgumentException("Trick: Player and Card must exist.");
 
         // Rule: One card per player
-        if (turns.stream().anyMatch(t -> t.player().equals(player))) {
+        if (PlayTurns.stream().anyMatch(t -> t.player().equals(player))) {
             throw new IllegalArgumentException("Trick: Player already played in this trick.");
         }
 
         // Rule: Must follow leading suit if possible
-        if (!turns.isEmpty()) {
+        if (!PlayTurns.isEmpty()) {
             Suit leadingSuit = getLeadingSuit();
             if (playedCard.suit() != leadingSuit && player.hasSuit(leadingSuit)) {
                 throw new IllegalArgumentException("Trick: You must follow the leading suit (" + leadingSuit + ").");
             }
         }
 
-        if (turns.size() >= MAX_TURNS) {
+        if (PlayTurns.size() >= MAX_TURNS) {
             throw new IllegalArgumentException("Trick: This trick is already full.");
         }
 
-        turns.add(new Turn(player.getId(), playedCard));
+        PlayTurns.add(new PlayTurn(player.getId(), playedCard));
         player.removeCard(playedCard);
 
         determineWinner(player, playedCard);

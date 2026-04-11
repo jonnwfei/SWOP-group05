@@ -8,7 +8,7 @@ import base.domain.events.errorEvents.NumberErrorEvent;
 import base.domain.events.errorEvents.NumberListErrorEvent;
 import base.domain.events.menuEvents.*;
 import base.domain.events.playevents.*;
-import base.domain.trick.Turn;
+import base.domain.turn.PlayTurn;
 
 import java.util.List;
 
@@ -274,8 +274,8 @@ public class TerminalRenderer {
 
     private void renderLastTrickEvent(LastTrickEvent event) {
         System.out.println("-------------- LAST PLAYED TRICK ---------------");
-        for(Turn turn : event.trick().getTurns()) {
-            System.out.println("- " + turn.toString());
+        for(PlayTurn playTurn : event.trick().getTurns()) {
+            System.out.println("- " + playTurn.toString());
         }
         System.out.println("------------------------------------------------");
     }

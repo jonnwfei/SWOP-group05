@@ -11,26 +11,30 @@ import base.domain.observer.GameObserver;
 import java.util.Comparator;
 import java.util.List;
 
-public class SmartBotStrategy implements Strategy, GameObserver {
+public class SmartBotStrategy implements Strategy {
 
     private record TrumpEvaluation(Suit suit, int expectedTricks) {}
 
-    private enum Behavior { MISERIE, ANTI_MISERIE, NORMAL }
-
     // --- Internal Memory ---
-
-    private SmartBotMemory memory;
+    private final SmartBotMemory memory;
     private Player myself;
+
     public SmartBotStrategy() {
         this.memory = new SmartBotMemory();
     }
 
-    // --- Strategy Methods ---
+    /**
+     * Exposes the bot's memory so the Game Engine can register it as an observer.
+     */
+    public GameObserver getMemoryObserver() {
+        return this.memory;
+    }
+
+    // --- Public Strategy Methods ---
 
     @Override
     public Bid determineBid(Player player) {
         if (player == null) {throw new IllegalArgumentException("Player cannot be null.");}
-
         this.myself = player;
 
         BidType miserieBidType = evaluateMiserieEligibility(player.getHand());
@@ -41,34 +45,24 @@ public class SmartBotStrategy implements Strategy, GameObserver {
         int tricksWithCurrentTrump = estimateWinningTricks(player.getHand(), memory.getCurrentTrump());
         TrumpEvaluation bestEvaluation = findBestTrumpSuit(player.getHand(), tricksWithCurrentTrump);
 
-        // CASE A: 9 to 13 tricks -> Solo / Abondance
-        // may choose Trump Suit
         if (bestEvaluation.expectedTricks() >= 9) {
             return mapToHighBid(player, bestEvaluation.expectedTricks(), bestEvaluation.suit());
         }
 
-        // CASE B: 3 to 8 tricks -> Proposal / Acceptance
-        // plays with current Trump
         if (tricksWithCurrentTrump >= 3 && memory.hasActiveProposal()) {
             return BidType.ACCEPTANCE.instantiate(player, null);
-            } else if (tricksWithCurrentTrump >= 5) {
-                return BidType.PROPOSAL.instantiate(player, null);
-            }
+        } else if (tricksWithCurrentTrump >= 5) {
+            return BidType.PROPOSAL.instantiate(player, null);
+        }
 
-        // CASE C: <= 2 tricks, or 3-4 tricks with no active proposal -> Pass
         return BidType.PASS.instantiate(player, null);
     }
 
-
     @Override
     public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
-        Behavior currentBehavior = determineCurrentBehavior(this.myself);
-
-        return switch (currentBehavior) {
-            case MISERIE       -> playMiserieLogic(currentHand, lead);
-            case ANTI_MISERIE  -> playAntiMiserieLogic(currentHand, lead);
-            case NORMAL        -> playNormalLogic(currentHand, lead);
-        };
+        // Pure delegation! The strategy asks the tactics to do the heavy lifting.
+        PlayTactic currentTactic = determineTactic();
+        return currentTactic.chooseCard(currentHand, lead, this.memory, this.myself);
     }
 
     @Override
@@ -76,32 +70,16 @@ public class SmartBotStrategy implements Strategy, GameObserver {
         return false;
     }
 
-    // --- Private Helpers ---
-
-    private Behavior determineCurrentBehavior(Player myself) {
-        Bid highestBid = memory.getHighestBid();
-
-        if (highestBid != null && highestBid.getType().getCategory() == BidCategory.MISERIE) {
-            if (highestBid.getPlayer().equals(myself)) {
-                return Behavior.MISERIE;
-            } else {
-                return Behavior.ANTI_MISERIE;
-            }
-        }
-        return Behavior.NORMAL;
-    }
+    // --- Bidding Helpers ---
 
     private BidType evaluateMiserieEligibility(List<Card> hand) {
         Card highestCard = hand.stream()
                 .max(Comparator.comparing(Card::rank))
                 .orElseThrow(() -> new IllegalArgumentException("Hand is empty"));
 
-        if (highestCard.rank().compareTo(Rank.SEVEN) <= 0) {
-            return BidType.OPEN_MISERIE;
-        }
-        if (highestCard.rank().compareTo(Rank.TEN) <= 0) {
-            return BidType.MISERIE;
-        }
+        if (highestCard.rank().compareTo(Rank.SEVEN) <= 0) return BidType.OPEN_MISERIE;
+        if (highestCard.rank().compareTo(Rank.TEN) <= 0) return BidType.MISERIE;
+
         return null;
     }
 
@@ -128,7 +106,7 @@ public class SmartBotStrategy implements Strategy, GameObserver {
                 bestSuit = suit;
             }
         }
-        return new SmartBotStrategy.TrumpEvaluation (bestSuit, maxTricks);
+        return new TrumpEvaluation(bestSuit, maxTricks);
     }
 
     private Bid mapToHighBid(Player player, int tricks, Suit chosenTrump) {
@@ -141,27 +119,18 @@ public class SmartBotStrategy implements Strategy, GameObserver {
         };
     }
 
-    private Card playMiserieLogic(List<Card> currentHand, Suit lead) {
-        return null; // TODO
-    }
+    // --- Routing Helper ---
 
-    private Card playAntiMiserieLogic(List<Card> currentHand, Suit lead) {
-        return null; // TODO
-    }
+    private PlayTactic determineTactic() {
+        Bid highestBid = memory.getHighestBid();
 
-    private Card playNormalLogic(List<Card> currentHand, Suit lead) {
-        if (memory.isLeadPlayer()) {
-            // "Play highest card in a suit if you have it, else lowest random"
-        } else if (isMyTeamWinning()) {
-                // "Play lowest legal card"
-        } else {
-                // "Play highest in lead suit, or lowest trump"
+        if (highestBid != null && highestBid.getType().getCategory() == BidCategory.MISERIE) {
+            if (highestBid.getPlayer().equals(myself)) {
+                return new MiserieTactic();
+            } else {
+                return new AntiMiserieTactic();
+            }
         }
-
-        return null; // fallback
-    }
-
-    private boolean isMyTeamWinning() {
-        return  memory.getBidTeam(myself).contains(memory.getWinningPLayer());
+        return new NormalTactic();
     }
 }

@@ -20,7 +20,7 @@ import java.util.*;
 public class Player {
     private final Strategy decisionStrategy;
     private final String playerName;
-    private final String playerId;
+    private final PlayerId playerId;
     private final List<Card> currentHand;
     private Integer playerScore;
 
@@ -35,7 +35,7 @@ public class Player {
         if (decisionStrategy == null || name == null) throw new IllegalArgumentException("Strategy and name can't be null");
         this.decisionStrategy = decisionStrategy;
         this.playerName = name;
-        this.playerId = UUID.randomUUID().toString();
+        this.playerId = new PlayerId(UUID.randomUUID().toString());
         this.currentHand = new ArrayList<>();
         this.playerScore = 0;
     }
@@ -145,7 +145,7 @@ public class Player {
      * Retrieves the player's unique Id
      * @return the player's Id.
      */
-    public String getId() {return this.playerId;}
+    public PlayerId getId() {return this.playerId;}
 
     /**
      * Retrieves boolean whether player needs confirmation or not.

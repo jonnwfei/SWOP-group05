@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import base.domain.actions.GameAction;
-import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
@@ -14,7 +13,8 @@ import base.domain.player.*;
 import base.domain.round.Round;
 import base.domain.states.*;
 import base.domain.events.GameEvent;
-import base.domain.trick.Turn;
+import base.domain.turn.BidTurn;
+import base.domain.turn.PlayTurn;
 
 /**
  * Represents a game of Whist
@@ -95,19 +95,19 @@ public class WhistGame {
     }
 
     public void notifyRoundStarted() {
-        for (GameObserver observer : observers) observer.onRoundStarted(players);
+        for (GameObserver observer : observers) observer.onRoundStarted(players.stream().map(Player::getId).toList());
     }
 
     public void notifyTrumpDetermined(Suit trumpSuit) {
         for (GameObserver observer : observers) observer.onTrumpDetermined(trumpSuit);
     }
 
-    public void notifyBidPlaced(Bid bid) {
-        for (GameObserver observer : observers) observer.onBidPlaced(bid);
+    public void notifyBidPlaced(BidTurn bidTurn) {
+        for (GameObserver observer : observers) observer.onBidPlaced(bidTurn);
     }
 
-    public void notifyTurnPlayed(Turn turn) {
-        for (GameObserver observer : observers) observer.onTurnPlayed(turn);
+    public void notifyTurnPlayed(PlayTurn playTurn) {
+        for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
     }
 
     /**

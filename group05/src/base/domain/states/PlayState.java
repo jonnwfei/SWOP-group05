@@ -12,7 +12,7 @@ import base.domain.events.playevents.*;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
-import base.domain.trick.Turn;
+import base.domain.turn.PlayTurn;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -193,7 +193,7 @@ public class PlayState extends State {
             }
         }
 
-        List<Card> tableCards = currentTrick.getTurns().stream().map(Turn::playedCard).toList();
+        List<Card> tableCards = currentTrick.getTurns().stream().map(PlayTurn::playedCard).toList();
 
         return new PickCardEvent(
                 tableCards,
