@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import base.domain.actions.GameAction;
+import base.domain.commands.GameCommand;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.*;
+import base.domain.results.GameResult;
 import base.domain.round.Round;
 import base.domain.states.*;
 import base.domain.events.GameEvent;
@@ -32,10 +34,10 @@ public class WhistGame {
     private final List<GameObserver> observers;
 
     /**
-     * Initializes a new game session starting in the {@link MenuState}.
+     * Initializes a new game session starting in the
      */
     public WhistGame(){
-        this.state = new MenuState(this);
+        this.state = null;
         this.players = new ArrayList<>();
         this.rounds = new ArrayList<>();
         this.observers = new ArrayList<>();
@@ -168,6 +170,22 @@ public class WhistGame {
     }
 
     /**
+     * Restores the dealer from persisted data.
+     *
+     * @param dealer The dealer player, or null for count sessions.
+     */
+    public void setDealerPlayer(Player dealer) {
+        if (dealer == null) {
+            this.dealerPlayer = null;
+            return;
+        }
+        if (!players.contains(dealer)) {
+            throw new IllegalArgumentException("Dealer not in game");
+        }
+        this.dealerPlayer = dealer;
+    }
+
+    /**
      * Triggers a transition to the next game state based on internal logic.
      */
     public void nextState(){
@@ -176,11 +194,11 @@ public class WhistGame {
 
     /**
      * Delegates the provided action to the current state for processing.
-     * @param response The user action to process.
+     * @param command The user action to process.
      * @return A {@link GameEvent} describing the outcome of the action.
      */
-    public GameEvent<?> executeState(GameAction response){
-        return state.executeState(response);
+    public GameResult executeState(GameCommand command){
+        return state.executeState(command);
     }
 
     /** @param player The player to add to the game session. */
@@ -238,4 +256,16 @@ public class WhistGame {
         int currentIdx = players.indexOf(dealerPlayer);
         this.dealerPlayer = players.get((currentIdx + 1) % players.size());
     }
+
+    public boolean isOver() {
+        return this.state == null; // or whatever terminal condition your game has
+    }
+    public void startGame() {
+        this.state = new BidState(this);
+    }
+
+    public void startCount() {
+        this.state = new CountState(this);
+    }
+
 }

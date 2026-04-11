@@ -2,7 +2,9 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.actions.GameAction;
+import base.domain.commands.GameCommand;
 import base.domain.events.GameEvent;
+import base.domain.results.GameResult;
 
 /**
  * Common interface for all states.
@@ -13,10 +15,14 @@ import base.domain.events.GameEvent;
 public abstract class State {
     private WhistGame game;
 
+    /**
+     * @param game
+     * @throws IllegalArgumentException if game is null
+     */
     public State(WhistGame game) {
+        if (game == null) throw new IllegalArgumentException("WhistGame cannot be null.");
         this.game = game;
     }
-
     public WhistGame getGame() {
         return this.game;
     }
@@ -26,6 +32,5 @@ public abstract class State {
      * state to fetch some useful context data if needed.
      */
     public abstract State nextState();
-
-    public abstract GameEvent<?> executeState(GameAction action);
+    public abstract GameResult executeState(GameCommand action);
 }

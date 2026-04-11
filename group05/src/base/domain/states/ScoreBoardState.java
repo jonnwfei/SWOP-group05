@@ -3,13 +3,21 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.actions.GameAction;
 import base.domain.actions.NumberAction;
+import base.domain.actions.TextAction;
+import base.domain.commands.GameCommand;
+import base.domain.commands.TextCommand;
 import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
 import base.domain.events.countEvents.ScoreBoardEvent;
+import base.domain.events.menuEvents.SaveDescriptionEvent;
+import base.domain.results.GameResult;
+import base.storage.GamePersistenceService;
+import base.domain.snapshots.SaveMode;
 import base.domain.events.playevents.ScoreBoardCompleteEvent;
 import base.domain.player.Player;
 import java.util.List;
-
+import base.domain.commands.*;
+import base.domain.results.*;
 /**
  * Handles the end-of-round scoreboard display and provides options for where
  * they can go next.
@@ -20,6 +28,8 @@ import java.util.List;
 public class ScoreBoardState extends State {
 
     private int choice = 0; // 0 = undecided, 1 = restart, 2 = quit
+    private boolean awaitingSaveDescription = false;
+    private final GamePersistenceService persistenceService = new GamePersistenceService();
 
     /**
      * Initializes the scoreboard state.
@@ -33,27 +43,45 @@ public class ScoreBoardState extends State {
     /**
      * Processes the scoreboard interaction.
      * 
-     * @param action The user action
+     * @param command The user action
      * @return a GameEvent
      */
+
     @Override
-    public GameEvent<?> executeState(GameAction action) {
-        switch (action) {
-            case NumberAction(int input) -> {
-                if (input == 1 || input == 2) {
-                    this.choice = input;
-                    return new ScoreBoardCompleteEvent();
+    public GameResult executeState(GameCommand command) {
+        if (awaitingSaveDescription) {
+            return switch (command) {
+                case TextCommand t -> {
+                    persistenceService.save(getGame(), SaveMode.GAME, t.text());
+                    awaitingSaveDescription = false;
+                    yield buildScoreBoard();
                 }
-                return new ErrorEvent(1, 2);
-            }
-            default -> {
-                // Initial entry: gather data and show the scoreboard
-                List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
-                List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-                return new ScoreBoardEvent(names, scores);
-            }
+                default -> new SaveDescriptionResult();
+            };
         }
+
+        return switch (command) {
+            case NumberCommand n -> {
+                if (n.choice() == 1 || n.choice() == 2) {
+                    this.choice = n.choice();
+                    yield new ScoreBoardCompleteResult();
+                }
+                if (n.choice() == 3) {
+                    awaitingSaveDescription = true;
+                    yield new SaveDescriptionResult();
+                }
+                yield buildScoreBoard();
+            }
+            default -> buildScoreBoard();
+        };
     }
+
+    private GameResult buildScoreBoard() {
+        List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
+        List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
+        return new ScoreBoardResult(names, scores);
+    }
+
 
     /**
      * Determines the next state based on the user's selection.
@@ -63,7 +91,7 @@ public class ScoreBoardState extends State {
     @Override
     public State nextState() {
         if (choice == 2) {
-            return new MenuState(getGame());
+            return null;
         }
 
         if (choice == 1) {
