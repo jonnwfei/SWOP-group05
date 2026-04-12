@@ -3,12 +3,12 @@ package base;
 import base.domain.WhistGame;
 import base.domain.commands.ContinueCommand;
 import base.domain.commands.GameCommand;
-import base.domain.commands.StartGameCommand;
 import base.domain.results.GameResult;
+import cli.Adapter.AdapterResponse;
 import cli.events.IOEvent;
 import cli.TerminalManager;
 import cli.elements.Response;
-import cli.Adapter;
+import cli.Adapter.Adapter;
 import cli.MenuFlow;
 
 /**
@@ -30,23 +30,42 @@ public class GameController {
     }
 
     public void run() {
-        menuFlow.run(); // only once, before everything
+        boolean playAgain = true;
 
-        GameCommand command = new ContinueCommand();
-        boolean stateRunning = true;
+        while (playAgain) {
 
-        while (!game.isOver()) {
-            while (stateRunning) {
-                GameResult result = game.executeState(command);
-                IOEvent event = adapter.handleResult(result);
-                stateRunning = event.getContinue();
-                Response response = terminalManager.handle(event);
-                command = adapter.handleResponse(response, result);
+            menuFlow.run();
+
+            GameCommand command = new ContinueCommand();
+            boolean stateRunning = true;
+
+            while (!game.isOver()) {
+                while (stateRunning) {
+                    GameResult result = game.executeState(command);
+
+                    IOEvent event = adapter.handleResult(result);
+                    stateRunning = event.getContinue();
+
+                    Response response = terminalManager.handle(event);
+                    AdapterResponse adapterResponse = adapter.handleResponse(response, result);
+
+                    while (adapterResponse.command() == null) {
+                        for (IOEvent immediate : adapterResponse.immediateEvents()) {
+                            terminalManager.handle(immediate);
+                        }
+                        Response retryResponse = terminalManager.handle(event);
+                        adapterResponse = adapter.handleResponse(retryResponse, result);
+                    }
+
+                    command = adapterResponse.command();
+                }
+
+                game.nextState();
+                stateRunning = true;
+                command = new ContinueCommand();
             }
 
-            game.nextState();
-            stateRunning = true;
-            command = new ContinueCommand();
+
         }
     }
 }

@@ -7,6 +7,7 @@ import base.domain.player.Player;
 import cli.events.IOEvent;
 import cli.events.BidEvents.*;
 import cli.events.CountEvents.*;
+import cli.events.MessageIOEvent;
 import cli.events.PlayEvents.*;
 import cli.events.menu.*;
 
@@ -41,38 +42,57 @@ public class TerminalRenderer {
             case PlayerNameIOEvent e           -> renderPlayerNameEvent(e);
             case BotStrategyIOEvent e          -> renderBotStrategyEvent(e);
             case PrintNamesIOEvent e           -> renderPrintNamesEvent(e);
+            case MessageIOEvent t -> renderMessageEvent(t);
             default -> throw new IllegalStateException("Unhandled IOEvent: " + event);
         }
     }
 
+    private void renderMessageEvent(MessageIOEvent t) {
+        System.out.println(t.text());
+    }
+
     private void renderPlayCardEvent(PlayCardIOEvent event) {
         base.domain.results.PlayCardResult data = event.data();
-        System.out.println("\n-------------- CARDS ON TABLE ---------------");
+
+        System.out.println("\n=============================================");
+        System.out.println("  TRICK #" + data.trickNumber() + " | TURN: " + data.currentPlayerName().toUpperCase());
+        System.out.println("=============================================");
+
+        // 1. Table Display
+        System.out.println("\nCARDS ON TABLE:");
         if (data.cardsOnTable().isEmpty()) {
-            System.out.println("(No cards played yet)");
+            System.out.println("  [ Empty ]");
         } else {
-            for (Card card : data.cardsOnTable()) {
-                System.out.println("- " + card);
-            }
+            // Displays cards in a horizontal-ish list for better flow
+            String table = String.join(" | ", data.cardsOnTable().stream()
+                    .map(Card::toString).toList());
+            System.out.println("  ➜ " + table);
         }
 
+        // 2. Open Miserie (Exposed Hands)
         if (data.isOpenMiserie()) {
+            System.out.println("\n--- EXPOSED HANDS (OPEN MISERIE) ---");
             for (int i = 0; i < data.exposedPlayerNames().size(); i++) {
-                System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: " + data.exposedPlayerNames().get(i) + ") ---");
-                System.out.println(data.formattedExposedHand().get(i));
+                String name = data.exposedPlayerNames().get(i);
+                List<Card> exposedHand = data.formattedExposedHand().get(i);
+
+                System.out.print(String.format("%-12s : ", name)); // Aligns names
+                System.out.println(exposedHand);
             }
         }
 
-        System.out.println("---------------------------------------------");
-        System.out.println("Trick: " + data.trickNumber() + " | " + data.currentPlayerName() + "'s turn.");
-        System.out.println("[0] Show last played trick.");
-        System.out.println("Your hand:");
+        // 3. Player's Own Hand & Controls
+        System.out.println("\n---------------------------------------------");
+        System.out.println("YOUR HAND (" + data.currentPlayerName() + "):");
 
         List<Card> hand = data.currentPlayerHand();
         for (int i = 0; i < hand.size(); i++) {
-            System.out.println("   [" + (i + 1) + "] " + hand.get(i));
+            // Padded index for alignment (e.g., [ 1] vs [10])
+            System.out.printf("  [%2d] %s%n", (i + 1), hand.get(i));
         }
-        System.out.print("Choose card via index: ");
+
+        System.out.println("\n[ 0] View Last Trick History");
+        System.out.print("SELECT CARD INDEX: ");
     }
 
     // --- bid state ---

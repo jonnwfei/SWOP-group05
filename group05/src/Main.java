@@ -6,10 +6,7 @@ import base.GameController;
 public class Main {
     public static void main(String[] args) {
         GameController whistGame = new GameController();
-        while(true){
-            whistGame.run();
-        }
-
+        whistGame.run();
     }
 
 }

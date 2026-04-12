@@ -1,26 +1,17 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.actions.GameAction;
-import base.domain.actions.NumberAction;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.commands.*;
-import base.domain.commands.GameCommand;
-import base.domain.commands.NumberCommand;
-import base.domain.events.ErrorEvent;
-import base.domain.events.GameEvent;
-import base.domain.events.playevents.*;
 import base.domain.player.Player;
-import base.domain.results.GameResult;
-import base.domain.results.TrickInputResult;
+import base.domain.results.*;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
 import base.domain.trick.Turn;
 import java.util.ArrayList;
 import java.util.List;
-import base.domain.results.*;
 
 /**
  * Manages the active gameplay phase where players play cards to complete
@@ -35,18 +26,8 @@ public class PlayState extends State {
     private boolean roundOver = false;
 
     /**
-     * Defines the internal workflow
-     */
-    private enum TurnPhase {
-        PROMPT_PLAYER, REVEAL_HAND
-    }
-
-    private TurnPhase currentPhase = TurnPhase.PROMPT_PLAYER;
-
-    /**
      * Initializes the PlayState and sets up the first trick.
-     * 
-     * @param game The current game instance.
+     * * @param game The current game instance.
      * @throws IllegalStateException if no round is currently active.
      */
     public PlayState(WhistGame game) {
@@ -61,8 +42,7 @@ public class PlayState extends State {
 
     /**
      * Executes a single turn.
-     * 
-     * @param command The user action (typically a card selection or "Continue").
+     * * @param command The user action (typically a card selection or "Continue").
      * @return The event to be rendered by the UI.
      */
     @Override
@@ -86,9 +66,9 @@ public class PlayState extends State {
 
     /**
      * Handles the player turn
-     * @param player
-     * @param command
-     * @return
+     * @param player The current human player
+     * @param command The command received from the UI
+     * @return The resulting GameResult
      */
     private GameResult handlePlayerMove(Player player, GameCommand command) {
 
@@ -157,7 +137,7 @@ public class PlayState extends State {
                 exposedHands,
                 currentRound.getTricks().size() + 1,
                 player.getName(),
-                player.getHand());
+                player.getHand(), currentRound.getLastPlayedTrick());
     }
 
 
@@ -202,9 +182,8 @@ public class PlayState extends State {
 
     /**
      * Determines the next state based on whether all tricks have been played.
-     * 
-     * @return ScoreBoardState if the round is finished, otherwise remains in
-     *         PlayState.
+     * * @return ScoreBoardState if the round is finished, otherwise remains in
+     * PlayState.
      */
     @Override
     public State nextState() {
