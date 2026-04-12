@@ -147,7 +147,7 @@ public class BidState extends State {
                 currentPlayer.getName(),
                 currentTrumpSuit,
                 currentHighestBidType,
-                BidType.values(),
+                getLegalBids(currentPlayer),
                 currentPlayer.getHand()
         );
     }
@@ -413,5 +413,19 @@ public class BidState extends State {
             throw new IllegalStateException("Critical error: The declared winning bid (" + currentHighestBidType + ") is not present in the bids list.");
         }
         game.getCurrentRound().startPlayPhase(this.bids, winningBid, this.currentTrumpSuit, firstPlayer);
+    }
+    /**
+     * Returns all legal bid types for a given player in the current bidding context.
+     */
+    private List<BidType> getLegalBids(Player player) {
+        List<BidType> legalBids = new ArrayList<>();
+
+        for (BidType bidType : BidType.values()) {
+            if (isLegalBidType(bidType)) {
+                legalBids.add(bidType);
+            }
+        }
+
+        return legalBids;
     }
 }

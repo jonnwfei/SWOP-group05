@@ -61,9 +61,10 @@ public class Adapter {
                 // --- Bidding State ---
                 case BidTurnResult b -> {
                     int choice = parser.parseNumberInput(raw);
-                    yield AdapterResponse.toDomain(new BidCommand(b.availableBids()[choice - 1]));
+                    yield AdapterResponse.toDomain(
+                            new BidCommand(b.availableBids().get(choice - 1))
+                    );
                 }
-
                 case SuitSelectionRequired ignored -> {
                     int choice = parser.parseNumberInput(raw);
                     yield AdapterResponse.toDomain(new SuitCommand(Suit.values()[choice - 1]));

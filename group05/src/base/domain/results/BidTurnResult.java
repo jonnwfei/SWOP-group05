@@ -10,6 +10,6 @@ public record BidTurnResult(
         String playerName,
         Suit trumpSuit,
         BidType currentHighestBid,
-        BidType[] availableBids,
+        List<BidType> availableBids,
         List<Card> hand
 ) implements GameResult {}

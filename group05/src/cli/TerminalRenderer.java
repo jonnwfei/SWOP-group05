@@ -102,19 +102,23 @@ public class TerminalRenderer {
         System.out.println("Dealt Trump: " + event.data().trumpSuit());
         System.out.println("Your hand: ");
         System.out.println(event.data().hand());
+
         if (event.data().currentHighestBid() == null) {
             System.out.println("You are the first to bid!");
         } else {
             System.out.println("Current Highest: " + event.data().currentHighestBid());
         }
-        System.out.println("All Options:");
-        BidType[] bids = event.data().availableBids();
-        for (int i = 0; i < bids.length; i++) {
-            System.out.println("   [" + (i + 1) + "] " + bids[i].name());
+
+        System.out.println("Available Options:");
+
+        List<BidType> bids = event.data().availableBids();
+
+        for (int i = 0; i < bids.size(); i++) {
+            System.out.println("   [" + (i + 1) + "] " + bids.get(i).name());
         }
+
         System.out.print("Your choice: ");
     }
-
     private void renderSuitSelectionEvent() {
         System.out.println("Choose a trump suit:");
         Suit[] suits = Suit.values();

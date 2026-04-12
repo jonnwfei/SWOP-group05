@@ -128,7 +128,13 @@ public class PlayState extends State {
             }
         }
 
-        List<Card> tableCards = currentTrick.getTurns().stream().map(Turn::playedCard).toList();
+        List<Card> tableCards = currentTrick.getTurns()
+                .stream()
+                .map(Turn::playedCard)
+                .toList();
+
+        // 🔥 Only legal cards now
+        List<Card> legalCards = currentTrick.getLegalCards(player);
 
         return new PlayCardResult(
                 tableCards,
@@ -137,7 +143,9 @@ public class PlayState extends State {
                 exposedHands,
                 currentRound.getTricks().size() + 1,
                 player.getName(),
-                player.getHand(), currentRound.getLastPlayedTrick());
+                legalCards, // 👈 changed here
+                currentRound.getLastPlayedTrick()
+        );
     }
 
 
