@@ -9,6 +9,7 @@ import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
+import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
 
 import java.util.ArrayList;
@@ -18,9 +19,9 @@ public class SmartBotMemory implements GameObserver {
 
     private Suit currentTrump;
     private final List<Card> unplayedCards;
-    private final List<Bid> bidsMemory;
+    private final List<BidTurn> bidsMemory;
     private final List<PlayTurn> currentTrickPlayTurns;
-    private final List<Player> playersAtTable;
+    private final List<PlayerId> playersAtTable;
 
     public SmartBotMemory() {
         this.currentTrump = null;
@@ -49,7 +50,7 @@ public class SmartBotMemory implements GameObserver {
     }
 
     @Override
-    public void onBidPlaced(PlayerId playerId, BidType bidType) {this.bidsMemory.add(bid);}
+    public void onBidPlaced(BidTurn bidTurn) {this.bidsMemory.add(bidTurn);}
 
     @Override
     public void onTurnPlayed(PlayTurn playTurn) {
@@ -65,15 +66,16 @@ public class SmartBotMemory implements GameObserver {
 
     public Suit getCurrentTrump() { return currentTrump; }
 
-    public Bid getHighestBid() {return bidsMemory.stream().max(Bid::compareTo).orElse(null);}
+    /**
+     * Returns the highest bid placed so far wrapped in a BidTurn.
+     */
+    public BidTurn getHighestBid() {
+        return bidsMemory.stream()
+                .max((b1, b2) -> b1.bidType().compareTo(b2.bidType()))
+                .orElse(null);
+    }
 
     public Suit getLeadSuit() { return currentTrickPlayTurns.isEmpty() ? null : currentTrickPlayTurns.getFirst().playedCard().suit(); }
-
-    public List<Player> getBidTeam(Player player) {
-        Bid bid = bidsMemory.stream().filter(b -> b.getPlayer().equals(player)).findFirst().orElse(null);
-        if (bid == null) {return new ArrayList<>();}
-        return bid.getTeam(bidsMemory, playersAtTable);
-    }
 
     public PlayTurn getCurrentWinningTurn() {
         Suit leadingSuit = getLeadSuit();
@@ -90,7 +92,7 @@ public class SmartBotMemory implements GameObserver {
             }
 
             boolean isNewCardTrump = (this.currentTrump != null && playedCard.suit() == this.currentTrump);
-            boolean isBestCardTrump = (this.currentTrickPlayTurns != null && bestCard.suit() == this.currentTrump);
+            boolean isBestCardTrump = (this.currentTrump != null && bestCard.suit() == this.currentTrump);
 
             if (isNewCardTrump) {
                 // Trump always beats non-trump; highest trump beats lower trump
@@ -109,26 +111,82 @@ public class SmartBotMemory implements GameObserver {
         return winningPlayTurn;
     }
 
-    // --- idk yet ---
+// --- Strategy Helpers (Required by SmartBotStrategy) ---
 
     public boolean hasActiveProposal() {
         return this.bidsMemory.stream()
-                .anyMatch(bid -> bid.getType() == BidType.PROPOSAL);
+                .anyMatch(bid -> bid.bidType() == BidType.PROPOSAL);
     }
 
     public boolean isLeadPlayer() {
         return this.currentTrickPlayTurns.isEmpty();
     }
 
-    public boolean isTeamWinning(Player askingPlayer, TrickEvaluator rules) {
-        PlayTurn winningPlayTurn = getCurrentWinningTurn(rules);
+    public PlayerId calculateCurrentWinnerId() {
+        PlayTurn turn = getCurrentWinningTurn();
+        return turn != null ? turn.player() : null;
+    }
+
+    public boolean hasPlayerActedInCurrentTrick(PlayerId playerId) {
+        return this.currentTrickPlayTurns.stream()
+                .anyMatch(turn -> turn.player().equals(playerId));
+    }
+
+    public Card getCardPlayedBy(PlayerId playerId) {
+        return this.currentTrickPlayTurns.stream()
+                .filter(turn -> turn.player().equals(playerId))
+                .map(PlayTurn::playedCard)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public boolean isHighestUnplayedCardInSuit(Card card) {
+        return unplayedCards.stream().anyMatch(c -> c.suit().equals(card.suit()) && c.rank().compareTo(card.rank()) <= 0);
+    }
+
+    /**
+     * Determines if the asking player's team is currently winning the trick.
+     * Evaluates partnerships (like Proposal/Acceptance) using BidTurn history.
+     */
+    public boolean isTeamWinning(PlayerId askingPlayerId) {
+        PlayTurn winningPlayTurn = getCurrentWinningTurn();
 
         // If the table is empty, no one is winning!
         if (winningPlayTurn == null) {
             return false;
         }
 
-        List<Player> myTeam = getBidTeam(askingPlayer);
-        return myTeam.contains(winningPlayTurn.player());
+        PlayerId winnerId = winningPlayTurn.player();
+
+        // Did the asking player play the winning card?
+        if (askingPlayerId.equals(winnerId)) {
+            return true;
+        }
+
+        BidTurn highestBid = getHighestBid();
+        if (highestBid == null) return false;
+
+        // Check partnerships for Proposal/Acceptance
+        if (highestBid.bidType() == BidType.ACCEPTANCE || highestBid.bidType() == BidType.PROPOSAL) {
+            PlayerId proposer = bidsMemory.stream()
+                    .filter(b -> b.bidType() == BidType.PROPOSAL)
+                    .map(BidTurn::playerId)
+                    .findFirst()
+                    .orElse(null);
+
+            PlayerId acceptor = bidsMemory.stream()
+                    .filter(b -> b.bidType() == BidType.ACCEPTANCE)
+                    .map(BidTurn::playerId)
+                    .findFirst()
+                    .orElse(null);
+
+            boolean amIOnTeam = askingPlayerId.equals(proposer) || askingPlayerId.equals(acceptor);
+            boolean isWinnerOnTeam = winnerId.equals(proposer) || winnerId.equals(acceptor);
+
+            return amIOnTeam && isWinnerOnTeam;
+        }
+
+        // Default to false for SOLO, MISERIE, ABONDANCE (no known partner via BidTurn)
+        return false;
     }
 }
