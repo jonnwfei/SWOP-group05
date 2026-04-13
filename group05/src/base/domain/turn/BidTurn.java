@@ -8,7 +8,7 @@ public record BidTurn(PlayerId playerId, BidType bidType) {
      * Instantiates a new BidTurn.
      *
      * @param playerId     of this bid turn
-     * @param bidType    chosen by the player
+     * @param bidType    chosen by the playerId
      */
     public BidTurn {
         if (playerId == null) throw new IllegalArgumentException("Bid turn: Player cannot be null");

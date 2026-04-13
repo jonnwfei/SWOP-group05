@@ -9,15 +9,15 @@ import base.domain.player.PlayerId;
  * @author John Cai
  * @since 26/02/2026
  */
-public record PlayTurn(PlayerId player, Card playedCard) {
+public record PlayTurn(PlayerId playerId, Card playedCard) {
     /**
      * Instantiates a new playTurn.
      *
-     * @param player     of this turn
-     * @param playedCard of the player in this turn
+     * @param playerId     of this turn
+     * @param playedCard of the playerId in this turn
      */
     public PlayTurn {
-        if (player == null) throw new IllegalArgumentException("Play turn: Player cannot be null");
+        if (playerId == null) throw new IllegalArgumentException("Play turn: Player cannot be null");
         if (playedCard == null) throw new IllegalArgumentException("Play turn: PlayedCard cannot be null");
     }
 }
