@@ -39,9 +39,9 @@ public class SaveRepository {
 
     /**
      * Initializes the repository with a custom save directory.
-     * 
+     *
      * @param saveDirectory where saves are stored
-     * @throws IllegalArgumentException saveDirectory cannot be null
+     * @throws IllegalArgumentException if saveDirectory is null
      */
     public SaveRepository(Path saveDirectory) {
         if (saveDirectory == null)
@@ -51,9 +51,10 @@ public class SaveRepository {
 
     /**
      * Saves the given snapshot to the saveDirectory,
-     * 
+     *
      * @param snapshot to save
-     * @throws IllegalArgumentException Cannot save a null snapshot
+     * @throws IllegalArgumentException if snapshot is null
+     * @throws IllegalStateException if the saveDirectory cannot be created
      */
     public void save(GameSnapshot snapshot) {
         if (snapshot == null)
@@ -67,14 +68,11 @@ public class SaveRepository {
 
     /**
      * Writes the given snapshot to the specified target path.
-     * 
-     * @param target   target Path to writeSnapshot to
+     *
+     * @param target target Path to writeSnapshot to
      * @param snapshot snapshot to write
      * @throws IllegalArgumentException if target is null or snapshot is null
-     * @throws IllegalStateException    if an IOException occurs during writing
-     * @throws IllegalStateException    if the target path cannot be written to
-     *                                  (e.g. if it's a directory or if
-     *                                  permissions are insufficient)
+     * @throws IllegalStateException if an IOException occurs during writing
      */
     public void writeSnapshot(Path target, GameSnapshot snapshot) {
         if (target == null)
@@ -94,8 +92,9 @@ public class SaveRepository {
      * Retrieves the list of descriptions of saveFiles
      * If a snapshot doesn't have a description, the file name (without extension)
      * is used instead.
-     * 
+     *
      * @return list of descriptions of all saved snapshots.
+     * @throws IllegalStateException if reading directory or files fails
      */
     public List<String> listDescriptions() {
         ensureDirectory();
@@ -107,33 +106,34 @@ public class SaveRepository {
         return descriptions;
     }
 
-    /**
-     * Retrieves the gameSnapshot corresponding to its description
-     * 
-     * @param description of a gameSnapshot
-     * @return GameSnapshot
-     * @throws IllegalArgumentException if given description is null
-     */
-    public GameSnapshot loadByDescription(String description) {
-        if (description == null)
-            throw new IllegalArgumentException("Cannot load from a null description");
+        /**
+         * Retrieves the gameSnapshot corresponding to its description
+         *
+         * @param description of a gameSnapshot
+         * @return GameSnapshot
+         * @throws IllegalArgumentException if given description is null
+         * @throws IllegalArgumentException if no save file is found with the given description
+         * @throws IllegalStateException if a matching saveFile is corrupted or unreadable
+         */
+        public GameSnapshot loadByDescription(String description) {
+            if (description == null)
+                throw new IllegalArgumentException("Cannot load from a null description");
 
-        ensureDirectory();
-        for (Path saveFile : listSaveFiles()) {
-            Properties properties = readProperties(saveFile);
-            String storedDescription = properties.getProperty("description", fileNameWithoutExtension(saveFile));
-            if (storedDescription.equals(description)) {
-                return fromProperties(properties);
+            ensureDirectory();
+            for (Path saveFile : listSaveFiles()) {
+                Properties properties = readProperties(saveFile);
+                String storedDescription = properties.getProperty("description", fileNameWithoutExtension(saveFile));
+                if (storedDescription.equals(description)) {
+                    return fromProperties(properties);
+                }
             }
+            throw new IllegalArgumentException("No save file found with description: " + description);
         }
-        return null;
-    }
 
     /**
      * Ensures that the saveDirectory is instantiated.
      *
-     * @throws IllegalStateException if IOException occurs, the save directory
-     *                               cannot be created or accessed.
+     * @throws IllegalStateException if the save directory cannot be created or accessed.
      */
     private void ensureDirectory() {
         try {
@@ -145,10 +145,9 @@ public class SaveRepository {
 
     /**
      * Retrieves a list of saveFiles
-     * 
+     *
      * @return list of Path's (saveFiles)
-     * @throws IllegalStateException if IOException occurs during listing of the
-     *                               saveDirectory
+     * @throws IllegalStateException if IOException occurs during listing of the saveDirectory
      */
     private List<Path> listSaveFiles() {
         try (Stream<Path> files = Files.list(savesDirectory)) {
@@ -165,8 +164,7 @@ public class SaveRepository {
      *
      * @param saveFile to read from
      * @return Properties of a given saveFile
-     * @throws IllegalStateException if IOException occurs during reading of the
-     *                               saveFile
+     * @throws IllegalStateException if IOException occurs during reading of the saveFile
      */
     private Properties readProperties(Path saveFile) {
         Properties properties = new Properties();
@@ -181,10 +179,9 @@ public class SaveRepository {
     /**
      * Resolves the save path for a given description by slugifying it and appending
      * the .properties extension.
-     * 
+     *
      * @param description to resolve the path from
-     * @return Path of this game's savesDirectory + slugified description +
-     *         .properties extension
+     * @return Path of this game's savesDirectory + slugified description + .properties extension
      */
     private Path resolveSavePath(String description) {
         String normalized = description.trim();
@@ -244,59 +241,63 @@ public class SaveRepository {
      *
      * @param properties to create a gameSnapshot from
      * @return GameSnapshot
+     * @throws IllegalStateException if the properties file is missing data or malformed
      */
     private GameSnapshot fromProperties(Properties properties) {
-        String description = properties.getProperty("description", "Unnamed Save");
-        SaveMode mode = SaveMode.valueOf(properties.getProperty("mode"));
-        int dealerIndex = Integer.parseInt(properties.getProperty("dealerIndex"));
+        try {
+            String description = properties.getProperty("description", "Unnamed Save");
+            SaveMode mode = SaveMode.valueOf(properties.getProperty("mode"));
+            int dealerIndex = Integer.parseInt(properties.getProperty("dealerIndex"));
 
-        int playerCount = Integer.parseInt(properties.getProperty("player.count", "0"));
-        List<PlayerSnapshot> players = new ArrayList<>();
-        for (int i = 0; i < playerCount; i++) {
-            String name = properties.getProperty("player." + i + ".name");
-            StrategySnapshotType strategy = StrategySnapshotType
-                    .valueOf(properties.getProperty("player." + i + ".strategy"));
-            int score = Integer.parseInt(properties.getProperty("player." + i + ".score", "0"));
-            players.add(new PlayerSnapshot(name, strategy, score));
+            int playerCount = Integer.parseInt(properties.getProperty("player.count", "0"));
+            List<PlayerSnapshot> players = new ArrayList<>();
+            for (int i = 0; i < playerCount; i++) {
+                String name = properties.getProperty("player." + i + ".name");
+                StrategySnapshotType strategy = StrategySnapshotType
+                        .valueOf(properties.getProperty("player." + i + ".strategy"));
+                int score = Integer.parseInt(properties.getProperty("player." + i + ".score", "0"));
+                players.add(new PlayerSnapshot(name, strategy, score));
+            }
+
+            int roundCount = Integer.parseInt(properties.getProperty("round.count", "0"));
+            List<RoundSnapshot> rounds = new ArrayList<>();
+            for (int i = 0; i < roundCount; i++) {
+                String prefix = "round." + i + ".";
+                BidType bidType = BidType.valueOf(properties.getProperty(prefix + "bidType", BidType.PASS.name()));
+                int bidderIndex = Integer.parseInt(properties.getProperty(prefix + "bidderIndex", "0"));
+                int tricksWon = Integer.parseInt(properties.getProperty(prefix + "tricksWon", "-1"));
+                int multiplier = Integer.parseInt(properties.getProperty(prefix + "multiplier", "1"));
+
+                int participantsCount = Integer.parseInt(properties.getProperty(prefix + "participants.count", "0"));
+                List<Integer> participantIndices = new ArrayList<>();
+                for (int j = 0; j < participantsCount; j++) {
+                    participantIndices.add(Integer.parseInt(properties.getProperty(prefix + "participants." + j, "0")));
+                }
+
+                int winnersCount = Integer.parseInt(properties.getProperty(prefix + "miserieWinners.count", "0"));
+                List<Integer> miserieWinnerIndices = new ArrayList<>();
+                for (int j = 0; j < winnersCount; j++) {
+                    miserieWinnerIndices.add(Integer.parseInt(properties.getProperty(prefix + "miserieWinners." + j, "0")));
+                }
+
+                List<Integer> scoreDeltas = new ArrayList<>();
+                for (int j = 0; j < 4; j++) {
+                    scoreDeltas.add(Integer.parseInt(properties.getProperty(prefix + "scoreDelta." + j, "0")));
+                }
+
+                rounds.add(new RoundSnapshot(
+                        bidType,
+                        bidderIndex,
+                        participantIndices,
+                        tricksWon,
+                        miserieWinnerIndices,
+                        multiplier,
+                        scoreDeltas));
+            }
+            return new GameSnapshot(description, mode, dealerIndex, players, rounds);
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("Corrupted save file data detected", e);
         }
-
-        int roundCount = Integer.parseInt(properties.getProperty("round.count", "0"));
-        List<RoundSnapshot> rounds = new ArrayList<>();
-        for (int i = 0; i < roundCount; i++) {
-            String prefix = "round." + i + ".";
-            BidType bidType = BidType.valueOf(properties.getProperty(prefix + "bidType", BidType.PASS.name()));
-            int bidderIndex = Integer.parseInt(properties.getProperty(prefix + "bidderIndex", "0"));
-            int tricksWon = Integer.parseInt(properties.getProperty(prefix + "tricksWon", "-1"));
-            int multiplier = Integer.parseInt(properties.getProperty(prefix + "multiplier", "1"));
-
-            int participantsCount = Integer.parseInt(properties.getProperty(prefix + "participants.count", "0"));
-            List<Integer> participantIndices = new ArrayList<>();
-            for (int j = 0; j < participantsCount; j++) {
-                participantIndices.add(Integer.parseInt(properties.getProperty(prefix + "participants." + j, "0")));
-            }
-
-            int winnersCount = Integer.parseInt(properties.getProperty(prefix + "miserieWinners.count", "0"));
-            List<Integer> miserieWinnerIndices = new ArrayList<>();
-            for (int j = 0; j < winnersCount; j++) {
-                miserieWinnerIndices.add(Integer.parseInt(properties.getProperty(prefix + "miserieWinners." + j, "0")));
-            }
-
-            List<Integer> scoreDeltas = new ArrayList<>();
-            for (int j = 0; j < 4; j++) {
-                scoreDeltas.add(Integer.parseInt(properties.getProperty(prefix + "scoreDelta." + j, "0")));
-            }
-
-            rounds.add(new RoundSnapshot(
-                    bidType,
-                    bidderIndex,
-                    participantIndices,
-                    tricksWon,
-                    miserieWinnerIndices,
-                    multiplier,
-                    scoreDeltas));
-        }
-
-        return new GameSnapshot(description, mode, dealerIndex, players, rounds);
     }
 
     /**
