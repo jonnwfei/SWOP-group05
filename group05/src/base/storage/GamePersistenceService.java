@@ -43,6 +43,7 @@ public class GamePersistenceService {
      * @param mode the save mode indicating full game save or count game save
      * @param description a user-chosen description or name for the save, used for choosing between saves when loading
      * @throws IllegalArgumentException if any of the parameters are null or if the description is empty
+     * @throws IllegalStateException if the game state is invalid (e.g., missing dealer, malformed rounds)
      */
     public void save(WhistGame game, SaveMode mode, String description) {
         if (game == null) throw new IllegalArgumentException("Cannot save null game");
@@ -66,17 +67,16 @@ public class GamePersistenceService {
      * @param game the game instance to restore the saved state into
      * @param description the name of the saveFile to load
      * @return the SaveMode of the loaded game, or null if no save with the given description was found
-     * @throws IllegalArgumentException if given game instance is null
-     * @throws IllegalArgumentException if given description is null
+     * @throws IllegalArgumentException if given game instance is null, description is null, or no save is found
+     * @throws IllegalStateException if the save contains corrupted states that prevent proper restoration
      */
     public SaveMode loadIntoGame(WhistGame game, String description) {
         if (game == null) throw new IllegalArgumentException("Cannot load into a null game");
         if (description == null) throw new IllegalArgumentException("Cannot from a null description");
 
         GameSnapshot snapshot = repository.loadByDescription(description);
-        if (snapshot == null) {
-            return null;
-        }
+        if (snapshot == null) throw new IllegalArgumentException("No save found with description: " + description);
+
         restoreGame(game, snapshot);
         return snapshot.mode();
     }
@@ -87,6 +87,8 @@ public class GamePersistenceService {
      * @param mode the game mode to save (full game or count session)
      * @param description description/alias or name for the save, used for choosing between saves when loading
      * @return GameSnapshot representing the current state of the game
+     * @throws IllegalArgumentException if the description is blank
+     * @throws IllegalStateException if the dealer is null or not in the players list
      */
     private GameSnapshot createSnapshot(WhistGame game, SaveMode mode, String description) {
         String normalizedDescription = description.trim();
@@ -137,6 +139,7 @@ public class GamePersistenceService {
      * Constructs a snapshot of a player, containing their name, strategy type, and score from their current state in the game.
      * @param player the player instance to create a snapshot from
      * @return PlayerSnapshot of the provided player
+     * @throws IllegalArgumentException if the player is null
      */
     private PlayerSnapshot toSnapshot(Player player) {
         if (player == null) throw new IllegalArgumentException("Cannot create a snapshot of a null player");
@@ -151,6 +154,8 @@ public class GamePersistenceService {
      * This currently captures stable metadata and round count compatibility fields.
      * @param round the round instance to create a snapshot from
      * @return RoundSnapshot of the provided round
+     * @throws IllegalArgumentException if the round is null
+     * @throws IllegalStateException if the round's internal state is corrupted or missing essential data
      */
     private RoundSnapshot toSnapshot(Round round) {
         if (round == null) throw new IllegalArgumentException("Cannot create a snapshot of a null round");
@@ -163,7 +168,7 @@ public class GamePersistenceService {
 
         BidType bidType = highestBid.getType();
         int bidderIndex = roundPlayers.indexOf(highestBid.getPlayer());
-        if (bidderIndex < 0) throw new IllegalStateException("Cannot snapshot round where bidder is not part of players");
+
 
         List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()
             .map(roundPlayers::indexOf)
@@ -171,61 +176,48 @@ public class GamePersistenceService {
         if (participantIndices.isEmpty()) {
             throw new IllegalStateException("Cannot snapshot round without bidding team participants");
         }
-        if (participantIndices.stream().anyMatch(index -> index < 0)) {
-            throw new IllegalStateException("Cannot snapshot round with participants outside players list");
-        }
 
         List<Integer> miserieWinnerIndices = round.getCountMiserieWinners().stream()
             .map(roundPlayers::indexOf)
             .toList();
-        if (miserieWinnerIndices.stream().anyMatch(index -> index < 0)) {
-            throw new IllegalStateException("Cannot snapshot round with miserie winners outside players list");
-        }
 
         List<Integer> scoreDeltas = round.getScoreDeltas();
-        if (scoreDeltas.size() != 4) {
-            throw new IllegalStateException("Cannot snapshot round without exactly 4 score deltas");
-        }
 
         int tricksWon = round.getCountTricksWon();
         if (tricksWon < 0) {
             tricksWon = round.getBiddingTeamTricksWon();
         }
-        if (tricksWon < -1 || tricksWon > 13) {
-            throw new IllegalStateException("Cannot snapshot round with invalid tricks won value: " + tricksWon);
-        }
 
-        return new RoundSnapshot(
-                bidType,
-                bidderIndex,
-                participantIndices,
-            tricksWon,
-            miserieWinnerIndices,
-            round.getMultiplier(),
-            scoreDeltas);
+        try {
+            return new RoundSnapshot(
+                    bidType,
+                    bidderIndex,
+                    participantIndices,
+                tricksWon,
+                miserieWinnerIndices,
+                round.getMultiplier(),
+                scoreDeltas);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
+        }
     }
 
     /**
      * Rebuilds round history placeholders so round-based workflows keep functioning after load.
      * @param game restored game
      * @param roundSnapshots persisted round snapshots
+     * @throws IllegalStateException if trying to restore rounds to a game without exactly 4 players
      */
     private void restoreRoundHistory(WhistGame game, List<RoundSnapshot> roundSnapshots) {
-        if (roundSnapshots == null || roundSnapshots.isEmpty()) {
+        if (roundSnapshots.isEmpty()) {
             return;
         }
 
         List<Player> players = game.getPlayers();
-        if (players.size() != 4) {
-            throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
-        }
+        if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
 
         for (RoundSnapshot snapshot : roundSnapshots) {
-            int startIdx = snapshot.bidderIndex();
-            if (startIdx < 0 || startIdx >= players.size()) {
-                startIdx = 0;
-            }
-            game.addRound(new Round(players, players.get(startIdx), snapshot.multiplier()));
+            game.addRound(new Round(players, players.get(snapshot.bidderIndex()), snapshot.multiplier()));
         }
     }
 
@@ -244,7 +236,10 @@ public class GamePersistenceService {
             case HighBotStrategy _ -> {
                 return StrategySnapshotType.HIGH_BOT;
             }
-//            case SmartBotStrategy _ -> { // TODO: fixed by merge
+//            case LowBotStrategy _ -> { // TODO: fixed by merge
+//                return StrategySnapshotType.SMART_BOT;
+//            }
+//            default SmartBotStrategy _ -> { // TODO: fixed by merge
 //                return StrategySnapshotType.SMART_BOT;
 //            }
             default -> {
