@@ -7,6 +7,7 @@ import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
+import base.domain.trick.TrickEvaluator;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
 
@@ -96,37 +97,19 @@ public class SmartBotMemory implements GameObserver {
      * @return The PlayTurn of the playerId currently winning, or null if the trick is empty.
      */
     public PlayTurn getCurrentWinningTurn() {
-        Suit leadingSuit = getLeadSuit();
-        Card bestCard = null;
-        PlayTurn winningPlayTurn = null;
+        if (currentTrickPlayTurns.isEmpty()) return null;
 
-        for (PlayTurn playTurn : currentTrickPlayTurns) {
-            Card playedCard = playTurn.playedCard();
+        Suit leadSuit = getLeadSuit();
 
-            if (bestCard == null) {
-                bestCard = playedCard;
-                winningPlayTurn = playTurn;
-                continue;
-            }
+        TrickEvaluator rules = new TrickEvaluator(leadSuit, this.currentTrump);
 
-            boolean isNewCardTrump = (this.currentTrump != null && playedCard.suit() == this.currentTrump);
-            boolean isBestCardTrump = (this.currentTrump != null && bestCard.suit() == this.currentTrump);
-
-            if (isNewCardTrump) {
-                // Trump always beats non-trump; highest trump beats lower trump
-                if (!isBestCardTrump || playedCard.rank().compareTo(bestCard.rank()) > 0) {
-                    bestCard = playedCard;
-                    winningPlayTurn = playTurn;
-                }
-            } else if (!isBestCardTrump) {
-                // If no trump is involved, highest rank of the leading suit wins
-                if (playedCard.suit() == leadingSuit && playedCard.rank().compareTo(bestCard.rank()) > 0) {
-                    bestCard = playedCard;
-                    winningPlayTurn = playTurn;
-                }
+        PlayTurn winningTurn = null;
+        for (PlayTurn turn : currentTrickPlayTurns) {
+            if (winningTurn == null || rules.doesBeat(turn.playedCard(), winningTurn.playedCard())) {
+                winningTurn = turn;
             }
         }
-        return winningPlayTurn;
+        return winningTurn;
     }
 
 // --- Strategy Helpers ---
@@ -217,7 +200,7 @@ public class SmartBotMemory implements GameObserver {
         }
 
         BidTurn highestBid = getHighestBid();
-        if (highestBid == null) throw  new IllegalStateException("djo");
+        if (highestBid == null) throw  new IllegalStateException("Highest Bid hasn't been set yet");
 
         BidType highestBidType = highestBid.bidType();
 

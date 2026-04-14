@@ -187,6 +187,7 @@ class SmartBotStrategyTest {
         @Test
         @DisplayName("Not Lead, Losing: Plays highest card to follow suit")
         void testPlayHighestToWin() {
+            gameObserver.onBidPlaced(new BidTurn(enemyId, BidType.SOLO));
             Card highSpade = new Card(Suit.SPADES, Rank.KING);
             Card lowSpade = new Card(Suit.SPADES, Rank.TWO);
             List<Card> hand = List.of(highSpade, lowSpade);
@@ -202,6 +203,7 @@ class SmartBotStrategyTest {
         @DisplayName("Not Lead, Losing, Void in Lead: Plays lowest trump")
         void testPlayLowestTrumpWhenVoid() {
             gameObserver.onTrumpDetermined(Suit.HEARTS);
+            gameObserver.onBidPlaced(new BidTurn(enemyId, BidType.SOLO));
             Card highHeart = new Card(Suit.HEARTS, Rank.ACE);
             Card lowHeart = new Card(Suit.HEARTS, Rank.TWO);
             Card club = new Card(Suit.CLUBS, Rank.FIVE);
@@ -223,6 +225,7 @@ class SmartBotStrategyTest {
             // Nullify trump for miserie games
             gameObserver.onTrumpDetermined(null);
         }
+
 
         @Test
         @DisplayName("MISERIE Tactic: Plays highest safe card that does not win")
