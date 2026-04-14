@@ -99,10 +99,10 @@ public class Round {
         }
 
         // The bid knows how to build its own team.
-        this.biddingTeam.addAll(this.highestBid.getTeam(this.bids, this.players));
+        this.biddingTeam.addAll(this.highestBid.getTeam(this.bids, this.players).stream().map(this::getPlayerById).toList());
     }
 
-    /**
+    /**w
      * Aborts the round because all players passed.
      * Records the final bids and sets the highest bid to PASS for the multiplier tracking.
      *
@@ -144,10 +144,7 @@ public class Round {
 
         // Map the winning PlayerId back to the physical Player object
         PlayerId winnerId = trick.getWinningPlayerId();
-        this.currentPlayer = this.players.stream()
-                .filter(p -> p.getId().equals(winnerId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Winning player ID not found at table!"));
+        this.currentPlayer = getPlayerById(winnerId);
 
         if (this.playedTricks.size() == MAX_TRICKS) {
             // Delegate scoring calculation to our Pure Fabrication math engine!
@@ -297,6 +294,14 @@ public class Round {
                 }
             }
         }
+    }
+
+    // Currently duplicated in other classes to save time. definitely to be refactored in 3rd iteration
+    private Player getPlayerById(PlayerId id) {
+        return players.stream()
+                .filter(p -> p.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("PlayerId not found!"));
     }
 
     /**

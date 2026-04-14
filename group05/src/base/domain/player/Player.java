@@ -110,7 +110,7 @@ public class Player {
      *
      * @return the {@link Bid} chosen by the player's strategy.
      */
-    public Bid chooseBid() {return this.decisionStrategy.determineBid(this);}
+    public Bid chooseBid() {return this.decisionStrategy.determineBid(playerId, currentHand);}
 
     /**
      * updates the player score.
