@@ -1,43 +1,48 @@
 package base.domain.trick;
 
 import base.domain.card.Suit;
-import base.domain.player.Player;
 import base.domain.card.Card;
+import base.domain.player.PlayerId;
 import base.domain.turn.PlayTurn;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Represents a single trick in a Whist round
+ * Represents a single trick in a Whist round.
+ * Acts as a passive ledger that records turns and calculates the current winning card.
  * @author John Cai
  * @since 25/02/2026
  */
 public class Trick {
-    /** The maximum number of players/cards in a single trick. */
+    /**
+     * The maximum number of players/cards in a single trick.
+     */
     public static final int MAX_TURNS = 4;
 
     private final Suit trumpSuit;
-    private final Player startingPlayer;
-    private Player WinningPlayer;
+    private final PlayerId startingPlayerId;
+
+    private PlayerId winningPlayerId;
     private Card currentWinningCard;
-    private final List<PlayTurn> PlayTurns;
+    private final List<PlayTurn> playTurns;
 
     /**
      * Initializes a new trick.
-     * @param startingPlayer The player who leads the trick.
-     * @param trumpSuit The trump suit for the current round (can be null).
-     * @throws IllegalArgumentException if startingPlayer is null.
+     * @param startingPlayerId The ID of the player who leads the trick.
+     * @param trumpSuit The trump suit for the current round (can be null for Miserie).
+     * @throws IllegalArgumentException if startingPlayerId is null.
      */
-    public Trick(Player startingPlayer, Suit trumpSuit) {
-        if (startingPlayer == null)
-            throw new IllegalArgumentException("Trick: Starting player must exist.");
+    public Trick(PlayerId startingPlayerId, Suit trumpSuit) {
+        if (startingPlayerId == null) {
+            throw new IllegalArgumentException("Trick: Starting player ID must exist.");
+        }
 
         this.trumpSuit = trumpSuit;
-        this.startingPlayer = startingPlayer;
-        this.WinningPlayer = null;
+        this.startingPlayerId = startingPlayerId;
+        this.winningPlayerId = null;
         this.currentWinningCard = null;
-        this.PlayTurns = new ArrayList<>();
+        this.playTurns = new ArrayList<>();
     }
 
     /**
@@ -45,96 +50,72 @@ public class Trick {
      * @return The leading suit, or null if no cards have been played.
      */
     public Suit getLeadingSuit() {
-        if (PlayTurns.isEmpty()) return null;
-        return PlayTurns.getFirst().playedCard().suit();
+        if (playTurns.isEmpty()) return null;
+        return playTurns.getFirst().playedCard().suit();
     }
 
-    /** @return The player who started the trick. */
-    public Player getStartingPlayer() {
-        return this.startingPlayer;
+    /** @return The ID of the player who won the trick or is currently winning. */
+    public PlayerId getWinningPlayerId() {
+        return this.winningPlayerId;
     }
 
-    /** @return The player who won the trick or is currently winning the trick if trick isn't finished yet. */
-    public Player getWinningPlayer() {
-        return this.WinningPlayer;
+    /** @return The ID of the player who started the trick. */
+    public PlayerId getStartingPlayerId() {
+        return this.startingPlayerId;
     }
 
     /** @return A shallow, immutable copy of the turns played so far. */
     public List<PlayTurn> getTurns() {
-        return List.copyOf(this.PlayTurns);
+        return List.copyOf(this.playTurns);
     }
 
     /** @return true if the trick contains the maximum number of turns. */
     public boolean isCompleted() {
-        return this.PlayTurns.size() >= MAX_TURNS;
+        return this.playTurns.size() >= MAX_TURNS;
     }
 
     /**
-     * Processes a player's move, validates rules, and removes the card from their hand.
-     * @param player The player attempting to play.
-     * @param playedCard The card to be played.
-     * @throws IllegalArgumentException if the player already played, the move is illegal
-     * (not following suit), or the trick is full.
+     * Records a player's move in the Trick and recalculates the winning player.
+     * Note: Rule validation (e.g., "Must follow suit") and hand mutation MUST be
+     * handled by the Active Coordinator (PlayState) before calling this method.
+     * @param playerId The ID of the player making the move.
+     * @param playedCard The card being played.
+     * @throws IllegalArgumentException if the player already played in this trick.
+     * @throws IllegalStateException if the trick is already full.
      */
-    public void playCard(Player player, Card playedCard) {
-        if (player == null || playedCard == null)
-            throw new IllegalArgumentException("Trick: Player and Card must exist.");
+    public void addTurn(PlayerId playerId, Card playedCard) {
+        if (playerId == null || playedCard == null) {
+            throw new IllegalArgumentException("Trick: PlayerId and Card must exist.");
+        }
+        if (isCompleted()) {
+            throw new IllegalStateException("Trick: This trick is already full.");
+        }
 
         // Rule: One card per player
-        if (PlayTurns.stream().anyMatch(t -> t.playerId().equals(player.getId()))) {
-            throw new IllegalArgumentException("Trick: Player already played in this trick.");
+        if (playTurns.stream().anyMatch(t -> t.playerId().equals(playerId))) {
+            throw new IllegalArgumentException("Trick: Player has already played in this trick.");
         }
 
-        // Rule: Must follow leading suit if possible
-        if (!PlayTurns.isEmpty()) {
-            Suit leadingSuit = getLeadingSuit();
-            if (playedCard.suit() != leadingSuit && player.hasSuit(leadingSuit)) {
-                throw new IllegalArgumentException("Trick: You must follow the leading suit (" + leadingSuit + ").");
-            }
-        }
-
-        if (PlayTurns.size() >= MAX_TURNS) {
-            throw new IllegalArgumentException("Trick: This trick is already full.");
-        }
-
-        PlayTurns.add(new PlayTurn(player.getId(), playedCard));
-        player.removeCard(playedCard);
-
-        determineWinner(player, playedCard);
+        playTurns.add(new PlayTurn(playerId, playedCard));
+        updateWinningPlayer(playerId, playedCard);
     }
 
     /**
-     * Updates the state of the trick with the new winning player and card.
+     * Updates the state of the trick using the globally defined TrickEvaluator rules.
      */
-    private void determineWinner(Player player, Card playedCard) {
-        if (this.WinningPlayer == null) {
-            this.WinningPlayer = player;
+    private void updateWinningPlayer(PlayerId playerId, Card playedCard) {
+        if (this.winningPlayerId == null) {
+            this.winningPlayerId = playerId;
             this.currentWinningCard = playedCard;
             return;
         }
 
-        if (beatsCurrentWinner(playedCard)) {
-            this.WinningPlayer = player;
+        // Delegate the complex math to our Pure Fabrication evaluator!
+        TrickEvaluator evaluator = new TrickEvaluator(getLeadingSuit(), this.trumpSuit);
+
+        if (evaluator.doesBeat(playedCard, this.currentWinningCard)) {
+            this.winningPlayerId = playerId;
             this.currentWinningCard = playedCard;
         }
-    }
-
-    /**
-     * Evaluates if the played card beats this trick's current winning card.
-     */
-    private boolean beatsCurrentWinner(Card playedCard) {
-        boolean isPlayedCardTrump = (this.trumpSuit != null && playedCard.suit() == this.trumpSuit);
-        boolean isBestCardTrump = (this.trumpSuit != null && this.currentWinningCard.suit() == this.trumpSuit);
-
-        if (isPlayedCardTrump) {
-            // Trump always beats non-trump; highest trump beats lower trump
-            return !isBestCardTrump || playedCard.rank().compareTo(this.currentWinningCard.rank()) > 0;
-        }
-        else if (!isBestCardTrump && playedCard.suit() == getLeadingSuit()) {
-            // If no trump is involved, highest rank of the leading suit wins
-            return playedCard.rank().compareTo(this.currentWinningCard.rank()) > 0;
-        }
-        // suit of played card is not trump suit nor leading suit
-        return false;
     }
 }

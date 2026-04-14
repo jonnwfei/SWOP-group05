@@ -78,35 +78,35 @@ public final class SmartBotStrategy implements Strategy {
     /**
      * Evaluates the bot's hand and the current bidding history to determine the optimal bid.
      *
-     * @param player The player context (used to instantiate the returned Bid object).
+     * @param playerId The player context (used to instantiate the returned Bid object).
      * @return A legally instantiated {@link Bid}.
      * @throws IllegalArgumentException if the provided player is null.
      */
     @Override
-    public Bid determineBid(Player player) {
-        if (player == null) {
+    public Bid determineBid(PlayerId playerId, List<Card> hand) {
+        if (playerId == null) {
             throw new IllegalArgumentException("Player cannot be null.");
         }
 
-        BidType miserieBidType = evaluateMiserieEligibility(player.getHand());
+        BidType miserieBidType = evaluateMiserieEligibility(hand);
         if (miserieBidType != null) {
-            return miserieBidType.instantiate(player, null);
+            return miserieBidType.instantiate(playerId, null);
         }
 
-        int tricksWithCurrentTrump = estimateWinningTricks(player.getHand(), memory.getCurrentTrump());
-        TrumpEvaluation bestEvaluation = findBestTrumpSuit(player.getHand(), tricksWithCurrentTrump);
+        int tricksWithCurrentTrump = estimateWinningTricks(hand, memory.getCurrentTrump());
+        TrumpEvaluation bestEvaluation = findBestTrumpSuit(hand, tricksWithCurrentTrump);
 
         if (bestEvaluation.expectedTricks() >= MIN_TRICKS_FOR_ABONDANCE) {
-            return mapToHighBid(player, bestEvaluation.expectedTricks(), bestEvaluation.suit());
+            return mapToHighBid(playerId, bestEvaluation.expectedTricks(), bestEvaluation.suit());
         }
 
         if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_ACCEPTANCE && memory.hasActiveProposal()) {
-            return BidType.ACCEPTANCE.instantiate(player, null);
+            return BidType.ACCEPTANCE.instantiate(playerId, null);
         } else if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_PROPOSAL) {
-            return BidType.PROPOSAL.instantiate(player, null);
+            return BidType.PROPOSAL.instantiate(playerId, null);
         }
 
-        return BidType.PASS.instantiate(player, null);
+        return BidType.PASS.instantiate(playerId, null);
     }
 
     /**
@@ -220,7 +220,6 @@ public final class SmartBotStrategy implements Strategy {
         PlayerId miseriePlayerId = highestBid.playerId();
 
         if (!memory.hasPlayerActedInCurrentTrick(miseriePlayerId)) {
-            // We play before the Miserie player; lay low.
             return getRandomCard(findLowestCards(legalCards));
         }
 
@@ -322,17 +321,17 @@ public final class SmartBotStrategy implements Strategy {
         return new TrumpEvaluation(bestSuit, maxTricks);
     }
 
-    private Bid mapToHighBid(Player player, int tricks, Suit chosenTrump) {
+    private Bid mapToHighBid(PlayerId playerId, int tricks, Suit chosenTrump) {
         return switch (tricks) {
-            case 9  -> BidType.ABONDANCE_9.instantiate(player, chosenTrump);
-            case 10 -> BidType.ABONDANCE_10.instantiate(player, chosenTrump);
-            case 11 -> BidType.ABONDANCE_11.instantiate(player, chosenTrump);
-            case 12 -> BidType.ABONDANCE_12_OT.instantiate(player, chosenTrump);
+            case 9  -> BidType.ABONDANCE_9.instantiate(playerId, chosenTrump);
+            case 10 -> BidType.ABONDANCE_10.instantiate(playerId, chosenTrump);
+            case 11 -> BidType.ABONDANCE_11.instantiate(playerId, chosenTrump);
+            case 12 -> BidType.ABONDANCE_12_OT.instantiate(playerId, chosenTrump);
             case 13 -> {
                 if (chosenTrump == memory.getCurrentTrump()) {
-                    yield BidType.SOLO_SLIM.instantiate(player, chosenTrump);
+                    yield BidType.SOLO_SLIM.instantiate(playerId, chosenTrump);
                 } else {
-                    yield BidType.SOLO.instantiate(player, chosenTrump);
+                    yield BidType.SOLO.instantiate(playerId, chosenTrump);
                 }
             }
             default -> throw new IllegalArgumentException("Invalid tricks value: " + tricks);

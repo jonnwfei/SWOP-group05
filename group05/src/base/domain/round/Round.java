@@ -5,45 +5,29 @@ import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
 
 import java.util.*;
 
 /**
  * Represents a single Round in a game of Whist.
- * A Round consists of a Bidding phase followed by a Play phase of exactly 13 Tricks.
- * This class acts as the Information Expert for managing turn order, tracking played tricks,
- * resolving the winning team, and correctly calculating and distributing points based on the highest bid.
+ * Acts as the Active Coordinator: managing turn order, tracking tricks, and mapping
+ * IDs (PlayerId) back to physical Player objects.
  *
  * @author Seppe De Houwer, Tommy Wu
  * @since 24/02/26
  */
 public class Round {
-    /** The maximum number of tricks played in a single round. */
     public static final int MAX_TRICKS = 13;
 
-    /** The 4 players participating in this round. */
     private final List<Player> players;
-
-    /** The players who must fulfill the active bid contract. */
     private final List<Player> biddingTeam;
-
-    /** The player whose turn it currently is to bid or play a card. */
     private Player currentPlayer;
-
-    /** The record of all completed tricks in this round. */
     private final List<Trick> playedTricks;
-
-    /** The record of all bids made during the Bidding Phase. */
     private final List<Bid> bids;
-
-    /** The final, highest bid that dictates the scoring and rules of the round. */
     private Bid highestBid;
-
-    /** The active trump suit, determined by the dealer's last card or the winning bid. */
     private Suit trumpSuit;
-
-    /** The score multiplier for this round. */
     private final int multiplier;
 
     /**
@@ -152,14 +136,22 @@ public class Round {
      * @throws IllegalStateException    If the round has already reached the maximum number of tricks.
      */
     public void registerCompletedTrick(Trick trick) {
-        if (trick == null) throw new IllegalArgumentException("Trick must not be null.");
+        if (trick == null) {throw new IllegalArgumentException("trick must not be null.");}
         if (trick.getTurns().size() != Trick.MAX_TURNS) throw new IllegalArgumentException("Trick is not completed yet");
-        if (this.playedTricks.size() >= MAX_TRICKS) throw new IllegalStateException("Cannot add trick: The round is already finished");
+        if (this.playedTricks.size() >= MAX_TRICKS) throw new IllegalStateException("Round is already finished");
+
         this.playedTricks.add(trick);
-        this.currentPlayer = trick.getWinningPlayer();
+
+        // Map the winning PlayerId back to the physical Player object
+        PlayerId winnerId = trick.getWinningPlayerId();
+        this.currentPlayer = this.players.stream()
+                .filter(p -> p.getId().equals(winnerId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Winning player ID not found at table!"));
 
         if (this.playedTricks.size() == MAX_TRICKS) {
-            calculateScores();
+            // Delegate scoring calculation to our Pure Fabrication math engine!
+            calculateAndDistributeScores();
         }
     }
 
@@ -215,7 +207,7 @@ public class Round {
      *
      * @throws IllegalStateException if the round has not yet completed playing all 13 tricks
      */
-    private void calculateScores() {
+    private void calculateAndDistributeScores() {
         if (playedTricks.size() != MAX_TRICKS) {throw new IllegalStateException("Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got " + playedTricks.size());}
         if (highestBid == null) throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
 
@@ -242,18 +234,15 @@ public class Round {
 
     /**
      * Determines which players successfully won the round based on the final trick count.
-     * <ul>
-     * <li>For normal bids: Returns the bidding team if they met their contract, otherwise returns the defending team.</li>
-     * <li>For Miserie: Returns only the specific Miserie players who successfully took 0 tricks.</li>
-     * </ul>
+     * For normal bids: Returns the bidding team if they met their contract, otherwise returns the defending team.
+     * For Miserie: Returns only the specific Miserie players who successfully took 0 tricks.
      *
      * @return A list of the winning players, or an empty list if the round is not yet finished.
      * @throws IllegalStateException when highestBid is null
      */
     public List<Player> getWinningPlayers() {
-        if (!isFinished()) {
-            return new ArrayList<>(); // The round isn't over yet!
-        }
+        if (!isFinished()) return new ArrayList<>(); // The round isn't over yet!
+
         if (highestBid == null) throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
 
         List<Player> bidders = getBiddingTeam();
@@ -275,13 +264,12 @@ public class Round {
         int points = highestBid.calculateBasePoints(tricksWon);
 
         // If points are positive, the Bidding team made their contract!
-        if (points > 0) {
-            return bidders;
-        } else {
-            List<Player> defenders = new ArrayList<>(this.players);
-            defenders.removeAll(bidders);
-            return defenders;
-        }
+        if (points > 0) return bidders;
+
+        List<Player> defenders = new ArrayList<>(this.players);
+        defenders.removeAll(bidders);
+        return defenders;
+
     }
 
     /**
@@ -329,10 +317,11 @@ public class Round {
      * @param team The list of players to evaluate.
      * @return The number of tricks won by the provided team.
      */
-    private int getTricksWonBy(List<Player> team) {
+    public int getTricksWonBy(List<Player> team) {
+        List<PlayerId> teamIds = team.stream().map(Player::getId).toList();
         int count = 0;
         for (Trick t : playedTricks) {
-            if (team.contains(t.getWinningPlayer())) {
+            if (teamIds.contains(t.getWinningPlayerId())) {
                 count++;
             }
         }

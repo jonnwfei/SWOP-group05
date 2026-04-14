@@ -4,6 +4,7 @@ import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 
 import java.util.List;
 
@@ -26,10 +27,10 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
      * For a human strategy, this will trigger a prompt to the UI/Console.
      * For an AI strategy, this will algorithmically evaluate the player's hand to calculate the optimal bid. (currently just PASS)
      *
-     * @param player the player making the bid, required to properly construct and bind the resulting {@link Bid} contract.
+     * @param playerId the player making the bid, required to properly construct and bind the resulting {@link Bid} contract.
      * @return the chosen {@link Bid}.
      */
-    Bid determineBid(Player player);
+    Bid determineBid(PlayerId playerId, List<Card> hand);
 
 
     Card chooseCardToPlay(List<Card> currentHand, Suit lead );

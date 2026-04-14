@@ -45,8 +45,8 @@ class AbondanceBidTest {
     }
 
     @Test
-    void getPlayer_ReturnsPlayer() {
-        assertEquals(testPlayer, bid.getPlayer());
+    void getPlayer_ReturnsPlayerId() {
+        assertEquals(testPlayer, bid.getPlayerId());
     }
 
     @Test

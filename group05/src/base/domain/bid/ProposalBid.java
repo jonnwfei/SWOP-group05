@@ -2,6 +2,7 @@ package base.domain.bid;
 
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 
 import java.util.List;
 
@@ -13,14 +14,14 @@ import java.util.List;
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public record ProposalBid(Player proposer) implements Bid {
+public record ProposalBid(PlayerId proposer) implements Bid {
 
     public ProposalBid {
         if (proposer == null) {throw new IllegalArgumentException("Proposer cannot be null.");}
     }
 
     @Override
-    public Player getPlayer() {return proposer;}
+    public PlayerId getPlayerId() {return proposer;}
 
     /**
      * Determines the bidding team by pairing the Proposer with the player who accepted.
@@ -31,8 +32,8 @@ public record ProposalBid(Player proposer) implements Bid {
      * @throws IllegalArgumentException if no Acceptance bid is found in the bid history.
      */
     @Override
-    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        Player acceptor = allBids.stream().filter(bid -> bid.getType() == BidType.ACCEPTANCE).map(Bid::getPlayer).findFirst().orElse(null);
+    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
+        PlayerId acceptor = allBids.stream().filter(bid -> bid.getType() == BidType.ACCEPTANCE).map(Bid::getPlayerId).findFirst().orElse(null);
         if (acceptor == null) {throw new IllegalArgumentException("There was no acceptor found in allBids, it's impossible to have ProposalBid without AcceptedBid!");}
         return List.of(proposer, acceptor);
     }

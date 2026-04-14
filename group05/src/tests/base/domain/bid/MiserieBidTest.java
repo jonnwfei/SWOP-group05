@@ -50,7 +50,7 @@ class MiserieBidTest {
 
     @Test
     void getPlayer_ReturnsPlayer() {
-        assertEquals(testPlayer, bid.getPlayer());
+        assertEquals(testPlayer, bid.getPlayerId());
     }
 
     @Test
