@@ -2,11 +2,12 @@ package base.domain.player;
 
 import base.domain.bid.Bid;
 import base.domain.card.Card;
-import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.strategy.Strategy;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Represents a participant in the trick-taking card game.

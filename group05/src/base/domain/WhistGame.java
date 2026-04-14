@@ -1,22 +1,24 @@
 package base.domain;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import base.domain.actions.GameAction;
-import base.domain.commands.GameCommand;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
+import base.domain.events.GameEvent;
 import base.domain.observer.GameObserver;
-import base.domain.player.*;
+import base.domain.player.Player;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
-import base.domain.states.*;
-import base.domain.events.GameEvent;
+import base.domain.states.BidState;
+import base.domain.states.CountState;
+import base.domain.states.State;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * Represents a game of Whist

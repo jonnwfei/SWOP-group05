@@ -8,7 +8,8 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents a single Round in a game of Whist.

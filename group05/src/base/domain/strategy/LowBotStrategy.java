@@ -4,7 +4,6 @@ import base.domain.bid.Bid;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
-import base.domain.player.Player;
 import base.domain.player.PlayerId;
 
 import java.util.Collections;

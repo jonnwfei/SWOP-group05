@@ -8,14 +8,15 @@ import base.domain.card.CardMath;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.observer.GameObserver;
-import base.domain.player.*;
+import base.domain.player.PlayerId;
 import base.domain.turn.BidTurn;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
-import static base.domain.card.CardMath.*;
+import static base.domain.card.CardMath.findHighestCards;
+import static base.domain.card.CardMath.findLowestCards;
 
 /**
  * Encapsulates the AI decision-making algorithms for a simulated Whist player.

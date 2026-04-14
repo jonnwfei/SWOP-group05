@@ -1,7 +1,7 @@
 package base.domain.trick;
 
-import base.domain.card.Suit;
 import base.domain.card.Card;
+import base.domain.card.Suit;
 import base.domain.player.PlayerId;
 import base.domain.turn.PlayTurn;
 
