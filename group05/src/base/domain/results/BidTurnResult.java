@@ -3,6 +3,7 @@ package base.domain.results;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.player.Player;
 
 import java.util.List;
 import java.util.Objects;
@@ -12,8 +13,8 @@ public record BidTurnResult(
         Suit trumpSuit,
         BidType currentHighestBid,
         List<BidType> availableBids,
-        List<Card> hand
-) implements GameResult {
+        List<Card> hand,
+        Player player) implements GameResult {
 
     public BidTurnResult {
         Objects.requireNonNull(playerName);
@@ -23,4 +24,5 @@ public record BidTurnResult(
         availableBids = List.copyOf(availableBids);
         hand = List.copyOf(hand);
     }
+
 }

@@ -1,6 +1,7 @@
 package cli.Adapter;
 
 import base.domain.WhistGame;
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
@@ -26,29 +27,45 @@ public class Adapter {
         this.game = game;
     }
 
-    public IOEvent handleResult(GameResult result) {
+    public AdapterResult handleResult(GameResult result) {
         return switch (result) {
-            case BidTurnResult b               -> new BidTurnIOEvent(b);
-            case SuitSelectionRequired ignored -> new SuitSelectionIOEvent();
-            case ProposalRejected p            -> new ProposalRejectedIOEvent(p);
-            case BiddingCompleted ignored      -> new BiddingCompletedIOEvent();
-            case BidSelectionResult b          -> new BidSelectionIOEvent(b.availableBids());
-            case SuitSelectionResult s         -> new SuitSelectionIOEvent();
-            case PlayerSelectionResult p       -> new PlayerSelectionIOEvent(p.players(), p.multiSelect());
-            case TrickInputResult ignored      -> new TrickInputIOEvent();
-            case ScoreBoardResult s            -> new ScoreBoardIOEvent(s.names(), s.scores());
-            case SaveDescriptionResult ignored -> new SaveDescriptionIOEvent();
-            case ScoreBoardCompleteResult ignored -> new ScoreBoardCompleteIOEvent();
-            case PlayCardResult p              -> new PlayCardIOEvent(p);
-            case EndOfTurnResult e             -> new EndOfTurnIOEvent(e);
-            case EndOfTrickResult e            -> new EndOfTrickIOEvent(e);
-            case EndOfRoundResult e            -> new EndOfRoundIOEvent(e);
-            case TrickHistoryResult t          -> new TrickHistoryIOEvent(t);
-            case ParticipatingPlayersResult p  -> new ParticipatingPlayersIOEvent(p);
+            case PlayCardResult p -> {
+                if (!p.player().getRequiresConfirmation()) {
+                    Card chosen = p.player().chooseCard(
+                            p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit()
+                    );
+                    yield new AdapterResult.Immediate(new CardCommand(chosen));
+                }
+                yield new AdapterResult.NeedsIO(new PlayCardIOEvent(p));
+            }
+
+            case BidTurnResult b -> {
+                Player player = b.player();
+                if (!player.getRequiresConfirmation()) {
+                    Bid botBid = player.chooseBid();
+                    // BidCommand with suit so domain skips SuitSelectionRequired
+                    yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), b.trumpSuit()));
+                }
+                yield new AdapterResult.NeedsIO(new BidTurnIOEvent(b));
+            }
+            case SuitSelectionRequired ignored -> new AdapterResult.NeedsIO(new SuitSelectionIOEvent());
+            case ProposalRejected p            -> new AdapterResult.NeedsIO(new ProposalRejectedIOEvent(p));
+            case BiddingCompleted ignored      -> new AdapterResult.NeedsIO(new BiddingCompletedIOEvent());
+            case BidSelectionResult b          -> new AdapterResult.NeedsIO(new BidSelectionIOEvent(b.availableBids()));
+            case SuitSelectionResult ignored   -> new AdapterResult.NeedsIO(new SuitSelectionIOEvent());
+            case PlayerSelectionResult p       -> new AdapterResult.NeedsIO(new PlayerSelectionIOEvent(p.players(), p.multiSelect()));
+            case TrickInputResult ignored      -> new AdapterResult.NeedsIO(new TrickInputIOEvent());
+            case ScoreBoardResult s            -> new AdapterResult.NeedsIO(new ScoreBoardIOEvent(s.names(), s.scores()));
+            case SaveDescriptionResult ignored -> new AdapterResult.NeedsIO(new SaveDescriptionIOEvent());
+            case ScoreBoardCompleteResult ignored -> new AdapterResult.NeedsIO(new ScoreBoardCompleteIOEvent());
+            case EndOfTurnResult e             -> new AdapterResult.NeedsIO(new EndOfTurnIOEvent(e));
+            case EndOfTrickResult e            -> new AdapterResult.NeedsIO(new EndOfTrickIOEvent(e));
+            case EndOfRoundResult e            -> new AdapterResult.NeedsIO(new EndOfRoundIOEvent(e));
+            case TrickHistoryResult t          -> new AdapterResult.NeedsIO(new TrickHistoryIOEvent(t));
+            case ParticipatingPlayersResult p  -> new AdapterResult.NeedsIO(new ParticipatingPlayersIOEvent(p));
             default -> throw new IllegalStateException("Unexpected GameResult: " + result);
         };
     }
-
     public AdapterResponse handleResponse(Response response, GameResult result) {
         if (response.rawInput() == null) {
             return AdapterResponse.toDomain(new ContinueCommand());
@@ -126,22 +143,38 @@ public class Adapter {
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
 
-                // --- Play Card (The complex one) ---
+                // --- Play Card
                 case PlayCardResult p -> {
+                    Player player = p.player();
+                    System.out.println("HIER!!!! : " + player.getName());
+                    System.out.println(!player.getRequiresConfirmation());
+                    //  BOT: auto-play
+                    if (!player.getRequiresConfirmation()) {
+                        System.out.println("HIER OOK!");
+                        Card chosen = player.chooseCard(p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit());
+
+                        yield AdapterResponse.toDomain(new CardCommand(chosen));
+                    }
+
+                    // HUMAN: parse input
                     int choice = parser.parseNumberInput(raw);
 
                     if (choice == 0) {
                         if (p.lastPlayedTrick() == null) {
                             yield AdapterResponse.uiOnly(new MessageIOEvent("No tricks have been played yet!"));
                         }
-                        yield AdapterResponse.uiOnly(new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick())));
+                        yield AdapterResponse.uiOnly(
+                                new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick()))
+                        );
                     }
 
-                    if (choice < 1 || choice > p.currentPlayerHand().size()) {
-                        yield AdapterResponse.uiOnly(new MessageIOEvent("Invalid selection. Please choose 0 to " + p.currentPlayerHand().size()));
+                    if (choice < 1 || choice > p.legalCards().size()) {
+                        yield AdapterResponse.uiOnly(
+                                new MessageIOEvent("Invalid selection. Choose 0 to " + p.legalCards().size())
+                        );
                     }
 
-                    Card selected = p.currentPlayerHand().get(choice - 1);
+                    Card selected = p.legalCards().get(choice - 1);
                     yield AdapterResponse.toDomain(new CardCommand(selected));
                 }
 

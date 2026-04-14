@@ -49,19 +49,18 @@ public class PlayState extends State {
     public GameResult executeState(GameCommand command) {
         Player currentPlayer = currentRound.getCurrentPlayer();
 
-        //  BOT TURN
-        if (!currentPlayer.getRequiresConfirmation()) {
-            return handleBotTurn(currentPlayer);
+        // 1. Handle command if present
+        if (command != null) {
+            GameResult result = handlePlayerMove(currentPlayer, command);
+
+            // If something meaningful happened → return immediately
+            if (!(result instanceof PlayCardResult)) {
+                return result;
+            }
         }
 
-        //  HUMAN TURN
-        if (command == null) {
-            // No input yet → just tell UI what to render
-            return buildPickCardResult(currentPlayer);
-        }
-
-        // Input received → process immediately
-        return handlePlayerMove(currentPlayer, command);
+        // 2. Always return current state view
+        return buildNeedCardResult(currentPlayer);
     }
 
     /**
@@ -76,7 +75,7 @@ public class PlayState extends State {
             case NumberCommand n when n.choice() == 0 -> {
                 Trick last = currentRound.getLastPlayedTrick();
                 yield (last == null)
-                        ? buildPickCardResult(currentRound.getCurrentPlayer())
+                        ? buildNeedCardResult(currentRound.getCurrentPlayer())
                         : new TrickHistoryResult(last);
             }
 
@@ -84,13 +83,13 @@ public class PlayState extends State {
                 Card card = c.card();
 
                 if (!player.getHand().contains(card)) {
-                    yield buildPickCardResult(player);
+                    yield buildNeedCardResult(player);
                 }
 
                 try {
                     currentTrick.playCard(player, card);
                 } catch (IllegalArgumentException e) {
-                    yield buildPickCardResult(player);
+                    yield buildNeedCardResult(player);
                 }
 
                 boolean trickFinished = currentTrick.isCompleted();
@@ -107,10 +106,44 @@ public class PlayState extends State {
                 yield new EndOfTurnResult(player.getName(), card);
             }
 
-            default -> buildPickCardResult(player);
+            default -> buildNeedCardResult(player);
         };
     }
+    private GameResult buildNeedCardResult(Player player) {
+        boolean isOpenMiserie = currentRound.getHighestBid() != null &&
+                currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
 
+        List<String> exposedNames = new ArrayList<>();
+        List<List<Card>> exposedHands = new ArrayList<>();
+
+        if (isOpenMiserie) {
+            for (Bid bid : currentRound.getBids()) {
+                if (bid.getType() == BidType.OPEN_MISERIE) {
+                    Player proposer = bid.getPlayer();
+                    exposedNames.add(proposer.getName());
+                    exposedHands.add(proposer.getHand());
+                }
+            }
+        }
+
+        List<Card> tableCards = currentTrick.getTurns()
+                .stream()
+                .map(Turn::playedCard)
+                .toList();
+
+        List<Card> legalCards = currentTrick.getLegalCards(player);
+
+        return new PlayCardResult(
+                tableCards,
+                isOpenMiserie,
+                exposedNames,
+                exposedHands,
+                currentRound.getTricks().size() + 1,
+                player,
+                legalCards,
+                currentRound.getLastPlayedTrick()
+        );
+    }
     private GameResult buildPickCardResult(Player player) {
         boolean isOpenMiserie = currentRound.getHighestBid() != null &&
                 currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
@@ -133,7 +166,6 @@ public class PlayState extends State {
                 .map(Turn::playedCard)
                 .toList();
 
-        // 🔥 Only legal cards now
         List<Card> legalCards = currentTrick.getLegalCards(player);
 
         return new PlayCardResult(
@@ -142,8 +174,8 @@ public class PlayState extends State {
                 exposedNames,
                 exposedHands,
                 currentRound.getTricks().size() + 1,
-                player.getName(),
-                legalCards, // 👈 changed here
+                player,
+                legalCards,
                 currentRound.getLastPlayedTrick()
         );
     }

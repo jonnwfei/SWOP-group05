@@ -5,6 +5,7 @@ import base.domain.commands.ContinueCommand;
 import base.domain.commands.GameCommand;
 import base.domain.results.GameResult;
 import cli.Adapter.AdapterResponse;
+import cli.Adapter.AdapterResult;
 import cli.events.IOEvent;
 import cli.TerminalManager;
 import cli.elements.Response;
@@ -43,21 +44,33 @@ public class GameController {
                 while (stateRunning) {
                     GameResult result = game.executeState(command);
 
-                    IOEvent event = adapter.handleResult(result);
-                    stateRunning = event.getContinue();
+                    AdapterResult adapterResult = adapter.handleResult(result);
 
-                    Response response = terminalManager.handle(event);
-                    AdapterResponse adapterResponse = adapter.handleResponse(response, result);
-
-                    while (adapterResponse.command() == null) {
-                        for (IOEvent immediate : adapterResponse.immediateEvents()) {
-                            terminalManager.handle(immediate);
+                    switch (adapterResult) {
+                        case AdapterResult.Immediate immediate -> {
+                            // Bot turn: no IO needed, command is ready immediately
+                            stateRunning = true;
+                            command = immediate.command();
                         }
-                        Response retryResponse = terminalManager.handle(event);
-                        adapterResponse = adapter.handleResponse(retryResponse, result);
-                    }
 
-                    command = adapterResponse.command();
+                        case AdapterResult.NeedsIO needsIO -> {
+                            IOEvent event = needsIO.event();
+                            stateRunning = event.getContinue();
+
+                            Response response = terminalManager.handle(event);
+                            AdapterResponse adapterResponse = adapter.handleResponse(response, result);
+
+                            while (adapterResponse.command() == null) {
+                                for (IOEvent immediate : adapterResponse.immediateEvents()) {
+                                    terminalManager.handle(immediate);
+                                }
+                                Response retryResponse = terminalManager.handle(event);
+                                adapterResponse = adapter.handleResponse(retryResponse, result);
+                            }
+
+                            command = adapterResponse.command();
+                        }
+                    }
                 }
 
                 game.nextState();

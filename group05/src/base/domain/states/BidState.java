@@ -123,7 +123,7 @@ public class BidState extends State {
                 if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
                     yield handleRejectedProposal(b.bid());
                 }
-                yield handleBidCommand(b.bid());
+                yield handleBidCommand(b.bid(), b.suit()); // pass suit through
             }
             case SuitCommand s -> handleSuitCommand(s.suit());
             case ContinueCommand ignored -> null;
@@ -132,13 +132,7 @@ public class BidState extends State {
 
         if (earlyReturn != null) return earlyReturn;
 
-        // Fast-forward BOT turns
-        while (!currentPlayer.getRequiresConfirmation() && !isBiddingComplete()) {
-            Bid botBid = currentPlayer.chooseBid();
-            if (botBid == null) throw new IllegalStateException("Bot player returned a null bid.");
-            commitBid(botBid);
-            updateCurrentPlayer();
-        }
+        // Bot loop removed — handled by Adapter via AdapterResult.Immediate
 
         if (isBiddingComplete())
             return handleEndOfBidding();
@@ -148,8 +142,43 @@ public class BidState extends State {
                 currentTrumpSuit,
                 currentHighestBidType,
                 getLegalBids(currentPlayer),
-                currentPlayer.getHand()
+                currentPlayer.getHand(),
+                currentPlayer                // added
         );
+    }
+
+    private GameResult handleBidCommand(BidType chosenBidType, Suit preSuppliedSuit) {
+        if (chosenBidType == null) {
+            throw new IllegalArgumentException("chosenBidType cannot be null.");
+        }
+        if (isBiddingComplete()) {
+            throw new IllegalStateException("State violation: Cannot handle new bid, bidding is already complete.");
+        }
+        if (!isLegalBidType(chosenBidType)) {
+            throw new IllegalArgumentException("State violation: Bid " + chosenBidType + " is not legal in the current context.");
+        }
+
+        if (chosenBidType.getRequiresSuit()) {
+            if (preSuppliedSuit != null) {
+                // Bot pre-supplied the suit — commit immediately, no UI step needed
+                commitBid(chosenBidType.instantiate(currentPlayer, preSuppliedSuit));
+                updateCurrentPlayer();
+                return null;
+            }
+            if (pendingBidType != null) {
+                throw new IllegalStateException("State violation: pendingBidType is already set.");
+            }
+            this.pendingBidType = chosenBidType;
+            return new SuitSelectionRequired(
+                    currentPlayer.getName(),
+                    chosenBidType,
+                    Suit.values()
+            );
+        }
+
+        commitBid(chosenBidType.instantiate(currentPlayer, null));
+        updateCurrentPlayer();
+        return null;
     }
 
     /**

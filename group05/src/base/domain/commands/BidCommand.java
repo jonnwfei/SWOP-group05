@@ -2,4 +2,11 @@ package base.domain.commands;
 
 import base.domain.bid.BidType;
 
-public record BidCommand(BidType bid) implements GameCommand {}
+
+import base.domain.card.Suit;
+
+public record BidCommand(BidType bid, Suit suit) implements GameCommand {
+    public BidCommand(BidType bid) {
+        this(bid, null);
+    }
+}

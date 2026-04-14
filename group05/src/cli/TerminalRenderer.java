@@ -24,6 +24,7 @@ public class TerminalRenderer {
             case EndOfRoundIOEvent e         -> renderEndOfRoundEvent(e);
             case TrickHistoryIOEvent t       -> renderTrickHistoryEvent(t);
             case ParticipatingPlayersIOEvent e -> renderParticipatingPlayersEvent(e);
+            case BotCardIOEvent e -> renderBotCardEvent(e);
             // --- bid state ---
             case BidTurnIOEvent e              -> renderBidTurnEvent(e);
             case SuitSelectionIOEvent ignored  -> renderSuitSelectionEvent();
@@ -47,6 +48,10 @@ public class TerminalRenderer {
         }
     }
 
+    private void renderBotCardEvent(BotCardIOEvent e) {
+
+    }
+
     private void renderMessageEvent(MessageIOEvent t) {
         System.out.println(t.text());
     }
@@ -55,16 +60,16 @@ public class TerminalRenderer {
         base.domain.results.PlayCardResult data = event.data();
 
         System.out.println("\n=============================================");
-        System.out.println("  TRICK #" + data.trickNumber() + " | TURN: " + data.currentPlayerName().toUpperCase());
+        System.out.println("  TRICK #" + data.trickNumber() + " | TURN: " + data.player().getName().toUpperCase());
         System.out.println("=============================================");
 
         // 1. Table Display
         System.out.println("\nCARDS ON TABLE:");
-        if (data.cardsOnTable().isEmpty()) {
+        if (data.tableCards().isEmpty()) {
             System.out.println("  [ Empty ]");
         } else {
             // Displays cards in a horizontal-ish list for better flow
-            String table = String.join(" | ", data.cardsOnTable().stream()
+            String table = String.join(" | ", data.tableCards().stream()
                     .map(Card::toString).toList());
             System.out.println("  ➜ " + table);
         }
@@ -83,9 +88,9 @@ public class TerminalRenderer {
 
         // 3. Player's Own Hand & Controls
         System.out.println("\n---------------------------------------------");
-        System.out.println("YOUR HAND (" + data.currentPlayerName() + "):");
+        System.out.println("YOUR HAND (" + data.player().getName() + "):");
 
-        List<Card> hand = data.currentPlayerHand();
+        List<Card> hand = data.legalCards();
         for (int i = 0; i < hand.size(); i++) {
             // Padded index for alignment (e.g., [ 1] vs [10])
             System.out.printf("  [%2d] %s%n", (i + 1), hand.get(i));
