@@ -1,14 +1,15 @@
 package base.storage;
 
 import base.domain.WhistGame;
-import base.domain.player.HighBotStrategy;
-import base.domain.player.HumanStrategy;
-import base.domain.player.LowBotStrategy;
+
 import base.domain.player.Player;
 import base.domain.snapshots.GameSnapshot;
 import base.domain.snapshots.PlayerSnapshot;
 import base.domain.snapshots.SaveMode;
 import base.domain.snapshots.StrategySnapshotType;
+import base.domain.strategy.HighBotStrategy;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.LowBotStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

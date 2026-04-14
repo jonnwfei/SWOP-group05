@@ -100,8 +100,8 @@ class TrickTest {
         currentTrick.playCard(p2, new Card(Suit.HEARTS, Rank.QUEEN));
 
         assertEquals(2, currentTrick.getTurns().size());
-        assertEquals(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.ACE)), currentTrick.getTurns().getFirst());
-        assertEquals(new PlayTurn(p2, new Card(Suit.HEARTS, Rank.QUEEN)), currentTrick.getTurns().get(1));
+        assertEquals(new PlayTurn(p1.getId(), new Card(Suit.HEARTS, Rank.ACE)), currentTrick.getTurns().getFirst());
+        assertEquals(new PlayTurn(p2.getId(), new Card(Suit.HEARTS, Rank.QUEEN)), currentTrick.getTurns().get(1));
     }
 
     @Test

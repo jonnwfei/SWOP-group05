@@ -55,4 +55,16 @@ public final class CardMath {
         }
         return false;
     }
+
+    /** Returns the highest rank of a given suit, or null if the player is void in that suit */
+    public static Rank getHighestRankOfSuit(Suit suit, List<Card> cards) {
+        if (suit == null) throw new IllegalArgumentException("suit can't be null.");
+        if (cards == null) throw new IllegalArgumentException("cards can't be null.");
+
+        return cards.stream()
+                .filter(c -> c.suit() == suit)
+                .map(Card::rank)
+                .max(base.domain.card.Rank::compareTo)
+                .orElse(null);
+    }
 }

@@ -9,6 +9,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
+import static base.domain.card.CardMath.getHighestRankOfSuit;
+
 /**
  * Represents a forced contract triggered when a player holds 3 or 4 Aces.
  * The player forms a team with a forced partner (the holder of the 4th Ace, or the highest Heart).
@@ -62,7 +64,7 @@ public record TroelBid(Player player, BidType bidType) implements Bid {
             // Find the player with the highest card in the suit of Hearts (TROELA)
             partner = allPlayers.stream()
                     .filter(p -> !p.equals(player))
-                    .max(Comparator.comparing(p -> p.getHighestRankOfSuit(Suit.HEARTS), Comparator.nullsFirst(Comparator.naturalOrder())))
+                    .max(Comparator.comparing(p -> getHighestRankOfSuit(Suit.HEARTS, p.getHand()), Comparator.nullsFirst(Comparator.naturalOrder())))
                     .orElse(null);
         }
 

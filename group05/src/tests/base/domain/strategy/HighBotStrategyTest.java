@@ -1,4 +1,4 @@
-package base.domain.player;
+package base.domain.strategy;
 
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
@@ -6,7 +6,7 @@ import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.strategy.HighBotStrategy;
+import base.domain.player.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

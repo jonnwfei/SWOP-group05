@@ -20,7 +20,7 @@ class playTurnTest {
     void setUp() {
         p1 = new Player(new HumanStrategy(), "P1");
         playedCard = new Card(Suit.HEARTS, Rank.ACE);
-        playTurn = new PlayTurn(p1, playedCard);
+        playTurn = new PlayTurn(p1.getId(), playedCard);
     }
 
     @Test
@@ -31,6 +31,6 @@ class playTurnTest {
     @Test
     void constructorThrowsOnNull() {
         assertThrows(IllegalArgumentException.class, () -> new PlayTurn(null, playedCard));
-        assertThrows(IllegalArgumentException.class, () -> new PlayTurn(p1, null));
+        assertThrows(IllegalArgumentException.class, () -> new PlayTurn(p1.getId(), null));
     }
 }

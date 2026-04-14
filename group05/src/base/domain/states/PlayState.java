@@ -148,7 +148,7 @@ public class PlayState extends State {
             }
         }
 
-        List<Card> tableCards = currentTrick.getTurns().stream().map(Turn::playedCard).toList();
+        List<Card> tableCards = currentTrick.getTurns().stream().map(PlayTurn::playedCard).toList();
 
         return new PlayCardResult(
                 tableCards,

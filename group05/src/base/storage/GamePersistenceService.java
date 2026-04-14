@@ -7,6 +7,10 @@ import base.domain.snapshots.PlayerSnapshot;
 import base.domain.snapshots.SaveMode;
 import base.domain.snapshots.StrategySnapshotType;
 import base.domain.player.*;
+import base.domain.strategy.HighBotStrategy;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.LowBotStrategy;
+import base.domain.strategy.Strategy;
 
 import java.util.List;
 

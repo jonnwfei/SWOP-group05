@@ -169,14 +169,4 @@ public class Player {
         if (card == null) throw new IllegalArgumentException("card can't be null.");
         return currentHand.stream().anyMatch(card::equals);
     }
-
-    /** Returns the highest rank of a given suit, or null if the player is void in that suit */
-    public Rank getHighestRankOfSuit(Suit suit) {
-        if (suit == null) throw new IllegalArgumentException("suit can't be null.");
-        return currentHand.stream()
-                .filter(c -> c.suit() == suit)
-                .map(Card::rank)
-                .max(base.domain.card.Rank::compareTo)
-                .orElse(null);
-    }
 }

@@ -81,7 +81,7 @@ public class Trick {
             throw new IllegalArgumentException("Trick: Player and Card must exist.");
 
         // Rule: One card per player
-        if (PlayTurns.stream().anyMatch(t -> t.player().equals(player))) {
+        if (PlayTurns.stream().anyMatch(t -> t.playerId().equals(player.getId()))) {
             throw new IllegalArgumentException("Trick: Player already played in this trick.");
         }
 

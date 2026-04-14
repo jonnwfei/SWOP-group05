@@ -186,7 +186,7 @@ class WhistGameTest {
         Round round = new Round(game.getPlayers(), p1, 1);
 
         Bid miserieBid = new MiserieBid(p1, BidType.MISERIE);
-        round.setBids(List.of(miserieBid));
+        //round.setBids(List.of(miserieBid));
         round.setHighestBid(miserieBid);
 
         // Simulate a finished round where P1 wins Miserie (takes 0 tricks)
