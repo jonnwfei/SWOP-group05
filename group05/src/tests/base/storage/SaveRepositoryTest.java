@@ -128,8 +128,8 @@ class SaveRepositoryTest {
     void testLoadByDescriptionNotFound() {
         saveRepository.save(testSnapshot);
 
-        GameSnapshot loaded = saveRepository.loadByDescription("Non-existent Save");
-        assertNull(loaded, "Loading a non-existent description should return null safely.");
+        assertThrows(IllegalArgumentException.class, () ->saveRepository.loadByDescription("Non-existent Save"),
+                "Loading a non-existent description should throw an IllegalArgumentException.");
     }
 
     @Test

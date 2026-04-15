@@ -106,29 +106,29 @@ public class SaveRepository {
         return descriptions;
     }
 
-        /**
-         * Retrieves the gameSnapshot corresponding to its description
-         *
-         * @param description of a gameSnapshot
-         * @return GameSnapshot
-         * @throws IllegalArgumentException if given description is null
-         * @throws IllegalArgumentException if no save file is found with the given description
-         * @throws IllegalStateException if a matching saveFile is corrupted or unreadable
-         */
-        public GameSnapshot loadByDescription(String description) {
-            if (description == null)
-                throw new IllegalArgumentException("Cannot load from a null description");
+    /**
+     * Retrieves the gameSnapshot corresponding to its description
+     *
+     * @param description of a gameSnapshot
+     * @return GameSnapshot
+     * @throws IllegalArgumentException if given description is null
+     * @throws IllegalArgumentException if no save file is found with the given description
+     * @throws IllegalStateException if a matching saveFile is corrupted or unreadable
+     */
+    public GameSnapshot loadByDescription(String description) {
+        if (description == null)
+            throw new IllegalArgumentException("Cannot load from a null description");
 
-            ensureDirectory();
-            for (Path saveFile : listSaveFiles()) {
-                Properties properties = readProperties(saveFile);
-                String storedDescription = properties.getProperty("description", fileNameWithoutExtension(saveFile));
-                if (storedDescription.equals(description)) {
-                    return fromProperties(properties);
-                }
+        ensureDirectory();
+        for (Path saveFile : listSaveFiles()) {
+            Properties properties = readProperties(saveFile);
+            String storedDescription = properties.getProperty("description", fileNameWithoutExtension(saveFile));
+            if (storedDescription.equals(description)) {
+                return fromProperties(properties);
             }
-            throw new IllegalArgumentException("No save file found with description: " + description);
         }
+        throw new IllegalArgumentException("No save file found with description: " + description);
+    }
 
     /**
      * Ensures that the saveDirectory is instantiated.

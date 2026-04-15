@@ -10,12 +10,16 @@ import java.util.Objects;
  * @author John Cai
  * @since 03/04/2026
  *
- * Snapshot of one player for persistence.
+ * Snapshot of one round for persistence.
  * Containing:
  * <ul>
- *     <li>Player name</li>
- *     <li>StrategyType, bot or player</li>
- *     <li>Score</li>
+ *     <li>Bid type for the round</li>
+ *     <li>Bidder index</li>
+ *     <li>Participant indices</li>
+ *     <li>Number of tricks won by the bidder</li>
+ *     <li>Miserie winner indices, if applicable</li>
+ *     <li>Round multiplier</li>
+ *     <li>Score deltas for each player</li>
  * </ul>
  */
 public record RoundSnapshot(
