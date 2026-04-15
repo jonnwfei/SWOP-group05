@@ -49,7 +49,7 @@ public class TerminalRenderer {
     }
 
     private void renderBotCardEvent(BotCardIOEvent e) {
-
+        System.out.println("Bot played " + e.card());
     }
 
     private void renderMessageEvent(MessageIOEvent t) {

@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * Represents a single trick in a Whist round
+ * 
  * @author John Cai
  * @since 25/02/2026
  */
@@ -22,8 +23,9 @@ public class Trick {
 
     /**
      * Initializes a new trick.
+     * 
      * @param startingPlayer The player who leads the trick.
-     * @param trumpSuit The trump suit for the current round (can be null).
+     * @param trumpSuit      The trump suit for the current round (can be null).
      * @throws IllegalArgumentException if startingPlayer is null.
      */
     public Trick(Player startingPlayer, Suit trumpSuit) {
@@ -38,10 +40,12 @@ public class Trick {
 
     /**
      * Identifies the suit of the first card played in this trick.
+     * 
      * @return The leading suit, or null if no cards have been played.
      */
     public Suit getLeadingSuit() {
-        if (turns.isEmpty()) return null;
+        if (turns.isEmpty())
+            return null;
         return turns.get(0).playedCard().suit();
     }
 
@@ -66,15 +70,37 @@ public class Trick {
     }
 
     /**
-     * Processes a player's move, validates rules, and removes the card from their hand.
-     * @param player The player attempting to play.
+     * Processes a player's move, validates rules, and removes the card from their
+     * hand.
+     * 
+     * @param player     The player attempting to play.
      * @param playedCard The card to be played.
-     * @throws IllegalArgumentException if the player already played, the move is illegal
-     * (not following suit), or the trick is full.
+     * @throws IllegalArgumentException if the player/card is null, the card is not
+     *                                  in
+     *                                  the player's hand, the player already
+     *                                  played, the move does not follow suit,
+     *                                  or the trick is full.
      */
     public void playCard(Player player, Card playedCard) {
-        if (!isLegalCard(player, playedCard)) {
-            throw new IllegalArgumentException("Trick: Illegal move.");
+        if (player == null) {
+            throw new IllegalArgumentException("Trick: Player must exist.");
+        }
+        if (playedCard == null) {
+            throw new IllegalArgumentException("Trick: Card must exist.");
+        }
+        if (isCompleted()) {
+            throw new IllegalArgumentException("Trick: Trick is already full.");
+        }
+        if (!player.getHand().contains(playedCard)) {
+            throw new IllegalArgumentException("Trick: Card is not in player's hand.");
+        }
+        if (turns.stream().anyMatch(t -> t.player().equals(player))) {
+            throw new IllegalArgumentException("Trick: Player already played this trick.");
+        }
+
+        Suit leadingSuit = getLeadingSuit();
+        if (leadingSuit != null && playedCard.suit() != leadingSuit && player.hasSuit(leadingSuit)) {
+            throw new IllegalArgumentException("Trick: Must follow leading suit.");
         }
 
         turns.add(new Turn(player, playedCard));
@@ -122,17 +148,20 @@ public class Trick {
         }
         this.winningPlayer = currentWinner;
     }
+
     /**
      * Returns all legal cards a player can play in this trick.
+     * 
      * @param player The player whose hand is evaluated.
      * @return A list of legal cards.
      */
     public List<Card> getLegalCards(Player player) {
-        if (player == null) return List.of();
+        if (player == null)
+            return List.of();
 
         List<Card> legalCards = new ArrayList<>();
 
-        for (Card card : player.getHand()) { // assuming getHand() exists
+        for (Card card : player.getHand()) {
             if (isLegalCard(player, card)) {
                 legalCards.add(card);
             }
@@ -140,17 +169,24 @@ public class Trick {
 
         return legalCards;
     }
+
     /**
-     * Checks whether a given card is legal to play for a player in the current trick.
+     * Checks whether a given card is legal to play for a player in the current
+     * trick.
+     * 
      * @param player The player attempting to play.
-     * @param card The card to check.
+     * @param card   The card to check.
      * @return true if the move is legal, false otherwise.
      */
     public boolean isLegalCard(Player player, Card card) {
-        if (player == null || card == null) return false;
+        if (player == null || card == null)
+            return false;
+        if (!player.getHand().contains(card))
+            return false;
 
         // Trick already full
-        if (isCompleted()) return false;
+        if (isCompleted())
+            return false;
 
         // Player already played
         if (turns.stream().anyMatch(t -> t.player().equals(player))) {
@@ -158,15 +194,12 @@ public class Trick {
         }
 
         // First card → always legal (assuming it's in hand, handled elsewhere)
-        if (turns.isEmpty()) return true;
+        if (turns.isEmpty())
+            return true;
 
         Suit leadingSuit = getLeadingSuit();
 
         // Must follow suit if possible
-        if (card.suit() != leadingSuit && player.hasSuit(leadingSuit)) {
-            return false;
-        }
-
-        return true;
+        return card.suit() == leadingSuit || !player.hasSuit(leadingSuit);
     }
 }
