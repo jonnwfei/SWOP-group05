@@ -2,14 +2,13 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.actions.GameAction;
-import base.domain.actions.NumberAction;
 import base.domain.commands.*;
-import base.domain.events.ErrorEvent;
 import base.domain.events.countEvents.*;
+import base.domain.events.errorEvents.NumberErrorEvent;
 import base.domain.events.menuEvents.SaveDescriptionEvent;
 import base.domain.results.*;
 import base.storage.GamePersistenceService;
-import base.domain.snapshots.SaveMode;
+import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
 import base.domain.events.GameEvent;
 import base.domain.bid.*;
@@ -160,10 +159,13 @@ public class CountState extends State {
     }
 
     private GameResult handleSaveDescription(String text) {
-        persistenceService.save(getGame(), SaveMode.COUNT, text);
+        try {
+            persistenceService.save(getGame(), SaveMode.COUNT, text); // TOOD: this needs to be checked and fixed, shouldnt be in domain layer
+        } catch (Exception e) {
+            throw new IllegalStateException("Error in CountState handeSaveDescription",e);
+        }
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
         return getScoreBoard();
-
     }
 
     private List<String> getPlayerNames() {

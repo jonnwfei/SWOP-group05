@@ -1,4 +1,4 @@
-package base.domain.snapshots;
+package base.storage.snapshots;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;

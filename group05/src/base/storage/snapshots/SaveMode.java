@@ -1,4 +1,4 @@
-package base.domain.snapshots;
+package base.storage.snapshots;
 
 /**
  * Distinguishes which flow should be resumed after loading a save.
