@@ -3,49 +3,64 @@ package base.domain.strategy;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("Human Strategy Rules & Stubs")
 class HumanStrategyTest {
 
-    private HumanStrategy humanStrategy;
+    private HumanStrategy strategy;
+    private PlayerId humanId;
+    private List<Card> dummyHand;
 
     @BeforeEach
     void setUp() {
-        humanStrategy = new HumanStrategy();
+        strategy = new HumanStrategy();
+        humanId = new PlayerId("human-player-001");
+        dummyHand = List.of(new Card(Suit.HEARTS, Rank.ACE));
     }
 
-    @Test
-    void determineBid_ReturnsNull() {
-        // For human players, bidding is handled via the UI/State machine rather than algorithmically.
-        // Thus, the domain strategy currently acts as a stub and safely returns null.
-        Player dummyPlayer = new Player(humanStrategy, "Test Human");
+    @Nested
+    @DisplayName("Bidding Phase Logic")
+    class BiddingTests {
 
-        assertNull(humanStrategy.determineBid(dummyPlayer),
-                "Human strategy should return null as UI handles the actual bid creation.");
+        @Test
+        @DisplayName("determineBid() should return null as UI handles human input")
+        void determineBidReturnsNull() {
+            // Passing the ID and Hand, completely decoupled from the Player object!
+            assertNull(strategy.determineBid(humanId, dummyHand),
+                    "Human strategy should return null. The UI/State machine handles actual bid creation.");
+        }
     }
 
-    @Test
-    void chooseCardToPlay_ReturnsNull() {
-        // Similarly, card selection for humans relies on external I/O.
-        // This method serves as a placeholder to satisfy the Strategy interface.
-        List<Card> dummyHand = List.of(new Card(Suit.HEARTS, Rank.ACE));
-        Suit dummyLead = Suit.HEARTS;
+    @Nested
+    @DisplayName("Play Phase Logic (chooseCardToPlay)")
+    class PlayingTests {
 
-        assertNull(humanStrategy.chooseCardToPlay(dummyHand, dummyLead),
-                "Human strategy should return null as UI handles the actual card selection.");
+        @Test
+        @DisplayName("chooseCardToPlay() should return null as UI handles human input")
+        void chooseCardToPlayReturnsNull() {
+            assertNull(strategy.chooseCardToPlay(dummyHand, Suit.HEARTS),
+                    "Human strategy should return null. The UI/State machine handles actual card selection.");
+        }
     }
 
-    @Test
-    void requiresConfirmation_ReturnsTrue() {
-        // A human player explicitly requires UI confirmation (e.g., pressing ENTER)
-        // to proceed to the next turn or round, unlike automated bots.
-        assertTrue(humanStrategy.requiresConfirmation(),
-                "Human strategy must always flag that it requires confirmation.");
+    @Nested
+    @DisplayName("System Configuration")
+    class ConfigTests {
+
+        @Test
+        @DisplayName("requiresConfirmation() must be true for human interaction")
+        void requiresConfirmationIsTrue() {
+            assertTrue(strategy.requiresConfirmation(),
+                    "Human strategy must always flag that it requires UI confirmation/input to proceed.");
+        }
     }
 }

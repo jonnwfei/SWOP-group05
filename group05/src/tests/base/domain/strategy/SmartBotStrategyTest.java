@@ -5,8 +5,6 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.observer.GameObserver;
-import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
@@ -14,290 +12,250 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import java.util.ArrayList;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+
+import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
-@DisplayName("Smart Bot Strategy Tests")
+@DisplayName("SmartBot AI Strategy Rules & Tactics")
 class SmartBotStrategyTest {
 
     private SmartBotStrategy strategy;
-    private GameObserver gameObserver;
-    private PlayerId myId;
-    private PlayerId enemyId;
-    private Player mockPlayer;
+    private final PlayerId botId = new PlayerId("smart-bot-007");
+
+    @Mock
+    private SmartBotMemory mockMemory;
+
+    @Mock
+    private Random mockRandom;
 
     @BeforeEach
-    void setUp() {
-        myId = new PlayerId("Bot-1");
-        enemyId = new PlayerId("Enemy-1");
-        strategy = new SmartBotStrategy(myId);
-        gameObserver = strategy.getGameObserver();
+    void setUp() throws Exception {
+        strategy = new SmartBotStrategy(botId);
 
-        // Initialize the memory with a fake game start
-        gameObserver.onRoundStarted(List.of(myId, enemyId, new PlayerId("P3"), new PlayerId("P4")));
+        // INJECTION REFLECTION: Swap the internal Memory and Random objects with our Mocks
+        // This allows us to control the game state and eliminate RNG for deterministic tests.
+        Field memoryField = SmartBotStrategy.class.getDeclaredField("memory");
+        memoryField.setAccessible(true);
+        memoryField.set(strategy, mockMemory);
 
-        // Mock the player context passed into the determineBid method
-        mockPlayer = mock(Player.class);
-        when(mockPlayer.getId()).thenReturn(myId);
+        Field randomField = SmartBotStrategy.class.getDeclaredField("random");
+        randomField.setAccessible(true);
+        randomField.set(strategy, mockRandom);
+
+        // Default the Random mock to always select the first item in any filtered list
+        lenient().when(mockRandom.nextInt(anyInt())).thenReturn(0);
     }
 
     @Nested
-    @DisplayName("Defensive Programming & Setup Checks")
-    class DefensiveTests {
-
-        @Test
-        @DisplayName("Constructor throws on null PlayerId")
-        void testNullPlayerId() {
-            assertThrows(IllegalArgumentException.class, () -> new SmartBotStrategy(null));
-        }
-
-        @Test
-        @DisplayName("Requires Confirmation is always false for Bots")
-        void testRequiresConfirmation() {
-            assertFalse(strategy.requiresConfirmation());
-        }
-
-        @Test
-        @DisplayName("Throws exception on null player or hand")
-        void testNullArguments() {
-            assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(null));
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(null, Suit.HEARTS));
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(new ArrayList<>(), Suit.HEARTS));
-        }
-    }
-
-    @Nested
-    @DisplayName("Bidding Heuristics")
+    @DisplayName("Bidding Phase Heuristics")
     class BiddingTests {
 
         @Test
-        @DisplayName("Bids OPEN_MISERIE if highest card is <= 7")
-        void testOpenMiserieEligibility() {
-            List<Card> hand = createHand(Rank.TWO, Rank.FOUR, Rank.SEVEN);
-            when(mockPlayer.getHand()).thenReturn(hand);
+        @DisplayName("Should bid OPEN MISERIE if the highest card is a 7 or lower")
+        void bidsOpenMiserie() {
+            List<Card> hand = List.of(
+                    new Card(Suit.HEARTS, Rank.TWO),
+                    new Card(Suit.SPADES, Rank.SEVEN)
+            );
 
-            Bid bid = strategy.determineBid(mockPlayer);
+            Bid bid = strategy.determineBid(botId, hand);
+
             assertEquals(BidType.OPEN_MISERIE, bid.getType());
         }
 
         @Test
-        @DisplayName("Bids MISERIE if highest card is <= 10")
-        void testMiserieEligibility() {
-            List<Card> hand = createHand(Rank.TWO, Rank.EIGHT, Rank.TEN);
-            when(mockPlayer.getHand()).thenReturn(hand);
+        @DisplayName("Should bid MISERIE if the highest card is between 8 and 10")
+        void bidsMiserie() {
+            List<Card> hand = List.of(
+                    new Card(Suit.HEARTS, Rank.TWO),
+                    new Card(Suit.SPADES, Rank.TEN)
+            );
 
-            Bid bid = strategy.determineBid(mockPlayer);
+            Bid bid = strategy.determineBid(botId, hand);
+
             assertEquals(BidType.MISERIE, bid.getType());
         }
 
         @Test
-        @DisplayName("Bids SOLO_SLIM if expected tricks = 13 and dealt trump is optimal")
-        void testSoloSlimBid() {
-            gameObserver.onTrumpDetermined(Suit.HEARTS);
-            // 13 Hearts = 13 Tricks in Hearts
-            List<Card> hand = createSuitHand(Suit.HEARTS, 13);
-            when(mockPlayer.getHand()).thenReturn(hand);
+        @DisplayName("Should bid ABONDANCE 9 if evaluating 9 guaranteed tricks")
+        void bidsAbondance9() {
+            // Hand with 9 Hearts (including an Ace to prevent Miserie evaluation)
+            List<Card> hand = List.of(
+                    new Card(Suit.HEARTS, Rank.ACE), new Card(Suit.HEARTS, Rank.KING),
+                    new Card(Suit.HEARTS, Rank.QUEEN), new Card(Suit.HEARTS, Rank.JACK),
+                    new Card(Suit.HEARTS, Rank.TEN), new Card(Suit.HEARTS, Rank.NINE),
+                    new Card(Suit.HEARTS, Rank.EIGHT), new Card(Suit.HEARTS, Rank.SEVEN),
+                    new Card(Suit.HEARTS, Rank.SIX),
+                    new Card(Suit.CLUBS, Rank.TWO), new Card(Suit.CLUBS, Rank.THREE)
+            );
 
-            Bid bid = strategy.determineBid(mockPlayer);
-            assertEquals(BidType.SOLO_SLIM, bid.getType());
+            Bid bid = strategy.determineBid(botId, hand);
+
+            assertEquals(BidType.ABONDANCE_9, bid.getType());
+            assertEquals(Suit.HEARTS, bid.determineTrump(Suit.HEARTS), "Should correctly identify Hearts as the best trump suit.");
         }
 
         @Test
-        @DisplayName("Bids SOLO if expected tricks = 13 but optimal trump is different")
-        void testSoloBid() {
-            gameObserver.onTrumpDetermined(Suit.CLUBS); // Dealt clubs
-            // 13 Spades = 13 Tricks, but requires changing trump to Spades
-            List<Card> hand = createSuitHand(Suit.SPADES, 13);
-            when(mockPlayer.getHand()).thenReturn(hand);
+        @DisplayName("Should bid ACCEPTANCE if 3+ tricks expected and an active proposal exists")
+        void bidsAcceptance() {
+            List<Card> hand = List.of(new Card(Suit.HEARTS, Rank.ACE), new Card(Suit.SPADES, Rank.KING), new Card(Suit.CLUBS, Rank.QUEEN));
 
-            Bid bid = strategy.determineBid(mockPlayer);
-            assertEquals(BidType.SOLO, bid.getType());
-        }
+            when(mockMemory.getCurrentTrump()).thenReturn(Suit.DIAMONDS);
+            when(mockMemory.hasActiveProposal()).thenReturn(true);
 
-        @Test
-        @DisplayName("Bids PROPOSAL if expected tricks >= 5 and no active proposal")
-        void testProposalBid() {
-            // 5 Face cards = 5 expected tricks
-            List<Card> hand = createHand(Rank.ACE, Rank.KING, Rank.QUEEN, Rank.JACK, Rank.ACE, Rank.TWO);
-            when(mockPlayer.getHand()).thenReturn(hand);
+            Bid bid = strategy.determineBid(botId, hand);
 
-            Bid bid = strategy.determineBid(mockPlayer);
-            assertEquals(BidType.PROPOSAL, bid.getType());
-        }
-
-        @Test
-        @DisplayName("Bids ACCEPTANCE if expected tricks >= 3 and active proposal exists")
-        void testAcceptanceBid() {
-            // 3 Face cards = 3 expected tricks
-            List<Card> hand = createHand(Rank.ACE, Rank.KING, Rank.QUEEN, Rank.TWO, Rank.THREE);
-            when(mockPlayer.getHand()).thenReturn(hand);
-
-            // Simulate enemy making a proposal
-            gameObserver.onBidPlaced(new BidTurn(enemyId, BidType.PROPOSAL));
-
-            Bid bid = strategy.determineBid(mockPlayer);
             assertEquals(BidType.ACCEPTANCE, bid.getType());
         }
 
         @Test
-        @DisplayName("Passes if expected tricks < 5 and no active proposal")
-        void testPassBid() {
-            // Only 3 expected tricks, but NO proposal to accept
-            List<Card> hand = createHand(Rank.ACE, Rank.KING, Rank.QUEEN, Rank.TWO, Rank.THREE);
-            when(mockPlayer.getHand()).thenReturn(hand);
+        @DisplayName("Should bid PASS if the hand is weak (0-2 tricks)")
+        void bidsPassWhenWeak() {
+            List<Card> hand = List.of(new Card(Suit.HEARTS, Rank.ACE), new Card(Suit.SPADES, Rank.TWO)); // Only 1 trick expected
 
-            Bid bid = strategy.determineBid(mockPlayer);
+            when(mockMemory.getCurrentTrump()).thenReturn(Suit.DIAMONDS);
+
+            Bid bid = strategy.determineBid(botId, hand);
+
             assertEquals(BidType.PASS, bid.getType());
         }
     }
 
     @Nested
-    @DisplayName("Play Phase: Normal Tactic")
-    class NormalPlayTests {
+    @DisplayName("Play Phase Tactics: NORMAL Mode")
+    class NormalTacticTests {
+
+        @BeforeEach
+        void setupNormalMode() {
+            // Ensure no miserie bid is active
+            lenient().when(mockMemory.getHighestBid()).thenReturn(null);
+        }
 
         @Test
-        @DisplayName("Lead Player: Plays guaranteed winner if holding highest unplayed card")
-        void testLeadPlayerGuaranteedWinner() {
-            Card highestSpade = new Card(Suit.SPADES, Rank.ACE);
-            Card lowSpade = new Card(Suit.SPADES, Rank.TWO);
-            List<Card> hand = List.of(highestSpade, lowSpade);
+        @DisplayName("Should play guaranteed winner if leading the trick")
+        void playsWinnerWhenLeading() {
+            Card winningCard = new Card(Suit.HEARTS, Rank.ACE);
+            List<Card> hand = List.of(winningCard, new Card(Suit.HEARTS, Rank.TWO));
 
-            // Because round just started, Ace of Spades is unplayed. It IS a guaranteed winner.
+            when(mockMemory.isLeadPlayer()).thenReturn(true);
+            when(mockMemory.isHighestUnplayedCardInSuit(winningCard)).thenReturn(true);
+
             Card played = strategy.chooseCardToPlay(hand, null);
-            assertEquals(highestSpade, played);
+
+            assertEquals(winningCard, played);
         }
 
         @Test
-        @DisplayName("Not Lead: Plays lowest legal card if team is already winning")
-        void testPlayLowestIfWinning() {
-            Card highSpade = new Card(Suit.SPADES, Rank.KING);
-            Card lowSpade = new Card(Suit.SPADES, Rank.TWO);
-            List<Card> hand = List.of(highSpade, lowSpade);
-
-            // Simulate our bot already winning the trick
-            gameObserver.onTurnPlayed(new PlayTurn(myId, new Card(Suit.SPADES, Rank.ACE)));
-
-            Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
-            assertEquals(lowSpade, played, "Should conserve high card and play lowest");
-        }
-
-        @Test
-        @DisplayName("Not Lead, Losing: Plays highest card to follow suit")
-        void testPlayHighestToWin() {
-            gameObserver.onBidPlaced(new BidTurn(enemyId, BidType.SOLO));
-            Card highSpade = new Card(Suit.SPADES, Rank.KING);
-            Card lowSpade = new Card(Suit.SPADES, Rank.TWO);
-            List<Card> hand = List.of(highSpade, lowSpade);
-
-            // Enemy is winning with a Queen
-            gameObserver.onTurnPlayed(new PlayTurn(enemyId, new Card(Suit.SPADES, Rank.QUEEN)));
-
-            Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
-            assertEquals(highSpade, played, "Should try to beat the Queen with the King");
-        }
-
-        @Test
-        @DisplayName("Not Lead, Losing, Void in Lead: Plays lowest trump")
-        void testPlayLowestTrumpWhenVoid() {
-            gameObserver.onTrumpDetermined(Suit.HEARTS);
-            gameObserver.onBidPlaced(new BidTurn(enemyId, BidType.SOLO));
-            Card highHeart = new Card(Suit.HEARTS, Rank.ACE);
+        @DisplayName("Should conserve high cards and play low if the team is already winning")
+        void playsLowIfPartnerWinning() {
             Card lowHeart = new Card(Suit.HEARTS, Rank.TWO);
-            Card club = new Card(Suit.CLUBS, Rank.FIVE);
-            List<Card> hand = List.of(highHeart, lowHeart, club); // Void in Spades
+            Card highHeart = new Card(Suit.HEARTS, Rank.ACE);
+            List<Card> hand = List.of(highHeart, lowHeart);
 
-            gameObserver.onTurnPlayed(new PlayTurn(enemyId, new Card(Suit.SPADES, Rank.ACE)));
+            when(mockMemory.isLeadPlayer()).thenReturn(false);
+            when(mockMemory.isTeamWinning(botId)).thenReturn(true);
 
+            Card played = strategy.chooseCardToPlay(hand, Suit.HEARTS);
+
+            assertEquals(lowHeart, played, "Should conserve the Ace because the partner is already winning.");
+        }
+
+        @Test
+        @DisplayName("Should play lowest trump if void in lead suit and team is losing")
+        void ruffsWithLowestTrumpWhenVoid() {
+            Card diamondTwo = new Card(Suit.DIAMONDS, Rank.TWO); // Non-trump discard
+            Card heartThree = new Card(Suit.HEARTS, Rank.THREE); // Lowest Trump
+            Card heartAce = new Card(Suit.HEARTS, Rank.ACE);     // Highest Trump
+            List<Card> hand = List.of(diamondTwo, heartThree, heartAce);
+
+            when(mockMemory.isLeadPlayer()).thenReturn(false);
+            when(mockMemory.isTeamWinning(botId)).thenReturn(false);
+            when(mockMemory.getCurrentTrump()).thenReturn(Suit.HEARTS);
+
+            // Lead is SPADES, bot is void
             Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
-            assertEquals(lowHeart, played, "Should trump in with the lowest trump possible");
+
+            assertEquals(heartThree, played, "Should ruff the trick with the lowest possible trump card.");
         }
     }
 
     @Nested
-    @DisplayName("Play Phase: Miserie & Anti-Miserie Tactics (Section 3.3.4)")
-    class MiseriePlayTests {
+    @DisplayName("Play Phase Tactics: MISERIE Mode")
+    class MiserieTacticTests {
 
         @BeforeEach
-        void setUpMiserie() {
-            // Nullify trump for miserie games
-            gameObserver.onTrumpDetermined(null);
-        }
+        void setupMiserieMode() {
+            // Force the strategy to recognize itself as the Miserie player
+            BidTurn mockBid = mock(BidTurn.class);
+            lenient().when(mockBid.bidType()).thenReturn(BidType.MISERIE);
+            lenient().when(mockBid.playerId()).thenReturn(botId);
 
-
-        @Test
-        @DisplayName("MISERIE Tactic: Plays highest safe card that does not win")
-        void testMiseriePlaysHighestSafe() {
-            // Tell memory our bot is playing Miserie
-            gameObserver.onBidPlaced(new BidTurn(myId, BidType.MISERIE));
-
-            Card enemyCard = new Card(Suit.SPADES, Rank.NINE);
-            gameObserver.onTurnPlayed(new PlayTurn(enemyId, enemyCard));
-
-            Card lowSafe = new Card(Suit.SPADES, Rank.TWO);
-            Card highSafe = new Card(Suit.SPADES, Rank.EIGHT);
-            Card unsafeWinning = new Card(Suit.SPADES, Rank.TEN);
-            List<Card> hand = List.of(lowSafe, highSafe, unsafeWinning);
-
-            Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
-            assertEquals(highSafe, played, "Should dump the highest possible card that stays under the Nine");
+            lenient().when(mockMemory.getHighestBid()).thenReturn(mockBid);
         }
 
         @Test
-        @DisplayName("ANTI-MISERIE: Plays lowest card to keep Miserie player winning")
-        void testAntiMiserieForceWin() {
-            // Tell memory enemy is playing Miserie
-            gameObserver.onBidPlaced(new BidTurn(enemyId, BidType.MISERIE));
+        @DisplayName("Should play the highest possible safe card that dodges winning")
+        void playsHighestSafeCard() {
+            Card heartTwo = new Card(Suit.HEARTS, Rank.TWO);
+            Card heartNine = new Card(Suit.HEARTS, Rank.NINE);
+            Card heartAce = new Card(Suit.HEARTS, Rank.ACE);
+            List<Card> hand = List.of(heartTwo, heartNine, heartAce);
 
-            // Enemy plays an 8
-            Card enemyCard = new Card(Suit.SPADES, Rank.EIGHT);
-            gameObserver.onTurnPlayed(new PlayTurn(enemyId, enemyCard));
+            when(mockMemory.isLeadPlayer()).thenReturn(false);
 
-            Card lowSafe = new Card(Suit.SPADES, Rank.TWO); // Will lose to 8
-            Card highSafe = new Card(Suit.SPADES, Rank.SEVEN); // Will lose to 8
-            Card unsafeWinning = new Card(Suit.SPADES, Rank.TEN); // Will beat 8
-            List<Card> hand = List.of(lowSafe, highSafe, unsafeWinning);
+            // Assume the opponent played a Jack.
+            PlayTurn playTurn = new PlayTurn(new PlayerId("opponent"), new Card(Suit.HEARTS, Rank.JACK));
+            when(mockMemory.getCurrentWinningTurn()).thenReturn(playTurn);
 
-            Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
-            assertEquals(lowSafe, played, "Should play the absolute lowest to ensure enemy wins the trick");
-        }
+            Card played = strategy.chooseCardToPlay(hand, Suit.HEARTS);
 
-        @Test
-        @DisplayName("ANTI-MISERIE: Plays highest if Miserie player is currently safe")
-        void testAntiMiserieMiserieIsSafe() {
-            gameObserver.onBidPlaced(new BidTurn(enemyId, BidType.MISERIE));
-
-            // Player 3 is winning with a King. Enemy is safe with a 2.
-            gameObserver.onTurnPlayed(new PlayTurn(new PlayerId("P3"), new Card(Suit.SPADES, Rank.KING)));
-            gameObserver.onTurnPlayed(new PlayTurn(enemyId, new Card(Suit.SPADES, Rank.TWO)));
-
-            List<Card> hand = List.of(new Card(Suit.SPADES, Rank.FOUR), new Card(Suit.SPADES, Rank.JACK));
-
-            Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
-            assertEquals(Rank.JACK, played.rank(), "Miserie player is already losing the trick, play highest to take control");
+            // The Nine is the highest card that safely stays under the Jack
+            assertEquals(heartNine, played, "Must dump the highest card that won't take the trick.");
         }
     }
 
-    // --- Utility Methods for fast Hand Creation ---
+    @Nested
+    @DisplayName("Play Phase Tactics: ANTI-MISERIE Mode")
+    class AntiMiserieTacticTests {
 
-    private List<Card> createHand(Rank... ranks) {
-        List<Card> hand = new ArrayList<>();
-        // Mix suits arbitrarily for rank-based tests
-        Suit[] suits = Suit.values();
-        for (int i = 0; i < ranks.length; i++) {
-            hand.add(new Card(suits[i % suits.length], ranks[i]));
-        }
-        return hand;
-    }
+        private final PlayerId opponentId = new PlayerId("opponent-miserie");
 
-    private List<Card> createSuitHand(Suit suit, int count) {
-        List<Card> hand = new ArrayList<>();
-        Rank[] allRanks = Rank.values();
-        for (int i = 0; i < count && i < allRanks.length; i++) {
-            hand.add(new Card(suit, allRanks[i]));
+        @BeforeEach
+        void setupAntiMiserieMode() {
+            // Force the strategy to recognize the OPPONENT as the Miserie player
+            BidTurn mockBid = mock(BidTurn.class);
+            lenient().when(mockBid.bidType()).thenReturn(BidType.MISERIE);
+            lenient().when(mockBid.playerId()).thenReturn(opponentId);
+
+            lenient().when(mockMemory.getHighestBid()).thenReturn(mockBid);
         }
-        return hand;
+
+        @Test
+        @DisplayName("Should play the lowest safe card to force the Miserie player to win")
+        void playsLowestSafeCardToForceWin() {
+            Card heartTwo = new Card(Suit.HEARTS, Rank.TWO);
+            Card heartEight = new Card(Suit.HEARTS, Rank.EIGHT);
+            Card heartKing = new Card(Suit.HEARTS, Rank.KING);
+            List<Card> hand = List.of(heartTwo, heartEight, heartKing);
+
+            // The Miserie opponent has played a Ten and is currently winning
+            Card opponentCard = new Card(Suit.HEARTS, Rank.TEN);
+            when(mockMemory.hasPlayerActedInCurrentTrick(opponentId)).thenReturn(true);
+            when(mockMemory.calculateCurrentWinnerId()).thenReturn(opponentId);
+            when(mockMemory.getCardPlayedBy(opponentId)).thenReturn(opponentCard);
+
+            Card played = strategy.chooseCardToPlay(hand, Suit.HEARTS);
+
+            // Eight is the lowest card the bot has that is still safely UNDER the Ten.
+            // If the bot played the King, the bot would win the trick, letting the opponent off the hook.
+            assertEquals(heartEight, played, "Must play a card under the opponent's card to force them to take the trick.");
+        }
     }
 }

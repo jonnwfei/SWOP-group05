@@ -2,83 +2,109 @@ package base.domain.strategy;
 
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
-import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("HighBot AI Strategy Rules")
 class HighBotStrategyTest {
 
     private HighBotStrategy strategy;
-    private Player botPlayer;
+    private PlayerId botId;
 
     @BeforeEach
     void setUp() {
         strategy = new HighBotStrategy();
-        botPlayer = new Player(strategy, "HighBot");
+        botId = new PlayerId("high-bot-001");
     }
 
-    @Test
-    void determineBid_AlwaysReturnsPassBid() {
-        Bid bid = strategy.determineBid(botPlayer);
+    @Nested
+    @DisplayName("Bidding Phase Logic")
+    class BiddingTests {
 
-        assertTrue(bid instanceof PassBid);
-        assertEquals(BidType.PASS, bid.getType());
-        assertEquals(botPlayer, bid.getPlayer());
+        @Test
+        @DisplayName("determineBid() should always return a PASS bid")
+        void alwaysReturnsPassBid() {
+            List<Card> dummyHand = List.of(new Card(Suit.HEARTS, Rank.ACE));
+
+            // Passing the ID and Hand, completely decoupled from the Player object!
+            Bid bid = strategy.determineBid(botId, dummyHand);
+
+            assertNotNull(bid);
+            assertEquals(BidType.PASS, bid.getType());
+            assertEquals(botId, bid.getPlayerId());
+        }
     }
 
-    @Test
-    void chooseCardToPlay_MustFollowLead_PlaysHighestOfLead() {
-        // Hand bevat Harten 2, Harten Vrouw en Schoppen Aas
-        List<Card> hand = new ArrayList<>();
-        Card heart2 = new Card(Suit.HEARTS, Rank.TWO);
-        Card heartQueen = new Card(Suit.HEARTS, Rank.QUEEN);
-        Card spadeAce = new Card(Suit.SPADES, Rank.ACE);
-        hand.add(heart2);
-        hand.add(heartQueen);
-        hand.add(spadeAce);
+    @Nested
+    @DisplayName("Play Phase Logic (chooseCardToPlay)")
+    class PlayingTests {
 
-        // Er wordt Harten gevraagd (Lead)
-        Card played = strategy.chooseCardToPlay(hand, Suit.HEARTS);
+        @Test
+        @DisplayName("Should throw exception if hand is null or empty")
+        void throwsOnInvalidHand() {
+            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(null, Suit.HEARTS));
+            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(List.of(), Suit.HEARTS));
+        }
 
-        // De bot moet Harten bekennen en de hoogste kiezen (Vrouw),
-        // ook al is Schoppen Aas de hoogste kaart in de hele hand.
-        assertEquals(heartQueen, played, "Bot moet de hoogste kaart van de gevraagde kleur spelen.");
+        @Test
+        @DisplayName("Must follow lead suit: Plays the highest card of the requested lead suit")
+        void playsHighestOfLeadSuit() {
+            Card heartTwo = new Card(Suit.HEARTS, Rank.TWO);
+            Card heartQueen = new Card(Suit.HEARTS, Rank.QUEEN);
+            Card spadeAce = new Card(Suit.SPADES, Rank.ACE); // Higher overall, but wrong suit
+
+            List<Card> hand = List.of(heartTwo, heartQueen, spadeAce);
+
+            Card played = strategy.chooseCardToPlay(hand, Suit.HEARTS);
+
+            assertEquals(heartQueen, played, "Must follow suit and pick the highest Heart, ignoring the Spade Ace.");
+        }
+
+        @Test
+        @DisplayName("Void in lead suit: Plays the highest overall card in hand")
+        void playsHighestOverallWhenVoid() {
+            Card diamondTen = new Card(Suit.DIAMONDS, Rank.TEN);
+            Card clubKing = new Card(Suit.CLUBS, Rank.KING);
+
+            List<Card> hand = List.of(diamondTen, clubKing);
+
+            Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
+
+            assertEquals(clubKing, played, "Cannot follow Spades, so must play the highest card available (Club King).");
+        }
+
+        @Test
+        @DisplayName("Leading the trick (Lead suit is null): Plays the highest overall card in hand")
+        void playsHighestOverallWhenLeading() {
+            Card heartTwo = new Card(Suit.HEARTS, Rank.TWO);
+            Card spadeAce = new Card(Suit.SPADES, Rank.ACE);
+
+            List<Card> hand = List.of(heartTwo, spadeAce);
+
+            Card played = strategy.chooseCardToPlay(hand, null);
+
+            assertEquals(spadeAce, played, "When leading the trick, should open with the strongest card.");
+        }
     }
 
-    @Test
-    void chooseCardToPlay_CannotFollowLead_PlaysHighestOverall() {
-        // Hand bevat alleen Ruiten en Klaveren
-        List<Card> hand = new ArrayList<>();
-        Card diamond10 = new Card(Suit.DIAMONDS, Rank.TEN);
-        Card clubKing = new Card(Suit.CLUBS, Rank.KING);
-        hand.add(diamond10);
-        hand.add(clubKing);
+    @Nested
+    @DisplayName("System Configuration")
+    class ConfigTests {
 
-        // Er wordt Schoppen gevraagd (die de bot niet heeft)
-        Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
-
-        // De bot kan niet bekennen, dus speelt hij zijn hoogste kaart (Klaveren Heer)
-        assertEquals(clubKing, played, "Bot moet zijn hoogste kaart spelen als hij de kleur niet heeft.");
-    }
-
-    @Test
-    void chooseCardToPlay_InvalidHand_ThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(null, Suit.HEARTS));
-        assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(new ArrayList<>(), Suit.HEARTS));
-    }
-
-    @Test
-    void requiresConfirmation_IsAlwaysFalse() {
-        // Bots hebben geen bevestiging nodig (gebruikt voor UI/Terminal flow)
-        assertFalse(strategy.requiresConfirmation());
+        @Test
+        @DisplayName("requiresConfirmation() is always false for bots")
+        void doesNotRequireConfirmation() {
+            assertFalse(strategy.requiresConfirmation(), "Bots must run automatically without UI confirmation.");
+        }
     }
 }
