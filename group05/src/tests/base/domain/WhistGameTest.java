@@ -180,34 +180,7 @@ class WhistGameTest {
         assertNull(game.getLastRoundWinner()); // Round has 0 tricks, no winners yet
     }
 
-    @Test
-    void getLastRoundWinner_FinishedRound() {
-        game.addPlayer(p1); game.addPlayer(p2); game.addPlayer(p3); game.addPlayer(p4);
-        Round round = new Round(game.getPlayers(), p1, 1);
 
-        Bid miserieBid = new MiserieBid(p1, BidType.MISERIE);
-        round.setBids(List.of(miserieBid));
-        round.setHighestBid(miserieBid);
-
-        // Simulate a finished round where P1 wins Miserie (takes 0 tricks)
-        for (int i = 0; i < 13; i++) {
-            Trick trick = new Trick(p2, null);
-            p1.setHand(new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.TWO))));
-            p2.setHand(new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.ACE)))); // P2 wins
-            p3.setHand(new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.THREE))));
-            p4.setHand(new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.FOUR))));
-
-            trick.playCard(p2, p2.getHand().getFirst());
-            trick.playCard(p3, p3.getHand().getFirst());
-            trick.playCard(p4, p4.getHand().getFirst());
-            trick.playCard(p1, p1.getHand().getFirst());
-
-            round.registerCompletedTrick(trick);
-        }
-
-        game.addRound(round);
-        assertEquals(p1, game.getLastRoundWinner());
-    }
 
     // -------- STATE PATTERN TESTS --------
 

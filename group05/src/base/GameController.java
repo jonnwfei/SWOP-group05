@@ -1,11 +1,16 @@
 package base;
 
 import base.domain.WhistGame;
-import base.domain.actions.ContinueAction;
-import base.domain.actions.GameAction;
+import base.domain.commands.ContinueCommand;
+import base.domain.commands.GameCommand;
+import base.domain.results.GameResult;
+import cli.adapter.AdapterResponse;
+import cli.adapter.AdapterResult;
+import cli.events.IOEvent;
 import cli.TerminalManager;
-import base.domain.events.GameEvent;
 import cli.elements.Response;
+import cli.adapter.Adapter;
+import cli.MenuFlow;
 
 /**
  * The main execution engine of the Whist application.
@@ -15,33 +20,65 @@ import cli.elements.Response;
 public class GameController {
     private final WhistGame game;
     private final TerminalManager terminalManager;
-    private Boolean isRunning;
+    private final Adapter adapter;
+    private final MenuFlow menuFlow;
 
-    /**
-     * Initializes the controller with a new game instance and terminal handler.
-     */
-    public GameController(){
+    public GameController() {
         this.game = new WhistGame();
         this.terminalManager = new TerminalManager();
-        this.isRunning = true;
+        this.adapter = new Adapter(this.game);
+        this.menuFlow = new MenuFlow(terminalManager, game);
     }
 
-    /**
-     * Starts the main execution loop.
-     */
-    public void run(){
-        while(isRunning) {
-            Boolean state_running = true;
-            GameAction answer = new ContinueAction();
+    public void run() {
+        boolean playAgain = true;
 
-            while (state_running) {
-                GameEvent<?> event = game.executeState(answer);
-                Response response = terminalManager.handle(event);
-                state_running = response.getContinue();
-                answer = response.getAction();
+        while (playAgain) {
+
+            menuFlow.run();
+
+            GameCommand command = new ContinueCommand();
+            boolean stateRunning = true;
+
+            while (!game.isOver()) {
+                while (stateRunning) {
+                    GameResult result = game.executeState(command);
+
+                    AdapterResult adapterResult = adapter.handleResult(result);
+
+                    switch (adapterResult) {
+                        case AdapterResult.Immediate immediate -> {
+                            // Bot turn: no IO needed, command is ready immediately
+                            stateRunning = true;
+                            command = immediate.command();
+                        }
+
+                        case AdapterResult.NeedsIO needsIO -> {
+                            IOEvent event = needsIO.event();
+                            stateRunning = event.getContinue();
+
+                            Response response = terminalManager.handle(event);
+                            AdapterResponse adapterResponse = adapter.handleResponse(response, result);
+
+                            while (adapterResponse.command() == null) {
+                                for (IOEvent immediate : adapterResponse.immediateEvents()) {
+                                    terminalManager.handle(immediate);
+                                }
+                                Response retryResponse = terminalManager.handle(event);
+                                adapterResponse = adapter.handleResponse(retryResponse, result);
+                            }
+
+                            command = adapterResponse.command();
+                        }
+                    }
+                }
+
+                game.nextState();
+                stateRunning = true;
+                command = new ContinueCommand();
             }
 
-            game.nextState();
+
         }
     }
 }

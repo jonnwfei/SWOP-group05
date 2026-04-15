@@ -73,24 +73,8 @@ public class Trick {
      * (not following suit), or the trick is full.
      */
     public void playCard(Player player, Card playedCard) {
-        if (player == null || playedCard == null)
-            throw new IllegalArgumentException("Trick: Player and Card must exist.");
-
-        // Rule: One card per player
-        if (turns.stream().anyMatch(t -> t.player().equals(player))) {
-            throw new IllegalArgumentException("Trick: Player already played in this trick.");
-        }
-
-        // Rule: Must follow leading suit if possible
-        if (!turns.isEmpty()) {
-            Suit leadingSuit = getLeadingSuit();
-            if (playedCard.suit() != leadingSuit && player.hasSuit(leadingSuit)) {
-                throw new IllegalArgumentException("Trick: You must follow the leading suit (" + leadingSuit + ").");
-            }
-        }
-
-        if (turns.size() >= MAX_TURNS) {
-            throw new IllegalArgumentException("Trick: This trick is already full.");
+        if (!isLegalCard(player, playedCard)) {
+            throw new IllegalArgumentException("Trick: Illegal move.");
         }
 
         turns.add(new Turn(player, playedCard));
@@ -137,5 +121,52 @@ public class Trick {
             }
         }
         this.winningPlayer = currentWinner;
+    }
+    /**
+     * Returns all legal cards a player can play in this trick.
+     * @param player The player whose hand is evaluated.
+     * @return A list of legal cards.
+     */
+    public List<Card> getLegalCards(Player player) {
+        if (player == null) return List.of();
+
+        List<Card> legalCards = new ArrayList<>();
+
+        for (Card card : player.getHand()) { // assuming getHand() exists
+            if (isLegalCard(player, card)) {
+                legalCards.add(card);
+            }
+        }
+
+        return legalCards;
+    }
+    /**
+     * Checks whether a given card is legal to play for a player in the current trick.
+     * @param player The player attempting to play.
+     * @param card The card to check.
+     * @return true if the move is legal, false otherwise.
+     */
+    public boolean isLegalCard(Player player, Card card) {
+        if (player == null || card == null) return false;
+
+        // Trick already full
+        if (isCompleted()) return false;
+
+        // Player already played
+        if (turns.stream().anyMatch(t -> t.player().equals(player))) {
+            return false;
+        }
+
+        // First card → always legal (assuming it's in hand, handled elsewhere)
+        if (turns.isEmpty()) return true;
+
+        Suit leadingSuit = getLeadingSuit();
+
+        // Must follow suit if possible
+        if (card.suit() != leadingSuit && player.hasSuit(leadingSuit)) {
+            return false;
+        }
+
+        return true;
     }
 }

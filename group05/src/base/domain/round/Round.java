@@ -521,4 +521,8 @@ public class Round {
     public boolean isFinished() {
         return playedTricks.size() == MAX_TRICKS;
     }
+
+    public void setHighestBid(Bid bid) {
+        this.highestBid = bid;
+    }
 }

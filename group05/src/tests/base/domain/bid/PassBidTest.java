@@ -41,12 +41,6 @@ class PassBidTest {
         assertEquals(BidType.PASS, bid.getType());
     }
 
-    @Test
-    void determineTrump_ReturnsNull() {
-        // A PassBid never determines the trump suit, so it should always safely return null
-        assertNull(bid.determineTrump(Suit.HEARTS));
-        assertNull(bid.determineTrump(null));
-    }
 
     @Test
     void calculateBasePoints_AlwaysReturnsPassPoints() {

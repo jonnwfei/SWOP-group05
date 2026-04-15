@@ -1,23 +1,18 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.actions.GameAction;
-import base.domain.actions.NumberAction;
-import base.domain.actions.NumberListAction;
-import base.domain.actions.TextAction;
-import base.domain.events.ErrorEvent;
-import base.domain.events.countEvents.*;
-import base.domain.events.errorEvents.NumberErrorEvent;
-import base.domain.events.errorEvents.NumberListErrorEvent;
-import base.domain.events.menuEvents.SaveDescriptionEvent;
+
+import base.domain.commands.*;
+
+import base.domain.results.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
-import base.domain.events.GameEvent;
+
 import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.round.Round;
-import java.util.ArrayList;
+
 import java.util.List;
 import static base.domain.bid.BidType.*;
 
@@ -27,18 +22,18 @@ import static base.domain.bid.BidType.*;
  * @author Stan Kestens
  * @since 01/03/2026
  */
-public class CountState extends State {
+public class    CountState extends State {
 
     private enum CountPhase {
-        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION
+        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, SELECT_WINNERS, CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION
     }
 
     private CountPhase currentPhase = CountPhase.START;
-    private int numberBid;
     private int keuze;
     private Bid bid;
+    private BidType selectedBidType;
     private Suit trumpSuit;
-    private List<Integer> participatingPlayers;
+    private List<Player> participatingPlayers;
     private final GamePersistenceService persistenceService;
 
     public CountState(WhistGame game) {
@@ -48,224 +43,138 @@ public class CountState extends State {
 
     /**
      * Routes the user action to the current phase of the scoring wizard.
-     * 
-     * @param action The user input.
+     *
+     * @param command The user input.
      * @return The next event in the scoring sequence.
      */
     @Override
-    public GameEvent<?> executeState(GameAction action) {
-        return switch (currentPhase) {
-            case START -> handleStart();
-            case SELECT_BID -> handleSelectBid(action);
-            case SELECT_TRUMP -> handleSelectTrump(action);
-            case SELECT_PLAYERS -> handleSelectPlayers(action);
-            case CALCULATE -> handleCalculate(action);
-            case PROMPT_NEXT_STATE -> handlePromptNextState(action);
-            case SAVE_DESCRIPTION -> handleSaveDescription(action);
-        };
-    }
-
-    /**
-     * Initializes the wizard flow.
-     * 
-     * @return GameEvent
-     */
-    private GameEvent<?> handleStart() {
-        currentPhase = CountPhase.SELECT_BID;
-        return new WelcomeCountEvent();
-    }
-
-    /**
-     * Processes the selected bid type (1-10).
-     * 
-     * @return GameEvent
-     */
-    private GameEvent<?> handleSelectBid(GameAction action) {
-        Integer choice = switch (action) {
-            case NumberAction(int value) -> value;
-            default -> null;
-        };
-        if (choice == null)
-            return null;
-
-        if (choice < 1 || choice > 10)
-            return new ErrorEvent(1, 10);
-
-        this.numberBid = choice;
-        if (choice == 7 || choice == 8) {
-            currentPhase = CountPhase.SELECT_PLAYERS;
-            return new PlayersInBidEvent(getPlayerNames());
-        } else {
-            currentPhase = CountPhase.SELECT_TRUMP;
-            return new GetSuitEvent();
+    public GameResult executeState(GameCommand command) {
+        if (currentPhase == CountPhase.START) {
+            currentPhase = CountPhase.SELECT_BID;
+            return new BidSelectionResult(values(), getGame().getPlayers());
         }
+
+        return switch (command) {
+            case BidCommand b            -> handleBidType(b.bid());
+            case SuitCommand s           -> handleSuit(s.suit());
+            case PlayerListCommand p     -> handlePlayerInput(p.players());
+            case NumberCommand n         -> handleNumberInput(n.choice());
+            case TextCommand t           -> handleSaveDescription(t.text());
+            case ContinueCommand ignored -> nextStep();
+            default -> throw new IllegalStateException("Unexpected value: " + command);
+        };
+    }
+
+
+    private GameResult handleNumberInput(int value) {
+        if (currentPhase == CountPhase.CALCULATE) {
+            return finalizeCalculation(value, null);
+        }
+        // PROMPT_NEXT_STATE
+        if (value == 3) {
+            currentPhase = CountPhase.SAVE_DESCRIPTION;
+            return new SaveDescriptionResult();
+        }
+        this.keuze = value;
+        return new ScoreBoardCompleteResult(); // signals inner loop to exit
+    }
+
+
+    private GameResult nextStep() {
+        currentPhase = CountPhase.SELECT_BID;
+        return new BidSelectionResult(values(), getGame().getPlayers());
+    }
+
+    /**
+     * Processes the selected bid type
+     *
+     * @return GameEvent
+     */
+    private GameResult handleBidType(BidType type) {
+        this.selectedBidType = type;
+
+        if (type == MISERIE || type == OPEN_MISERIE) {
+            currentPhase = CountPhase.SELECT_PLAYERS;
+            return new PlayerSelectionResult(getGame().getPlayers(), true);
+        }
+        currentPhase = CountPhase.SELECT_TRUMP;
+        return new SuitSelectionResult();
     }
 
     /**
      * Processes the trump suit selection.
-     * 
+     *
      * @return GameEvent
      */
-    private GameEvent<?> handleSelectTrump(GameAction action) {
-        Integer choice = switch (action) {
-            case NumberAction(int value) -> value;
-            default -> null;
-        };
-        if (choice == null)
-            return null;
-
-        this.trumpSuit = switch (choice) {
-            case 1 -> Suit.HEARTS;
-            case 2 -> Suit.CLUBS;
-            case 3 -> Suit.DIAMONDS;
-            case 4 -> Suit.SPADES;
-            default -> null;
-        };
-
-        if (this.trumpSuit == null)
-            return new ErrorEvent(1, 4);
-
+    private GameResult handleSuit(Suit suit) {
+        this.trumpSuit = suit;
         currentPhase = CountPhase.SELECT_PLAYERS;
-        return new PlayersInBidEvent(getPlayerNames());
+        return new PlayerSelectionResult(getGame().getPlayers(), false);
     }
 
     /**
      * Identifies which players were involved in the bid.
-     * 
+     *
      * @return GameEvent
      */
-    private GameEvent<?> handleSelectPlayers(GameAction action) {
-        ArrayList<Integer> indices = switch (action) {
-            case NumberListAction(ArrayList<Integer> values) -> values;
-            default -> null;
-        };
-        if (indices == null)
-            return null;
+    private GameResult handlePlayerInput(List<Player> players) {
+        if (currentPhase == CountPhase.SELECT_PLAYERS) {
+            // If empty, stay in the same phase and return the selection result again
+            if (players == null || players.isEmpty()) {
+                // We stay in SELECT_PLAYERS phase
+                boolean multiSelect = (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE);
+                return new PlayerSelectionResult(getGame().getPlayers(), multiSelect);
+            }
 
-        // Validation: Only Miserie allows multiple participants in this specific wizard
-        // flow
-        if (numberBid != 7 && numberBid != 8 && indices.size() > 1) {
-            PlayersInBidEvent tempEvent = new PlayersInBidEvent(getPlayerNames());
-            return new NumberListErrorEvent(tempEvent::isValid);
+            this.participatingPlayers = players;
+
+            // safe to call getFirst() now
+            this.bid = selectedBidType.instantiate(participatingPlayers.getFirst(), trumpSuit);
+
+            if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
+                currentPhase = CountPhase.SELECT_WINNERS;
+                return new PlayerSelectionResult(getGame().getPlayers(), true);
+            }
+
+            currentPhase = CountPhase.CALCULATE;
+            return new TrickInputResult();
         }
 
-        this.participatingPlayers = indices;
-        currentPhase = CountPhase.CALCULATE;
-        return (numberBid == 7 || numberBid == 8) ? new MiserieWinnerEvent(getPlayerNames()) : new TrickWonEvent();
+        // SELECT_WINNERS — players here are the winners, participatingPlayers already set
+        // An empty list here is fine (means everyone lost their miserie)
+        return finalizeCalculation(0, players);
     }
 
     /**
      * Performs final score calculation based on tricks won or miserie results.
-     * 
+     *
      * @return GameEvent
      */
-    private GameEvent<?> handleCalculate(GameAction action) {
-        List<Player> participants = participatingPlayers.stream()
-                .map(idx -> getGame().getPlayers().get(idx - 1)).toList();
-
-        createBidObject(participants.getFirst());
-        Round round = new Round(getGame().getPlayers(), getGame().getPlayers().getFirst(), 1);
+    private GameResult finalizeCalculation(int tricks, List<Player> winners) {
+        Player primaryBidder = participatingPlayers.getFirst();
+        Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
+        round.setHighestBid(bid);
         getGame().addRound(round);
 
-        if (numberBid == 7 || numberBid == 8) {
-            ArrayList<Integer> winnerIndices = switch (action) {
-                case NumberListAction(ArrayList<Integer> values) -> values;
-                default -> null;
-            };
-            if (winnerIndices == null)
-                return null;
-
-            List<Player> winners;
-            if (winnerIndices.size() == 1 && winnerIndices.get(0) == -1) {
-                winners = new ArrayList<>();
-            } else {
-                for (int idx : winnerIndices) {
-                    if (!participatingPlayers.contains(idx)) {
-                        MiserieWinnerEvent tempEvent = new MiserieWinnerEvent(getPlayerNames());
-                        return new NumberListErrorEvent(tempEvent::isValid);
-                    }
-                }
-                winners = winnerIndices.stream().map(idx -> getGame().getPlayers().get(idx - 1)).toList();
-            }
-            round.calculateScoresForCount(this.bid, 0, participants, winners);
-        } else {
-            Integer tricks = switch (action) {
-                case NumberAction(int value) -> value;
-                default -> null;
-            };
-            if (tricks == null || tricks < 0 || tricks > 13) {
-                return new ErrorEvent(0, 13);
-            }
-            round.calculateScoresForCount(this.bid, tricks, participants, null);
-        }
+        round.calculateScoresForCount(bid, tricks, participatingPlayers, winners);
 
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
-        List<Integer> playerScores = getGame().getPlayers().stream().map(Player::getScore).toList();
-        return new ScoreBoardEvent(getPlayerNames(), playerScores);
+        return getScoreBoard();
     }
 
-    /**
-     * Final prompt to decide whether to count another round or exit.
-     * 
-     * @return GameEvent
-     */
-    private GameEvent<?> handlePromptNextState(GameAction action) {
-        Integer choice = switch (action) {
-            case NumberAction(int value) -> value;
-            default -> null;
-        };
-        if (choice == null || choice < 1 || choice > 3) {
-            return new ErrorEvent(1, 3);
-        }
-        if (choice == 3) {
-            currentPhase = CountPhase.SAVE_DESCRIPTION;
-            return new SaveDescriptionEvent("count");
-        }
-
-        this.keuze = choice;
-        return new EndOfCountStateEvent();
+    private GameResult getScoreBoard() {
+        List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
+        return new ScoreBoardResult(getPlayerNames(), scores);
     }
 
-    private GameEvent<?> handleSaveDescription(GameAction action) {
-        String description = switch (action) {
-            case TextAction(String text) -> text;
-            default -> null;
-        };
-        if (description == null || description.isBlank()) {
-            return new SaveDescriptionEvent("count");
-        }
-
+    private GameResult handleSaveDescription(String text) {
         try {
-            persistenceService.save(getGame(), SaveMode.COUNT, description);
+            persistenceService.save(getGame(), SaveMode.COUNT, text); // TOOD: this needs to be checked and fixed, shouldnt be in domain layer
         } catch (Exception e) {
-            currentPhase = CountPhase.PROMPT_NEXT_STATE;
-            String reason = (e.getMessage() == null || e.getMessage().isBlank())
-                    ? "Unknown persistence error"
-                    : e.getMessage();
-            return new NumberErrorEvent(
-                    "Save failed: " + reason + ". Your session is still active.",
-                    input -> input >= 1 && input <= 3);
+            throw new IllegalStateException("Error in CountState handeSaveDescription",e);
         }
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
-        List<Integer> playerScores = getGame().getPlayers().stream().map(Player::getScore).toList();
-        return new ScoreBoardEvent(getPlayerNames(), playerScores);
-    }
-
-    /** Helper to instantiate the correct Bid object for score calculation. */
-    private void createBidObject(Player bidder) {
-        this.bid = switch (numberBid) {
-            case 1 -> new SoloProposalBid(bidder);
-            case 2 -> new ProposalBid(bidder);
-            case 3 -> new AbondanceBid(bidder, ABONDANCE_9, trumpSuit);
-            case 4 -> new AbondanceBid(bidder, ABONDANCE_10, trumpSuit);
-            case 5 -> new AbondanceBid(bidder, ABONDANCE_11, trumpSuit);
-            case 6 -> new AbondanceBid(bidder, ABONDANCE_12_OT, trumpSuit);
-            case 7 -> new MiserieBid(bidder, MISERIE);
-            case 8 -> new MiserieBid(bidder, OPEN_MISERIE);
-            case 9 -> new SoloBid(bidder, SOLO, trumpSuit);
-            case 10 -> new SoloBid(bidder, SOLO_SLIM, trumpSuit);
-            default -> throw new IllegalStateException("Invalid bid index");
-        };
+        return getScoreBoard();
     }
 
     private List<String> getPlayerNames() {
@@ -275,6 +184,12 @@ public class CountState extends State {
     /** Returns to a fresh CountState or the Main Menu. */
     @Override
     public State nextState() {
-        return (keuze == 1) ? new CountState(getGame()) : new MenuState(getGame());
+        if (keuze == 1){
+            return new CountState(getGame());
+        }
+        else{
+            System.out.println("get here");
+            return null;
+        }
     }
 }
