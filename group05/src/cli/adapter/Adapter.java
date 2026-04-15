@@ -65,7 +65,6 @@ public class Adapter {
             case EndOfRoundResult e            -> new AdapterResult.NeedsIO(new EndOfRoundIOEvent(e));
             case TrickHistoryResult t          -> new AdapterResult.NeedsIO(new TrickHistoryIOEvent(t));
             case ParticipatingPlayersResult p  -> new AdapterResult.NeedsIO(new ParticipatingPlayersIOEvent(p));
-            default -> throw new IllegalStateException("Unexpected GameResult: " + result);
         };
     }
     public AdapterResponse handleResponse(Response response, GameResult result) {
@@ -137,7 +136,7 @@ public class Adapter {
                 case EndOfTurnResult _, EndOfTrickResult _, EndOfRoundResult _, TrickHistoryResult _ ->
                         AdapterResponse.toDomain(new ContinueCommand());
 
-                case ParticipatingPlayersResult p -> {
+                case ParticipatingPlayersResult _ -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
                     List<Player> players = indices.stream()
                             .map(i -> game.getPlayers().get(i - 1))
