@@ -13,7 +13,6 @@ import base.domain.player.*;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
 import base.domain.states.*;
-import base.domain.events.GameEvent;
 
 /**
  * Represents a game of Whist
