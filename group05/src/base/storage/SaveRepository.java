@@ -54,7 +54,7 @@ public class SaveRepository {
      *
      * @param snapshot to save
      * @throws IllegalArgumentException if snapshot is null
-     * @throws IllegalStateException if the saveDirectory cannot be created
+     * @throws IllegalStateException    if the saveDirectory cannot be created
      */
     public void save(GameSnapshot snapshot) {
         if (snapshot == null)
@@ -69,10 +69,10 @@ public class SaveRepository {
     /**
      * Writes the given snapshot to the specified target path.
      *
-     * @param target target Path to writeSnapshot to
+     * @param target   target Path to writeSnapshot to
      * @param snapshot snapshot to write
      * @throws IllegalArgumentException if target is null or snapshot is null
-     * @throws IllegalStateException if an IOException occurs during writing
+     * @throws IllegalStateException    if an IOException occurs during writing
      */
     public void writeSnapshot(Path target, GameSnapshot snapshot) {
         if (target == null)
@@ -101,7 +101,7 @@ public class SaveRepository {
         List<String> descriptions = new ArrayList<>();
         for (Path saveFile : listSaveFiles()) {
             Properties properties = readProperties(saveFile);
-            descriptions.add(properties.getProperty("description", fileNameWithoutExtension(saveFile)));
+            descriptions.add(resolveDisplayDescription(properties, saveFile));
         }
         return descriptions;
     }
@@ -112,8 +112,10 @@ public class SaveRepository {
      * @param description of a gameSnapshot
      * @return GameSnapshot
      * @throws IllegalArgumentException if given description is null
-     * @throws IllegalArgumentException if no save file is found with the given description
-     * @throws IllegalStateException if a matching saveFile is corrupted or unreadable
+     * @throws IllegalArgumentException if no save file is found with the given
+     *                                  description
+     * @throws IllegalStateException    if a matching saveFile is corrupted or
+     *                                  unreadable
      */
     public GameSnapshot loadByDescription(String description) {
         if (description == null)
@@ -122,7 +124,7 @@ public class SaveRepository {
         ensureDirectory();
         for (Path saveFile : listSaveFiles()) {
             Properties properties = readProperties(saveFile);
-            String storedDescription = properties.getProperty("description", fileNameWithoutExtension(saveFile));
+            String storedDescription = resolveDisplayDescription(properties, saveFile);
             if (storedDescription.equals(description)) {
                 return fromProperties(properties);
             }
@@ -133,7 +135,8 @@ public class SaveRepository {
     /**
      * Ensures that the saveDirectory is instantiated.
      *
-     * @throws IllegalStateException if the save directory cannot be created or accessed.
+     * @throws IllegalStateException if the save directory cannot be created or
+     *                               accessed.
      */
     private void ensureDirectory() {
         try {
@@ -147,7 +150,8 @@ public class SaveRepository {
      * Retrieves a list of saveFiles
      *
      * @return list of Path's (saveFiles)
-     * @throws IllegalStateException if IOException occurs during listing of the saveDirectory
+     * @throws IllegalStateException if IOException occurs during listing of the
+     *                               saveDirectory
      */
     private List<Path> listSaveFiles() {
         try (Stream<Path> files = Files.list(savesDirectory)) {
@@ -164,7 +168,8 @@ public class SaveRepository {
      *
      * @param saveFile to read from
      * @return Properties of a given saveFile
-     * @throws IllegalStateException if IOException occurs during reading of the saveFile
+     * @throws IllegalStateException if IOException occurs during reading of the
+     *                               saveFile
      */
     private Properties readProperties(Path saveFile) {
         Properties properties = new Properties();
@@ -181,7 +186,8 @@ public class SaveRepository {
      * the .properties extension.
      *
      * @param description to resolve the path from
-     * @return Path of this game's savesDirectory + slugified description + .properties extension
+     * @return Path of this game's savesDirectory + slugified description +
+     *         .properties extension
      */
     private Path resolveSavePath(String description) {
         String normalized = description.trim();
@@ -196,7 +202,7 @@ public class SaveRepository {
      */
     private Properties toProperties(GameSnapshot snapshot) {
         Properties properties = new Properties();
-        properties.setProperty("description", snapshot.description());
+        properties.setProperty("description", normalizeDescription(snapshot.description()));
         properties.setProperty("mode", snapshot.mode().name());
         properties.setProperty("dealerIndex", String.valueOf(snapshot.dealerIndex()));
         properties.setProperty("player.count", String.valueOf(snapshot.players().size()));
@@ -241,11 +247,15 @@ public class SaveRepository {
      *
      * @param properties to create a gameSnapshot from
      * @return GameSnapshot
-     * @throws IllegalStateException if the properties file is missing data or malformed
+     * @throws IllegalStateException if the properties file is missing data or
+     *                               malformed
      */
     private GameSnapshot fromProperties(Properties properties) {
         try {
-            String description = properties.getProperty("description", "Unnamed Save");
+            String description = normalizeDescription(properties.getProperty("description"));
+            if (description.isEmpty()) {
+                description = "Unnamed Save";
+            }
             SaveMode mode = SaveMode.valueOf(properties.getProperty("mode"));
             int dealerIndex = Integer.parseInt(properties.getProperty("dealerIndex"));
 
@@ -277,7 +287,8 @@ public class SaveRepository {
                 int winnersCount = Integer.parseInt(properties.getProperty(prefix + "miserieWinners.count", "0"));
                 List<Integer> miserieWinnerIndices = new ArrayList<>();
                 for (int j = 0; j < winnersCount; j++) {
-                    miserieWinnerIndices.add(Integer.parseInt(properties.getProperty(prefix + "miserieWinners." + j, "0")));
+                    miserieWinnerIndices
+                            .add(Integer.parseInt(properties.getProperty(prefix + "miserieWinners." + j, "0")));
                 }
 
                 List<Integer> scoreDeltas = new ArrayList<>();
@@ -298,6 +309,24 @@ public class SaveRepository {
         } catch (RuntimeException e) {
             throw new IllegalStateException("Corrupted save file data detected", e);
         }
+    }
+
+    /**
+     * Resolves the description shown to users and used for description-based
+     * lookup.
+     * Missing or blank descriptions fall back to the filename stem.
+     */
+    private String resolveDisplayDescription(Properties properties, Path saveFile) {
+        String stored = properties.getProperty("description");
+        String normalized = normalizeDescription(stored);
+        return normalized.isEmpty() ? fileNameWithoutExtension(saveFile) : normalized;
+    }
+
+    /**
+     * Trims user-facing text fields and converts null to empty text.
+     */
+    private String normalizeDescription(String description) {
+        return description == null ? "" : description.trim();
     }
 
     /**

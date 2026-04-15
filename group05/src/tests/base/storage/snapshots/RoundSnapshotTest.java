@@ -1,5 +1,6 @@
 package base.storage.snapshots;
 
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -160,6 +161,9 @@ class RoundSnapshotTest {
             assertThrows(IllegalArgumentException.class, () ->
                     new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(-1), 1, getValidDeltas())
             );
+
+            assertThrows(IllegalArgumentException.class, () ->
+                new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, listWithNull, 1, getValidDeltas()));
         }
 
         @Test

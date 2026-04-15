@@ -171,7 +171,7 @@ public class GamePersistenceService {
         List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()
             .map(roundPlayers::indexOf)
             .toList();
-        if (participantIndices.isEmpty()) {
+        if (participantIndices.isEmpty() && bidType != BidType.PASS) {
             throw new IllegalStateException("Cannot snapshot round without bidding team participants");
         }
 

@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -124,11 +125,11 @@ class SaveRepositoryTest {
     }
 
     @Test
-    @DisplayName("Load by description returns null if not found")
+    @DisplayName("Load by description throws IllegalArgumentException if not found")
     void testLoadByDescriptionNotFound() {
         saveRepository.save(testSnapshot);
 
-        assertThrows(IllegalArgumentException.class, () ->saveRepository.loadByDescription("Non-existent Save"),
+        assertThrows(IllegalArgumentException.class, () -> saveRepository.loadByDescription("Non-existent Save"),
                 "Loading a non-existent description should throw an IllegalArgumentException.");
     }
 
@@ -202,5 +203,23 @@ class SaveRepositoryTest {
             assertEquals("Failed to list save files", exception.getMessage(),
                     "Should hit the catch block inside listSaveFiles");
         }
+    }
+
+    @Test
+    @DisplayName("List descriptions falls back to filename for blank stored description")
+    void testListDescriptionsFallbackForBlankStoredDescription() throws IOException {
+        Path saveFile = tempSaveDirectory.resolve("unnamed-save.properties");
+        Properties properties = new Properties();
+        properties.setProperty("description", "   ");
+        properties.setProperty("mode", SaveMode.COUNT.name());
+        properties.setProperty("dealerIndex", "0");
+        properties.setProperty("player.count", "0");
+        properties.setProperty("round.count", "0");
+        try (var output = Files.newOutputStream(saveFile)) {
+            properties.store(output, "test");
+        }
+
+        List<String> descriptions = saveRepository.listDescriptions();
+        assertEquals(List.of("unnamed-save"), descriptions);
     }
 }
