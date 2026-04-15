@@ -141,7 +141,7 @@ public class BidState extends State {
                 currentPlayer.getName(),
                 currentTrumpSuit,
                 currentHighestBidType,
-                getLegalBids(currentPlayer),
+                getLegalBids(),
                 currentPlayer.getHand(),
                 currentPlayer                // added
         );
@@ -329,21 +329,28 @@ public class BidState extends State {
      * @return true if the bid type is legally allowed given the current highest bid.
      */
     private boolean isLegalBidType(BidType chosenBidType) {
-        if (chosenBidType == BidType.PASS)
-            return true;
-        if (chosenBidType == BidType.ACCEPTANCE && currentHighestBidType != BidType.PROPOSAL)
-            return false;
-        if (chosenBidType == BidType.SOLO_PROPOSAL && !isBiddingComplete())
-            return false;
-        if (currentHighestBidType == null)
-            return true;
+        // 1. Check special conditions for specific bid types
+        switch (chosenBidType) {
+            case PASS -> {
+                return true;
+            }
+            case ACCEPTANCE -> {
+                if (currentHighestBidType != BidType.PROPOSAL) return false;
+            }
+            case SOLO_PROPOSAL -> {
+                if (!isBiddingComplete()) return false;
+            }
+            default -> {// nothing
+            }
+        }
+
+        if (currentHighestBidType == null) return true;
 
         int comparison = chosenBidType.compareTo(currentHighestBidType);
-        if (comparison < 0)
-            return false;
-        if (chosenBidType.getCategory() != BidCategory.MISERIE) {
+        if (comparison < 0) return false;
+        if (chosenBidType.getCategory() != BidCategory.MISERIE)
             return comparison != 0;
-        }
+
         return true;
     }
 
@@ -410,7 +417,7 @@ public class BidState extends State {
     /**
      * Returns all legal bid types for a given player in the current bidding context.
      */
-    private List<BidType> getLegalBids(Player player) {
+    private List<BidType> getLegalBids() {
         List<BidType> legalBids = new ArrayList<>();
 
         for (BidType bidType : BidType.values()) {
