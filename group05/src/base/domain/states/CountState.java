@@ -2,14 +2,13 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.actions.GameAction;
-import base.domain.actions.NumberAction;
 import base.domain.commands.*;
-import base.domain.events.ErrorEvent;
 import base.domain.events.countEvents.*;
+import base.domain.events.errorEvents.NumberErrorEvent;
 import base.domain.events.menuEvents.SaveDescriptionEvent;
 import base.domain.results.*;
 import base.storage.GamePersistenceService;
-import base.domain.snapshots.SaveMode;
+import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
 import base.domain.events.GameEvent;
 import base.domain.bid.*;
@@ -161,6 +160,30 @@ public class CountState extends State {
 
     private GameResult handleSaveDescription(String text) {
         persistenceService.save(getGame(), SaveMode.COUNT, text);
+        this.keuze = choice;
+        return new EndOfCountStateEvent();
+    }
+
+    private GameEvent<?> handleSaveDescription(GameAction action) {
+        String description = switch (action) {
+            case TextAction(String text) -> text;
+            default -> null;
+        };
+        if (description == null || description.isBlank()) {
+            return new SaveDescriptionEvent("count");
+        }
+
+        try {
+            persistenceService.save(getGame(), SaveMode.COUNT, description);
+        } catch (Exception e) {
+            currentPhase = CountPhase.PROMPT_NEXT_STATE;
+            String reason = (e.getMessage() == null || e.getMessage().isBlank())
+                    ? "Unknown persistence error"
+                    : e.getMessage();
+            return new NumberErrorEvent(
+                    "Save failed: " + reason + ". Your session is still active.",
+                    input -> input >= 1 && input <= 3);
+        }
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
         return getScoreBoard();
 
