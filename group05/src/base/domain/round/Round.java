@@ -161,7 +161,7 @@ public class Round {
         this.currentPlayer = trick.getWinningPlayer();
 
         if (this.playedTricks.size() == MAX_TRICKS) {
-            calculateScores(1);
+            calculateScores();
         }
     }
 
@@ -216,9 +216,8 @@ public class Round {
      * Miserie bids are calculated individually against the defending players, while other bids are calculated as a team.
      *
      * @throws IllegalStateException if the round has not yet completed playing all 13 tricks
-     * @param m a multiplier so that scores can be added / subtracted
      */
-    public void calculateScores(int m) {
+    public void calculateScores() {
         if (playedTricks.size() != MAX_TRICKS) {throw new IllegalStateException("Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got " + playedTricks.size());}
         if (highestBid == null) throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
 
@@ -229,7 +228,7 @@ public class Round {
                 // Check tricks for THIS specific player only!
                 int tricks = getTricksWonBy(List.of(p));
                 int basePoints = highestBid.calculateBasePoints(tricks);
-                distributeScores(m*basePoints, List.of(p));
+                distributeScores(basePoints, List.of(p));
             }
         }
         // --- CASE 2: NORMAL BIDS (Solo, Partners) ---
@@ -239,7 +238,7 @@ public class Round {
             int points = highestBid.calculateBasePoints(tricksWon);
 
             // Distribute as a 1v3 or 2v2 game automatically
-            distributeScores(m*points, attackers);
+            distributeScores(points, attackers);
         }
     }
 

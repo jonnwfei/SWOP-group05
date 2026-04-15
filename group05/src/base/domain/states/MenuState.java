@@ -152,8 +152,11 @@ public class MenuState extends State {
             case NumberAction(int selected) -> selected;
             default -> -1;
         };
-        if (humans < 0) {
+        if (humans < 0 || humans > 67) {
             return new ErrorEvent(0, 67);
+        }
+        if (humans + totalBots < 4) {
+            return new ErrorEvent(0, 4);
         }
         this.humanCount = humans;
         state = SetupState.ENTER_HUMANS;
@@ -230,7 +233,7 @@ public class MenuState extends State {
      */
     @Override
     public State nextState() {
-        if (keuze == 1) {
+        if (keuze == 1 || getGame().getAllPlayers().size() > 4) {
             getGame().setDeck(new Deck());
             getGame().setPlayers(getGame().getAllPlayers().subList(0,4));
             getGame().setRandomDealer();

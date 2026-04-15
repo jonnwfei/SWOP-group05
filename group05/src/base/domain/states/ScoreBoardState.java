@@ -116,8 +116,8 @@ public class ScoreBoardState extends State {
         getGame().addPlayer(new Player(new HumanStrategy(), name));
         phase = ScoreBoardPhase.SHOW_SCORES;
         choice = 0;
-        List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
-        List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
+        List<String> names = getGame().getAllPlayers().stream().map(Player::getName).toList();
+        List<Integer> scores = getGame().getAllPlayers().stream().map(Player::getScore).toList();
         return new ScoreBoardEvent(names, scores);
     }
 
@@ -135,6 +135,10 @@ public class ScoreBoardState extends State {
 
         if (index == -1 || index < 0 || index >= getGame().getAllPlayers().size()) {
             return new RemovePlayerEvent(getGame().getAllPlayers());
+        }
+
+        if(getGame().getPlayers().size() <= 4 ) {
+            throw new IllegalStateException("Cannot remove player, the game need at least 4 players");
         }
 
         getGame().removePlayer(getGame().getAllPlayers().get(index));
@@ -160,7 +164,7 @@ public class ScoreBoardState extends State {
         if (index == -1 || index < 0 || index >= getGame().getRounds().size()) {
             return new RemoveRoundEvent(getGame().getRounds());
         }
-        getGame().getRounds().get(index).calculateScores(-1);
+        //update scoress
         getGame().removeRound(getGame().getRounds().get(index));
         phase = ScoreBoardPhase.SHOW_SCORES;
         choice = 0;
