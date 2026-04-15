@@ -179,9 +179,19 @@ public class Trick {
      * @return true if the move is legal, false otherwise.
      */
     public boolean isLegalCard(Player player, Card card) {
+        if (player == null || card == null) return false;
+        if (!player.hasCard(card)) return false;
+        return isLegalCardFromHand(player, card);
+    }
+
+    /**
+     * Checks whether a given card from the player's hand is legal to play
+     * @param player The player attempting to play.
+     * @param card The card to check (assumed to be in player's hand).
+     * @return true if the move is legal, false otherwise.
+     */
+    private boolean isLegalCardFromHand(Player player, Card card) {
         if (player == null || card == null)
-            return false;
-        if (!player.getHand().contains(card))
             return false;
 
         // Trick already full
