@@ -155,8 +155,10 @@ public class MenuState extends State {
         }
 
         String description = availableSaves.get(selection - 1);
-        SaveMode loadedMode = persistenceService.loadIntoGame(getGame(), description);
-        if (loadedMode == null) {
+        SaveMode loadedMode;
+        try {
+            loadedMode = persistenceService.loadIntoGame(getGame(), description);
+        } catch (IllegalArgumentException | IllegalStateException e) {
             state = SetupState.CHOOSE_MODE;
             return new WelcomeMenuEvent();
         }

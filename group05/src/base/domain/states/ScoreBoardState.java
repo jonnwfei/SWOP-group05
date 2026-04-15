@@ -7,6 +7,7 @@ import base.domain.actions.TextAction;
 import base.domain.events.ErrorEvent;
 import base.domain.events.GameEvent;
 import base.domain.events.countEvents.ScoreBoardEvent;
+import base.domain.events.errorEvents.NumberErrorEvent;
 import base.domain.events.menuEvents.SaveDescriptionEvent;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
@@ -54,11 +55,21 @@ public class ScoreBoardState extends State {
                 return new SaveDescriptionEvent("game");
             }
 
-            persistenceService.save(getGame(), SaveMode.GAME, description);
-            awaitingSaveDescription = false;
-            List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
-            List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-            return new ScoreBoardEvent(names, scores);
+            try {
+                persistenceService.save(getGame(), SaveMode.GAME, description);
+                awaitingSaveDescription = false;
+                List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
+                List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
+                return new ScoreBoardEvent(names, scores);
+            } catch (RuntimeException e) {
+                awaitingSaveDescription = false;
+                String reason = (e.getMessage() == null || e.getMessage().isBlank())
+                        ? "Unknown persistence error"
+                        : e.getMessage();
+                return new NumberErrorEvent(
+                        "Save failed: " + reason + ". Your session is still active.",
+                        input -> input >= 1 && input <= 3);
+            }
         }
 
         switch (action) {
