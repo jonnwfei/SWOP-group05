@@ -5,7 +5,6 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
-import base.domain.events.GameEvent;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.results.GameResult;
@@ -197,7 +196,7 @@ public class WhistGame {
     /**
      * Delegates the provided action to the current state for processing.
      * @param command The user action to process.
-     * @return A {@link GameEvent} describing the outcome of the action.
+     * @return A game result describing the outcome of the action.
      */
     public GameResult executeState(GameCommand command){
         return state.executeState(command);

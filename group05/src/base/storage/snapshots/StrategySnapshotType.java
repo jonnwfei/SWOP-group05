@@ -1,4 +1,4 @@
-package base.domain.snapshots;
+package base.storage.snapshots;
 
 /**
  * Stable strategy identifiers used in save files.

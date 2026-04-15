@@ -1,19 +1,13 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.actions.GameAction;
-import base.domain.actions.NumberAction;
-import base.domain.actions.TextAction;
+
 import base.domain.commands.GameCommand;
 import base.domain.commands.TextCommand;
-import base.domain.events.ErrorEvent;
-import base.domain.events.GameEvent;
-import base.domain.events.countEvents.ScoreBoardEvent;
-import base.domain.events.menuEvents.SaveDescriptionEvent;
+
 import base.domain.results.GameResult;
 import base.storage.GamePersistenceService;
-import base.domain.snapshots.SaveMode;
-import base.domain.events.playevents.ScoreBoardCompleteEvent;
+import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
 import java.util.List;
 import base.domain.commands.*;
@@ -46,15 +40,19 @@ public class ScoreBoardState extends State {
      * @param command The user action
      * @return a GameEvent
      */
-
     @Override
     public GameResult executeState(GameCommand command) {
         if (awaitingSaveDescription) {
             return switch (command) {
                 case TextCommand t -> {
-                    persistenceService.save(getGame(), SaveMode.GAME, t.text());
-                    awaitingSaveDescription = false;
-                    yield buildScoreBoard();
+                    try {
+                        persistenceService.save(getGame(), SaveMode.GAME, t.text());
+                        awaitingSaveDescription = false;
+                        yield buildScoreBoard();
+                    } catch (RuntimeException e) {
+                        awaitingSaveDescription = false;
+                        throw new IllegalStateException("executeState in Scoreboard state failed to save", e);
+                    }
                 }
                 default -> new SaveDescriptionResult();
             };
@@ -81,7 +79,6 @@ public class ScoreBoardState extends State {
         List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
         return new ScoreBoardResult(names, scores);
     }
-
 
     /**
      * Determines the next state based on the user's selection.

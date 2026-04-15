@@ -123,7 +123,7 @@ public class BidState extends State {
                 if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
                     yield handleRejectedProposal(b.bid());
                 }
-                yield handleBidCommand(b.bid());
+                yield handleBidCommand(b.bid(), b.suit()); // pass suit through
             }
             case SuitCommand s -> handleSuitCommand(s.suit());
             case ContinueCommand ignored -> null;
@@ -132,13 +132,7 @@ public class BidState extends State {
 
         if (earlyReturn != null) return earlyReturn;
 
-        // Fast-forward BOT turns
-        while (!currentPlayer.getRequiresConfirmation() && !isBiddingComplete()) {
-            Bid botBid = currentPlayer.chooseBid();
-            if (botBid == null) throw new IllegalStateException("Bot player returned a null bid.");
-            commitBid(botBid);
-            updateCurrentPlayer();
-        }
+        // Bot loop removed — handled by Adapter via AdapterResult.Immediate
 
         if (isBiddingComplete())
             return handleEndOfBidding();
@@ -147,9 +141,44 @@ public class BidState extends State {
                 currentPlayer.getName(),
                 currentTrumpSuit,
                 currentHighestBidType,
-                BidType.values(),
-                currentPlayer.getHand()
+                getLegalBids(),
+                currentPlayer.getHand(),
+                currentPlayer                // added
         );
+    }
+
+    private GameResult handleBidCommand(BidType chosenBidType, Suit preSuppliedSuit) {
+        if (chosenBidType == null) {
+            throw new IllegalArgumentException("chosenBidType cannot be null.");
+        }
+        if (isBiddingComplete()) {
+            throw new IllegalStateException("State violation: Cannot handle new bid, bidding is already complete.");
+        }
+        if (!isLegalBidType(chosenBidType)) {
+            throw new IllegalArgumentException("State violation: Bid " + chosenBidType + " is not legal in the current context.");
+        }
+
+        if (chosenBidType.getRequiresSuit()) {
+            if (preSuppliedSuit != null) {
+                // Bot pre-supplied the suit — commit immediately, no UI step needed
+                commitBid(chosenBidType.instantiate(currentPlayer, preSuppliedSuit));
+                updateCurrentPlayer();
+                return null;
+            }
+            if (pendingBidType != null) {
+                throw new IllegalStateException("State violation: pendingBidType is already set.");
+            }
+            this.pendingBidType = chosenBidType;
+            return new SuitSelectionRequired(
+                    currentPlayer.getName(),
+                    chosenBidType,
+                    Suit.values()
+            );
+        }
+
+        commitBid(chosenBidType.instantiate(currentPlayer, null));
+        updateCurrentPlayer();
+        return null;
     }
 
     /**
@@ -171,42 +200,6 @@ public class BidState extends State {
         }
         setRoundReadyForPlayState();
         return new PlayState(getGame());
-    }
-
-    /**
-     * Validates and commits a bid selection from the current player.
-     *
-     * @param chosenBidType The bid type chosen by the player.
-     * @return GameResult signaling a required suit selection, or null to continue the normal flow.
-     * @throws IllegalArgumentException if chosenBidType is null or illegal in the current hierarchy.
-     * @throws IllegalStateException if bidding is already finished or a suit is already pending.
-     */
-    private GameResult handleBidCommand(BidType chosenBidType) {
-        if (chosenBidType == null) {
-            throw new IllegalArgumentException("chosenBidType cannot be null.");
-        }
-        if (isBiddingComplete()) {
-            throw new IllegalStateException("State violation: Cannot handle new bid, bidding is already complete.");
-        }
-        if (!isLegalBidType(chosenBidType)) {
-            throw new IllegalArgumentException("State violation: Bid " + chosenBidType + " is not legal in the current context.");
-        }
-
-        if (chosenBidType.getRequiresSuit()) {
-            if (pendingBidType != null) {
-                throw new IllegalStateException("State violation: pendingBidType is already set.");
-            }
-            this.pendingBidType = chosenBidType;
-            return new SuitSelectionRequired(
-                    currentPlayer.getName(),
-                    chosenBidType,
-                    Suit.values()
-            );
-        }
-
-        commitBid(chosenBidType.instantiate(currentPlayer, null));
-        updateCurrentPlayer();
-        return null;
     }
 
     /**
@@ -235,8 +228,6 @@ public class BidState extends State {
      *
      * @param decision The bid type the proposer chose (must be PASS or SOLO_PROPOSAL).
      * @return GameResult indicating bidding has fully completed.
-     * @throws IllegalArgumentException if the decision is null, or not PASS / SOLO_PROPOSAL.
-     * @throws IllegalStateException if the current highest bid is not PROPOSAL or if it cannot be found.
      */
     private GameResult handleRejectedProposal(BidType decision) {
         if (decision == null) {
@@ -246,18 +237,30 @@ public class BidState extends State {
             throw new IllegalArgumentException("Rejected proposal decision must be PASS or SOLO_PROPOSAL.");
         }
         if (currentHighestBidType != BidType.PROPOSAL) {
-            throw new IllegalStateException("State violation: Cannot handle rejected proposal because current highest bid is not PROPOSAL.");
-        }
-        if (findBid(BidType.PROPOSAL) == null) {
-            throw new IllegalStateException("Critical error: PROPOSAL bid not found in bids list during rejection handling.");
+            throw new IllegalStateException("State violation: Not in a rejected proposal context.");
         }
 
+        // 1. Find the original proposal to identify the correct bidder
+        Bid proposalBid = findBid(BidType.PROPOSAL);
+        if (proposalBid == null) {
+            throw new IllegalStateException("Critical error: PROPOSAL bid not found.");
+        }
+
+        // 2. Capture the original bidder and update the state's pointer
+        Player originalBidder = proposalBid.getPlayer();
+        this.currentPlayer = originalBidder;
+
+        // 3. Remove the old PROPOSAL and reset the hierarchy
         removeProposalBid();
-        Bid chosenBid = decision.instantiate(currentPlayer, null);
+
+        // 4. Instantiate the resolution bid using the CORRECT player
+        Bid chosenBid = decision.instantiate(originalBidder, null);
+
+        // 5. Commit the new bid (this updates currentHighestBidType)
         commitBid(chosenBid);
+
         return new BiddingCompleted();
     }
-
     /**
      * Handles the logic evaluated immediately after the last player has bid.
      * Resolves pending proposal states or finalizes the bidding phase.
@@ -336,21 +339,28 @@ public class BidState extends State {
      * @return true if the bid type is legally allowed given the current highest bid.
      */
     private boolean isLegalBidType(BidType chosenBidType) {
-        if (chosenBidType == BidType.PASS)
-            return true;
-        if (chosenBidType == BidType.ACCEPTANCE && currentHighestBidType != BidType.PROPOSAL)
-            return false;
-        if (chosenBidType == BidType.SOLO_PROPOSAL && !isBiddingComplete())
-            return false;
-        if (currentHighestBidType == null)
-            return true;
+        // 1. Check special conditions for specific bid types
+        switch (chosenBidType) {
+            case PASS -> {
+                return true;
+            }
+            case ACCEPTANCE -> {
+                if (currentHighestBidType != BidType.PROPOSAL) return false;
+            }
+            case SOLO_PROPOSAL -> {
+                if (!isBiddingComplete()) return false;
+            }
+            default -> {// nothing
+            }
+        }
+
+        if (currentHighestBidType == null) return true;
 
         int comparison = chosenBidType.compareTo(currentHighestBidType);
-        if (comparison < 0)
-            return false;
-        if (chosenBidType.getCategory() != BidCategory.MISERIE) {
+        if (comparison < 0) return false;
+        if (chosenBidType.getCategory() != BidCategory.MISERIE)
             return comparison != 0;
-        }
+
         return true;
     }
 
@@ -413,5 +423,19 @@ public class BidState extends State {
             throw new IllegalStateException("Critical error: The declared winning bid (" + currentHighestBidType + ") is not present in the bids list.");
         }
         game.getCurrentRound().startPlayPhase(this.bids, winningBid, this.currentTrumpSuit, firstPlayer);
+    }
+    /**
+     * Returns all legal bid types for a given player in the current bidding context.
+     */
+    private List<BidType> getLegalBids() {
+        List<BidType> legalBids = new ArrayList<>();
+
+        for (BidType bidType : BidType.values()) {
+            if (isLegalBidType(bidType)) {
+                legalBids.add(bidType);
+            }
+        }
+
+        return legalBids;
     }
 }

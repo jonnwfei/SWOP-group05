@@ -7,6 +7,7 @@ import base.domain.player.Player;
 import cli.events.IOEvent;
 import cli.events.BidEvents.*;
 import cli.events.CountEvents.*;
+import cli.events.MessageIOEvent;
 import cli.events.PlayEvents.*;
 import cli.events.menu.*;
 
@@ -23,6 +24,7 @@ public class TerminalRenderer {
             case EndOfRoundIOEvent e         -> renderEndOfRoundEvent(e);
             case TrickHistoryIOEvent t       -> renderTrickHistoryEvent(t);
             case ParticipatingPlayersIOEvent e -> renderParticipatingPlayersEvent(e);
+            case BotCardIOEvent e -> renderBotCardEvent(e);
             // --- bid state ---
             case BidTurnIOEvent e              -> renderBidTurnEvent(e);
             case SuitSelectionIOEvent ignored  -> renderSuitSelectionEvent();
@@ -41,38 +43,61 @@ public class TerminalRenderer {
             case PlayerNameIOEvent e           -> renderPlayerNameEvent(e);
             case BotStrategyIOEvent e          -> renderBotStrategyEvent(e);
             case PrintNamesIOEvent e           -> renderPrintNamesEvent(e);
+            case MessageIOEvent t -> renderMessageEvent(t);
             default -> throw new IllegalStateException("Unhandled IOEvent: " + event);
         }
     }
 
+    private void renderBotCardEvent(BotCardIOEvent e) {
+        System.out.println("Bot played " + e.card());
+    }
+
+    private void renderMessageEvent(MessageIOEvent t) {
+        System.out.println(t.text());
+    }
+
     private void renderPlayCardEvent(PlayCardIOEvent event) {
         base.domain.results.PlayCardResult data = event.data();
-        System.out.println("\n-------------- CARDS ON TABLE ---------------");
-        if (data.cardsOnTable().isEmpty()) {
-            System.out.println("(No cards played yet)");
+
+        System.out.println("\n=============================================");
+        System.out.println("  TRICK #" + data.trickNumber() + " | TURN: " + data.player().getName().toUpperCase());
+        System.out.println("=============================================");
+
+        // 1. Table Display
+        System.out.println("\nCARDS ON TABLE:");
+        if (data.tableCards().isEmpty()) {
+            System.out.println("  [ Empty ]");
         } else {
-            for (Card card : data.cardsOnTable()) {
-                System.out.println("- " + card);
-            }
+            // Displays cards in a horizontal-ish list for better flow
+            String table = String.join(" | ", data.tableCards().stream()
+                    .map(Card::toString).toList());
+            System.out.println("  ➜ " + table);
         }
 
+        // 2. Open Miserie (Exposed Hands)
         if (data.isOpenMiserie()) {
+            System.out.println("\n--- EXPOSED HANDS (OPEN MISERIE) ---");
             for (int i = 0; i < data.exposedPlayerNames().size(); i++) {
-                System.out.println("\n--- EXPOSED HAND (OPEN_MISERIE: " + data.exposedPlayerNames().get(i) + ") ---");
-                System.out.println(data.formattedExposedHand().get(i));
+                String name = data.exposedPlayerNames().get(i);
+                List<Card> exposedHand = data.formattedExposedHand().get(i);
+
+                System.out.print(String.format("%-12s : ", name)); // Aligns names
+                System.out.println(exposedHand);
             }
         }
 
-        System.out.println("---------------------------------------------");
-        System.out.println("Trick: " + data.trickNumber() + " | " + data.currentPlayerName() + "'s turn.");
-        System.out.println("[0] Show last played trick.");
-        System.out.println("Your hand:");
+        // 3. Player's Own Hand & Controls
+        System.out.println("\n---------------------------------------------");
+        System.out.println("YOUR HAND (" + data.player().getName() + "):");
 
-        List<Card> hand = data.currentPlayerHand();
+        List<Card> hand = data.legalCards();
         for (int i = 0; i < hand.size(); i++) {
-            System.out.println("   [" + (i + 1) + "] " + hand.get(i));
+            // Padded index for alignment (e.g., [ 1] vs [10])
+            System.out.printf("  [%2d] %s%n", (i + 1), hand.get(i));
         }
-        System.out.print("Choose card via index: ");
+
+        System.out.println("\n[ 0] View Last Trick History");
+        System.out.print("SELECT CARD INDEX: ");
     }
 
     // --- bid state ---
@@ -82,19 +107,23 @@ public class TerminalRenderer {
         System.out.println("Dealt Trump: " + event.data().trumpSuit());
         System.out.println("Your hand: ");
         System.out.println(event.data().hand());
+
         if (event.data().currentHighestBid() == null) {
             System.out.println("You are the first to bid!");
         } else {
             System.out.println("Current Highest: " + event.data().currentHighestBid());
         }
-        System.out.println("All Options:");
-        BidType[] bids = event.data().availableBids();
-        for (int i = 0; i < bids.length; i++) {
-            System.out.println("   [" + (i + 1) + "] " + bids[i].name());
+
+        System.out.println("Available Options:");
+
+        List<BidType> bids = event.data().availableBids();
+
+        for (int i = 0; i < bids.size(); i++) {
+            System.out.println("   [" + (i + 1) + "] " + bids.get(i).name());
         }
+
         System.out.print("Your choice: ");
     }
-
     private void renderSuitSelectionEvent() {
         System.out.println("Choose a trump suit:");
         Suit[] suits = Suit.values();
@@ -126,7 +155,7 @@ public class TerminalRenderer {
     }
 
     private void renderPlayerSelectionEvent(PlayerSelectionIOEvent event) {
-        System.out.println(event.multi() ? "Select all players involved (comma-separated, 0 for none):" : "Select the main bidder:");
+        System.out.println(event.multi() ? "Select all players involved (participating or winners) (comma-separated, 0 for none):" : "Select the main bidder:");
         List<String> names = event.players()
                 .stream()
                 .map(Player::getName)
