@@ -346,7 +346,7 @@ class GamePersistenceServiceTest {
         @Test
         @DisplayName("Rejects loading with null arguments")
         void testLoadIntoGameDefensive() {
-            when(mockRepository.loadByDescription("_")).thenReturn(null);
+            when(mockRepository.loadByDescription("_")).thenThrow(new IllegalArgumentException("No save found with description: _"));
             assertAll("Defensive load constraints",
                     () -> assertThrows(IllegalArgumentException.class, () -> persistenceService.loadIntoGame(null, "Desc")),
                     () -> assertThrows(IllegalArgumentException.class, () -> persistenceService.loadIntoGame(mockGame, null)),

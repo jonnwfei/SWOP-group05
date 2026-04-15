@@ -66,17 +66,15 @@ public class GamePersistenceService {
      * Loads a saved gameMode from the repository based on the provided description and restores the game state into the given game instance.
      * @param game the game instance to restore the saved state into
      * @param description the name of the saveFile to load
-     * @return the SaveMode of the loaded game, or null if no save with the given description was found
+     * @return the SaveMode of the loaded game
      * @throws IllegalArgumentException if given game instance is null, description is null, or no save is found
      * @throws IllegalStateException if the save contains corrupted states that prevent proper restoration
      */
     public SaveMode loadIntoGame(WhistGame game, String description) {
         if (game == null) throw new IllegalArgumentException("Cannot load into a null game");
-        if (description == null) throw new IllegalArgumentException("Cannot from a null description");
+        if (description == null) throw new IllegalArgumentException("Cannot load from a null description");
 
         GameSnapshot snapshot = repository.loadByDescription(description);
-        if (snapshot == null) throw new IllegalArgumentException("No save found with description: " + description);
-
         restoreGame(game, snapshot);
         return snapshot.mode();
     }
