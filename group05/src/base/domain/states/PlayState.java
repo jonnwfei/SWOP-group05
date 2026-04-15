@@ -144,42 +144,6 @@ public class PlayState extends State {
                 currentRound.getLastPlayedTrick()
         );
     }
-    private GameResult buildPickCardResult(Player player) {
-        boolean isOpenMiserie = currentRound.getHighestBid() != null &&
-                currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
-
-        List<String> exposedNames = new ArrayList<>();
-        List<List<Card>> exposedHands = new ArrayList<>();
-
-        if (isOpenMiserie) {
-            for (Bid bid : currentRound.getBids()) {
-                if (bid.getType() == BidType.OPEN_MISERIE) {
-                    Player proposer = bid.getPlayer();
-                    exposedNames.add(proposer.getName());
-                    exposedHands.add(proposer.getHand());
-                }
-            }
-        }
-
-        List<Card> tableCards = currentTrick.getTurns()
-                .stream()
-                .map(Turn::playedCard)
-                .toList();
-
-        List<Card> legalCards = currentTrick.getLegalCards(player);
-
-        return new PlayCardResult(
-                tableCards,
-                isOpenMiserie,
-                exposedNames,
-                exposedHands,
-                currentRound.getTricks().size() + 1,
-                player,
-                legalCards,
-                currentRound.getLastPlayedTrick()
-        );
-    }
-
 
     /**
      * Handle a bot turn
