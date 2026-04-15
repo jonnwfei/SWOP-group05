@@ -159,34 +159,13 @@ public class CountState extends State {
     }
 
     private GameResult handleSaveDescription(String text) {
-        persistenceService.save(getGame(), SaveMode.COUNT, text);
-        this.keuze = choice;
-        return new EndOfCountStateEvent();
-    }
-
-    private GameEvent<?> handleSaveDescription(GameAction action) {
-        String description = switch (action) {
-            case TextAction(String text) -> text;
-            default -> null;
-        };
-        if (description == null || description.isBlank()) {
-            return new SaveDescriptionEvent("count");
-        }
-
         try {
-            persistenceService.save(getGame(), SaveMode.COUNT, description);
+            persistenceService.save(getGame(), SaveMode.COUNT, text); // TOOD: this needs to be checked and fixed, shouldnt be in domain layer
         } catch (Exception e) {
-            currentPhase = CountPhase.PROMPT_NEXT_STATE;
-            String reason = (e.getMessage() == null || e.getMessage().isBlank())
-                    ? "Unknown persistence error"
-                    : e.getMessage();
-            return new NumberErrorEvent(
-                    "Save failed: " + reason + ". Your session is still active.",
-                    input -> input >= 1 && input <= 3);
+            throw new IllegalStateException("Error in CountState handeSaveDescription",e);
         }
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
         return getScoreBoard();
-
     }
 
     private List<String> getPlayerNames() {
