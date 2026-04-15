@@ -1,16 +1,14 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.actions.GameAction;
+
 import base.domain.commands.*;
-import base.domain.events.countEvents.*;
-import base.domain.events.errorEvents.NumberErrorEvent;
-import base.domain.events.menuEvents.SaveDescriptionEvent;
+
 import base.domain.results.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
-import base.domain.events.GameEvent;
+
 import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.round.Round;
@@ -24,7 +22,7 @@ import static base.domain.bid.BidType.*;
  * @author Stan Kestens
  * @since 01/03/2026
  */
-public class CountState extends State {
+public class    CountState extends State {
 
     private enum CountPhase {
         START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, SELECT_WINNERS, CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION
@@ -121,18 +119,29 @@ public class CountState extends State {
      */
     private GameResult handlePlayerInput(List<Player> players) {
         if (currentPhase == CountPhase.SELECT_PLAYERS) {
+            // If empty, stay in the same phase and return the selection result again
+            if (players == null || players.isEmpty()) {
+                // We stay in SELECT_PLAYERS phase
+                boolean multiSelect = (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE);
+                return new PlayerSelectionResult(getGame().getPlayers(), multiSelect);
+            }
+
             this.participatingPlayers = players;
-            this.bid = selectedBidType.instantiate(participatingPlayers.getFirst(), trumpSuit); // build here with correct player
+
+            // safe to call getFirst() now
+            this.bid = selectedBidType.instantiate(participatingPlayers.getFirst(), trumpSuit);
 
             if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;
                 return new PlayerSelectionResult(getGame().getPlayers(), true);
             }
+
             currentPhase = CountPhase.CALCULATE;
             return new TrickInputResult();
         }
 
         // SELECT_WINNERS — players here are the winners, participatingPlayers already set
+        // An empty list here is fine (means everyone lost their miserie)
         return finalizeCalculation(0, players);
     }
 

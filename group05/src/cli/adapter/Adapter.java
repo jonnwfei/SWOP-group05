@@ -1,4 +1,4 @@
-package cli.Adapter;
+package cli.adapter;
 
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
@@ -138,6 +138,14 @@ public class Adapter {
 
                 // --- Play Card
                 case PlayCardResult p -> {
+                    Player player = p.player();
+                    //  BOT: auto-play
+                    if (!player.getRequiresConfirmation()) {
+                        Card chosen = player.chooseCard(p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit());
+
+                        yield AdapterResponse.toDomain(new CardCommand(chosen));
+                    }
+
                     // HUMAN: parse input
                     int choice = parser.parseNumberInput(raw);
 

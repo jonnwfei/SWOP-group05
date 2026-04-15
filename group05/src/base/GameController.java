@@ -4,12 +4,12 @@ import base.domain.WhistGame;
 import base.domain.commands.ContinueCommand;
 import base.domain.commands.GameCommand;
 import base.domain.results.GameResult;
-import cli.Adapter.AdapterResponse;
-import cli.Adapter.AdapterResult;
+import cli.adapter.AdapterResponse;
+import cli.adapter.AdapterResult;
 import cli.events.IOEvent;
 import cli.TerminalManager;
 import cli.elements.Response;
-import cli.Adapter.Adapter;
+import cli.adapter.Adapter;
 import cli.MenuFlow;
 
 /**

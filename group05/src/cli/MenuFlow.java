@@ -24,6 +24,7 @@ public class MenuFlow {
 
         if (choice == 1) setupGame();
         else if (choice == 2) setupCount();
+
     }
 
     private void setupGame() {

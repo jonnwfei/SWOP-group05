@@ -228,8 +228,6 @@ public class BidState extends State {
      *
      * @param decision The bid type the proposer chose (must be PASS or SOLO_PROPOSAL).
      * @return GameResult indicating bidding has fully completed.
-     * @throws IllegalArgumentException if the decision is null, or not PASS / SOLO_PROPOSAL.
-     * @throws IllegalStateException if the current highest bid is not PROPOSAL or if it cannot be found.
      */
     private GameResult handleRejectedProposal(BidType decision) {
         if (decision == null) {
@@ -239,18 +237,30 @@ public class BidState extends State {
             throw new IllegalArgumentException("Rejected proposal decision must be PASS or SOLO_PROPOSAL.");
         }
         if (currentHighestBidType != BidType.PROPOSAL) {
-            throw new IllegalStateException("State violation: Cannot handle rejected proposal because current highest bid is not PROPOSAL.");
-        }
-        if (findBid(BidType.PROPOSAL) == null) {
-            throw new IllegalStateException("Critical error: PROPOSAL bid not found in bids list during rejection handling.");
+            throw new IllegalStateException("State violation: Not in a rejected proposal context.");
         }
 
+        // 1. Find the original proposal to identify the correct bidder
+        Bid proposalBid = findBid(BidType.PROPOSAL);
+        if (proposalBid == null) {
+            throw new IllegalStateException("Critical error: PROPOSAL bid not found.");
+        }
+
+        // 2. Capture the original bidder and update the state's pointer
+        Player originalBidder = proposalBid.getPlayer();
+        this.currentPlayer = originalBidder;
+
+        // 3. Remove the old PROPOSAL and reset the hierarchy
         removeProposalBid();
-        Bid chosenBid = decision.instantiate(currentPlayer, null);
+
+        // 4. Instantiate the resolution bid using the CORRECT player
+        Bid chosenBid = decision.instantiate(originalBidder, null);
+
+        // 5. Commit the new bid (this updates currentHighestBidType)
         commitBid(chosenBid);
+
         return new BiddingCompleted();
     }
-
     /**
      * Handles the logic evaluated immediately after the last player has bid.
      * Resolves pending proposal states or finalizes the bidding phase.

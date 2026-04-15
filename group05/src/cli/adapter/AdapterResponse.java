@@ -1,4 +1,4 @@
-package cli.Adapter;
+package cli.adapter;
 
 import base.domain.commands.GameCommand;
 import cli.events.IOEvent;

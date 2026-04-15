@@ -155,7 +155,7 @@ public class TerminalRenderer {
     }
 
     private void renderPlayerSelectionEvent(PlayerSelectionIOEvent event) {
-        System.out.println(event.multi() ? "Select all players involved (comma-separated, 0 for none):" : "Select the main bidder:");
+        System.out.println(event.multi() ? "Select all players involved (participating or winners) (comma-separated, 0 for none):" : "Select the main bidder:");
         List<String> names = event.players()
                 .stream()
                 .map(Player::getName)
