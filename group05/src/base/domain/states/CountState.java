@@ -22,7 +22,7 @@ import static base.domain.bid.BidType.*;
  * @author Stan Kestens
  * @since 01/03/2026
  */
-public class CountState extends State {
+public class    CountState extends State {
 
     private enum CountPhase {
         START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, SELECT_WINNERS, CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION
