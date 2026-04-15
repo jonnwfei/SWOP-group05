@@ -10,7 +10,7 @@ public record WelcomeMenuEvent() implements GameEvent<Integer> {
 
     @Override
     public boolean isValid(Integer input) {
-        return input >= 1 && input <= 2;
+        return input >= 1 && input <= 3;
     }
 
     @Override

@@ -113,7 +113,7 @@ class MenuStateTest {
         menuState.executeState(new ContinueAction()); // Moves to CHOOSE_MODE
 
         assertInstanceOf(ErrorEvent.class, menuState.executeState(new NumberAction(0)));
-        assertInstanceOf(ErrorEvent.class, menuState.executeState(new NumberAction(3)));
+        assertInstanceOf(ErrorEvent.class, menuState.executeState(new NumberAction(4)));
         assertInstanceOf(ErrorEvent.class, menuState.executeState(new TextAction("Game")));
     }
 

@@ -93,8 +93,8 @@ class ScoreBoardStateTest {
 
     @Test
     void testInvalidChoice_ReturnsErrorEvent() {
-        // User inputs 3 (out of bounds)
-        GameEvent<?> eventOver = scoreBoardState.executeState(new NumberAction(3));
+        // User inputs 4 (out of bounds)
+        GameEvent<?> eventOver = scoreBoardState.executeState(new NumberAction(4));
         assertInstanceOf(ErrorEvent.class, eventOver);
 
         // User inputs 0 (out of bounds)

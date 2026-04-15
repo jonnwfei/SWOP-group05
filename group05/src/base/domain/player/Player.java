@@ -143,6 +143,13 @@ public class Player {
     public String getName() {return this.name;}
 
     /**
+     * Exposes the strategy type for persistence mapping.
+     */
+    public Strategy getDecisionStrategy() {
+        return this.decisionStrategy;
+    }
+
+    /**
      * Retrieves boolean whether player needs confirmation or not.
      *
      * @return true if Player is a player, false if it's a bot
@@ -167,4 +174,3 @@ public class Player {
                 .orElse(null);
     }
 }
-

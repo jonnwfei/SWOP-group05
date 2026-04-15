@@ -1,10 +1,13 @@
-package base.domain.events.countEvents;
+package base.domain.events.menuEvents;
 
 import base.domain.events.GameEvent;
 
 import java.util.List;
 
-public record ScoreBoardEvent(List<String> playerNames, List<Integer> scores) implements GameEvent<Integer> {
+/**
+ * Prompts the user to choose one of the available saves.
+ */
+public record ResumeSaveEvent(List<String> descriptions) implements GameEvent<Integer> {
     @Override
     public Class<Integer> getInputType() {
         return Integer.class;
@@ -12,7 +15,7 @@ public record ScoreBoardEvent(List<String> playerNames, List<Integer> scores) im
 
     @Override
     public boolean isValid(Integer input) {
-        return input >= 1 && input <= 3;
+        return input >= 1 && input <= descriptions.size();
     }
 
     @Override
@@ -20,3 +23,4 @@ public record ScoreBoardEvent(List<String> playerNames, List<Integer> scores) im
         return true;
     }
 }
+

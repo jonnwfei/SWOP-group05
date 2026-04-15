@@ -45,6 +45,8 @@ public class TerminalRenderer {
             case BotStrategyEvent e -> renderBotStrategyEvent(e);
             case PlayerNameEvent e -> renderPlayerNameEvent(e);
             case PrintNamesEvent e -> renderPrintNamesEvent(e);
+            case ResumeSaveEvent e -> renderResumeSaveEvent(e);
+            case SaveDescriptionEvent e -> renderSaveDescriptionEvent(e);
             case WelcomeMenuEvent e -> renderWelcomeMenuEvent();
             case LastTrickEvent e -> renderLastTrickEvent(e);
             case PlayAgainPromptEvent e -> renderPlayAgainPromptEvent(e);
@@ -146,7 +148,7 @@ public class TerminalRenderer {
         }
         System.out.println("====================================");
         System.out.println("Do you want to:");
-        System.out.println("(1) Simulate another round\n(2) Go back to the main menu");
+        System.out.println("(1) Simulate another round\n(2) Go back to the main menu\n(3) Save this session");
         System.out.print("Your choice: ");
     }
 
@@ -269,7 +271,20 @@ public class TerminalRenderer {
         System.out.println("Do you want to:");
         System.out.println("(1) Play a game?");
         System.out.println("(2) Count the scores for a game?");
+        System.out.println("(3) Resume a saved game/count?");
         System.out.print("Your choice: ");
+    }
+
+    private void renderResumeSaveEvent(ResumeSaveEvent event) {
+        System.out.println("Choose a save to resume:");
+        for (int i = 0; i < event.descriptions().size(); i++) {
+            System.out.println("(" + (i + 1) + ") " + event.descriptions().get(i));
+        }
+        System.out.print("Your choice: ");
+    }
+
+    private void renderSaveDescriptionEvent(SaveDescriptionEvent event) {
+        System.out.print("Give a description for this " + event.contextLabel() + " save: ");
     }
 
     private void renderLastTrickEvent(LastTrickEvent event) {
