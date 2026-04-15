@@ -21,7 +21,6 @@ class TrickTest {
     private Player p5;
     private Trick currentTrick;
 
-
     @BeforeEach
     void setUp() {
         p1 = new Player(new HumanStrategy(), "P1");
@@ -47,23 +46,31 @@ class TrickTest {
     void constructorThrows() {
         assertThrows(IllegalArgumentException.class, () -> new Trick(null, Suit.CLUBS));
 
-
     }
 
     @Test
     void playCardValidation() {
-        assertThrows(IllegalArgumentException.class, () -> currentTrick.playCard(null, new Card(Suit.HEARTS, Rank.ACE)));
-        assertThrows(IllegalArgumentException.class, () -> currentTrick.playCard(p1, null));
+        IllegalArgumentException nullPlayer = assertThrows(IllegalArgumentException.class,
+                () -> currentTrick.playCard(null, new Card(Suit.HEARTS, Rank.ACE)));
+        assertEquals("Trick: Player must exist.", nullPlayer.getMessage());
+
+        IllegalArgumentException nullCard = assertThrows(IllegalArgumentException.class,
+                () -> currentTrick.playCard(p1, null));
+        assertEquals("Trick: Card must exist.", nullCard.getMessage());
 
         p1.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE), new Card(Suit.HEARTS, Rank.KING)));
         currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.ACE));
 
         assertFalse(p1.getHand().contains(new Card(Suit.HEARTS, Rank.ACE))); // check if removed or not
         // cant play twice
-        assertThrows(IllegalArgumentException.class, () -> currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.KING)));
+        IllegalArgumentException alreadyPlayed = assertThrows(IllegalArgumentException.class,
+                () -> currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.KING)));
+        assertEquals("Trick: Player already played this trick.", alreadyPlayed.getMessage());
 
         p2.setHand(List.of(new Card(Suit.DIAMONDS, Rank.ACE), new Card(Suit.HEARTS, Rank.QUEEN)));
-        assertThrows(IllegalArgumentException.class, () -> currentTrick.playCard(p2, new Card(Suit.DIAMONDS, Rank.ACE))); // You have to follow leadsuit
+        IllegalArgumentException mustFollowSuit = assertThrows(IllegalArgumentException.class,
+                () -> currentTrick.playCard(p2, new Card(Suit.DIAMONDS, Rank.ACE))); // You have to follow leadsuit
+        assertEquals("Trick: Must follow leading suit.", mustFollowSuit.getMessage());
         currentTrick.playCard(p2, new Card(Suit.HEARTS, Rank.QUEEN));
 
         // fill trick
@@ -72,12 +79,13 @@ class TrickTest {
 
         p4.setHand(List.of(new Card(Suit.SPADES, Rank.ACE), new Card(Suit.SPADES, Rank.QUEEN)));
         currentTrick.playCard(p4, new Card(Suit.SPADES, Rank.ACE));
-//        System.out.println(currentTrick.getTurns().size());
+        // System.out.println(currentTrick.getTurns().size());
 
         // Trick is full cant play more
         p5.setHand(List.of(new Card(Suit.SPADES, Rank.ACE), new Card(Suit.SPADES, Rank.QUEEN)));
-        assertThrows(IllegalArgumentException.class, () -> currentTrick.playCard(p5, new Card(Suit.SPADES, Rank.ACE)));
-
+        IllegalArgumentException fullTrick = assertThrows(IllegalArgumentException.class,
+                () -> currentTrick.playCard(p5, new Card(Suit.SPADES, Rank.ACE)));
+        assertEquals("Trick: Trick is already full.", fullTrick.getMessage());
 
     }
 

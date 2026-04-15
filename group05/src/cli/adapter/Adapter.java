@@ -44,7 +44,8 @@ public class Adapter {
                 if (!player.getRequiresConfirmation()) {
                     Bid botBid = player.chooseBid();
                     // BidCommand with suit so domain skips SuitSelectionRequired
-                    yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), b.trumpSuit()));
+                    Suit chosenTrump = botBid.determineTrump(b.trumpSuit());
+                    yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), chosenTrump));
                 }
                 yield new AdapterResult.NeedsIO(new BidTurnIOEvent(b));
             }
@@ -52,7 +53,8 @@ public class Adapter {
             case ProposalRejected p            -> new AdapterResult.NeedsIO(new ProposalRejectedIOEvent(p));
             case BiddingCompleted ignored      -> new AdapterResult.NeedsIO(new BiddingCompletedIOEvent());
             case BidSelectionResult b          -> new AdapterResult.NeedsIO(new BidSelectionIOEvent(b.availableBids()));
-            case SuitSelectionResult ignored   -> new AdapterResult.NeedsIO(new SuitSelectionIOEvent());
+            case SuitSelectionResult ignore
+                   -> new AdapterResult.NeedsIO(new SuitSelectionIOEvent());
             case PlayerSelectionResult p       -> new AdapterResult.NeedsIO(new PlayerSelectionIOEvent(p.players(), p.multiSelect()));
             case TrickInputResult ignored      -> new AdapterResult.NeedsIO(new TrickInputIOEvent());
             case ScoreBoardResult s            -> new AdapterResult.NeedsIO(new ScoreBoardIOEvent(s.names(), s.scores()));
@@ -63,7 +65,6 @@ public class Adapter {
             case EndOfRoundResult e            -> new AdapterResult.NeedsIO(new EndOfRoundIOEvent(e));
             case TrickHistoryResult t          -> new AdapterResult.NeedsIO(new TrickHistoryIOEvent(t));
             case ParticipatingPlayersResult p  -> new AdapterResult.NeedsIO(new ParticipatingPlayersIOEvent(p));
-            default -> throw new IllegalStateException("Unexpected GameResult: " + result);
         };
     }
     public AdapterResponse handleResponse(Response response, GameResult result) {
@@ -135,13 +136,14 @@ public class Adapter {
                 case EndOfTurnResult _, EndOfTrickResult _, EndOfRoundResult _, TrickHistoryResult _ ->
                         AdapterResponse.toDomain(new ContinueCommand());
 
-                case ParticipatingPlayersResult p -> {
+                case ParticipatingPlayersResult _ -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
                     List<Player> players = indices.stream()
                             .map(i -> game.getPlayers().get(i - 1))
-                            .toList();
+                           .toList();
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
+                                
 
                 // --- Play Card
                 case PlayCardResult p -> {
