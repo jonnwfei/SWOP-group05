@@ -1,4 +1,4 @@
-package base.domain.snapshots;
+package base.storage.snapshots;
 
 /**
  * @author John Cai
