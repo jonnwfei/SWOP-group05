@@ -169,7 +169,7 @@ public class GamePersistenceService {
         if (roundPlayers.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
 
         BidType bidType = highestBid.getType();
-        int bidderIndex = roundPlayers.indexOf(highestBid.getPlayer());
+        int bidderIndex = roundPlayers.indexOf(round.getPlayerById(highestBid.getPlayerId()));
 
 
         List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()

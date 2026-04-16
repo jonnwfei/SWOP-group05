@@ -90,6 +90,7 @@ public class Round {
         this.highestBid = null;
         this.trumpSuit = null;
         this.multiplier = multiplier;
+        this.scoreDeltas = new ArrayList<>();
     }
 
     /**
@@ -364,7 +365,7 @@ public class Round {
     }
 
     // Currently duplicated in other classes to save time. definitely to be refactored in 3rd iteration
-    private Player getPlayerById(PlayerId id) {
+    public Player getPlayerById(PlayerId id) {
         return players.stream()
                 .filter(p -> p.getId().equals(id))
                 .findFirst()
@@ -529,7 +530,28 @@ public class Round {
      * @return true if the round is finished, false otherwise.
      */
     public boolean isFinished() {
-        return playedTricks.size() == MAX_TRICKS;
+        if (highestBid.getType() == BidType.PASS && bids.size() == players.size()) return true;
+        if (this.highestBid.getType().getCategory() == BidCategory.MISERIE) return isMiserieEarlyTermination();
+        return playedTricks.size() >= MAX_TRICKS;
+    }
+
+    private boolean isMiserieEarlyTermination() {
+        List<PlayerId> miserieBidders = bids.stream()
+                    .filter(b -> b.getType() == highestBid.getType())
+                    .map(Bid::getPlayerId)
+                    .toList();
+
+        // Check if EVERY single one of them has won at least one trick
+        for (PlayerId bidderId : miserieBidders) {
+            boolean wonATrick = playedTricks.stream()
+                    .anyMatch(trick -> trick.getWinningPlayerId().equals(bidderId));
+
+            if (!wonATrick) {
+                return false; // Someone is still safe, round continues
+            }
+        }
+        return true; // All miserie players failed, round ends!
+
     }
 
     public void setHighestBid(Bid bid) {

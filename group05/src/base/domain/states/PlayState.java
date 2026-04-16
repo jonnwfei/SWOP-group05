@@ -4,6 +4,8 @@ import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
+import base.domain.card.CardMath;
+import base.domain.card.Suit;
 import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.results.*;
@@ -23,7 +25,6 @@ import java.util.List;
 public class PlayState extends State {
     private final Round currentRound;
     private Trick currentTrick;
-    private boolean roundOver = false;
 
     /**
      * Initializes the PlayState and sets up the first trick.
@@ -37,7 +38,7 @@ public class PlayState extends State {
             throw new IllegalStateException("Cannot create PlayState: no currentRound exists.");
         }
         this.currentRound = round;
-        this.currentTrick = new Trick(currentRound.getCurrentPlayer(), currentRound.getTrumpSuit());
+        this.currentTrick = new Trick(currentRound.getCurrentPlayer().getId(), currentRound.getTrumpSuit());
     }
 
     /**
@@ -49,66 +50,49 @@ public class PlayState extends State {
     public GameResult executeState(GameCommand command) {
         Player currentPlayer = currentRound.getCurrentPlayer();
 
-        // 1. Handle command if present
-        if (command != null) {
-            GameResult result = handlePlayerMove(currentPlayer, command);
-
-            // If something meaningful happened → return immediately
-            if (!(result instanceof PlayCardResult)) {
-                return result;
-            }
-        }
-
-        // 2. Always return current state view
-        return buildNeedCardResult(currentPlayer);
+        return switch (command) {
+            case CardCommand c -> handleCardPlay(currentPlayer, c.card());
+            case ContinueCommand ignored -> buildNeedCardResult(currentPlayer);
+            default -> throw new IllegalStateException("Unexpected command in PlayState: " + command);
+        };
     }
 
     /**
      * Handles the player turn
      * @param player The current human player
-     * @param command The command received from the UI
+     * @param card card chosen
      * @return The resulting GameResult
      */
-    private GameResult handlePlayerMove(Player player, GameCommand command) {
+    private GameResult handleCardPlay(Player player, Card card) {
+        // 1. Defensively check legality (though Adapter should prevent this)
+        if (!CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit()).contains(card)) {
+            throw new IllegalArgumentException("Card chosen is not legal!");
+        }
 
-        return switch (command) {
-            case NumberCommand n when n.choice() == 0 -> {
-                Trick last = currentRound.getLastPlayedTrick();
-                yield (last == null)
-                        ? buildNeedCardResult(currentRound.getCurrentPlayer())
-                        : new TrickHistoryResult(last);
+        // 2. Play the card into the trick
+        currentTrick.addTurn(player.getId(), card);
+
+        // 3. BROADCAST: Notify all GameObservers (like SmartBotMemory) that a card was played!
+        getGame().notifyTurnPlayed(new PlayTurn(player.getId(), card));
+
+        boolean trickFinished = currentTrick.isCompleted();
+        String winnerName = trickFinished ? getGame().getPlayerById(currentTrick.getWinningPlayerId()).getName() : null;
+
+        if (trickFinished) {
+            currentRound.registerCompletedTrick(currentTrick);
+
+            if (currentRound.isFinished()) {
+                return new EndOfRoundResult(player.getName(), card);
             }
 
-            case CardCommand c -> {
-                Card card = c.card();
-
-                if (!player.getHand().contains(card)) {
-                    yield buildNeedCardResult(player);
-                }
-
-                try {
-                    currentTrick.playCard(player, card);
-                } catch (IllegalArgumentException e) {
-                    yield buildNeedCardResult(player);
-                }
-
-                boolean trickFinished = currentTrick.isCompleted();
-                String winner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
-
-                processTurnOutcome();
-
-                if (roundOver)
-                    yield new EndOfRoundResult(player.getName(), card);
-
-                if (trickFinished)
-                    yield new EndOfTrickResult(player.getName(), card,  winner);
-
-                yield new EndOfTurnResult(player.getName(), card);
-            }
-
-            default -> buildNeedCardResult(player);
-        };
+            this.currentTrick = new Trick(currentTrick.getWinningPlayerId(), currentRound.getTrumpSuit());
+            return new EndOfTrickResult(player.getName(), card, winnerName);
+        } else {
+            currentRound.advanceToNextPlayer();
+            return new EndOfTurnResult(player.getName(), card);
+        }
     }
+
     private GameResult buildNeedCardResult(Player player) {
         boolean isOpenMiserie = currentRound.getHighestBid() != null &&
                 currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
@@ -119,7 +103,7 @@ public class PlayState extends State {
         if (isOpenMiserie) {
             for (Bid bid : currentRound.getBids()) {
                 if (bid.getType() == BidType.OPEN_MISERIE) {
-                    Player proposer = bid.getPlayer();
+                    Player proposer = getGame().getPlayerById(bid.getPlayerId());
                     exposedNames.add(proposer.getName());
                     exposedHands.add(proposer.getHand());
                 }
@@ -128,10 +112,12 @@ public class PlayState extends State {
 
         List<Card> tableCards = currentTrick.getTurns()
                 .stream()
-                .map(Turn::playedCard)
+                .map(PlayTurn::playedCard)
                 .toList();
 
-        List<Card> legalCards = currentTrick.getLegalCards(player);
+        Suit leadSuit = currentTrick.getLeadingSuit();
+        List<Card> hand = player.getHand();
+        List<Card> legalCards = CardMath.getLegalCards(hand, leadSuit);
 
         return new PlayCardResult(
                 tableCards,
@@ -145,44 +131,6 @@ public class PlayState extends State {
         );
     }
 
-    /**
-     * Handle a bot turn
-     */
-    private GameResult handleBotTurn(Player player) {
-        Card card = player.chooseCard(currentTrick.getLeadingSuit());
-        currentTrick.playCard(player, card);
-
-        boolean trickFinished = currentTrick.isCompleted();
-        String winner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
-
-        processTurnOutcome();
-
-        if (roundOver)
-            return new EndOfRoundResult(player.getName(), card);
-
-        if (trickFinished)
-            return new EndOfTrickResult(player.getName(), card, winner);
-
-        return new EndOfTurnResult(player.getName(), card);
-    }
-
-
-    /**
-     * Updates the round state and initializes the next trick if the current one is
-     * full.
-     */
-    private void processTurnOutcome() {
-        if (currentTrick.isCompleted()) {
-            Player winningPlayer = currentTrick.getWinningPlayer();
-            currentRound.registerCompletedTrick(currentTrick);
-            if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
-                roundOver = true;
-            }
-            this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
-        } else {
-            currentRound.advanceToNextPlayer();
-        }
-    }
 
     /**
      * Determines the next state based on whether all tricks have been played.

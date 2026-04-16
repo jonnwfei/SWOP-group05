@@ -7,6 +7,7 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.*;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.results.*;
 import cli.TerminalParser;
 import cli.elements.Response;
@@ -111,8 +112,8 @@ public class Adapter {
                         yield AdapterResponse.toDomain(new PlayerListCommand(List.of()));
                     }
                     List<Integer> indices = parser.parseNumbersInput(raw);
-                    List<Player> players = indices.stream()
-                            .map(i -> game.getPlayers().get(i - 1))
+                    List<PlayerId> players = indices.stream()
+                            .map(i -> game.getPlayers().get(i - 1).getId())
                             .toList();
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
@@ -138,8 +139,8 @@ public class Adapter {
 
                 case ParticipatingPlayersResult _ -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
-                    List<Player> players = indices.stream()
-                            .map(i -> game.getPlayers().get(i - 1))
+                    List<PlayerId> players = indices.stream()
+                            .map(i -> game.getPlayers().get(i - 1).getId())
                            .toList();
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }

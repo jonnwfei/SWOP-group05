@@ -1,9 +1,7 @@
 package base.domain.trick;
 
 import base.domain.card.Suit;
-import base.domain.player.Player;
 import base.domain.card.Card;
-import base.domain.card.Suit;
 import base.domain.player.PlayerId;
 import base.domain.turn.PlayTurn;
 
@@ -53,11 +51,9 @@ public class Trick {
      * @return The leading suit, or null if no cards have been played.
      */
     public Suit getLeadingSuit() {
-        if (playTurns.isEmpty()) return null;
-        return playTurns.getFirst().playedCard().suit();
-        if (turns.isEmpty())
+        if (playTurns.isEmpty())
             return null;
-        return turns.get(0).playedCard().suit();
+        return playTurns.getFirst().playedCard().suit();
     }
 
     /** @return The ID of the player who won the trick or is currently winning. */
