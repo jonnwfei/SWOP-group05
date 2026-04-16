@@ -2,22 +2,19 @@ package base.domain;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
-import base.domain.actions.GameAction;
 import base.domain.commands.GameCommand;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.deck.Deck;
 import base.domain.player.*;
-import base.domain.results.GameResult;
 import base.domain.round.Round;
 import base.domain.states.*;
 
 /**
  * Represents a game of Whist
- * * @author Stan Kestens
+ * @author Stan Kestens
  * @since 28/02/2026
  */
 public class WhistGame {
@@ -32,7 +29,7 @@ public class WhistGame {
     /**
      * Initializes a new game session starting in the
      */
-    public WhistGame(){
+    public WhistGame() {
         this.state = null;
         this.players = new ArrayList<>();
         this.rounds = new ArrayList<>();
@@ -41,53 +38,59 @@ public class WhistGame {
     }
 
     /** @return A shallow copy of the list of players registered in the game. */
-    public List<Player> getPlayers(){
+    public List<Player> getPlayers() {
         return new ArrayList<>(this.players);
     }
 
     /** @return The current deck being used for dealing. */
-    public Deck getDeck(){
+    public Deck getDeck() {
         return this.deck;
     }
 
     /** @return A shallow copy of all completed and active rounds. */
-    public List<Round> getRounds(){
+    public List<Round> getRounds() {
         return new ArrayList<>(this.rounds);
     }
 
     /** @return The player whose turn it currently is. */
-    public Player getCurrentPlayer(){
+    public Player getCurrentPlayer() {
         return this.currentPlayer;
     }
 
     /** @return The player currently designated as the dealer. */
-    public Player getDealerPlayer(){
+    public Player getDealerPlayer() {
         return this.dealerPlayer;
     }
 
     /**
      * Determines the winner of the most recent round.
+     * 
      * @return The winning {@link Player}, or null if no rounds have finished.
      */
     public Player getLastRoundWinner() {
-        if (this.rounds.isEmpty()) return null;
+        if (this.rounds.isEmpty())
+            return null;
         List<Player> winningPlayers = rounds.getLast().getWinningPlayers();
-        if (winningPlayers.isEmpty()) return null;
+        if (winningPlayers.isEmpty())
+            return null;
         return winningPlayers.getFirst();
     }
 
     /**
      * Retrieves the round currently being played.
+     * 
      * @return The active round, or null of there is non
      */
-    public Round getCurrentRound(){
-        if (rounds.isEmpty()) return null;
+    public Round getCurrentRound() {
+        if (rounds.isEmpty())
+            return null;
         return this.rounds.getLast();
     }
 
     /**
      * Creates and initializes the next round, automatically calculating the score multiplier
      * based on whether the previous round was passed.
+     * 
      * @param startingPlayer The player who gets the first turn.
      * @throws IllegalArgumentException if the starting player is null or not actively in the game.
      * @throws IllegalStateException if the game does not have exactly 4 players.
@@ -100,7 +103,8 @@ public class WhistGame {
             throw new IllegalArgumentException("Cannot initialize round: startingPlayer is null.");
         }
         if (!this.players.contains(startingPlayer)) {
-            throw new IllegalArgumentException("Cannot initialize round: startingPlayer must be one of the registered players.");
+            throw new IllegalArgumentException(
+                    "Cannot initialize round: startingPlayer must be one of the registered players.");
         }
 
         int multiplier = 1;
@@ -114,6 +118,7 @@ public class WhistGame {
 
     /**
      * Deals 13 cards to each player and determines the initial dealt trump suit.
+     * 
      * @return The originally dealt trump suit (the suit of the last card dealt).
      * @throws IllegalStateException if the deck is not set, if there are not exactly 4 players,
      * or if the deck deals invalid hands.
@@ -138,7 +143,7 @@ public class WhistGame {
     }
 
     /** @param deck The deck to be used for the upcoming deal. */
-    public void setDeck(Deck deck){
+    public void setDeck(Deck deck) {
         this.deck = deck;
     }
 
@@ -161,63 +166,81 @@ public class WhistGame {
     /**
      * Triggers a transition to the next game state based on internal logic.
      */
-    public void nextState(){
+    public void nextState() {
         this.state = state.nextState();
     }
 
     /**
-     * Delegates the provided action to the current state for processing.
-     * @param command The user action to process.
-     * @return.
+     * Executes the current state without a user command (e.g. for bot turns or automatic transitions).
+     * 
+     * @return The resulting event to be rendered by the UI.
      */
-    public GameResult executeState(Optional<GameCommand> command) {
+    public StateStep executeState() {
+        return state.executeState();
+    }
+
+    /**
+     * Delegates the provided action to the current state for processing.
+     * 
+     * @param command The user action to process.
+     * @return The resulting event to be rendered by the UI.
+     */
+    public StateStep executeState(GameCommand command) {
         return state.executeState(command);
     }
+
     /** @param player The player to add to the game session. */
-    public void addPlayer(Player player){
+    public void addPlayer(Player player) {
         this.players.add(player);
     }
 
     /** @param round The round to add to the game history. */
-    public void addRound (Round round){
+    public void addRound(Round round) {
         this.rounds.add(round);
     }
 
     /** Clears all players from the game. */
-    public void resetPlayers(){
+    public void resetPlayers() {
         this.players = new ArrayList<>();
     }
 
     /** Clears the round history. */
-    public void resetRounds(){
+    public void resetRounds() {
         this.rounds = new ArrayList<>();
     }
 
     /**
      * Sets the active player.
+     * 
      * @param player The player to set as current.
      * @throws IllegalArgumentException if player is null or not in the game.
-     * @throws IllegalStateException if players list is not initialized.
+     * @throws IllegalStateException    if players list is not initialized.
      */
     public void setCurrentPlayer(Player player) {
-        if (player == null) throw new IllegalArgumentException("Player cannot be null");
-        if (players == null) throw new IllegalStateException("Players list is not initialized");
-        if (!players.contains(player)) throw new IllegalArgumentException("Player not in game");
+        if (player == null)
+            throw new IllegalArgumentException("Player cannot be null");
+        if (players == null)
+            throw new IllegalStateException("Players list is not initialized");
+        if (!players.contains(player))
+            throw new IllegalArgumentException("Player not in game");
 
         this.currentPlayer = player;
     }
 
     /**
      * Randomly selects a dealer from the player list. Used for the initial round.
+     * 
      * @throws IllegalArgumentException if no players have been added.
      */
     public void setRandomDealer() {
-        if (players.isEmpty()) throw new IllegalArgumentException("Players list is empty");
+        if (players.isEmpty())
+            throw new IllegalArgumentException("Players list is empty");
         this.dealerPlayer = players.getLast();
     }
 
     /**
      * Advances the dealer designation to the next player in the rotation.
+     * 
      * @throws IllegalStateException if players are missing or no dealer is set.
      */
     public void advanceDealer() {
@@ -231,6 +254,7 @@ public class WhistGame {
     public boolean isOver() {
         return this.state == null; // or whatever terminal condition your game has
     }
+
     public void startGame() {
         this.state = new BidState(this);
     }

@@ -14,7 +14,6 @@ import base.domain.card.Suit;
 import base.domain.round.Round;
 
 import java.util.List;
-import java.util.Optional;
 
 import static base.domain.bid.BidType.*;
 
@@ -24,7 +23,7 @@ import static base.domain.bid.BidType.*;
  * @author Stan Kestens
  * @since 01/03/2026
  */
-public class    CountState extends State {
+public class CountState extends State {
 
     private enum CountPhase {
         START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, SELECT_WINNERS, CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION
@@ -44,43 +43,56 @@ public class    CountState extends State {
     }
 
     /**
+     * Executes the current phase of the scoring process without user input (e.g.
+     * initial entry into CountState).
+     * 
+     * @return The next event in the scoring sequence.
+     */
+    @Override
+    public StateStep executeState() {
+        if (currentPhase == CountPhase.START) {
+            currentPhase = CountPhase.SELECT_BID;
+            return StateStep.stay(new BidSelectionResult(values(), getGame().getPlayers()));
+        }
+
+        return StateStep.stay(nextStep());
+    }
+
+    /**
      * Routes the user action to the current phase of the scoring wizard.
      *
      * @param command The user input.
      * @return The next event in the scoring sequence.
      */
     @Override
-    public GameResult executeState(Optional<GameCommand> command) {
+    public StateStep executeState(GameCommand command) {
         if (currentPhase == CountPhase.START) {
             currentPhase = CountPhase.SELECT_BID;
-            return new BidSelectionResult(values(), getGame().getPlayers());
+            return StateStep.stay(new BidSelectionResult(values(), getGame().getPlayers()));
         }
 
-        if (command.isEmpty()) return nextStep(); // e.g. after ScoreBoardComplete
-
-        return switch (command.get()) {
-            case BidCommand b        -> handleBidType(b.bid());
-            case SuitCommand s       -> handleSuit(s.suit());
-            case PlayerListCommand p -> handlePlayerInput(p.players());
-            case NumberCommand n     -> handleNumberInput(n.choice());
-            case TextCommand t       -> handleSaveDescription(t.text());
-            default -> throw new IllegalStateException("Unexpected value: " + command.get());
+        return switch (command) {
+            case BidCommand b -> StateStep.stay(handleBidType(b.bid()));
+            case SuitCommand s -> StateStep.stay(handleSuit(s.suit()));
+            case PlayerListCommand p -> StateStep.stay(handlePlayerInput(p.players()));
+            case NumberCommand n -> handleNumberInput(n.choice());
+            case TextCommand t -> StateStep.stay(handleSaveDescription(t.text()));
+            default -> throw new IllegalStateException("Unexpected value: " + command);
         };
     }
 
-    private GameResult handleNumberInput(int value) {
+    private StateStep handleNumberInput(int value) {
         if (currentPhase == CountPhase.CALCULATE) {
-            return finalizeCalculation(value, null);
+            return StateStep.stay(finalizeCalculation(value, null));
         }
         // PROMPT_NEXT_STATE
         if (value == 3) {
             currentPhase = CountPhase.SAVE_DESCRIPTION;
-            return new SaveDescriptionResult();
+            return StateStep.stay(new SaveDescriptionResult());
         }
         this.keuze = value;
-        return new ScoreBoardCompleteResult(); // signals inner loop to exit
+        return StateStep.transitionWithoutResult();
     }
-
 
     private GameResult nextStep() {
         currentPhase = CountPhase.SELECT_BID;
@@ -171,9 +183,10 @@ public class    CountState extends State {
 
     private GameResult handleSaveDescription(String text) {
         try {
-            persistenceService.save(getGame(), SaveMode.COUNT, text); // TOOD: this needs to be checked and fixed, shouldnt be in domain layer
+            persistenceService.save(getGame(), SaveMode.COUNT, text); // TOOD: this needs to be checked and fixed,
+                                                                      // shouldnt be in domain layer
         } catch (Exception e) {
-            throw new IllegalStateException("Error in CountState handeSaveDescription",e);
+            throw new IllegalStateException("Error in CountState handeSaveDescription", e);
         }
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
         return getScoreBoard();
@@ -186,10 +199,9 @@ public class    CountState extends State {
     /** Returns to a fresh CountState or the Main Menu. */
     @Override
     public State nextState() {
-        if (keuze == 1){
+        if (keuze == 1) {
             return new CountState(getGame());
-        }
-        else{
+        } else {
             System.out.println("get here");
             return null;
         }
