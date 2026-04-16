@@ -90,7 +90,11 @@ public class Round {
         this.highestBid = null;
         this.trumpSuit = null;
         this.multiplier = multiplier;
+
         this.scoreDeltas = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            this.scoreDeltas.add(0);
+        }
     }
 
     /**
@@ -530,9 +534,10 @@ public class Round {
      * @return true if the round is finished, false otherwise.
      */
     public boolean isFinished() {
+        if (playedTricks.size() >= MAX_TRICKS) return true;
         if (highestBid.getType() == BidType.PASS && bids.size() == players.size()) return true;
         if (this.highestBid.getType().getCategory() == BidCategory.MISERIE) return isMiserieEarlyTermination();
-        return playedTricks.size() >= MAX_TRICKS;
+        return false;
     }
 
     private boolean isMiserieEarlyTermination() {
