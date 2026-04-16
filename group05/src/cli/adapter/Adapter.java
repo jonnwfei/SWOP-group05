@@ -10,10 +10,11 @@ import base.domain.player.Player;
 import base.domain.results.*;
 import cli.TerminalParser;
 import cli.elements.Response;
-import cli.events.*;
-import cli.events.CountEvents.*;
-import cli.events.BidEvents.*;
-import cli.events.PlayEvents.*;
+import cli.events.MessageIOEvent;
+
+import static cli.events.BidEvents.*;
+import static cli.events.CountEvents.*;
+import static cli.events.PlayEvents.*;
 
 import java.util.List;
 
@@ -195,7 +196,7 @@ public class Adapter {
                 case EndOfTurnResult _,EndOfTrickResult _,EndOfRoundResult _,TrickHistoryResult _ ->
                     AdapterResponse.toDomain(null);
 
-                case ParticipatingPlayersResult _ -> {
+                case ParticipatingPlayersResult p -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
 
                     List<Player> players = indices.stream()
@@ -210,7 +211,6 @@ public class Adapter {
 
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
-
 
                 // --- Play Card
                 case PlayCardResult p -> {

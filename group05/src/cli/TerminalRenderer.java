@@ -6,14 +6,14 @@ import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.results.PlayCardResult;
 import cli.events.IOEvent;
-import cli.events.BidEvents.*;
-import cli.events.CountEvents.*;
 import cli.events.MessageIOEvent;
-import cli.events.PlayEvents.*;
-import cli.events.menu.*;
+
+import static cli.events.BidEvents.*;
+import static cli.events.CountEvents.*;
+import static cli.events.MenuEvents.*;
+import static cli.events.PlayEvents.*;
 
 import java.util.List;
-import java.util.Scanner;
 
 public class TerminalRenderer {
     public void render(IOEvent event) {
@@ -26,7 +26,7 @@ public class TerminalRenderer {
             case EndOfRoundIOEvent e -> renderEndOfRoundEvent(e);
             case TrickHistoryIOEvent t -> renderTrickHistoryEvent(t);
             case ParticipatingPlayersIOEvent e -> renderParticipatingPlayersEvent(e);
-            case BotCardIOEvent e -> renderBotCardEvent(e);
+            // case BotCardIOEvent e -> renderBotCardEvent(e); //TODO is this even used?
             // --- bid state ---
             case BidTurnIOEvent e -> renderBidTurnEvent(e);
             case SuitSelectionIOEvent ignored -> renderSuitSelectionEvent();
@@ -58,7 +58,7 @@ public class TerminalRenderer {
 
     private void renderBotCardEvent(BotCardIOEvent e) {
         System.out.println("Bot played " + e.card());
-        System.out.println("\n[ Press ENTER to view cards on table ]"); //TODO: wat is dit?
+        System.out.println("\n[ Press ENTER to view cards on table ]"); // TODO: wat is dit?
 
     }
 
