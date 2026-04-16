@@ -18,16 +18,16 @@ public record BidTurnResult(
 
     public BidTurnResult {
         if (playerName == null || playerName.isBlank()) {
-            throw new IllegalArgumentException("playerName cannot be null or blank");
+            throw new IllegalArgumentException("PlayerName cannot be null or blank");
         }
-        if (availableBids == null || availableBids.isEmpty()) {
-            throw new IllegalArgumentException("availableBids cannot be null or empty");
+        if (availableBids == null || availableBids.isEmpty() || availableBids.contains(null)) {
+            throw new IllegalArgumentException("AvailableBids cannot be null or empty or contain null elements");
         }
-        if (hand == null || hand.isEmpty()) {
-            throw new IllegalArgumentException("hand cannot be null or empty");
+        if (hand == null || hand.isEmpty() ||  hand.contains(null)) {
+            throw new IllegalArgumentException("Hand cannot be null or empty or contain null elements");
         }
         if (player == null) {
-            throw new IllegalArgumentException("player cannot be null");
+            throw new IllegalArgumentException("Player cannot be null");
         }
 
         availableBids = List.copyOf(availableBids);

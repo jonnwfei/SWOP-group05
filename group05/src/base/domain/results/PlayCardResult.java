@@ -10,7 +10,7 @@ public record PlayCardResult(
         List<Card> tableCards,
         boolean isOpenMiserie,
         List<String> exposedPlayerNames,
-        List<List<Card>> formattedExposedHand,
+        List<List<Card>> formattedExposedHands,
         int trickNumber,
         Player player,
         List<Card> legalCards,
@@ -18,14 +18,17 @@ public record PlayCardResult(
 ) implements GameResult {
 
     public PlayCardResult {
-        if (tableCards == null) {
-            throw new IllegalArgumentException("tableCards cannot be null");
+        if (tableCards == null ||  tableCards.contains(null)) {
+            throw new IllegalArgumentException("tableCards cannot be null or contain null objects");
         }
-        if (exposedPlayerNames == null) {
-            throw new IllegalArgumentException("exposedPlayerNames cannot be null");
+        if (exposedPlayerNames == null || exposedPlayerNames.contains(null)) {
+            throw new IllegalArgumentException("exposedPlayerNames cannot be null or contain null objects");
         }
-        if (formattedExposedHand == null) {
-            throw new IllegalArgumentException("formattedExposedHand cannot be null");
+        if (formattedExposedHands == null || formattedExposedHands.contains(null)) {
+            throw new IllegalArgumentException("formattedExposedHands cannot be null or contain null hands");
+        }
+        if (formattedExposedHands.stream().anyMatch(hand -> hand.contains(null))) {
+            throw new IllegalArgumentException("formattedExposedHands cannot contain hands that contain null");
         }
         if (trickNumber <= 0) {
             throw new IllegalArgumentException("trickNumber must be positive");
@@ -33,13 +36,13 @@ public record PlayCardResult(
         if (player == null) {
             throw new IllegalArgumentException("player cannot be null");
         }
-        if (legalCards == null || legalCards.isEmpty()) {
-            throw new IllegalArgumentException("legalCards cannot be null or empty");
+        if (legalCards == null || legalCards.isEmpty() ||  legalCards.contains(null)) {
+            throw new IllegalArgumentException("legalCards cannot be null or empty or contain null objects");
         }
 
         tableCards = List.copyOf(tableCards);
         exposedPlayerNames = List.copyOf(exposedPlayerNames);
-        formattedExposedHand = formattedExposedHand.stream()
+        formattedExposedHands = formattedExposedHands.stream()
                 .map(List::copyOf)
                 .toList();
         legalCards = List.copyOf(legalCards);

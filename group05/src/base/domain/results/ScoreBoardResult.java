@@ -8,8 +8,8 @@ public record ScoreBoardResult(
 ) implements GameResult {
 
     public ScoreBoardResult {
-        if (names == null || names.isEmpty()) {
-            throw new IllegalArgumentException("names cannot be null or empty");
+        if (names == null || names.isEmpty() || names.contains(null)) {
+            throw new IllegalArgumentException("names cannot be null or empty or contain null elements");
         }
         if (scores == null || scores.isEmpty()) {
             throw new IllegalArgumentException("scores cannot be null or empty");

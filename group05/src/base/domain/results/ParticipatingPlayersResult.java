@@ -8,8 +8,8 @@ public record ParticipatingPlayersResult(
 ) implements GameResult {
 
     public ParticipatingPlayersResult {
-        if (playerNames == null || playerNames.isEmpty()) {
-            throw new IllegalArgumentException("playerNames cannot be null or empty");
+        if (playerNames == null || playerNames.isEmpty() || playerNames.contains(null)) {
+            throw new IllegalArgumentException("PlayerNames cannot be null or empty or contain null objects");
         }
 
         playerNames = List.copyOf(playerNames);

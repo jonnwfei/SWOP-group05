@@ -22,9 +22,4 @@ public record SuitSelectionRequired(
 
         suits = suits.clone();
     }
-
-    @Override
-    public Suit[] suits() {
-        return suits.clone();
-    }
 }

@@ -123,7 +123,7 @@ public class PlayState extends State {
                 }
 
                 boolean trickFinished = currentTrick.isCompleted();
-                String winner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
+                String winner = trickFinished ? currentTrick.getWinningPlayer().getName() : null; // TODO: this is a bit hacky, we should probably return the winning player from processTurnOutcome instead of re-checking here
 
                 processTurnOutcome();
 

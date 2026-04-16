@@ -90,7 +90,7 @@ public class TerminalRenderer {
             System.out.println("\n--- EXPOSED HANDS (OPEN MISERIE) ---");
             for (int i = 0; i < data.exposedPlayerNames().size(); i++) {
                 String name = data.exposedPlayerNames().get(i);
-                List<Card> exposedHand = data.formattedExposedHand().get(i);
+                List<Card> exposedHand = data.formattedExposedHands().get(i);
 
                 System.out.printf("%-12s : ", name); // Aligns names
                 System.out.println(exposedHand);
