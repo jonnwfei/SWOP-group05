@@ -1,3 +1,3 @@
 package base.domain.commands;
 
-public record ContinueCommand() implements GameCommand {}
+//public record ContinueCommand() implements GameCommand {}

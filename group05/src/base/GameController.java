@@ -1,9 +1,9 @@
 package base;
 
 import base.domain.WhistGame;
-import base.domain.commands.ContinueCommand;
 import base.domain.commands.GameCommand;
 import base.domain.results.GameResult;
+import base.domain.states.StateStep;
 import cli.adapter.AdapterResponse;
 import cli.adapter.AdapterResult;
 import cli.events.IOEvent;
@@ -12,10 +12,9 @@ import cli.elements.Response;
 import cli.adapter.Adapter;
 import cli.MenuFlow;
 
-import java.util.Optional;
-
 /**
  * The main execution engine of the Whist application.
+ * 
  * @author Stan Kestens
  * @since 01/03/2026
  */
@@ -36,25 +35,34 @@ public class GameController {
         boolean playAgain = true;
 
         while (playAgain) {
-
             menuFlow.run();
 
-            GameCommand command = new ContinueCommand();
+            GameCommand command = null;
             boolean stateRunning = true;
 
             while (!game.isOver()) {
                 while (stateRunning) {
-                    GameResult result = game.executeState(Optional.of(command));
+                    StateStep step;
+                    if (command == null) {
+                        step = game.executeState();
+                    } else {
+                        step = game.executeState(command);
+                    }
 
+                    stateRunning = !step.shouldTransition();
+
+                    if (!step.hasResult()) {
+                        command = null;
+                        continue;
+                    }
+
+                    GameResult result = step.result();
+                    // Adapter Conversion
                     AdapterResult adapterResult = adapter.handleResult(result);
-
+                    // IO and resolution of Command
                     switch (adapterResult) {
-                        case AdapterResult.Immediate immediate -> {
-                            // Bot turn: no IO needed, command is ready immediately
-                            stateRunning = true;
-                            command = immediate.command();
-                        }
-
+                        // Bot turn: no IO needed, command is ready immediately
+                        case AdapterResult.Immediate immediate -> command = immediate.command();
                         case AdapterResult.NeedsIO needsIO -> {
                             // Render and await all preamble events first
                             for (IOEvent pre : needsIO.preamble()) {
@@ -62,12 +70,11 @@ public class GameController {
                             }
 
                             IOEvent event = needsIO.event();
-                            stateRunning = event.getContinue();
 
                             Response response = terminalManager.handle(event);
                             AdapterResponse adapterResponse = adapter.handleResponse(response, result);
 
-                            while (adapterResponse.command() == null) {
+                            while (adapterResponse.shouldReRenderLastResult()) {
                                 for (IOEvent immediate : adapterResponse.immediateEvents()) {
                                     terminalManager.handle(immediate);
                                 }
@@ -80,12 +87,11 @@ public class GameController {
                         default -> throw new IllegalStateException("Unexpected value: " + adapterResult);
                     }
                 }
-
+                // State Transition
                 game.nextState();
                 stateRunning = true;
-                command = new ContinueCommand();
+                command = null; // reset command for next state
             }
-
 
         }
     }

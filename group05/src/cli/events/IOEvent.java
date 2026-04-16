@@ -1,6 +1,10 @@
 package cli.events;
 
-public interface IOEvent {
+public sealed interface IOEvent permits
+        BidEvents,
+        CountEvents,
+        PlayEvents,
+        MenuEvents,
+        MessageIOEvent {
     boolean needsInput();
-    boolean getContinue(); // false = exit state loop → nextState()
 }

@@ -12,7 +12,6 @@ import base.domain.trick.Trick;
 import base.domain.trick.Turn;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Manages the active gameplay phase where players play cards to complete
@@ -29,6 +28,7 @@ public class PlayState extends State {
     /**
      * Initializes the PlayState and sets up the first trick.
      * * @param game The current game instance.
+     * 
      * @throws IllegalStateException if no round is currently active.
      */
     public PlayState(WhistGame game) {
@@ -42,40 +42,59 @@ public class PlayState extends State {
     }
 
     /**
-     * Executes a single turn.
-     * * @param command The user action (typically a card selection or "Continue").
+     * Executes a single turn without a user command (e.g. when a bot is playing).
+     * 
      * @return The event to be rendered by the UI.
      */
     @Override
-    public GameResult executeState(Optional<GameCommand> command) {
+    public StateStep executeState() {
 
         if (roundOver) {
-            return new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null);
+            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
         }
 
         Player currentPlayer = currentRound.getCurrentPlayer();
-
-        // Handle incoming command
-        if (command.isPresent()) {
-            GameResult result = handlePlayerMove(currentPlayer, command.get());
-
-            // If round ended → return immediately
-            if (roundOver || result instanceof EndOfRoundResult) {
-                return result;
-            }
-
-            // If it's a meaningful result (not just UI refresh)
-            if (!(result instanceof PlayCardResult)) {
-                return result;
-            }
+        if (!currentPlayer.getRequiresConfirmation()) { // TODO: fix with polymorph ish shit?
+            return toStep(handleBotTurn(currentPlayer));
         }
 
         // Always return current state view
-        return buildNeedCardResult(currentPlayer);
+        return StateStep.stay(buildNeedCardResult(currentPlayer));
+    }
+
+    /**
+     * Executes a single turn based on a user command.
+     * 
+     * @param command The user action (typically a card selection or a request to view the last trick)
+     * @return The event to be rendered by the UI.
+     */
+    @Override
+    public StateStep executeState(GameCommand command) {
+
+        if (roundOver) {
+            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
+        }
+
+        Player currentPlayer = currentRound.getCurrentPlayer();
+        GameResult result = handlePlayerMove(currentPlayer, command);
+
+        GameResult viewResult = switch (result) {
+            // If the round ended during the move, return the result immediately
+            case GameResult r when roundOver -> r;
+            // Return an explicit EndOfRoundResult as-is
+            case EndOfRoundResult e -> e;
+            // If it's a PlayCardResult (UI refresh), intercept it and build the needed view
+            case PlayCardResult p -> buildNeedCardResult(currentPlayer); // TODO: should use parameter p?
+            // All other meaningful results (EndOfTrickResult, TrickHistoryResult, etc.)
+            default -> result;
+        };
+
+        return toStep(viewResult);
     }
 
     /**
      * Handles the player turn
+     * 
      * @param player The current human player
      * @param command The command received from the UI
      * @return The resulting GameResult
@@ -112,7 +131,7 @@ public class PlayState extends State {
                     yield new EndOfRoundResult(player.getName(), card);
 
                 if (trickFinished)
-                    yield new EndOfTrickResult(player.getName(), card,  winner);
+                    yield new EndOfTrickResult(player.getName(), card, winner);
 
                 yield new EndOfTurnResult(player.getName(), card);
             }
@@ -120,6 +139,7 @@ public class PlayState extends State {
             default -> buildNeedCardResult(player);
         };
     }
+
     private GameResult buildNeedCardResult(Player player) {
         boolean isOpenMiserie = currentRound.getHighestBid() != null &&
                 currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
@@ -152,45 +172,8 @@ public class PlayState extends State {
                 currentRound.getTricks().size() + 1,
                 player,
                 legalCards,
-                currentRound.getLastPlayedTrick()
-        );
+                currentRound.getLastPlayedTrick());
     }
-    private GameResult buildPickCardResult(Player player) {
-        boolean isOpenMiserie = currentRound.getHighestBid() != null &&
-                currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
-
-        List<String> exposedNames = new ArrayList<>();
-        List<List<Card>> exposedHands = new ArrayList<>();
-
-        if (isOpenMiserie) {
-            for (Bid bid : currentRound.getBids()) {
-                if (bid.getType() == BidType.OPEN_MISERIE) {
-                    Player proposer = bid.getPlayer();
-                    exposedNames.add(proposer.getName());
-                    exposedHands.add(proposer.getHand());
-                }
-            }
-        }
-
-        List<Card> tableCards = currentTrick.getTurns()
-                .stream()
-                .map(Turn::playedCard)
-                .toList();
-
-        List<Card> legalCards = currentTrick.getLegalCards(player);
-
-        return new PlayCardResult(
-                tableCards,
-                isOpenMiserie,
-                exposedNames,
-                exposedHands,
-                currentRound.getTricks().size() + 1,
-                player,
-                legalCards,
-                currentRound.getLastPlayedTrick()
-        );
-    }
-
 
     /**
      * Handle a bot turn
@@ -212,7 +195,6 @@ public class PlayState extends State {
 
         return new EndOfTurnResult(player.getName(), card);
     }
-
 
     /**
      * Updates the round state and initializes the next trick if the current one is
@@ -255,5 +237,12 @@ public class PlayState extends State {
             return new ScoreBoardState(this.getGame());
         }
         return this;
+    }
+
+    private StateStep toStep(GameResult result) {
+        return switch (result) {
+            case EndOfRoundResult ignored -> StateStep.transition(result);
+            default -> StateStep.stay(result);
+        };
     }
 }
