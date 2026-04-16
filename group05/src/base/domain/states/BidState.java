@@ -229,42 +229,6 @@ public class BidState extends State {
     }
 
     /**
-     * Validates and commits a bid selection from the current player.
-     *
-     * @param chosenBidType The bid type chosen by the player.
-     * @return GameResult signaling a required suit selection, or null to continue the normal flow.
-     * @throws IllegalArgumentException if chosenBidType is null or illegal in the current hierarchy.
-     * @throws IllegalStateException if bidding is already finished or a suit is already pending.
-     */
-    private GameResult handleBidCommand(BidType chosenBidType) {
-        if (chosenBidType == null) {
-            throw new IllegalArgumentException("chosenBidType cannot be null.");
-        }
-        if (isBiddingComplete()) {
-            throw new IllegalStateException("State violation: Cannot handle new bid, bidding is already complete.");
-        }
-        if (!isLegalBidType(chosenBidType)) {
-            throw new IllegalArgumentException(
-                    "State violation: Bid " + chosenBidType + " is not legal in the current context.");
-        }
-
-        if (chosenBidType.getRequiresSuit()) {
-            if (pendingBidType != null) {
-                throw new IllegalStateException("State violation: pendingBidType is already set.");
-            }
-            this.pendingBidType = chosenBidType;
-            return new SuitSelectionRequired(
-                    currentPlayer.getName(),
-                    chosenBidType,
-                    Suit.values());
-        }
-
-        commitBid(chosenBidType.instantiate(currentPlayer, null));
-        updateCurrentPlayer();
-        return null;
-    }
-
-    /**
      * Validates and commits the suit selection for a pending bid (e.g., Abondance, Solo).
      *
      * @param suit The suit chosen by the player.
