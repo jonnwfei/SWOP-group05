@@ -155,9 +155,13 @@ public class BidState extends State {
 
     private BidTurnResult buildBidTurnResult() {
         return new BidTurnResult(
-                currentPlayer.getName(), currentTrumpSuit,
-                currentHighestBidType, getLegalBids(currentPlayer),
-                currentPlayer.getHand(), currentPlayer);
+                currentPlayer.getName(),
+                currentTrumpSuit,
+                currentHighestBidType,
+                getLegalBids(),
+                currentPlayer.getHand(),
+                currentPlayer                // added
+        );
     }
 
     private GameResult handleBidCommand(BidType chosenBidType, Suit preSuppliedSuit) {
@@ -198,7 +202,7 @@ public class BidState extends State {
      * Determines the next state to transition to after the bidding phase concludes.
      * If everyone passed, the round is aborted and reshuffled for a new BidState.
      * Otherwise, prepares the round and transitions to the PlayState.
-     * 
+     *
      * @return State The next state in the game lifecycle.
      * @throws IllegalStateException if called before all players have successfully bid.
      */
@@ -340,7 +344,7 @@ public class BidState extends State {
     /**
      * Saves the bid to the state's memory, updating the current highest bid type
      * and the active trump suit if applicable.
-     * 
+     *
      * @param finalizedBid The fully instantiated Bid object to commit.
      * @throws IllegalArgumentException if the finalized bid is null.
      * @throws IllegalStateException if the state attempts to commit more bids than there are players.
@@ -403,27 +407,34 @@ public class BidState extends State {
      * @return true if the bid type is legally allowed given the current highest bid.
      */
     private boolean isLegalBidType(BidType chosenBidType) {
-        if (chosenBidType == BidType.PASS)
-            return true;
-        if (chosenBidType == BidType.ACCEPTANCE && currentHighestBidType != BidType.PROPOSAL)
-            return false;
-        if (chosenBidType == BidType.SOLO_PROPOSAL && !isBiddingComplete())
-            return false;
-        if (currentHighestBidType == null)
-            return true;
+        // 1. Check special conditions for specific bid types
+        switch (chosenBidType) {
+            case PASS -> {
+                return true;
+            }
+            case ACCEPTANCE -> {
+                if (currentHighestBidType != BidType.PROPOSAL) return false;
+            }
+            case SOLO_PROPOSAL -> {
+                if (!isBiddingComplete()) return false;
+            }
+            default -> {// nothing
+            }
+        }
+
+        if (currentHighestBidType == null) return true;
 
         int comparison = chosenBidType.compareTo(currentHighestBidType);
-        if (comparison < 0)
-            return false;
-        if (chosenBidType.getCategory() != BidCategory.MISERIE) {
+        if (comparison < 0) return false;
+        if (chosenBidType.getCategory() != BidCategory.MISERIE)
             return comparison != 0;
-        }
+
         return true;
     }
 
     /**
      * Checks if the bidding cycle has concluded.
-     * 
+     *
      * @return true if all players have submitted exactly one bid.
      */
     private boolean isBiddingComplete() {
@@ -486,7 +497,7 @@ public class BidState extends State {
     /**
      * Returns all legal bid types for a given player in the current bidding context.
      */
-    private List<BidType> getLegalBids(Player player) {
+    private List<BidType> getLegalBids() {
         List<BidType> legalBids = new ArrayList<>();
 
         for (BidType bidType : BidType.values()) {

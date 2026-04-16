@@ -57,7 +57,8 @@ public class TerminalRenderer {
     }
 
     private void renderBotCardEvent(BotCardIOEvent e) {
-        System.out.println("\n[ Press ENTER to view cards on table ]");
+        System.out.println("Bot played " + e.card());
+        System.out.println("\n[ Press ENTER to view cards on table ]"); //TODO: wat is dit?
 
     }
 

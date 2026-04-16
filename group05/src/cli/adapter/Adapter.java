@@ -57,8 +57,9 @@ public class Adapter {
 
                 if (!player.getRequiresConfirmation()) {
                     Bid botBid = player.chooseBid();
-                    yield new AdapterResult.Immediate(
-                            new BidCommand(botBid.getType(), b.trumpSuit()));
+                    // BidCommand with suit so domain skips SuitSelectionRequired
+                    Suit chosenTrump = botBid.determineTrump(b.trumpSuit());
+                    yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), chosenTrump));
                 }
 
                 yield new AdapterResult.NeedsIO(
@@ -194,7 +195,7 @@ public class Adapter {
                 case EndOfTurnResult _,EndOfTrickResult _,EndOfRoundResult _,TrickHistoryResult _ ->
                     AdapterResponse.toDomain(null);
 
-                case ParticipatingPlayersResult p -> {
+                case ParticipatingPlayersResult _ -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
 
                     List<Player> players = indices.stream()
@@ -209,6 +210,7 @@ public class Adapter {
 
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
+
 
                 // --- Play Card
                 case PlayCardResult p -> {
