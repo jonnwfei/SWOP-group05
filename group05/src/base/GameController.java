@@ -3,6 +3,7 @@ package base;
 import base.domain.WhistGame;
 import base.domain.commands.GameCommand;
 import base.domain.results.GameResult;
+import base.storage.GamePersistenceService;
 import base.domain.states.StateStep;
 import base.storage.GamePersistenceService;
 import cli.adapter.AdapterResponse;
