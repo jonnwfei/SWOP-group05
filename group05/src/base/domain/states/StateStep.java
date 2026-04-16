@@ -5,7 +5,7 @@ import java.util.Objects;
 
 /**
  * Output of a state execution step: an optional renderable result and
- * whether the state machine should transition after wards.
+ * whether the state machine should transition afterward.
  */
 public record StateStep(GameResult result, boolean shouldTransition) {
 
