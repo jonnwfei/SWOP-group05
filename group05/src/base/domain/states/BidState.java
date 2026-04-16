@@ -11,17 +11,20 @@ import base.domain.commands.ContinueCommand;
 import base.domain.commands.GameCommand;
 import base.domain.commands.SuitCommand;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.results.BidTurnResult;
 import base.domain.results.BiddingCompleted;
 import base.domain.results.GameResult;
 import base.domain.results.ProposalRejected;
 import base.domain.results.SuitSelectionRequired;
+import base.domain.turn.BidTurn;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Manages the Bidding phase of the Whist game.
+ * Acts as the active controller, validating bids and broadcasting state changes to Observers.
  *
  * @author Stan Kestens, Tommy Wu
  * @since 01/03/2026
@@ -56,12 +59,7 @@ public class BidState extends State {
             throw new IllegalStateException("Cannot start BidState: Dealer player is not set.");
         }
 
-        int dealerIdx = game.getPlayers().indexOf(dealerPlayer);
-        if (dealerIdx == -1) {
-            throw new IllegalStateException("Dealer player is not in the game's player list.");
-        }
-
-        this.currentPlayer = game.getPlayers().get((dealerIdx + 1) % game.getPlayers().size());
+        this.currentPlayer = game.getNextPlayer(game.getDealerPlayer());
 
         this.dealtTrumpSuit = game.dealCards();
         if (this.dealtTrumpSuit == null) {
@@ -70,10 +68,14 @@ public class BidState extends State {
         this.currentTrumpSuit = dealtTrumpSuit;
 
         game.initializeNextRound(currentPlayer);
+
+        // Broadcast that the round has officially started with these players
+        getGame().notifyRoundStarted();
+
         applyForcedBids();
 
         // If the starting player got forced into Troel, skip them immediately!
-        if (bids.stream().anyMatch(bid -> bid.getPlayer().equals(currentPlayer))) {
+        if (bids.stream().anyMatch(bid -> bid.getPlayerId().equals(currentPlayer.getId()))) {
             updateCurrentPlayer();
         }
     }
@@ -90,12 +92,12 @@ public class BidState extends State {
                     .count();
 
             if (aceCount == 3) {
-                Bid forcedBid = BidType.TROEL.instantiate(player, null);
+                Bid forcedBid = BidType.TROEL.instantiate(player.getId(), null);
                 commitBid(forcedBid);
                 break;
             }
             else if (aceCount == 4) {
-                Bid forcedBid = BidType.TROELA.instantiate(player, null);
+                Bid forcedBid = BidType.TROELA.instantiate(player.getId(), null);
                 commitBid(forcedBid);
                 break;
             }
@@ -161,7 +163,7 @@ public class BidState extends State {
         if (chosenBidType.getRequiresSuit()) {
             if (preSuppliedSuit != null) {
                 // Bot pre-supplied the suit — commit immediately, no UI step needed
-                commitBid(chosenBidType.instantiate(currentPlayer, preSuppliedSuit));
+                commitBid(chosenBidType.instantiate(currentPlayer.getId(), preSuppliedSuit));
                 updateCurrentPlayer();
                 return null;
             }
@@ -176,7 +178,7 @@ public class BidState extends State {
             );
         }
 
-        commitBid(chosenBidType.instantiate(currentPlayer, null));
+        commitBid(chosenBidType.instantiate(currentPlayer.getId(), null));
         updateCurrentPlayer();
         return null;
     }
@@ -218,7 +220,7 @@ public class BidState extends State {
             throw new IllegalStateException("State violation: Received SuitCommand but no pending bid requires a suit.");
         }
 
-        commitBid(pendingBidType.instantiate(currentPlayer, suit));
+        commitBid(pendingBidType.instantiate(currentPlayer.getId(), suit));
         this.pendingBidType = null;
         return null;
     }
@@ -247,14 +249,14 @@ public class BidState extends State {
         }
 
         // 2. Capture the original bidder and update the state's pointer
-        Player originalBidder = proposalBid.getPlayer();
+        Player originalBidder = getGame().getPlayerById(proposalBid.getPlayerId());
         this.currentPlayer = originalBidder;
 
         // 3. Remove the old PROPOSAL and reset the hierarchy
         removeProposalBid();
 
         // 4. Instantiate the resolution bid using the CORRECT player
-        Bid chosenBid = decision.instantiate(originalBidder, null);
+        Bid chosenBid = decision.instantiate(originalBidder.getId(), null);
 
         // 5. Commit the new bid (this updates currentHighestBidType)
         commitBid(chosenBid);
@@ -272,7 +274,8 @@ public class BidState extends State {
         if (currentHighestBidType == BidType.PROPOSAL) {
             Bid proposalBid = findBid(BidType.PROPOSAL);
             if (proposalBid == null) throw new IllegalStateException("Critical error: Proposal bid missing at end of bidding.");
-            return new ProposalRejected(proposalBid.getPlayer().getName());
+            Player proposer = getGame().getPlayerById(proposalBid.getPlayerId());
+            return new ProposalRejected(proposer.getName());
         }
         return new BiddingCompleted();
     }
@@ -294,9 +297,14 @@ public class BidState extends State {
 
         this.bids.add(finalizedBid);
 
+        // 1. BROADCAST: Notify all observers that a bid was placed
+        BidTurn bidTurn = new BidTurn(finalizedBid.getPlayerId(), finalizedBid.getType());
+        getGame().notifyBidPlaced(bidTurn);
+
         if (currentHighestBidType == null || finalizedBid.getType().compareTo(currentHighestBidType) > 0) {
             currentHighestBidType = finalizedBid.getType();
             currentTrumpSuit = finalizedBid.determineTrump(dealtTrumpSuit);
+            getGame().notifyTrumpDetermined(currentTrumpSuit);
         }
     }
 
@@ -308,18 +316,15 @@ public class BidState extends State {
     private void updateCurrentPlayer() {
         if (isBiddingComplete()) return;
 
-        List<Player> players = getGame().getPlayers();
-        int loopCount = 0;
-
-        // Keep skipping IF the bidding isn't done AND the player we landed on already has a bid!
+        // Loop until we find a player who hasn't bid yet
         do {
-            this.currentPlayer = players.get((players.indexOf(currentPlayer) + 1) % players.size());
-            loopCount++;
+            this.currentPlayer = getGame().getNextPlayer(this.currentPlayer);
+        } while (!isBiddingComplete() && hasAlreadyBid(this.currentPlayer));
+    }
 
-            if (loopCount > players.size()) {
-                throw new IllegalStateException("Infinite loop detected: Could not find a valid player to take a turn.");
-            }
-        } while (!isBiddingComplete() && bids.stream().anyMatch(bid -> bid.getPlayer().equals(currentPlayer)));
+
+    private boolean hasAlreadyBid(Player player) {
+        return bids.stream().anyMatch(b -> b.getPlayerId().equals(player.getId()));
     }
 
     /**
@@ -369,9 +374,7 @@ public class BidState extends State {
      * @return true if all players have submitted exactly one bid.
      */
     private boolean isBiddingComplete() {
-        List<Player> players = getGame().getPlayers();
-        return this.bids.size() == players.size() &&
-                bids.stream().map(Bid::getPlayer).allMatch(players::contains);
+        return this.bids.size() == getGame().getPlayers().size();
     }
 
     /**
@@ -403,19 +406,21 @@ public class BidState extends State {
 
         WhistGame game = this.getGame();
         List<Player> players = game.getPlayers();
-        Player firstPlayer = players.get((players.indexOf(game.getDealerPlayer()) + 1) % 4);
+        Player firstPlayer = game.getNextPlayer(game.getDealerPlayer());
 
         if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE ||
                 this.currentHighestBidType.getCategory() == BidCategory.SOLO) {
-            firstPlayer = findBid(currentHighestBidType).getPlayer();
+            firstPlayer = game.getPlayerById(findBid(currentHighestBidType).getPlayerId());
         }
         else if (this.currentHighestBidType.getCategory() == BidCategory.TROEL) {
             Bid troelBid = findBid(currentHighestBidType);
             // Find the partner by filtering out the original bidder from the team list
-            firstPlayer = troelBid.getTeam(this.bids, players).stream()
-                    .filter(p -> !p.equals(troelBid.getPlayer()))
+            PlayerId playerId = troelBid.getTeam(this.bids, players).stream()
+                    .filter(p -> !p.equals(troelBid.getPlayerId()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException("No partner found in the Troel team!"));
+
+            firstPlayer = game.getPlayerById(playerId);
         }
 
         Bid winningBid = findBid(currentHighestBidType);
