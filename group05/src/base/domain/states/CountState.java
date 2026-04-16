@@ -183,10 +183,10 @@ public class CountState extends State {
 
     private GameResult handleSaveDescription(String text) {
         try {
-            persistenceService.save(getGame(), SaveMode.COUNT, text); // TOOD: this needs to be checked and fixed,
+            persistenceService.save(getGame(), SaveMode.COUNT, text); // TODO: this needs to be checked and fixed,
                                                                       // shouldnt be in domain layer
         } catch (Exception e) {
-            throw new IllegalStateException("Error in CountState handeSaveDescription", e);
+            throw new IllegalStateException("Error in CountState handleSaveDescription", e);
         }
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
         return getScoreBoard();
@@ -202,7 +202,6 @@ public class CountState extends State {
         if (keuze == 1) {
             return new CountState(getGame());
         } else {
-            System.out.println("get here");
             return null;
         }
     }
