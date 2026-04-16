@@ -235,7 +235,7 @@ public class WhistGame {
     public void setRandomDealer() {
         if (players.isEmpty())
             throw new IllegalArgumentException("Players list is empty");
-        this.dealerPlayer = players.getLast();
+        this.dealerPlayer = players.get(new Random().nextInt(players.size()));
     }
 
     /**
@@ -251,14 +251,24 @@ public class WhistGame {
         this.dealerPlayer = players.get((currentIdx + 1) % players.size());
     }
 
+    /**
+     * Checks if the game has ended (i.e. there are no more states to transition to, it is null)
+     * @return true if the game had ended, false otherwise
+     */
     public boolean isOver() {
-        return this.state == null; // or whatever terminal condition your game has
+        return this.state == null;
     }
 
+    /**
+     * Initializes the game by transitioning to the first state (BidState).
+     */
     public void startGame() {
         this.state = new BidState(this);
     }
 
+    /**
+     * Initializes the scoring process by transitioning to the first counting state (CountState).
+     */
     public void startCount() {
         this.state = new CountState(this);
     }
