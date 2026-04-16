@@ -229,9 +229,10 @@ public class Adapter {
                     if (choice == 0) {
                         if (p.lastPlayedTrick() == null) {
                             yield AdapterResponse.uiOnly(new MessageIOEvent("No tricks have been played yet!"));
+                        } else {
+                            yield AdapterResponse.uiOnly(
+                                    new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick())));
                         }
-                        yield AdapterResponse.uiOnly(
-                                new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick())));
                     }
 
                     if (choice < 1 || choice > p.legalCards().size()) {
