@@ -6,12 +6,42 @@ import base.domain.trick.Trick;
 
 import java.util.List;
 
-public record PlayCardResult(    // e.g., ["Player1 played ACE of SPADES", ...]
-                                 List<Card> tableCards,      // e.g., ["Player1 played ACE of SPADES", ...]
-                                 boolean isOpenMiserie,         // Tells the UI whether to draw the exposed hand
-                                 List<String> exposedPlayerNames,      // Who is playing Open Miserie
-                                 List<List<Card>> formattedExposedHand,   // The actual cards to show everyone
-                                 int trickNumber,
-                                 Player player,
-                                 List<Card> legalCards, Trick lastPlayedTrick) implements  GameResult{
+public record PlayCardResult(
+        List<Card> tableCards,
+        boolean isOpenMiserie,
+        List<String> exposedPlayerNames,
+        List<List<Card>> formattedExposedHand,
+        int trickNumber,
+        Player player,
+        List<Card> legalCards,
+        Trick lastPlayedTrick
+) implements GameResult {
+
+    public PlayCardResult {
+        if (tableCards == null) {
+            throw new IllegalArgumentException("tableCards cannot be null");
+        }
+        if (exposedPlayerNames == null) {
+            throw new IllegalArgumentException("exposedPlayerNames cannot be null");
+        }
+        if (formattedExposedHand == null) {
+            throw new IllegalArgumentException("formattedExposedHand cannot be null");
+        }
+        if (trickNumber <= 0) {
+            throw new IllegalArgumentException("trickNumber must be positive");
+        }
+        if (player == null) {
+            throw new IllegalArgumentException("player cannot be null");
+        }
+        if (legalCards == null || legalCards.isEmpty()) {
+            throw new IllegalArgumentException("legalCards cannot be null or empty");
+        }
+
+        tableCards = List.copyOf(tableCards);
+        exposedPlayerNames = List.copyOf(exposedPlayerNames);
+        formattedExposedHand = formattedExposedHand.stream()
+                .map(List::copyOf)
+                .toList();
+        legalCards = List.copyOf(legalCards);
+    }
 }

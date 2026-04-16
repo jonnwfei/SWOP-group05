@@ -50,6 +50,7 @@ public class TerminalRenderer {
         }
     }
 
+
     private void renderConfigEvent(ConfirmationIOEvent e) {
         System.out.println("\n========================================");
         System.out.println("  NEXT PLAYER: " + e.playerName().toUpperCase());
@@ -194,6 +195,7 @@ public class TerminalRenderer {
         System.out.println("(2) Go back to the main menu");
         System.out.println("(3) Save this session");
         System.out.print("Your choice: ");
+
     }
 
     private void renderSaveDescriptionEvent() {
