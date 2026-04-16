@@ -2,6 +2,7 @@ package base.domain;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import base.domain.actions.GameAction;
 import base.domain.commands.GameCommand;
@@ -167,12 +168,11 @@ public class WhistGame {
     /**
      * Delegates the provided action to the current state for processing.
      * @param command The user action to process.
-     * @return A {@link GameEvent} describing the outcome of the action.
+     * @return.
      */
-    public GameResult executeState(GameCommand command){
+    public GameResult executeState(Optional<GameCommand> command) {
         return state.executeState(command);
     }
-
     /** @param player The player to add to the game session. */
     public void addPlayer(Player player){
         this.players.add(player);
@@ -213,8 +213,7 @@ public class WhistGame {
      */
     public void setRandomDealer() {
         if (players.isEmpty()) throw new IllegalArgumentException("Players list is empty");
-        int randIdx = new Random().nextInt(players.size());
-        this.dealerPlayer = players.get(randIdx);
+        this.dealerPlayer = players.getLast();
     }
 
     /**

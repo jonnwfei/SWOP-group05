@@ -10,6 +10,8 @@ import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
 import java.util.List;
+import java.util.Optional;
+
 import base.domain.commands.*;
 import base.domain.results.*;
 /**
@@ -41,37 +43,50 @@ public class ScoreBoardState extends State {
      * @return a GameEvent
      */
     @Override
-    public GameResult executeState(GameCommand command) {
+    public GameResult executeState(Optional<GameCommand> command) {
+
+        // If waiting for save description
         if (awaitingSaveDescription) {
-            return switch (command) {
-                case TextCommand t -> {
-                    try {
-                        persistenceService.save(getGame(), SaveMode.GAME, t.text());
-                        awaitingSaveDescription = false;
-                        yield buildScoreBoard();
-                    } catch (RuntimeException e) {
-                        awaitingSaveDescription = false;
-                        throw new IllegalStateException("executeState in Scoreboard state failed to save", e);
+            if (command.isPresent()) {
+                return switch (command.get()) {
+                    case TextCommand t -> {
+                        try {
+                            persistenceService.save(getGame(), SaveMode.GAME, t.text());
+                            awaitingSaveDescription = false;
+                            yield buildScoreBoard();
+                        } catch (RuntimeException e) {
+                            awaitingSaveDescription = false;
+                            throw new IllegalStateException(
+                                    "executeState in Scoreboard state failed to save", e
+                            );
+                        }
                     }
+                    default -> new SaveDescriptionResult();
+                };
+            }
+            return new SaveDescriptionResult();
+        }
+
+        // Normal flow
+        if (command.isPresent()) {
+            return switch (command.get()) {
+                case NumberCommand n -> {
+                    if (n.choice() == 1 || n.choice() == 2) {
+                        this.choice = n.choice();
+                        yield new ScoreBoardCompleteResult();
+                    }
+                    if (n.choice() == 3) {
+                        awaitingSaveDescription = true;
+                        yield new SaveDescriptionResult();
+                    }
+                    yield buildScoreBoard();
                 }
-                default -> new SaveDescriptionResult();
+                default -> buildScoreBoard();
             };
         }
 
-        return switch (command) {
-            case NumberCommand n -> {
-                if (n.choice() == 1 || n.choice() == 2) {
-                    this.choice = n.choice();
-                    yield new ScoreBoardCompleteResult();
-                }
-                if (n.choice() == 3) {
-                    awaitingSaveDescription = true;
-                    yield new SaveDescriptionResult();
-                }
-                yield buildScoreBoard();
-            }
-            default -> buildScoreBoard();
-        };
+        // No command → just render scoreboard
+        return buildScoreBoard();
     }
 
     private GameResult buildScoreBoard() {

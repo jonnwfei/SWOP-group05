@@ -14,6 +14,8 @@ import base.domain.card.Suit;
 import base.domain.round.Round;
 
 import java.util.List;
+import java.util.Optional;
+
 import static base.domain.bid.BidType.*;
 
 /**
@@ -48,23 +50,23 @@ public class    CountState extends State {
      * @return The next event in the scoring sequence.
      */
     @Override
-    public GameResult executeState(GameCommand command) {
+    public GameResult executeState(Optional<GameCommand> command) {
         if (currentPhase == CountPhase.START) {
             currentPhase = CountPhase.SELECT_BID;
             return new BidSelectionResult(values(), getGame().getPlayers());
         }
 
-        return switch (command) {
-            case BidCommand b            -> handleBidType(b.bid());
-            case SuitCommand s           -> handleSuit(s.suit());
-            case PlayerListCommand p     -> handlePlayerInput(p.players());
-            case NumberCommand n         -> handleNumberInput(n.choice());
-            case TextCommand t           -> handleSaveDescription(t.text());
-            case ContinueCommand ignored -> nextStep();
-            default -> throw new IllegalStateException("Unexpected value: " + command);
+        if (command.isEmpty()) return nextStep(); // e.g. after ScoreBoardComplete
+
+        return switch (command.get()) {
+            case BidCommand b        -> handleBidType(b.bid());
+            case SuitCommand s       -> handleSuit(s.suit());
+            case PlayerListCommand p -> handlePlayerInput(p.players());
+            case NumberCommand n     -> handleNumberInput(n.choice());
+            case TextCommand t       -> handleSaveDescription(t.text());
+            default -> throw new IllegalStateException("Unexpected value: " + command.get());
         };
     }
-
 
     private GameResult handleNumberInput(int value) {
         if (currentPhase == CountPhase.CALCULATE) {
@@ -137,7 +139,7 @@ public class    CountState extends State {
             }
 
             currentPhase = CountPhase.CALCULATE;
-            return new TrickInputResult();
+            return new AmountOfTrickWonResult();
         }
 
         // SELECT_WINNERS — players here are the winners, participatingPlayers already set

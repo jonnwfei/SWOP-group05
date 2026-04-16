@@ -12,6 +12,7 @@ import base.domain.trick.Trick;
 import base.domain.trick.Turn;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Manages the active gameplay phase where players play cards to complete
@@ -46,20 +47,30 @@ public class PlayState extends State {
      * @return The event to be rendered by the UI.
      */
     @Override
-    public GameResult executeState(GameCommand command) {
+    public GameResult executeState(Optional<GameCommand> command) {
+
+        if (roundOver) {
+            return new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null);
+        }
+
         Player currentPlayer = currentRound.getCurrentPlayer();
 
-        // 1. Handle command if present
-        if (command != null) {
-            GameResult result = handlePlayerMove(currentPlayer, command);
+        // Handle incoming command
+        if (command.isPresent()) {
+            GameResult result = handlePlayerMove(currentPlayer, command.get());
 
-            // If something meaningful happened → return immediately
+            // If round ended → return immediately
+            if (roundOver || result instanceof EndOfRoundResult) {
+                return result;
+            }
+
+            // If it's a meaningful result (not just UI refresh)
             if (!(result instanceof PlayCardResult)) {
                 return result;
             }
         }
 
-        // 2. Always return current state view
+        // Always return current state view
         return buildNeedCardResult(currentPlayer);
     }
 
@@ -211,10 +222,21 @@ public class PlayState extends State {
         if (currentTrick.isCompleted()) {
             Player winningPlayer = currentTrick.getWinningPlayer();
             currentRound.registerCompletedTrick(currentTrick);
+
+            // Extension 11a: Check if a Miserie bidder won this trick
+            if (currentRound.getHighestBid().getType() == BidType.MISERIE &&
+                    currentRound.getBiddingTeamPlayers().contains(winningPlayer)) {
+                roundOver = true;
+                currentRound.signalEarlyFinish(); // This updates scores and flags the round as done
+                return;
+            }
+
             if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
                 roundOver = true;
+            } else {
+                // Only start a new trick if the round isn't over
+                this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
             }
-            this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
         } else {
             currentRound.advanceToNextPlayer();
         }
@@ -227,7 +249,9 @@ public class PlayState extends State {
      */
     @Override
     public State nextState() {
-        if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
+        // CRITICAL: Use the same logic that processTurnOutcome uses.
+        // If roundOver is true, we MUST move to ScoreBoardState.
+        if (roundOver || currentRound.isFinished()) {
             return new ScoreBoardState(this.getGame());
         }
         return this;

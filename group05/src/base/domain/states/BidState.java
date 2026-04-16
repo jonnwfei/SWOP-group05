@@ -19,6 +19,7 @@ import base.domain.results.SuitSelectionRequired;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Manages the Bidding phase of the Whist game.
@@ -113,37 +114,33 @@ public class BidState extends State {
      * @throws IllegalStateException if an unexpected command type is provided.
      */
     @Override
-    public GameResult executeState(GameCommand command) {
-        if (command == null) {
-            throw new IllegalArgumentException("GameCommand cannot be null.");
+    public GameResult executeState(Optional<GameCommand> command) {
+        if (command.isEmpty()) {
+            // Initial entry — just return current turn
+            return buildBidTurnResult();
         }
 
-        GameResult earlyReturn = switch (command) {
+        GameResult earlyReturn = switch (command.get()) {
             case BidCommand b -> {
                 if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
                     yield handleRejectedProposal(b.bid());
                 }
-                yield handleBidCommand(b.bid(), b.suit()); // pass suit through
+                yield handleBidCommand(b.bid(), b.suit());
             }
             case SuitCommand s -> handleSuitCommand(s.suit());
-            case ContinueCommand ignored -> null;
-            default -> throw new IllegalStateException("Unexpected command type: " + command);
+            default -> throw new IllegalStateException("Unexpected command type: " + command.get());
         };
 
         if (earlyReturn != null) return earlyReturn;
+        if (isBiddingComplete()) return handleEndOfBidding();
+        return buildBidTurnResult();
+    }
 
-        // Bot loop removed — handled by Adapter via AdapterResult.Immediate
-
-        if (isBiddingComplete())
-            return handleEndOfBidding();
-
+    private BidTurnResult buildBidTurnResult() {
         return new BidTurnResult(
-                currentPlayer.getName(),
-                currentTrumpSuit,
-                currentHighestBidType,
-                getLegalBids(currentPlayer),
-                currentPlayer.getHand(),
-                currentPlayer                // added
+                currentPlayer.getName(), currentTrumpSuit,
+                currentHighestBidType, getLegalBids(currentPlayer),
+                currentPlayer.getHand(), currentPlayer
         );
     }
 

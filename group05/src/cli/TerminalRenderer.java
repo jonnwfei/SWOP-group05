@@ -4,6 +4,7 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.results.PlayCardResult;
 import cli.events.IOEvent;
 import cli.events.BidEvents.*;
 import cli.events.CountEvents.*;
@@ -12,12 +13,13 @@ import cli.events.PlayEvents.*;
 import cli.events.menu.*;
 
 import java.util.List;
+import java.util.Scanner;
 
 public class TerminalRenderer {
-
     public void render(IOEvent event) {
         switch (event) {
             // --- play state ---
+            case ConfirmationIOEvent e -> renderConfigEvent(e);
             case PlayCardIOEvent e -> renderPlayCardEvent(e);
             case EndOfTurnIOEvent e          -> renderEndOfTurnEvent(e);
             case EndOfTrickIOEvent e         -> renderEndOfTrickEvent(e);
@@ -48,7 +50,15 @@ public class TerminalRenderer {
         }
     }
 
+    private void renderConfigEvent(ConfirmationIOEvent e) {
+        System.out.println("\n========================================");
+        System.out.println("  NEXT PLAYER: " + e.playerName().toUpperCase());
+        System.out.println("  Pass the device, then press ENTER.");
+        System.out.println("========================================");
+    }
+
     private void renderBotCardEvent(BotCardIOEvent e) {
+        System.out.println("\n[ Press ENTER to view cards on table ]");
 
     }
 
@@ -57,11 +67,12 @@ public class TerminalRenderer {
     }
 
     private void renderPlayCardEvent(PlayCardIOEvent event) {
-        base.domain.results.PlayCardResult data = event.data();
+        PlayCardResult data = event.data();
 
         System.out.println("\n=============================================");
         System.out.println("  TRICK #" + data.trickNumber() + " | TURN: " + data.player().getName().toUpperCase());
         System.out.println("=============================================");
+
 
         // 1. Table Display
         System.out.println("\nCARDS ON TABLE:");

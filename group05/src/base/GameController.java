@@ -12,6 +12,8 @@ import cli.elements.Response;
 import cli.adapter.Adapter;
 import cli.MenuFlow;
 
+import java.util.Optional;
+
 /**
  * The main execution engine of the Whist application.
  * @author Stan Kestens
@@ -42,7 +44,7 @@ public class GameController {
 
             while (!game.isOver()) {
                 while (stateRunning) {
-                    GameResult result = game.executeState(command);
+                    GameResult result = game.executeState(Optional.of(command));
 
                     AdapterResult adapterResult = adapter.handleResult(result);
 
@@ -54,6 +56,11 @@ public class GameController {
                         }
 
                         case AdapterResult.NeedsIO needsIO -> {
+                            // Render and await all preamble events first
+                            for (IOEvent pre : needsIO.preamble()) {
+                                terminalManager.handle(pre);
+                            }
+
                             IOEvent event = needsIO.event();
                             stateRunning = event.getContinue();
 
@@ -70,6 +77,7 @@ public class GameController {
 
                             command = adapterResponse.command();
                         }
+                        default -> throw new IllegalStateException("Unexpected value: " + adapterResult);
                     }
                 }
 
