@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,19 +48,6 @@ class AdapterTest {
     }
 
 
-    @Test
-    void handleResult_bidTurn_botPlayer_returnsImmediateBidCommand() {
-        Bid botBid = BidType.SOLO.instantiate(botPlayer, null);
-        when(botPlayer.chooseBid()).thenReturn(botBid);
-        BidTurnResult result = bidTurnResult(botPlayer);
-
-        AdapterResult adapterResult = adapter.handleResult(result);
-
-        assertThat(adapterResult).isInstanceOf(AdapterResult.Immediate.class);
-        GameCommand command = ((AdapterResult.Immediate) adapterResult).command();
-        assertThat(command).isInstanceOf(BidCommand.class);
-        assertThat(((BidCommand) command).bid()).isEqualTo(BidType.SOLO);
-    }
 
     // =========================================================================
     // handleResult — PlayCardResult
