@@ -167,11 +167,12 @@ public class WhistGame {
     /**
      * Delegates the provided action to the current state for processing.
      * @param command The user action to process.
-     * @return A {@link GameEvent} describing the outcome of the action.
+     * @return A describing the outcome of the action.
      */
     public GameResult executeState(GameCommand command){
         return state.executeState(command);
     }
+
 
     /** @param player The player to add to the game session. */
     public void addPlayer(Player player){
@@ -240,4 +241,33 @@ public class WhistGame {
         this.state = new CountState(this);
     }
 
+    public void removePlayer(Player player) {
+        this.players.remove(player);
+    }
+    public  void removeRound(Round round){
+        this.rounds.remove(round);
+    }
+    /**
+     * Recalculates all player scores from scratch based on the current round history.
+     * Call this after removing a round to ensure the scoreboard is accurate.
+     */
+    public void recalibrateScores() {
+        // 1. Reset all players to 0
+        for (Player p : this.players) {
+            p.updateScore(-p.getScore());
+        }
+
+        // 2. Re-apply deltas from all rounds currently in the list
+        for (Round round : this.rounds) {
+            List<Integer> deltas = round.getScoreDeltas();
+            List<Player> roundPlayers = round.getPlayers();
+
+            // Map the deltas back to the players based on their index in the round
+            for (int i = 0; i < roundPlayers.size(); i++) {
+                Player p = roundPlayers.get(i);
+                int delta = deltas.get(i);
+                p.updateScore(delta);
+            }
+        }
+    }
 }

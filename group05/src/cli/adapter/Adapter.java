@@ -6,14 +6,19 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.*;
+import base.domain.player.HumanStrategy;
 import base.domain.player.Player;
 import base.domain.results.*;
+import base.domain.round.Round;
 import cli.TerminalParser;
 import cli.elements.Response;
 import cli.events.*;
 import cli.events.CountEvents.*;
 import cli.events.BidEvents.*;
 import cli.events.PlayEvents.*;
+import cli.events.menu.AddHumanPlayerIOEvent;
+import cli.events.menu.AddPlayerIOEvent;
+import cli.events.menu.DeleteRoundIOEvent;
 
 import java.util.List;
 
@@ -55,7 +60,7 @@ public class Adapter {
             case SuitSelectionResult ignored   -> new AdapterResult.NeedsIO(new SuitSelectionIOEvent());
             case PlayerSelectionResult p       -> new AdapterResult.NeedsIO(new PlayerSelectionIOEvent(p.players(), p.multiSelect()));
             case TrickInputResult ignored      -> new AdapterResult.NeedsIO(new TrickInputIOEvent());
-            case ScoreBoardResult s            -> new AdapterResult.NeedsIO(new ScoreBoardIOEvent(s.names(), s.scores()));
+            case ScoreBoardResult s            -> new AdapterResult.NeedsIO(new ScoreBoardIOEvent(s.names(), s.scores(), s.canRemovePlayer()));
             case SaveDescriptionResult ignored -> new AdapterResult.NeedsIO(new SaveDescriptionIOEvent());
             case ScoreBoardCompleteResult ignored -> new AdapterResult.NeedsIO(new ScoreBoardCompleteIOEvent());
             case EndOfTurnResult e             -> new AdapterResult.NeedsIO(new EndOfTurnIOEvent(e));
@@ -63,6 +68,9 @@ public class Adapter {
             case EndOfRoundResult e            -> new AdapterResult.NeedsIO(new EndOfRoundIOEvent(e));
             case TrickHistoryResult t          -> new AdapterResult.NeedsIO(new TrickHistoryIOEvent(t));
             case ParticipatingPlayersResult p  -> new AdapterResult.NeedsIO(new ParticipatingPlayersIOEvent(p));
+            case AddHumanPlayerResult ignored  -> new AdapterResult.NeedsIO(new AddHumanPlayerIOEvent());
+            case AddPlayerResult ignored               -> new AdapterResult.NeedsIO(new AddPlayerIOEvent());
+            case DeleteRoundResult g             -> new AdapterResult.NeedsIO(new DeleteRoundIOEvent(g.rounds()));
             default -> throw new IllegalStateException("Unexpected GameResult: " + result);
         };
     }
@@ -75,6 +83,21 @@ public class Adapter {
 
         try {
             return switch (result) {
+                case DeleteRoundResult dr -> {
+                    int choice = parser.parseNumberInput(raw);
+                    if (choice == 0) {
+                        // Return a Command that signals a cancel or just a Continue
+                        yield AdapterResponse.toDomain(new NumberCommand(0));
+                    }
+                    // Get the actual round from the list provided in the result
+                    Round selectedRound = dr.rounds().get(choice - 1);
+                    yield AdapterResponse.toDomain(new RoundCommand(selectedRound));
+                }
+                case AddPlayerResult ignored -> {
+                    int choice  = parser.parseNumberInput(raw);
+                    yield AdapterResponse.toDomain(new NumberCommand(choice));
+                }
+                case AddHumanPlayerResult e -> AdapterResponse.toDomain(new PlayerListCommand(List.of(new Player(new HumanStrategy(), raw))));
                 // --- Bidding State ---
                 case BidTurnResult b -> {
                     int choice = parser.parseNumberInput(raw);

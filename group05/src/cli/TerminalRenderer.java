@@ -4,6 +4,7 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.round.Round;
 import cli.events.IOEvent;
 import cli.events.BidEvents.*;
 import cli.events.CountEvents.*;
@@ -43,9 +44,40 @@ public class TerminalRenderer {
             case PlayerNameIOEvent e           -> renderPlayerNameEvent(e);
             case BotStrategyIOEvent e          -> renderBotStrategyEvent(e);
             case PrintNamesIOEvent e           -> renderPrintNamesEvent(e);
+            case AddHumanPlayerIOEvent _       -> renderAddHumanPlayerIOEvent();
+            case AddPlayerIOEvent _ -> renderAddPlayerIOEvent();
             case MessageIOEvent t -> renderMessageEvent(t);
+            case DeleteRoundIOEvent d            -> renderDeleteRoundIOEvent(d);
             default -> throw new IllegalStateException("Unhandled IOEvent: " + event);
         }
+    }
+
+    private void renderDeleteRoundIOEvent(DeleteRoundIOEvent d) {
+        System.out.println("--- Round History ---");
+        List<Round> rounds = d.rounds();
+
+        for (int i = 0; i < rounds.size(); i++) {
+            Round r = rounds.get(i);
+            // Show the round index and the winners (assuming Round has getWinners/getWinningPlayers)
+            String winners = r.getWinningPlayers().stream()
+                    .map(Player::getName)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("None");
+
+            System.out.printf("(%d) Round %d - Winners: [%s]%n", i + 1, i + 1, winners);
+        }
+    }
+
+    private void renderAddPlayerIOEvent() {
+        System.out.println("What type of player would you like to add:");
+        System.out.println("(1) Human");
+        System.out.println("(2) Smart bot");
+        System.out.println("(3) High bot");
+        System.out.println("(4) Low bot");
+    }
+
+    private void renderAddHumanPlayerIOEvent() {
+        System.out.println("Enter the new player name: ");
     }
 
     private void renderBotCardEvent(BotCardIOEvent e) {
@@ -179,9 +211,15 @@ public class TerminalRenderer {
             System.out.println(names.get(i) + ": " + scores.get(i) + " points");
         }
         System.out.println("====================================");
+        // ... existing score display ...
         System.out.println("(1) Simulate another round");
         System.out.println("(2) Go back to the main menu");
         System.out.println("(3) Save this session");
+        System.out.println("(4) Remove a round");
+        System.out.println("(5) Add a player");
+        if (event.canRemovePlayer()) {
+            System.out.println("(6) Remove a player");
+        }
         System.out.print("Your choice: ");
     }
 
