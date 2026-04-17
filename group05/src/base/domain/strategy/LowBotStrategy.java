@@ -1,9 +1,11 @@
-package base.domain.player;
+package base.domain.strategy;
 
 import base.domain.bid.Bid;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.player.PlayerId;
+
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -14,22 +16,22 @@ import java.util.List;
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public class LowBotStrategy implements Strategy {
+public final class LowBotStrategy implements Strategy {
 
     /**
      * Always returns a PassBid. This strategy does not attempt to win bids.
-     * @param player The player instance using this strategy.
+     * @param playerId The player instance using this strategy.
      * @return A passBid instance.
      */
     @Override
-    public Bid determineBid(Player player) {
-        return new PassBid(player);
+    public Bid determineBid(PlayerId playerId, List<Card> hand) {
+        return new PassBid(playerId);
     }
 
     /**
      * Selects the card with the lowest rank from the set of legal moves.
      * @param currentHand The list of cards currently held by the player.
-     * @param lead The suit led in the current trick (may be null if the bot leads).
+     * @param lead The suit led in the current trick (maybe null if the bot leads).
      * @return The card with the minimum rank among legal choices.
      */
     @Override

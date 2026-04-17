@@ -6,6 +6,10 @@ import base.domain.deck.Deck;
 import base.domain.round.Round;
 import base.storage.snapshots.*;
 import base.domain.player.*;
+import base.domain.strategy.HighBotStrategy;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.LowBotStrategy;
+import base.domain.strategy.Strategy;
 
 import java.util.List;
 
@@ -164,7 +168,7 @@ public class GamePersistenceService {
         if (roundPlayers.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
 
         BidType bidType = highestBid.getType();
-        int bidderIndex = roundPlayers.indexOf(highestBid.getPlayer());
+        int bidderIndex = roundPlayers.indexOf(round.getPlayerById(highestBid.getPlayerId()));
         if (bidderIndex < 0) {
             throw new IllegalStateException("Cannot snapshot round: highest bid player is not in round players");
         }
@@ -231,7 +235,7 @@ public class GamePersistenceService {
             }
 
             Player mainBidder = players.get(bidderIndex);
-            Bid highestBid = snapshot.bidType().instantiate(mainBidder, snapshot.trumpSuit());
+            Bid highestBid = snapshot.bidType().instantiate(mainBidder.getId(), snapshot.trumpSuit());
 
             List<Player> participants = snapshot.participantIndices().stream()
                     .map(index -> {

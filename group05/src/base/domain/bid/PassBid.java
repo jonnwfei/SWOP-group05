@@ -2,24 +2,25 @@ package base.domain.bid;
 
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 
 import java.util.List;
 
 /**
  * Represents a player's decision to pass during the auction.
  * Functions as a fallback bid when a player opts out of the current contract.
- * @param player The player who decided to pass.
+ * @param playerId The player who decided to pass.
  * @author Tommy Wu
  * @since 25/02/26
  */
-public record PassBid(Player player) implements Bid {
+public record PassBid(PlayerId playerId) implements Bid {
 
     public PassBid {
-        if (player == null) {throw new IllegalArgumentException("Player cannot be null.");}
+        if (playerId == null) {throw new IllegalArgumentException("Player cannot be null.");}
     }
 
     @Override
-    public Player getPlayer() {return player;}
+    public PlayerId getPlayerId() {return playerId;}
 
     /**
      * Determines the team for this bid.
@@ -30,8 +31,8 @@ public record PassBid(Player player) implements Bid {
      * @return A list containing only the passing player.
      */
     @Override
-    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        return List.of(player);
+    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
+        return List.of(playerId);
     }
 
     @Override

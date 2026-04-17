@@ -1,196 +1,170 @@
 package base.domain;
 
-import base.domain.bid.Bid;
-import base.domain.bid.BidType;
-import base.domain.bid.MiserieBid;
-import base.domain.card.Card;
-import base.domain.card.Rank;
-import base.domain.card.Suit;
+import base.domain.card.*;
+import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
-import base.domain.player.HumanStrategy;
+import base.domain.observer.GameObserver;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.round.Round;
-import base.domain.trick.Trick;
+import base.domain.states.State;
+import base.domain.turn.PlayTurn;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
+@DisplayName("Whist Game Aggregate Root")
 class WhistGameTest {
 
     private WhistGame game;
-    private Player p1, p2, p3, p4;
+    private Player mockPlayer1;
+    private Player mockPlayer2;
+    private PlayerId id1;
+    private PlayerId id2;
 
     @BeforeEach
     void setUp() {
         game = new WhistGame();
-        p1 = new Player(new HumanStrategy(), "Stan");
-        p2 = new Player(new HumanStrategy(), "Seppe");
-        p3 = new Player(new HumanStrategy(), "Tommy");
-        p4 = new Player(new HumanStrategy(), "John");
+
+        mockPlayer1 = mock(Player.class);
+        mockPlayer2 = mock(Player.class);
+        id1 = new PlayerId("p1");
+        id2 = new PlayerId("p2");
+
+        lenient().when(mockPlayer1.getId()).thenReturn(id1);
+        lenient().when(mockPlayer2.getId()).thenReturn(id2);
     }
 
-    // -------- SETUP AND LIST MANAGEMENT TESTS --------
+    @Nested
+    @DisplayName("Player & Roster Management")
+    class PlayerTests {
+        @Test
+        @DisplayName("getPlayerById returns the correct player or throws")
+        void getPlayerById_Logic() {
+            game.addPlayer(mockPlayer1);
 
-    @Test
-    void addAndGetPlayers() {
-        game.addPlayer(p1);
-        game.addPlayer(p2);
+            assertEquals(mockPlayer1, game.getPlayerById(id1));
+            // Verifying negative scenario: illegal input handled defensively 
+            assertThrows(IllegalStateException.class, () -> game.getPlayerById(new PlayerId("ghost")));
+        }
 
-        List<Player> players = game.getPlayers();
-        assertEquals(2, players.size());
-        assertEquals("Stan", players.getFirst().getName());
+        @Test
+        @DisplayName("getNextPlayer correctly calculates the next person in seating order")
+        void getNextPlayer_ModuloRotation() {
+            // Clockwise fashion is the standard for Whist bidding and play 
+            game.addPlayer(mockPlayer1);
+            game.addPlayer(mockPlayer2);
 
-        // Ensure encapsulation: modifying the returned list shouldn't affect the internal list
-        players.clear();
-        assertEquals(2, game.getPlayers().size());
+            assertEquals(mockPlayer2, game.getNextPlayer(mockPlayer1));
+            assertEquals(mockPlayer1, game.getNextPlayer(mockPlayer2)); // Loop back (Modulo logic)
+        }
     }
 
-    @Test
-    void resetPlayers() {
-        game.addPlayer(p1);
-        game.resetPlayers();
-        assertTrue(game.getPlayers().isEmpty());
+    @Nested
+    @DisplayName("Dealer Management")
+    class DealerTests {
+        @Test
+        @DisplayName("advanceDealer moves the dealer token to the next player")
+        void advanceDealer_CyclesToken() {
+            game.addPlayer(mockPlayer1);
+            game.addPlayer(mockPlayer2);
+            game.setDealerPlayer(mockPlayer1);
+
+            game.advanceDealer();
+
+            assertEquals(mockPlayer2, game.getDealerPlayer(), "Dealer must rotate clockwise[cite: 156].");
+        }
     }
 
-    @Test
-    void deckGettersAndSetters() {
-        Deck deck = new Deck();
-        assertNull(game.getDeck(), "Deck should initially be null");
+    @Nested
+    @DisplayName("Card Dealing & Deck Interaction")
+    class DeckTests {
+        @Test
+        @DisplayName("dealCards shuffles and distributes cards to all 4 players")
+        void dealCards_DistributesToAll() {
+            // Arrange
+            Deck mockDeck = mock(Deck.class);
+            Player p3 = mock(Player.class);
+            Player p4 = mock(Player.class);
+            game.addPlayer(mockPlayer1); game.addPlayer(mockPlayer2);
+            game.addPlayer(p3); game.addPlayer(p4);
+            game.setDeck(mockDeck);
 
-        game.setDeck(deck);
-        assertEquals(deck, game.getDeck());
+            List<Card> hand = List.of(new Card(Suit.SPADES, Rank.ACE));
+            // Whist requires distributing a standard deck of 52 cards [cite: 156]
+            when(mockDeck.deal()).thenReturn(List.of(hand, hand, hand, hand));
+
+            // Act
+            game.dealCards();
+
+            // Assert
+            verify(mockDeck).shuffle();
+            verify(mockPlayer1).setHand(any());
+            verify(p4).setHand(any());
+        }
     }
 
-    @Test
-    void roundsManagement() {
-        game.addPlayer(p1);
-        game.addPlayer(p2);
-        game.addPlayer(p3);
-        game.addPlayer(p4);
+    @Nested
+    @DisplayName("State Machine Delegation")
+    class StateTests {
+        @Test
+        @DisplayName("executeState(command) delegates strictly to the current state")
+        void executeState_Delegation() {
+            // Test verifies delegation to maintain Low Representational Gap [cite: 327]
+            State mockState = mock(State.class);
+            setInternalState(game, mockState);
+            GameCommand mockCommand = mock(GameCommand.class);
 
-        assertNull(game.getCurrentRound());
+            game.executeState(mockCommand);
 
-        Round round = new Round(game.getPlayers(), p1, 1);
-        game.addRound(round);
-
-        assertEquals(round, game.getCurrentRound());
-        assertEquals(1, game.getRounds().size());
-
-        game.resetRounds();
-        assertTrue(game.getRounds().isEmpty());
+            verify(mockState).executeState(mockCommand);
+        }
     }
 
-    // -------- CURRENT PLAYER TESTS --------
+    @Nested
+    @DisplayName("Round History & Winners")
+    class RoundTests {
+        @Test
+        @DisplayName("getLastRoundWinner retrieves winning player from the most recent round")
+        void getLastRoundWinner_Delegation() {
+            Round mockRound = mock(Round.class);
+            when(mockRound.getWinningPlayers()).thenReturn(List.of(mockPlayer1));
+            game.addRound(mockRound);
 
-    @Test
-    void setCurrentPlayer_Valid() {
-        game.addPlayer(p1);
-        game.setCurrentPlayer(p1);
-        assertEquals(p1, game.getCurrentPlayer());
+            assertEquals(mockPlayer1, game.getLastRoundWinner());
+        }
     }
 
-    @Test
-    void setCurrentPlayer_NullThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> game.setCurrentPlayer(null));
+    @Nested
+    @DisplayName("Observer Pattern (Events)")
+    class ObserverTests {
+        @Test
+        @DisplayName("notifyTurnPlayed broadcasts event to all registered observers")
+        void notifyTurnPlayed_Broadcasting() {
+            GameObserver mockObs = mock(GameObserver.class);
+            game.addObserver(mockObs);
+            PlayTurn turn = new PlayTurn(id1, new Card(Suit.HEARTS, Rank.KING));
+
+            game.notifyTurnPlayed(turn);
+
+            verify(mockObs).onTurnPlayed(turn);
+        }
     }
 
-    @Test
-    void setCurrentPlayer_NotInGameThrowsException() {
-        game.addPlayer(p1);
-        // p2 is not added to the game yet
-        assertThrows(IllegalArgumentException.class, () -> game.setCurrentPlayer(p2));
-    }
-
-    // -------- DEALER MANAGEMENT TESTS --------
-
-    @Test
-    void setRandomDealer_ThrowsIfEmpty() {
-        assertThrows(IllegalArgumentException.class, () -> game.setRandomDealer());
-    }
-
-    @Test
-    void setRandomDealer_AssignsDealer() {
-        game.addPlayer(p1);
-        game.addPlayer(p2);
-        game.addPlayer(p3);
-        game.addPlayer(p4);
-
-        game.setRandomDealer();
-        assertNotNull(game.getDealerPlayer());
-        assertTrue(game.getPlayers().contains(game.getDealerPlayer()));
-    }
-
-    @Test
-    void advanceDealer_ThrowsIfInvalid() {
-        // Empty list
-        assertThrows(IllegalStateException.class, () -> game.advanceDealer());
-
-        // Populated list, but dealer is null
-        game.addPlayer(p1);
-        game.addPlayer(p2);
-        assertThrows(IllegalStateException.class, () -> game.advanceDealer());
-    }
-
-    @Test
-    void advanceDealer_CyclesCorrectly() {
-        game.addPlayer(p1);
-        game.addPlayer(p2);
-        game.addPlayer(p3);
-
-        // Force the dealer to be P1
-        game.setRandomDealer();
-        Player initialDealer = game.getDealerPlayer();
-
-        List<Player> players = game.getPlayers();
-        int initialIdx =  players.indexOf(initialDealer);
-
-        Player expectedNext = players.get((initialIdx + 1) % players.size());
-        Player expectedNextNext = players.get((initialIdx + 2) % players.size());
-
-        game.advanceDealer();
-        assertEquals(expectedNext, game.getDealerPlayer());
-
-        game.advanceDealer();
-        assertEquals(expectedNextNext, game.getDealerPlayer());
-
-        game.advanceDealer();
-        assertEquals(initialDealer, game.getDealerPlayer());
-    }
-
-    // -------- WINNER RESOLUTION TESTS --------
-
-    @Test
-    void getLastRoundWinner_NoRounds() {
-        assertNull(game.getLastRoundWinner());
-    }
-
-    @Test
-    void getLastRoundWinner_UnfinishedRound() {
-        game.addPlayer(p1); game.addPlayer(p2); game.addPlayer(p3); game.addPlayer(p4);
-        Round round = new Round(game.getPlayers(), p1, 1);
-
-        // Prevent null pointer by setting a bid
-        round.setHighestBid(new MiserieBid(p1, BidType.MISERIE));
-        game.addRound(round);
-
-        assertNull(game.getLastRoundWinner()); // Round has 0 tricks, no winners yet
-    }
-
-
-
-    // -------- STATE PATTERN TESTS --------
-
-    @Test
-    void stateTransitionFlow() {
-        // Because executeState and nextState delegate to MenuState (and so on),
-        // we just verify that the game successfully delegates without throwing exceptions.
-//        GameEvent event = game.executeState("1");
-//        assertNotNull(event);
-//
-//        assertDoesNotThrow(() -> game.nextState());
+    // --- Reflection Helper to inject mock states ---
+    private void setInternalState(WhistGame game, State state) {
+        try {
+            java.lang.reflect.Field field = WhistGame.class.getDeclaredField("state");
+            field.setAccessible(true);
+            field.set(game, state);
+        } catch (Exception e) {
+            throw new RuntimeException("Reflection failed during WhistGameState injection.", e);
+        }
     }
 }

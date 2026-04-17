@@ -1,9 +1,11 @@
-package base.domain.player;
+package base.domain.strategy;
 
 import base.domain.bid.Bid;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.player.PlayerId;
+
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -14,17 +16,17 @@ import java.util.List;
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public class HighBotStrategy implements Strategy {
+public final class HighBotStrategy implements Strategy {
 
     /**
      * Always returns a PassBid. Despite high play-play aggression, this bot
      * does not currently participate in bidding.
-     * @param player The player instance using this strategy.
+     * @param playerId The player instance using this strategy.
      * @return A {@link PassBid} instance.
      */
     @Override
-    public Bid determineBid(Player player) {
-        return new PassBid(player);
+    public Bid determineBid(PlayerId playerId, List<Card> hand) {
+        return new PassBid(playerId);
     }
 
     /**

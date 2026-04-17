@@ -5,6 +5,7 @@ import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
+import base.domain.strategy.*;
 import cli.events.IOEvent;
 
 import static cli.events.MenuEvents.*;
