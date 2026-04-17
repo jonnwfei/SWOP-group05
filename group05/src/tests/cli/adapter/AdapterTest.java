@@ -120,7 +120,7 @@ class AdapterTest {
         @Test
         @DisplayName("Flow Events (EndOfTrick, ScoreBoard) translate to NeedsIO")
         void flowEvents_ReturnNeedsIO() {
-            AdapterResult result = adapter.handleResult(new ScoreBoardResult(List.of(), List.of()));
+            AdapterResult result = adapter.handleResult(new ScoreBoardResult(List.of(), List.of(), false));
 
             assertTrue(result instanceof AdapterResult.NeedsIO);
             assertTrue(((AdapterResult.NeedsIO) result).event() instanceof CountEvents.ScoreBoardIOEvent);
