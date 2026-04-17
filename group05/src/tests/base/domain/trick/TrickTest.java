@@ -18,10 +18,10 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Trick Logic")
 class TrickTest {
 
-    private static final PlayerId P1 = new PlayerId("p1");
-    private static final PlayerId P2 = new PlayerId("p2");
-    private static final PlayerId P3 = new PlayerId("p3");
-    private static final PlayerId P4 = new PlayerId("p4");
+    private static final PlayerId P1 = new PlayerId();
+    private static final PlayerId P2 = new PlayerId();
+    private static final PlayerId P3 = new PlayerId();
+    private static final PlayerId P4 = new PlayerId();
 
     private Trick trick;
 
@@ -88,7 +88,7 @@ class TrickTest {
             playFullTrick();
 
             IllegalStateException exception = assertThrows(IllegalStateException.class,
-                    () -> trick.addTurn(new PlayerId("p5"), new Card(Suit.DIAMONDS, Rank.TWO)));
+                    () -> trick.addTurn(new PlayerId(), new Card(Suit.DIAMONDS, Rank.TWO)));
 
             assertTrue(exception.getMessage().contains("already full"));
         }

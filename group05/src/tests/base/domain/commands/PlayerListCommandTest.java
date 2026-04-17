@@ -15,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DisplayName("Player List Command Tests")
 class PlayerListCommandTest {
 
-    private static final PlayerId P1 = new PlayerId("p1");
-    private static final PlayerId P2 = new PlayerId("p2");
+    private static final PlayerId P1 = new PlayerId();
+    private static final PlayerId P2 = new PlayerId();
 
     @Nested
     @DisplayName("Constructor & Validation")

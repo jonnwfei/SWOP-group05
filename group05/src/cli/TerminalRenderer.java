@@ -204,16 +204,33 @@ public class TerminalRenderer {
     }
 
     private void renderPlayerSelectionEvent(PlayerSelectionIOEvent event) {
-        System.out.println(
-                event.multi() ? "Select all players involved (participating or winners) (comma-separated, 0 for none):"
-                        : "Select the main bidder:");
+        String prompt;
+
+        switch (event.type()) {
+            case MISERIE, OPEN_MISERIE ->
+                    prompt = "Select one or more players (comma-separated, 0 for none):";
+
+            case PROPOSAL ->
+                    prompt = "Select exactly TWO players (comma-separated):";
+
+            case TROEL, TROELA ->
+                    prompt = "Select exactly TWO players:";
+
+            default ->
+                    prompt = "Select the main bidder:";
+        }
+
+        System.out.println(prompt);
+
         List<String> names = event.players()
                 .stream()
                 .map(Player::getName)
                 .toList();
+
         for (int i = 0; i < names.size(); i++) {
             System.out.println("   [" + (i + 1) + "] " + names.get(i));
         }
+
         System.out.print("Your choice: ");
     }
 
