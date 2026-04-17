@@ -7,8 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Place Bid Command Tests")
 class PlaceBidCommandTest {
@@ -24,16 +26,15 @@ class PlaceBidCommandTest {
             PlaceBidCommand command = new PlaceBidCommand(type);
 
             // Assert
-            assertThat(command.bidType()).isEqualTo(type);
+            assertEquals(type, command.bidType());
         }
 
         @Test
         @DisplayName("Should throw IllegalArgumentException if BidType is null")
         void shouldRejectNullBidType() {
             // Assert
-            assertThatThrownBy(() -> new PlaceBidCommand(null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("bidType cannot be null");
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new PlaceBidCommand(null));
+            assertTrue(exception.getMessage().contains("bidType cannot be null"));
         }
     }
 
@@ -48,10 +49,10 @@ class PlaceBidCommandTest {
             PlaceBidCommand cmd2 = new PlaceBidCommand(BidType.SOLO);
             PlaceBidCommand cmd3 = new PlaceBidCommand(BidType.PASS);
 
-            assertThat(cmd1)
-                    .isEqualTo(cmd2)
-                    .hasSameHashCodeAs(cmd2)
-                    .isNotEqualTo(cmd3);
+            // Assert
+            assertEquals(cmd1, cmd2);
+            assertEquals(cmd1.hashCode(), cmd2.hashCode());
+            assertNotEquals(cmd1, cmd3);
         }
     }
 }

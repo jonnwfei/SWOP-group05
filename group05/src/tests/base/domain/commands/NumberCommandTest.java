@@ -6,8 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Number Command Tests")
 class NumberCommandTest {
@@ -23,16 +25,15 @@ class NumberCommandTest {
             NumberCommand command = new NumberCommand(validChoice);
 
             // Assert
-            assertThat(command.choice()).isEqualTo(validChoice);
+            assertEquals(validChoice, command.choice());
         }
 
         @ParameterizedTest(name = "Should reject negative choice: {0}")
         @ValueSource(ints = {-1, -100})
         void shouldRejectNegativeNumbers(int invalidChoice) {
             // Assert
-            assertThatThrownBy(() -> new NumberCommand(invalidChoice))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("choice must be positive");
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new NumberCommand(invalidChoice));
+            assertTrue(exception.getMessage().contains("choice must be positive"));
         }
     }
 
@@ -47,20 +48,21 @@ class NumberCommandTest {
             NumberCommand cmd2 = new NumberCommand(5);
             NumberCommand cmd3 = new NumberCommand(10);
 
-            assertThat(cmd1)
-                    .isEqualTo(cmd2)
-                    .hasSameHashCodeAs(cmd2)
-                    .isNotEqualTo(cmd3);
+            // Assert
+            assertEquals(cmd1, cmd2);
+            assertEquals(cmd1.hashCode(), cmd2.hashCode());
+            assertNotEquals(cmd1, cmd3);
         }
 
         @Test
         @DisplayName("toString should clearly show the choice value")
         void shouldHaveDescriptiveToString() {
             NumberCommand command = new NumberCommand(42);
+            String commandString = command.toString();
 
-            assertThat(command.toString())
-                    .contains("NumberCommand")
-                    .contains("choice=42");
+            // Assert
+            assertTrue(commandString.contains("NumberCommand"));
+            assertTrue(commandString.contains("choice=42"));
         }
     }
 }
