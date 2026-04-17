@@ -2,8 +2,9 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.commands.*;
-import base.domain.player.HighBotStrategy;
-import base.domain.player.LowBotStrategy;
+import base.domain.strategy.HighBotStrategy;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.LowBotStrategy;
 import base.domain.player.Player;
 import base.domain.results.*;
 import base.storage.GamePersistenceService;
@@ -54,7 +55,7 @@ public class ScoreBoardState extends State {
             return StateStep.stay(new SaveDescriptionResult());
         }
         // No command → just render scoreboard
-        return StateStep.stay(buildScoreBoard());
+        return buildScoreBoard();
     }
 
     /**
@@ -93,7 +94,7 @@ public class ScoreBoardState extends State {
                             phase = Phase.ADD_PLAYER_TYPE;
                             yield StateStep.stay(new AddPlayerResult());
                         }
-                        case 6 ->{
+                        case 6 -> {
                             phase = Phase.REMOVE_PLAYER;
                             yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false));
                         }
@@ -156,37 +157,40 @@ public class ScoreBoardState extends State {
             };
 
             // =========================================
-            // ADD HUMAN PLAYER (via PlayerListCommand!)
+            // ADD HUMAN PLAYER
             // =========================================
             case ADD_PLAYER_NAME -> switch (command) {
 
-                case PlayerListCommand p -> {
-                    if (p.players().isEmpty()) {
+                case TextCommand t -> {
+                    String name = t.text().trim();
+                    if (name.isBlank()) {
                         yield StateStep.stay(new AddHumanPlayerResult()); // retry
                     }
 
-                    getGame().addPlayer(p.players().getFirst());
+                    Player newPlayer = new Player(new HumanStrategy(), name);
+                    getGame().addPlayer(newPlayer);
                     phase = Phase.SHOW;
                     yield buildScoreBoard();
                 }
 
                 default -> StateStep.stay(new AddHumanPlayerResult());
             };
-            case REMOVE_PLAYER ->  switch (command){
+            case REMOVE_PLAYER -> switch (command) {
                 case PlayerListCommand p -> {
-                    if (p.players().isEmpty()) {
+                    if (p.playerIds().isEmpty()) {
                         yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false)); // retry
                     }
 
-                    getGame().removePlayer(p.players().getFirst());
+                    Player newPlayer = getGame().getPlayerById(p.playerIds().getFirst());
+                    getGame().removePlayer(newPlayer);
                     phase = Phase.SHOW;
                     yield buildScoreBoard();
                 }
 
                 default -> StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false));
-                };
-            case REMOVE_ROUND -> switch (command){
-                case RoundCommand r ->{
+            };
+            case REMOVE_ROUND -> switch (command) {
+                case RoundCommand r -> {
                     getGame().removeRound(r.round());
                     getGame().recalibrateScores();
                     phase = Phase.SHOW;
@@ -207,7 +211,8 @@ public class ScoreBoardState extends State {
 
     @Override
     public State nextState() {
-        if (choice == 2) return null;
+        if (choice == 2)
+            return null;
 
         if (choice == 1) {
             getGame().advanceDealer();

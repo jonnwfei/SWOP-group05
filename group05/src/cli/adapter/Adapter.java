@@ -5,7 +5,6 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
-import base.domain.strategy.HumanStrategy;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.commands.*;
@@ -103,7 +102,7 @@ public class Adapter {
                 new AdapterResult.NeedsIO(List.of(), new SaveDescriptionIOEvent());
 
             case ScoreBoardResult s ->
-                new AdapterResult.NeedsIO(List.of(), new ScoreBoardIOEvent(s.names(), s.scores()));
+                new AdapterResult.NeedsIO(List.of(), new ScoreBoardIOEvent(s.names(), s.scores(), s.canRemovePlayer()));
 
             // =========================
             // FLOW EVENTS (ENTER TO CONTINUE)
@@ -126,13 +125,13 @@ public class Adapter {
                         new ParticipatingPlayersIOEvent(p));
 
             case AddHumanPlayerResult ignored ->
-                    new AdapterResult.NeedsIO(List.of(), new AddHumanPlayerIOEvent());
+                new AdapterResult.NeedsIO(List.of(), new AddHumanPlayerIOEvent());
 
             case AddPlayerResult ignored ->
-                    new AdapterResult.NeedsIO(List.of(), new AddPlayerIOEvent());
+                new AdapterResult.NeedsIO(List.of(), new AddPlayerIOEvent());
 
             case DeleteRoundResult g ->
-                    new AdapterResult.NeedsIO(List.of(), new DeleteRoundIOEvent(g.rounds()));
+                new AdapterResult.NeedsIO(List.of(), new DeleteRoundIOEvent(g.rounds()));
             // =========================
             // SAFETY
             // =========================
@@ -161,10 +160,13 @@ public class Adapter {
                     yield AdapterResponse.toDomain(new RoundCommand(selectedRound));
                 }
                 case AddPlayerResult ignored -> {
-                    int choice  = parser.parseNumberInput(raw);
+                    int choice = parser.parseNumberInput(raw);
                     yield AdapterResponse.toDomain(new NumberCommand(choice));
                 }
-                case AddHumanPlayerResult e -> AdapterResponse.toDomain(new PlayerListCommand(List.of(new Player(new HumanStrategy(), raw))));
+                case AddHumanPlayerResult ignored -> {
+                    String name = parser.parseString(raw);
+                    yield AdapterResponse.toDomain(new TextCommand(name));
+                }
                 // --- Bidding State ---
                 case BidTurnResult b -> {
                     int choice = parser.parseNumberInput(raw);
