@@ -7,8 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Suit Command Tests")
 class SuitCommandTest {
@@ -24,16 +26,15 @@ class SuitCommandTest {
             SuitCommand command = new SuitCommand(suit);
 
             // Assert
-            assertThat(command.suit()).isEqualTo(suit);
+            assertEquals(suit, command.suit());
         }
 
         @Test
         @DisplayName("Should throw IllegalArgumentException if Suit is null")
         void shouldRejectNullSuit() {
             // Assert
-            assertThatThrownBy(() -> new SuitCommand(null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("suit cannot be null");
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new SuitCommand(null));
+            assertTrue(exception.getMessage().contains("suit cannot be null"));
         }
     }
 
@@ -48,20 +49,21 @@ class SuitCommandTest {
             SuitCommand cmd2 = new SuitCommand(Suit.HEARTS);
             SuitCommand cmd3 = new SuitCommand(Suit.SPADES);
 
-            assertThat(cmd1)
-                    .isEqualTo(cmd2)
-                    .hasSameHashCodeAs(cmd2)
-                    .isNotEqualTo(cmd3);
+            // Assert
+            assertEquals(cmd1, cmd2);
+            assertEquals(cmd1.hashCode(), cmd2.hashCode());
+            assertNotEquals(cmd1, cmd3);
         }
 
         @Test
         @DisplayName("toString should contain the suit name")
         void shouldHaveDescriptiveToString() {
             SuitCommand command = new SuitCommand(Suit.DIAMONDS);
+            String commandString = command.toString();
 
-            assertThat(command.toString())
-                    .contains("SuitCommand")
-                    .contains("DIAMONDS");
+            // Assert
+            assertTrue(commandString.contains("SuitCommand"));
+            assertTrue(commandString.contains("DIAMONDS"));
         }
     }
 }

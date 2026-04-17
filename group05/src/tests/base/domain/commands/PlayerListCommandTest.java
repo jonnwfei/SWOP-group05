@@ -7,8 +7,10 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Player List Command Tests")
 class PlayerListCommandTest {
@@ -30,9 +32,11 @@ class PlayerListCommandTest {
             PlayerListCommand command = new PlayerListCommand(ids);
 
             // Assert
-            assertThat(command.playerIds())
-                    .hasSize(2)
-                    .containsExactly(P1, P2);
+            assertEquals(2, command.playerIds().size());
+            assertEquals(P1, command.playerIds().get(0));
+            assertEquals(P2, command.playerIds().get(1));
+            // Alternatively, checking the whole list equality
+            assertEquals(ids, command.playerIds());
         }
 
         @Test
@@ -42,16 +46,15 @@ class PlayerListCommandTest {
             PlayerListCommand command = new PlayerListCommand(List.of());
 
             // Assert
-            assertThat(command.playerIds()).isEmpty();
+            assertTrue(command.playerIds().isEmpty());
         }
 
         @Test
         @DisplayName("Should throw IllegalArgumentException if playerIds list is null")
         void shouldRejectNullList() {
             // Assert
-            assertThatThrownBy(() -> new PlayerListCommand(null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("players cannot be null");
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new PlayerListCommand(null));
+            assertTrue(exception.getMessage().contains("players cannot be null"));
         }
     }
 
@@ -66,20 +69,21 @@ class PlayerListCommandTest {
             PlayerListCommand cmd2 = new PlayerListCommand(List.of(P1, P2));
             PlayerListCommand cmd3 = new PlayerListCommand(List.of(P2, P1)); // Different order
 
-            assertThat(cmd1)
-                    .isEqualTo(cmd2)
-                    .hasSameHashCodeAs(cmd2)
-                    .isNotEqualTo(cmd3);
+            // Assert
+            assertEquals(cmd1, cmd2);
+            assertEquals(cmd1.hashCode(), cmd2.hashCode());
+            assertNotEquals(cmd1, cmd3);
         }
 
         @Test
         @DisplayName("toString should contain the list of IDs")
         void shouldHaveDescriptiveToString() {
             PlayerListCommand command = new PlayerListCommand(List.of(P1));
+            String commandString = command.toString();
 
-            assertThat(command.toString())
-                    .contains("PlayerListCommand")
-                    .contains("p1");
+            // Assert
+            assertTrue(commandString.contains("PlayerListCommand"));
+            assertTrue(commandString.contains("p1"));
         }
     }
 }

@@ -4,8 +4,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DisplayName("Card Value Object")
 class CardTest {
@@ -19,22 +20,20 @@ class CardTest {
         void shouldCreateValidCard() {
             Card card = new Card(Suit.HEARTS, Rank.ACE);
 
-            assertThat(card.suit()).isEqualTo(Suit.HEARTS);
-            assertThat(card.rank()).isEqualTo(Rank.ACE);
+            assertEquals(Suit.HEARTS, card.suit());
+            assertEquals(Rank.ACE, card.rank());
         }
 
         @Test
         @DisplayName("Rejects instantiation if Suit is null")
         void shouldRejectNullSuit() {
-            assertThatThrownBy(() -> new Card(null, Rank.ACE))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThrows(IllegalArgumentException.class, () -> new Card(null, Rank.ACE));
         }
 
         @Test
         @DisplayName("Rejects instantiation if Rank is null")
         void shouldRejectNullRank() {
-            assertThatThrownBy(() -> new Card(Suit.SPADES, null))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThrows(IllegalArgumentException.class, () -> new Card(Suit.SPADES, null));
         }
     }
 
@@ -47,7 +46,7 @@ class CardTest {
         void shouldFormatToStringCorrectly() {
             Card card = new Card(Suit.CLUBS, Rank.QUEEN);
 
-            assertThat(card.toString()).isEqualTo("QUEEN of CLUBS");
+            assertEquals("QUEEN of CLUBS", card.toString());
         }
 
         @Test
@@ -59,12 +58,11 @@ class CardTest {
             Card differentSuit = new Card(Suit.HEARTS, Rank.TEN);
             Card differentRank = new Card(Suit.DIAMONDS, Rank.NINE);
 
-            // AssertJ allows us to chain these value checks beautifully
-            assertThat(card1)
-                    .isEqualTo(card2)
-                    .hasSameHashCodeAs(card2)
-                    .isNotEqualTo(differentSuit)
-                    .isNotEqualTo(differentRank);
+            assertEquals(card1, card2);
+            assertEquals(card1.hashCode(), card2.hashCode());
+
+            assertNotEquals(card1, differentSuit);
+            assertNotEquals(card1, differentRank);
         }
     }
 }

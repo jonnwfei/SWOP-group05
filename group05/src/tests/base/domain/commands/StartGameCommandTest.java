@@ -3,7 +3,8 @@ package base.domain.commands;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DisplayName("Start Game Command Tests")
 class StartGameCommandTest {
@@ -15,7 +16,7 @@ class StartGameCommandTest {
         StartGameCommand command = new StartGameCommand();
 
         // Assert
-        assertThat(command).isNotNull();
+        assertNotNull(command);
     }
 
     @Test
@@ -26,9 +27,8 @@ class StartGameCommandTest {
         StartGameCommand cmd2 = new StartGameCommand();
 
         // Assert
-        assertThat(cmd1)
-                .isEqualTo(cmd2)
-                .hasSameHashCodeAs(cmd2);
+        assertEquals(cmd1, cmd2);
+        assertEquals(cmd1.hashCode(), cmd2.hashCode());
     }
 
     @Test
@@ -38,6 +38,6 @@ class StartGameCommandTest {
         StartGameCommand command = new StartGameCommand();
 
         // Assert
-        assertThat(command.toString()).isEqualTo("StartGameCommand[]");
+        assertEquals("StartGameCommand[]", command.toString());
     }
 }
