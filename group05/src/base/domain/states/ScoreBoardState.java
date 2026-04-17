@@ -18,8 +18,8 @@ import java.util.List;
 /**
  * Handles the end-of-round scoreboard and the user's next-step choice.
  * <p>
- * IO-agnostic: emits {@link SaveDescriptionResult} to signal save intent and
- * reacts to the subsequent {@link TextCommand} (by which time the adapter has
+ * IO-agnostic: emits {SaveDescriptionResult} to signal save intent and
+ * reacts to the subsequent {TextCommand} (by which time the adapter has
  * already persisted the game) by clearing the flow and resuming the scoreboard.
  *
  * @author John Cai
@@ -75,7 +75,7 @@ public class ScoreBoardState extends State {
                         }
                         case 3 -> {
                             phase = Phase.SAVE_DESCRIPTION;
-                            yield StateStep.stay(new SaveDescriptionResult());
+                            yield StateStep.stay(new SaveDescriptionResult(SaveMode.GAME));
                         }
                         case 4 -> {
                             phase = Phase.REMOVE_ROUND;
