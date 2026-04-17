@@ -17,10 +17,10 @@ class GameSnapshotTest {
     @BeforeEach
     void setUp() {
         playerSnapshots = List.of(
-                new PlayerSnapshot(new PlayerId().toString(),"Stan", StrategySnapshotType.HUMAN, 10),
-                new PlayerSnapshot(new PlayerId().toString(),"Seppe", StrategySnapshotType.LOW_BOT, -5), // TODO: change to SMART_BOT
-                new PlayerSnapshot(new PlayerId().toString(),"Tommy", StrategySnapshotType.LOW_BOT, -5),
-                new PlayerSnapshot(new PlayerId().toString(),"John", StrategySnapshotType.HIGH_BOT, 0));
+                new PlayerSnapshot(new PlayerId().id().toString(),"Stan", StrategySnapshotType.HUMAN, 10),
+                new PlayerSnapshot(new PlayerId().id().toString(),"Seppe", StrategySnapshotType.LOW_BOT, -5), // TODO: change to SMART_BOT
+                new PlayerSnapshot(new PlayerId().id().toString(),"Tommy", StrategySnapshotType.LOW_BOT, -5),
+                new PlayerSnapshot(new PlayerId().id().toString(),"John", StrategySnapshotType.HIGH_BOT, 0));
     }
 
     @Test

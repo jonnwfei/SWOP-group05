@@ -29,7 +29,8 @@ class PlayerSnapshotTest {
     @Test
     @DisplayName("Defensive constructor should reject nulls or blank strings")
     void testDefensiveConstructor() {
-        String validId = "id-123";
+        // FIXED: Using a real UUID so the other defensive checks can actually run!
+        String validId = UUID.randomUUID().toString();
         String validName = "testName";
 
         // Test invalid ID
@@ -57,8 +58,8 @@ class PlayerSnapshotTest {
     @Test
     @DisplayName("Equality and HashCode should evaluate based on all fields including ID")
     void testEquality() {
-        String sharedId = "shared-uuid-123";
-        String diffId = "different-uuid-456";
+        String sharedId = UUID.randomUUID().toString();
+        String diffId = UUID.randomUUID().toString();
 
         PlayerSnapshot snapshot1 = new PlayerSnapshot(sharedId, "AI_Bot", StrategySnapshotType.LOW_BOT, 10);
         PlayerSnapshot snapshot2 = new PlayerSnapshot(sharedId, "AI_Bot", StrategySnapshotType.LOW_BOT, 10);
@@ -78,7 +79,7 @@ class PlayerSnapshotTest {
     @Test
     @DisplayName("toString should contain all essential fields including ID")
     void testToString() {
-        String testId = "test-uuid-999";
+        String testId = UUID.randomUUID().toString();
         PlayerSnapshot snapshot = new PlayerSnapshot(testId, "Alice", StrategySnapshotType.HUMAN, 5);
 
         String result = snapshot.toString();

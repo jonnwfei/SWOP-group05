@@ -146,7 +146,7 @@ public class GamePersistenceService {
     private PlayerSnapshot toSnapshot(Player player) {
         if (player == null) throw new IllegalArgumentException("Cannot create a snapshot of a null player");
         return new PlayerSnapshot(
-                player.getId().toString(),
+                player.getId().id().toString(),
                 player.getName(),
                 toStrategyType(player.getDecisionStrategy()),
                 player.getScore());

@@ -112,8 +112,8 @@ class SaveRepositoryTest {
         saveRepository.save(testSnapshot);
 
         List<PlayerSnapshot> players2 = List.of(
-                new PlayerSnapshot(new PlayerId().toString(),"Stan", StrategySnapshotType.HUMAN, 67),
-                new PlayerSnapshot(new PlayerId().toString(),"Seppe", StrategySnapshotType.LOW_BOT, -67));
+                new PlayerSnapshot(new PlayerId().id().toString(),"Stan", StrategySnapshotType.HUMAN, 67),
+                new PlayerSnapshot(new PlayerId().id().toString(),"Seppe", StrategySnapshotType.LOW_BOT, -67));
 
         GameSnapshot secondSnapshot = new GameSnapshot("Another Game", SaveMode.COUNT, 0, players2, List.of());
         saveRepository.save(secondSnapshot);

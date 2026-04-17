@@ -94,10 +94,10 @@ class GamePersistenceServiceTest {
 
     private List<PlayerSnapshot> createValidPlayerSnapshots() {
         return List.of(
-                new PlayerSnapshot(new PlayerId().toString(),"P1", StrategySnapshotType.HUMAN, 0),
-                new PlayerSnapshot(new PlayerId().toString(),"P2", StrategySnapshotType.HUMAN, 0),
-                new PlayerSnapshot(new PlayerId().toString(),"P3", StrategySnapshotType.HUMAN, 0),
-                new PlayerSnapshot(new PlayerId().toString(),"P4", StrategySnapshotType.HUMAN, 0)
+                new PlayerSnapshot(new PlayerId().id().toString(),"P1", StrategySnapshotType.HUMAN, 0),
+                new PlayerSnapshot(new PlayerId().id().toString(),"P2", StrategySnapshotType.HUMAN, 0),
+                new PlayerSnapshot(new PlayerId().id().toString(),"P3", StrategySnapshotType.HUMAN, 0),
+                new PlayerSnapshot(new PlayerId().id().toString(),"P4", StrategySnapshotType.HUMAN, 0)
         );
     }
 
@@ -315,7 +315,7 @@ class GamePersistenceServiceTest {
         @Test
         @DisplayName("Restoring rounds to a game without exactly 4 players throws IllegalStateException")
         void shouldEnforceFourPlayersDuringRoundRestoration() {
-            List<PlayerSnapshot> playerSnapshots = List.of(new PlayerSnapshot(new PlayerId().toString(),"P1", StrategySnapshotType.HUMAN, 0));
+            List<PlayerSnapshot> playerSnapshots = List.of(new PlayerSnapshot(new PlayerId().id().toString(), "P1", StrategySnapshotType.HUMAN, 0));
             List<RoundSnapshot> rounds = List.of(
                     new RoundSnapshot(BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30))
             );

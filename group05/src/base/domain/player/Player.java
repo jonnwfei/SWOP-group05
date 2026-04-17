@@ -26,11 +26,15 @@ public class Player {
     private Integer playerScore;
 
     /**
-     * Constructs a new player with a specific decision-making strategy and name.
+     * Constructs a new player with a specific decision-making strategy, name, and unique identifier.
+     * <p>
+     * This constructor requires an explicit {@link PlayerId} to ensure identity preservation
+     * across different game states and persistence layers.
      *
      * @param decisionStrategy the behavior strategy used to make bids and play cards.
      * @param name             the display name of the player.
-     * @throws IllegalArgumentException if {@code decisionStrategy} or {@code name} is null.
+     * @param playerId         the unique identifier for this player instance.
+     * @throws IllegalArgumentException if {@code decisionStrategy}, {@code name}, or {@code playerId} is null.
      */
     public Player(Strategy decisionStrategy, String name, PlayerId playerId) {
         if (decisionStrategy == null || name == null || playerId == null) throw new IllegalArgumentException("Strategy, name and/or Id can't be null");
