@@ -32,7 +32,7 @@ class GameSnapshotTest {
                 () -> assertEquals(SaveMode.GAME, snapshot.mode(), "Save mode (Game vs Count) mismatch"),
                 () -> assertEquals(1, snapshot.dealerIndex(), "Dealer rotation index mismatch"),
                 () -> assertEquals(4, snapshot.players().size(), "Player count mismatch"),
-                () -> assertEquals("Stan", snapshot.players().get(0).name(), "Player data corruption"));
+                () -> assertEquals("Stan", snapshot.players().getFirst().name(), "Player data corruption"));
     }
 
     @Test

@@ -239,9 +239,9 @@ public class GamePersistenceService {
                 return StrategySnapshotType.HIGH_BOT;
             }
 //            case LowBotStrategy _ -> { // TODO: fixed by merge
-//                return StrategySnapshotType.SMART_BOT;
+//                return StrategySnapshotType.LOW_BOT;
 //            }
-//            default SmartBotStrategy _ -> { // TODO: fixed by merge
+//            default -> { // TODO: fixed by merge
 //                return StrategySnapshotType.SMART_BOT;
 //            }
             default -> {
