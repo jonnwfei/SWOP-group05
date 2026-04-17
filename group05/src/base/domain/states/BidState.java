@@ -19,9 +19,7 @@ import base.domain.results.ProposalRejected;
 import base.domain.results.SuitSelectionRequired;
 import base.domain.turn.BidTurn;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Manages the Bidding phase of the Whist game.
@@ -33,7 +31,7 @@ import java.util.List;
  */
 public class BidState extends State {
     private final List<Bid> bids;
-    private final List<PlayerId> playersWhoTookTurn; // Explicit turn tracking
+    private final Set<PlayerId> playersWhoTookTurn;
     private final Suit dealtTrumpSuit;
 
     private BidType currentHighestBidType;
@@ -55,7 +53,7 @@ public class BidState extends State {
         }
 
         this.bids = new ArrayList<>();
-        this.playersWhoTookTurn = new ArrayList<>();
+        this.playersWhoTookTurn = new HashSet<>();
         this.currentHighestBidType = null;
 
         Player dealerPlayer = game.getDealerPlayer();
@@ -186,11 +184,12 @@ public class BidState extends State {
 
     /**
      * Handles a standard bid placement by a player.
-     * * @param chosenBidType The bid type selected by the player.
+     *
+     * @param chosenBidType The bid type selected by the player.
      * @param preSuppliedSuit An optional suit provided by bots/automation.
      * @return null to continue normal flow, or a GameResult if further action is required.
      * @throws IllegalArgumentException if the chosen bid type is null or illegal.
-     * @throws IllegalStateException if bidding is already completed.
+     * @throws IllegalStateException if bidding is completed or waiting on a suit.
      */
     private GameResult handleBidCommand(BidType chosenBidType, Suit preSuppliedSuit) {
         if (chosenBidType == null) {
@@ -199,6 +198,10 @@ public class BidState extends State {
         if (isBiddingComplete()) {
             throw new IllegalStateException("State violation: Cannot handle new bid, bidding is already complete.");
         }
+        if (pendingBidType != null) {
+            throw new IllegalStateException("State violation: Cannot process a new bid while waiting for a suit selection.");
+        }
+
         if (!isLegalBidType(chosenBidType)) {
             throw new IllegalArgumentException("State violation: Bid " + chosenBidType + " is not legal in the current context.");
         }
@@ -375,7 +378,7 @@ public class BidState extends State {
 
     /**
      * Asks the player for the exact count of Aces in their hand without exposing the entire hand.
-     * * @param player The player to interrogate.
+     * @param player The player to interrogate.
      * @return the number of Aces found.
      * @throws IllegalArgumentException if player is null.
      */
@@ -407,7 +410,7 @@ public class BidState extends State {
 
     /**
      * Processes bids that require the user or bot to declare a specific suit.
-     * * @param chosenBidType The base bid type chosen.
+     * @param chosenBidType The base bid type chosen.
      * @param preSuppliedSuit The suit chosen, if provided in advance.
      * @return A GameResult demanding the user select a suit, or null if successfully processed.
      * @throws IllegalArgumentException if the chosenBidType is null.
@@ -432,7 +435,7 @@ public class BidState extends State {
 
     /**
      * Determines which player leads the first trick, depending on the constraints of the winning contract.
-     * * @param winningBid The finalized winning bid.
+     * @param winningBid The finalized winning bid.
      * @return The Player object representing the trick leader.
      * @throws IllegalArgumentException if the winning bid is null.
      * @throws IllegalStateException if a required partner for a team bid cannot be found.
@@ -465,7 +468,7 @@ public class BidState extends State {
 
     /**
      * Constructs the standard payload requested by the UI layer to render the user's turn.
-     * * @return A populated BidTurnResult object.
+     * @return A populated BidTurnResult object.
      */
     private BidTurnResult buildBidTurnResult() {
         return new BidTurnResult(
@@ -480,7 +483,7 @@ public class BidState extends State {
 
     /**
      * Maps a GameResult into the appropriate StateStep structure for the State Machine wrapper.
-     * * @param result The outcome of the current command execution.
+     * @param result The outcome of the current command execution.
      * @return A StateStep representing transition instructions.
      */
     private StateStep toStep(GameResult result) {
