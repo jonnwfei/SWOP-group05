@@ -46,8 +46,8 @@ class AdapterTest {
         humanPlayer = mock(Player.class);
         botPlayer = mock(Player.class);
 
-        humanId = new PlayerId("human-123");
-        botId = new PlayerId("bot-456");
+        humanId = new PlayerId();
+        botId = new PlayerId();
 
         lenient().when(humanPlayer.getId()).thenReturn(humanId);
         lenient().when(humanPlayer.getName()).thenReturn("Alice");
@@ -120,7 +120,7 @@ class AdapterTest {
         @Test
         @DisplayName("Flow Events (EndOfTrick, ScoreBoard) translate to NeedsIO")
         void flowEvents_ReturnNeedsIO() {
-            AdapterResult result = adapter.handleResult(new ScoreBoardResult(List.of(), List.of()));
+            AdapterResult result = adapter.handleResult(new ScoreBoardResult(List.of(), List.of(), false));
 
             assertTrue(result instanceof AdapterResult.NeedsIO);
             assertTrue(((AdapterResult.NeedsIO) result).event() instanceof CountEvents.ScoreBoardIOEvent);

@@ -211,6 +211,7 @@ public class SaveRepository {
 
         for (int i = 0; i < snapshot.players().size(); i++) {
             PlayerSnapshot player = snapshot.players().get(i);
+            properties.setProperty("player." + i + ".id", player.id());
             properties.setProperty("player." + i + ".name", player.name());
             properties.setProperty("player." + i + ".strategy", player.strategyType().name());
             properties.setProperty("player." + i + ".score", String.valueOf(player.score()));
@@ -264,11 +265,12 @@ public class SaveRepository {
             int playerCount = Integer.parseInt(properties.getProperty("player.count", "0"));
             List<PlayerSnapshot> players = new ArrayList<>();
             for (int i = 0; i < playerCount; i++) {
+                String id = properties.getProperty("player." + i + ".id", java.util.UUID.randomUUID().toString());
                 String name = properties.getProperty("player." + i + ".name");
                 StrategySnapshotType strategy = StrategySnapshotType
                         .valueOf(properties.getProperty("player." + i + ".strategy"));
                 int score = Integer.parseInt(properties.getProperty("player." + i + ".score", "0"));
-                players.add(new PlayerSnapshot(name, strategy, score));
+                players.add(new PlayerSnapshot(id, name, strategy, score));
             }
 
             int roundCount = Integer.parseInt(properties.getProperty("round.count", "0"));

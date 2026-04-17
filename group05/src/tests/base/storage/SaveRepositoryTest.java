@@ -1,5 +1,6 @@
 package base.storage;
 
+import base.domain.player.PlayerId;
 import base.storage.snapshots.GameSnapshot;
 import base.storage.snapshots.PlayerSnapshot;
 import base.storage.snapshots.RoundSnapshot;
@@ -37,8 +38,8 @@ class SaveRepositoryTest {
         saveRepository = new SaveRepository(tempSaveDirectory);
 
         players = List.of(
-                new PlayerSnapshot("Tommy", StrategySnapshotType.HUMAN, 10),
-                new PlayerSnapshot("Seppe", StrategySnapshotType.HIGH_BOT, -10));
+                new PlayerSnapshot(new PlayerId().toString(),"Tommy", StrategySnapshotType.HUMAN, 10),
+                new PlayerSnapshot(new PlayerId().toString(),"Seppe", StrategySnapshotType.HIGH_BOT, -10));
         rounds = List.of(
                 new RoundSnapshot(base.domain.bid.BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0)));
         testSnapshot = new GameSnapshot("Friday Night Game", SaveMode.GAME, 0, players, rounds);
@@ -111,8 +112,8 @@ class SaveRepositoryTest {
         saveRepository.save(testSnapshot);
 
         List<PlayerSnapshot> players2 = List.of(
-                new PlayerSnapshot("Stan", StrategySnapshotType.HUMAN, 67),
-                new PlayerSnapshot("Seppe", StrategySnapshotType.LOW_BOT, -67));
+                new PlayerSnapshot(new PlayerId().id().toString(),"Stan", StrategySnapshotType.HUMAN, 67),
+                new PlayerSnapshot(new PlayerId().id().toString(),"Seppe", StrategySnapshotType.LOW_BOT, -67));
 
         GameSnapshot secondSnapshot = new GameSnapshot("Another Game", SaveMode.COUNT, 0, players2, List.of());
         saveRepository.save(secondSnapshot);

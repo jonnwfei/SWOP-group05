@@ -27,7 +27,7 @@ class AcceptedBidTest {
     @BeforeEach
     void setUp() {
         // Arrange
-        acceptorId = new PlayerId("acceptor-123");
+        acceptorId = new PlayerId();
         dealtTrump = Suit.CLUBS;
         bid = new AcceptedBid(acceptorId);
     }
@@ -66,7 +66,7 @@ class AcceptedBidTest {
     @DisplayName("getTeam() successfully finds the proposer and pairs them with the acceptor")
     void getTeam_ProposalExists_ReturnsAcceptorAndProposer() {
         // Arrange
-        PlayerId proposerId = new PlayerId("proposer-456");
+        PlayerId proposerId = new PlayerId();
 
         // Mocking the bid history to isolate this test from other Bid implementations
         Bid mockProposal = mock(ProposalBid.class);

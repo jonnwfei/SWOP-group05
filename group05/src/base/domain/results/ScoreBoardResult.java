@@ -4,7 +4,8 @@ import java.util.List;
 
 public record ScoreBoardResult(
         List<String> names,
-        List<Integer> scores
+        List<Integer> scores,
+        boolean canRemovePlayer
 ) implements GameResult {
 
     public ScoreBoardResult {

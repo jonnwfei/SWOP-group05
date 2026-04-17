@@ -61,7 +61,7 @@ class CountEventsTest {
         List<Integer> scores = List.of(100, 85);
 
         // Act
-        CountEvents.ScoreBoardIOEvent event = new CountEvents.ScoreBoardIOEvent(names, scores);
+        CountEvents.ScoreBoardIOEvent event = new CountEvents.ScoreBoardIOEvent(names, scores, false);
 
         // Assert
         assertEquals(names, event.playerNames(), "Should store the exact player names");

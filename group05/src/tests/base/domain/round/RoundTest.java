@@ -42,10 +42,10 @@ class RoundTest {
     private List<Player> players;
     private Round round;
 
-    private final PlayerId id1 = new PlayerId("id-1");
-    private final PlayerId id2 = new PlayerId("id-2");
-    private final PlayerId id3 = new PlayerId("id-3");
-    private final PlayerId id4 = new PlayerId("id-4");
+    private final PlayerId id1 = new PlayerId();
+    private final PlayerId id2 = new PlayerId();
+    private final PlayerId id3 = new PlayerId();
+    private final PlayerId id4 = new PlayerId();
 
     @BeforeEach
     void setUp() {

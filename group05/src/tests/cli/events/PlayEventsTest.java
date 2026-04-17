@@ -10,16 +10,6 @@ import static org.mockito.Mockito.mock;
 class PlayEventsTest {
 
     @Test
-    void botCardIOEvent_storesDataAndDoesNotNeedInput() {
-        Card mockCard = mock(Card.class);
-        PlayEvents.BotCardIOEvent event = new PlayEvents.BotCardIOEvent(mockCard);
-
-        assertEquals(mockCard, event.card(), "Should store the exact Card object");
-        assertFalse(event.needsInput(), "BotCardIOEvent should NOT need input");
-        assertInstanceOf(PlayEvents.class, event, "Event should implement PlayEvents");
-    }
-
-    @Test
     void confirmationIOEvent_storesDataAndNeedsInput() {
         String expectedName = "Alice";
         PlayEvents.ConfirmationIOEvent event = new PlayEvents.ConfirmationIOEvent(expectedName);

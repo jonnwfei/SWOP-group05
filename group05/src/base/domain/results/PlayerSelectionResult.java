@@ -10,6 +10,10 @@ public record PlayerSelectionResult(
         boolean multiSelect,
         BidType type
 ) implements GameResult {
+    public PlayerSelectionResult(List<Player> players) {
+        this(players, false, null);
+    }
+
 
     public PlayerSelectionResult {
         if (players == null || players.isEmpty()) {

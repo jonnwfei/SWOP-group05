@@ -5,16 +5,19 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
-import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.commands.*;
 import base.domain.results.*;
+import base.domain.round.Round;
 import cli.TerminalParser;
 import cli.elements.Response;
+
 import cli.events.MessageIOEvent;
 
 import static cli.events.BidEvents.*;
 import static cli.events.CountEvents.*;
+import static cli.events.MenuEvents.*;
 import static cli.events.PlayEvents.*;
 
 import java.util.List;
@@ -119,7 +122,7 @@ public class Adapter {
                 new AdapterResult.NeedsIO(List.of(), new SaveDescriptionIOEvent());
 
             case ScoreBoardResult s ->
-                new AdapterResult.NeedsIO(List.of(), new ScoreBoardIOEvent(s.names(), s.scores()));
+                new AdapterResult.NeedsIO(List.of(), new ScoreBoardIOEvent(s.names(), s.scores(), s.canRemovePlayer()));
 
             // =========================
             // FLOW EVENTS (ENTER TO CONTINUE)
@@ -140,6 +143,15 @@ public class Adapter {
                 new AdapterResult.NeedsIO(
                         List.of(),
                         new ParticipatingPlayersIOEvent(p));
+
+            case AddHumanPlayerResult ignored ->
+                new AdapterResult.NeedsIO(List.of(), new AddHumanPlayerIOEvent());
+
+            case AddPlayerResult ignored ->
+                new AdapterResult.NeedsIO(List.of(), new AddPlayerIOEvent());
+
+            case DeleteRoundResult g ->
+                new AdapterResult.NeedsIO(List.of(), new DeleteRoundIOEvent(g.rounds()));
         };
     }
 
@@ -159,6 +171,24 @@ public class Adapter {
 
         try {
             return switch (result) {
+                case DeleteRoundResult dr -> {
+                    int choice = parser.parseNumberInput(raw);
+                    if (choice == 0) {
+                        // Return a Command that signals a cancel or just a Continue
+                        yield AdapterResponse.toDomain(new NumberCommand(0));
+                    }
+                    // Get the actual round from the list provided in the result
+                    Round selectedRound = dr.rounds().get(choice - 1);
+                    yield AdapterResponse.toDomain(new RoundCommand(selectedRound));
+                }
+                case AddPlayerResult ignored -> {
+                    int choice = parser.parseNumberInput(raw);
+                    yield AdapterResponse.toDomain(new NumberCommand(choice));
+                }
+                case AddHumanPlayerResult ignored -> {
+                    String name = parser.parseString(raw);
+                    yield AdapterResponse.toDomain(new TextCommand(name));
+                }
                 // --- Bidding State ---
                 case BidTurnResult b -> {
                     int choice = parser.parseNumberInput(raw);
@@ -310,6 +340,7 @@ public class Adapter {
                     Card selected = p.legalCards().get(choice - 1);
                     yield AdapterResponse.toDomain(new CardCommand(selected));
                 }
+
             };
         } catch (Exception e) {
             return AdapterResponse.uiOnly(new MessageIOEvent("Invalid input: \"" + raw + "\". Please try again."));

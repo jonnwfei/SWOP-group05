@@ -7,7 +7,6 @@ import base.domain.strategy.Strategy;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Represents a participant in the trick-taking card game.
@@ -28,29 +27,31 @@ public class Player {
 
     /**
      * Constructs a new player with a specific decision-making strategy and name.
-     *
      * @param decisionStrategy the behavior strategy used to make bids and play cards.
-     * @param name             the display name of the player.
-     * @throws IllegalArgumentException if {@code decisionStrategy} or {@code name} is null.
+     * @param playerName the display name of the player.
      */
-    public Player(Strategy decisionStrategy, String name) {
-        if (decisionStrategy == null || name == null) throw new IllegalArgumentException("Strategy and name can't be null");
-        this.decisionStrategy = decisionStrategy;
-        this.playerName = name;
-        this.playerId = new PlayerId(UUID.randomUUID().toString());
-        this.currentHand = new ArrayList<>();
-        this.playerScore = 0;
+    public Player(Strategy decisionStrategy, String playerName) {
+        this(decisionStrategy, playerName, new PlayerId());
     }
 
     /**
-     * returns True if Player has given suit, false otherwise.
-     * @param suit to check
-     * @throws IllegalArgumentException | suit == null
-     * @return Boolean
+     * Constructs a new player with a specific decision-making strategy, name, and unique identifier.
+     * <p>
+     * This constructor requires an explicit {@link PlayerId} to ensure identity preservation
+     * across different game states and persistence layers.
+     *
+     * @param decisionStrategy the behavior strategy used to make bids and play cards.
+     * @param name             the display name of the player.
+     * @param playerId         the unique identifier for this player instance.
+     * @throws IllegalArgumentException if {@code decisionStrategy}, {@code name}, or {@code playerId} is null.
      */
-    public Boolean hasSuit(Suit suit) {
-        if (suit == null) throw new IllegalArgumentException("suit can't be null");
-        return currentHand.stream().anyMatch(card -> card.suit() == suit);
+    public Player(Strategy decisionStrategy, String name, PlayerId playerId) {
+        if (decisionStrategy == null || name == null || playerId == null) throw new IllegalArgumentException("Strategy, name and/or Id can't be null");
+        this.decisionStrategy = decisionStrategy;
+        this.playerName = name;
+        this.playerId = playerId;
+        this.currentHand = new ArrayList<>();
+        this.playerScore = 0;
     }
 
     /**

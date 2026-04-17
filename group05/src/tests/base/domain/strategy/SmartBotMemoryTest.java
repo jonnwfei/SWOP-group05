@@ -28,10 +28,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SmartBotMemoryTest {
 
     private SmartBotMemory memory;
-    private final PlayerId p1 = new PlayerId("player-1");
-    private final PlayerId p2 = new PlayerId("player-2");
-    private final PlayerId p3 = new PlayerId("player-3");
-    private final PlayerId p4 = new PlayerId("player-4");
+    private final PlayerId p1 = new PlayerId();
+    private final PlayerId p2 = new PlayerId();
+    private final PlayerId p3 = new PlayerId();
+    private final PlayerId p4 = new PlayerId();
 
     @BeforeEach
     void setUp() {
