@@ -102,21 +102,14 @@ public class CountState extends State {
         };
     }
 
-    private GameResult handleRound(Round round) {
-        // Remove the round from the game's internal list
-        getGame().removeRound(round);
-
-        // Recalculate everyone's score based on the remaining rounds
-        getGame().recalibrateScores();
-
-        // Return to the scoreboard menu
-        currentPhase = CountPhase.PROMPT_NEXT_STATE;
-        return getScoreBoard();
-    }
-
     private StateStep handleNumberInput(int value) {
         if (currentPhase == CountPhase.CALCULATE) {
             return StateStep.stay(finalizeCalculation(value, null));
+        }
+
+        if (currentPhase == CountPhase.REMOVE_ROUND && value == 0) {
+            currentPhase = CountPhase.PROMPT_NEXT_STATE;
+            return StateStep.stay(getScoreBoard());
         }
 
         // PROMPT_NEXT_STATE
@@ -292,6 +285,18 @@ public class CountState extends State {
 
     private boolean canRemovePlayer() {
         return getGame().getPlayers().size() > 4;
+    }
+
+    private GameResult handleRound(Round round) {
+        // Remove the round from the game's internal list
+        getGame().removeRound(round);
+
+        // Recalculate everyone's score based on the remaining rounds
+        getGame().recalibrateScores();
+
+        // Return to the scoreboard menu
+        currentPhase = CountPhase.PROMPT_NEXT_STATE;
+        return getScoreBoard();
     }
 
     /** Returns to a fresh CountState or the Main Menu. */

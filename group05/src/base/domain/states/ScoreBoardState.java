@@ -190,6 +190,13 @@ public class ScoreBoardState extends State {
                 default -> StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false));
             };
             case REMOVE_ROUND -> switch (command) {
+                case NumberCommand n -> {
+                    if (n.choice() == 0) {
+                        phase = Phase.SHOW;
+                        yield buildScoreBoard();
+                    }
+                    yield StateStep.stay(new DeleteRoundResult(getGame().getRounds()));
+                }
                 case RoundCommand r -> {
                     getGame().removeRound(r.round());
                     getGame().recalibrateScores();
