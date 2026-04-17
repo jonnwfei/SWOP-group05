@@ -23,11 +23,21 @@ public class Adapter {
     private final TerminalParser parser;
     private final WhistGame game;
 
+    /**
+     * Initializes the Adapter with a reference to the WhistGame.
+     * @param game The current gameInstance, needed to map user input to actual Player objects and access game state for context when parsing responses.
+     */
     public Adapter(WhistGame game) {
         this.parser = new TerminalParser();
         this.game = game;
     }
 
+    /**
+     * Converts a GameResult from the domain into an AdapterResult, which indicates either an immediate domain
+     * command to execute (for bot actions) or a UI event that requires user input (for human actions).
+     * @param result The GameResult coming from the domain after executing a state step, determines how the adapter should respond.
+     * @return An AdapterResult indicating either an immediate domain command or a UI event to be rendered for user input.
+     */
     public AdapterResult handleResult(GameResult result) {
         return switch (result) {
 
@@ -119,15 +129,16 @@ public class Adapter {
                 new AdapterResult.NeedsIO(
                         List.of(),
                         new ParticipatingPlayersIOEvent(p));
-
-            // =========================
-            // SAFETY
-            // =========================
-            default -> throw new IllegalStateException(
-                    "Unexpected GameResult: " + result);
         };
     }
 
+    /**
+     * Transforms the raw user input into a domain command based on the current GameResult context.
+     *
+     * @param response The raw user input from the terminal.
+     * @param result The current GameResult that the user is responding to, which determines how the input should be parsed.
+     * @return AdapterResponse containing either a domain command to be executed or a UI-only event (e.g. error message, if the input was invalid.)
+     */
     public AdapterResponse handleResponse(Response response, GameResult result) {
         if (response.rawInput() == null || response.rawInput().isBlank()) {
             return AdapterResponse.toDomain(null);
@@ -243,8 +254,6 @@ public class Adapter {
                     Card selected = p.legalCards().get(choice - 1);
                     yield AdapterResponse.toDomain(new CardCommand(selected));
                 }
-
-                default -> throw new IllegalStateException("Unexpected GameResult in response handling: " + result);
             };
         } catch (Exception e) {
             return AdapterResponse.uiOnly(new MessageIOEvent("Invalid input: \"" + raw + "\". Please try again."));
