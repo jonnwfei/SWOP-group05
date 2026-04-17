@@ -5,12 +5,9 @@ import base.domain.bid.BidType;
 import base.domain.bid.Bid;
 import base.domain.deck.Deck;
 import base.domain.round.Round;
+import base.domain.strategy.*;
 import base.storage.snapshots.*;
 import base.domain.player.*;
-import base.domain.strategy.HighBotStrategy;
-import base.domain.strategy.HumanStrategy;
-import base.domain.strategy.LowBotStrategy;
-import base.domain.strategy.Strategy;
 
 import java.util.List;
 
@@ -123,7 +120,10 @@ public class GamePersistenceService {
         game.resetRounds();
 
         for (PlayerSnapshot playerSnapshot : snapshot.players()) {
-            Player player = new Player(toStrategy(playerSnapshot.strategyType()), playerSnapshot.name());
+            PlayerId restoredId = PlayerId.fromString(playerSnapshot.id());
+            Strategy playerStrategy = toStrategy(playerSnapshot.strategyType(), restoredId);
+
+            Player player = new Player(playerStrategy, playerSnapshot.name(), restoredId);
             player.updateScore(playerSnapshot.score());
             game.addPlayer(player);
         }
@@ -146,6 +146,7 @@ public class GamePersistenceService {
     private PlayerSnapshot toSnapshot(Player player) {
         if (player == null) throw new IllegalArgumentException("Cannot create a snapshot of a null player");
         return new PlayerSnapshot(
+                player.getId().toString(),
                 player.getName(),
                 toStrategyType(player.getDecisionStrategy()),
                 player.getScore());
@@ -238,29 +239,27 @@ public class GamePersistenceService {
             case HighBotStrategy _ -> {
                 return StrategySnapshotType.HIGH_BOT;
             }
-//            case LowBotStrategy _ -> { // TODO: fixed by merge
-//                return StrategySnapshotType.SMART_BOT;
-//            }
-//            default SmartBotStrategy _ -> { // TODO: fixed by merge
-//                return StrategySnapshotType.SMART_BOT;
-//            }
-            default -> {
+            case LowBotStrategy _ -> {
                 return StrategySnapshotType.LOW_BOT;
+            }
+            case SmartBotStrategy _  -> {
+                return StrategySnapshotType.SMART_BOT;
             }
         }
     }
+
 
     /**
      * Converts a StrategySnapshotType into its corresponding Strategy instance.
      * @param strategyType strategyType instance to convert into a Strategy instance
      * @return Strategy instance
      */
-    private Strategy toStrategy(StrategySnapshotType strategyType) {
+    private Strategy toStrategy(StrategySnapshotType strategyType, PlayerId restoredId) {
         return switch (strategyType) {
             case HUMAN -> new HumanStrategy();
             case HIGH_BOT -> new HighBotStrategy();
             case LOW_BOT -> new LowBotStrategy();
-//            case SMART_BOT -> new SmartBotStrategy(); // TODO: will be fixed with merge of Strats
+            case SMART_BOT -> new SmartBotStrategy(restoredId);
         };
     }
 }

@@ -7,7 +7,6 @@ import base.domain.strategy.Strategy;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Represents a participant in the trick-taking card game.
@@ -33,24 +32,13 @@ public class Player {
      * @param name             the display name of the player.
      * @throws IllegalArgumentException if {@code decisionStrategy} or {@code name} is null.
      */
-    public Player(Strategy decisionStrategy, String name) {
-        if (decisionStrategy == null || name == null) throw new IllegalArgumentException("Strategy and name can't be null");
+    public Player(Strategy decisionStrategy, String name, PlayerId playerId) {
+        if (decisionStrategy == null || name == null || playerId == null) throw new IllegalArgumentException("Strategy, name and/or Id can't be null");
         this.decisionStrategy = decisionStrategy;
         this.playerName = name;
-        this.playerId = new PlayerId(UUID.randomUUID().toString());
+        this.playerId = playerId;
         this.currentHand = new ArrayList<>();
         this.playerScore = 0;
-    }
-
-    /**
-     * returns True if Player has given suit, false otherwise.
-     * @param suit to check
-     * @throws IllegalArgumentException | suit == null
-     * @return Boolean
-     */
-    public Boolean hasSuit(Suit suit) {
-        if (suit == null) throw new IllegalArgumentException("suit can't be null");
-        return currentHand.stream().anyMatch(card -> card.suit() == suit);
     }
 
     /**

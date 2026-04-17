@@ -37,14 +37,14 @@ public class MenuFlow {
 
         for (int i = 1; i <= humans; i++) {
             String name = askString(new PlayerNameIOEvent(i));
-            game.addPlayer(new Player(new HumanStrategy(), name));
+            game.addPlayer(new Player(new HumanStrategy(), name, new PlayerId()));
         }
 
         for (int i = 1; i <= bots; i++) {
             int strategy = askInt(new BotStrategyIOEvent(i), 1, 2);
             Player bot = strategy == 1
-                    ? new Player(new HighBotStrategy(), "Bot" + i)
-                    : new Player(new LowBotStrategy(), "Bot" + i);
+                    ? new Player(new HighBotStrategy(), "Bot" + i, new PlayerId())
+                    : new Player(new LowBotStrategy(), "Bot" + i, new PlayerId());
             game.addPlayer(bot);
         }
 
@@ -59,7 +59,7 @@ public class MenuFlow {
     private void setupCount() {
         for (int i = 1; i <= 4; i++) {
             String name = askString(new PlayerNameIOEvent(i));
-            game.addPlayer(new Player(new HumanStrategy(), name));
+            game.addPlayer(new Player(new HumanStrategy(), name,  new PlayerId()));
         }
 
         terminalManager.handle(new PrintNamesIOEvent(
