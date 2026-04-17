@@ -10,8 +10,10 @@ import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
 import java.util.List;
+
 import base.domain.commands.*;
 import base.domain.results.*;
+
 /**
  * Handles the end-of-round scoreboard display and provides options for where
  * they can go next.
@@ -35,42 +37,61 @@ public class ScoreBoardState extends State {
     }
 
     /**
+     * Executes the scoreboard state without user input, typically when first
+     * entering the state.
+     *
+     * @return a GameEvent
+     */
+    @Override
+    public StateStep executeState() {
+        // If waiting for save description
+        if (awaitingSaveDescription) {
+            return StateStep.stay(new SaveDescriptionResult());
+        }
+        // No command → just render scoreboard
+        return StateStep.stay(buildScoreBoard());
+    }
+
+    /**
      * Processes the scoreboard interaction.
-     * 
+     *
      * @param command The user action
      * @return a GameEvent
      */
     @Override
-    public GameResult executeState(GameCommand command) {
+    public StateStep executeState(GameCommand command) {
+
+        // If waiting for save description
         if (awaitingSaveDescription) {
             return switch (command) {
                 case TextCommand t -> {
                     try {
                         persistenceService.save(getGame(), SaveMode.GAME, t.text());
                         awaitingSaveDescription = false;
-                        yield buildScoreBoard();
+                        yield StateStep.stay(buildScoreBoard());
                     } catch (RuntimeException e) {
                         awaitingSaveDescription = false;
-                        throw new IllegalStateException("executeState in Scoreboard state failed to save", e);
+                        throw new IllegalStateException(
+                                "executeState in Scoreboard state failed to save", e);
                     }
                 }
-                default -> new SaveDescriptionResult();
+                default -> StateStep.stay(new SaveDescriptionResult());
             };
         }
-
+        // Normal flow
         return switch (command) {
             case NumberCommand n -> {
                 if (n.choice() == 1 || n.choice() == 2) {
                     this.choice = n.choice();
-                    yield new ScoreBoardCompleteResult();
+                    yield StateStep.transitionWithoutResult();
                 }
                 if (n.choice() == 3) {
                     awaitingSaveDescription = true;
-                    yield new SaveDescriptionResult();
+                    yield StateStep.stay(new SaveDescriptionResult());
                 }
-                yield buildScoreBoard();
+                yield StateStep.stay(buildScoreBoard());
             }
-            default -> buildScoreBoard();
+            default -> StateStep.stay(buildScoreBoard()); // No command → just render scoreboard
         };
     }
 

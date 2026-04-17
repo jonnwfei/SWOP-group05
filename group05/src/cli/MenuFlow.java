@@ -6,7 +6,8 @@ import base.domain.player.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
 import cli.events.IOEvent;
-import cli.events.menu.*;
+
+import static cli.events.MenuEvents.*;
 
 import java.util.List;
 
@@ -28,9 +29,12 @@ public class MenuFlow {
 
         int choice = askInt(new WelcomeMenuIOEvent(), 1, 3);
 
-        if (choice == 1) setupGame();
-        else if (choice == 2) setupCount();
-        else if (choice == 3) setupLoadSave();
+        if (choice == 1)
+            setupGame();
+        else if (choice == 2)
+            setupCount();
+        else if (choice == 3)
+            setupLoadSave();
 
     }
 
@@ -55,8 +59,7 @@ public class MenuFlow {
         game.setRandomDealer();
 
         terminalManager.handle(new PrintNamesIOEvent(
-                game.getPlayers().stream().map(Player::getName).toList()
-        ));
+                game.getPlayers().stream().map(Player::getName).toList()));
         game.startGame();
     }
 
@@ -67,8 +70,7 @@ public class MenuFlow {
         }
 
         terminalManager.handle(new PrintNamesIOEvent(
-                game.getPlayers().stream().map(Player::getName).toList()
-        ));
+                game.getPlayers().stream().map(Player::getName).toList()));
 
         game.startCount();
     }
@@ -111,7 +113,8 @@ public class MenuFlow {
     private int askInt(IOEvent event, int min, int max) {
         while (true) {
             int value = askInt(event);
-            if (value >= min && value <= max) return value;
+            if (value >= min && value <= max)
+                return value;
             System.out.println("Please enter a number between " + min + " and " + max + ".");
         }
     }
@@ -119,7 +122,8 @@ public class MenuFlow {
     private String askString(IOEvent event) {
         while (true) {
             String raw = terminalManager.handle(event).rawInput();
-            if (raw != null && !raw.isBlank()) return raw.trim();
+            if (raw != null && !raw.isBlank())
+                return raw.trim();
             System.out.println("Input cannot be empty.");
         }
     }
