@@ -118,7 +118,7 @@ public class PlayState extends State {
             Player winningPlayer = getGame().getPlayerById(currentTrick.getWinningPlayerId());
 
             // Round registers the trick and automatically scores itself if it's the 13th or all miserie players won
-            currentRound.registerCompletedTrick(currentTrick);
+            currentRound.finalizeTrick(currentTrick);
 
             this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getTrumpSuit());
         } else {
@@ -158,56 +158,6 @@ public class PlayState extends State {
                 exposedNames.add(proposer.getName());
                 exposedHands.add(proposer.getHand());
             }
-        }
-    }
-
-
-    /**
-     * Handle a bot turn
-     */
-    private GameResult handleBotTurn(Player player) {
-        Card card = player.chooseCard(currentTrick.getLeadingSuit());
-        currentTrick.playCard(player, card);
-
-        boolean trickFinished = currentTrick.isCompleted();
-        String winner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
-
-        processTurnOutcome();
-
-        if (roundOver)
-            return new EndOfRoundResult(player.getName(), card);
-
-        if (trickFinished)
-            return new EndOfTrickResult(player.getName(), card, winner);
-
-        return new EndOfTurnResult(player.getName(), card);
-    }
-
-    /**
-     * Updates the round state and initializes the next trick if the current one is
-     * full.
-     */
-    private void processTurnOutcome() {
-        if (currentTrick.isCompleted()) {
-            Player winningPlayer = currentTrick.getWinningPlayer();
-            currentRound.registerCompletedTrick(currentTrick);
-
-            // Extension 11a: Check if a Miserie bidder won this trick
-            if (currentRound.getHighestBid().getType() == BidType.MISERIE &&
-                    currentRound.getBiddingTeamPlayers().contains(winningPlayer)) {
-                roundOver = true;
-                currentRound.signalEarlyFinish(); // This updates scores and flags the round as done
-                return;
-            }
-
-            if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
-                roundOver = true;
-            } else {
-                // Only start a new trick if the round isn't over
-                this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
-            }
-        } else {
-            currentRound.advanceToNextPlayer();
         }
     }
 
