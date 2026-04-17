@@ -14,6 +14,7 @@ import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.round.Round;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static base.domain.bid.BidType.*;
@@ -75,7 +76,7 @@ public class CountState extends State {
         return switch (command) {
             case BidCommand b -> StateStep.stay(handleBidType(b.bid()));
             case SuitCommand s -> StateStep.stay(handleSuit(s.suit()));
-            case PlayerListCommand p -> StateStep.stay(handlePlayerInput(p.players()));
+            case PlayerListCommand p -> StateStep.stay(handlePlayerInput(p.playerIds()));
             case NumberCommand n -> handleNumberInput(n.choice());
             case TextCommand t -> StateStep.stay(handleSaveDescription(t.text()));
             default -> throw new IllegalStateException("Unexpected value: " + command);
@@ -133,7 +134,7 @@ public class CountState extends State {
      *
      * @return GameEvent
      */
-    private GameResult handlePlayerInput(List<Player> players) {
+    private GameResult handlePlayerInput(List<PlayerId> players) {
         if (currentPhase == CountPhase.SELECT_PLAYERS) {
             // If empty, stay in the same phase and return the selection result again
             if (players == null || players.isEmpty()) {
@@ -173,7 +174,11 @@ public class CountState extends State {
         getGame().addRound(round);
 
         List<Player> participatingPlayers = participatingPlayerIds.stream().map(playerId -> getGame().getPlayerById(playerId)).toList();
-        List<Player> winners = winnersId.stream().map(playerId -> getGame().getPlayerById(playerId)).toList();
+
+        List<Player> winners = new ArrayList<>();
+        if (winnersId != null) {
+            winners = winnersId.stream().map(playerId -> getGame().getPlayerById(playerId)).toList();
+        }
 
         round.calculateScoresForCount(bid, tricks, participatingPlayers, winners);
 

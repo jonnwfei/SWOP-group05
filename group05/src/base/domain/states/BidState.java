@@ -247,6 +247,7 @@ public class BidState extends State {
         }
 
         commitBid(pendingBidType.instantiate(currentPlayer.getId(), suit));
+        updateCurrentPlayer();
         this.pendingBidType = null;
         return null;
     }
@@ -302,7 +303,6 @@ public class BidState extends State {
             Bid proposalBid = findBid(BidType.PROPOSAL);
             if (proposalBid == null)
                 throw new IllegalStateException("Critical error: Proposal bid missing at end of bidding.");
-            return new ProposalRejected(proposalBid.getPlayer().getName());
             Player proposer = getGame().getPlayerById(proposalBid.getPlayerId());
             return new ProposalRejected(proposer.getName());
         }
