@@ -1,5 +1,6 @@
 package cli.events;
 
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.player.Player;
 
@@ -13,7 +14,7 @@ public non-sealed interface CountEvents extends IOEvent {
         }
     }
 
-    record PlayerSelectionIOEvent(List<Player> players, boolean multi) implements CountEvents {
+    record PlayerSelectionIOEvent(List<Player> players, boolean multi, BidType type) implements CountEvents {
         public boolean needsInput() {
             return true;
         }

@@ -110,9 +110,9 @@ public class CountState extends State {
     private GameResult handleBidType(BidType type) {
         this.selectedBidType = type;
 
-        if (type == MISERIE || type == OPEN_MISERIE) {
+        if (type == MISERIE || type == OPEN_MISERIE ) {
             currentPhase = CountPhase.SELECT_PLAYERS;
-            return new PlayerSelectionResult(getGame().getPlayers(), true);
+            return new PlayerSelectionResult(getGame().getPlayers(), true, type);
         }
         currentPhase = CountPhase.SELECT_TRUMP;
         return new SuitSelectionResult();
@@ -126,7 +126,10 @@ public class CountState extends State {
     private GameResult handleSuit(Suit suit) {
         this.trumpSuit = suit;
         currentPhase = CountPhase.SELECT_PLAYERS;
-        return new PlayerSelectionResult(getGame().getPlayers(), false);
+        if (selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA){
+            return new PlayerSelectionResult(getGame().getPlayers(), true, selectedBidType);
+        }
+        return new PlayerSelectionResult(getGame().getPlayers(), false, selectedBidType);
     }
 
     /**
@@ -139,8 +142,8 @@ public class CountState extends State {
             // If empty, stay in the same phase and return the selection result again
             if (players == null || players.isEmpty()) {
                 // We stay in SELECT_PLAYERS phase
-                boolean multiSelect = (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE);
-                return new PlayerSelectionResult(getGame().getPlayers(), multiSelect);
+                boolean multiSelect = (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE || selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA);
+                return new PlayerSelectionResult(getGame().getPlayers(), multiSelect, selectedBidType);
             }
 
             this.participatingPlayerIds = players;
@@ -150,7 +153,7 @@ public class CountState extends State {
 
             if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;
-                return new PlayerSelectionResult(getGame().getPlayers(), true);
+                return new PlayerSelectionResult(getGame().getPlayers(), true, bid.getType());
             }
 
             currentPhase = CountPhase.CALCULATE;
