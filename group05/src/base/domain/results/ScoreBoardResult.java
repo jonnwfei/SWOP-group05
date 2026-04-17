@@ -8,7 +8,7 @@ public record ScoreBoardResult(
 ) implements GameResult {
 
     public ScoreBoardResult {
-        if (names == null || names.isEmpty() || names.contains(null)) {
+        if (names == null || names.isEmpty() || names.stream().anyMatch(name -> name == null || name.isBlank())) {
             throw new IllegalArgumentException("names cannot be null or empty or contain null elements");
         }
         if (scores == null || scores.isEmpty()) {
