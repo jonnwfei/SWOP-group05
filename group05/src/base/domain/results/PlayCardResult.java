@@ -3,12 +3,13 @@ package base.domain.results;
 import base.domain.card.Card;
 import base.domain.player.Player;
 import base.domain.trick.Trick;
+import base.domain.trick.Turn;
 
 import java.util.List;
 import java.util.Objects;
 
 public record PlayCardResult(
-        List<Card> tableCards,
+        List<Turn> turns,
         boolean isOpenMiserie,
         List<String> exposedPlayerNames,
         List<List<Card>> formattedExposedHands,
@@ -19,7 +20,7 @@ public record PlayCardResult(
 ) implements GameResult {
 
     public PlayCardResult {
-        if (tableCards == null || tableCards.stream().anyMatch(Objects::isNull)) {
+        if (turns == null || turns.stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("tableCards cannot be null or contain null objects");
         }
         if (exposedPlayerNames == null || exposedPlayerNames.stream().anyMatch(Objects::isNull)) {
@@ -41,7 +42,7 @@ public record PlayCardResult(
             throw new IllegalArgumentException("legalCards cannot be null or empty or contain null objects");
         }
 
-        tableCards = List.copyOf(tableCards);
+        turns = List.copyOf(turns);
         exposedPlayerNames = List.copyOf(exposedPlayerNames);
         formattedExposedHands = formattedExposedHands.stream()
                 .map(List::copyOf)
