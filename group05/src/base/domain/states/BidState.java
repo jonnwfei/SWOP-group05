@@ -25,7 +25,8 @@ import java.util.List;
 
 /**
  * Manages the Bidding phase of the Whist game.
- * Acts as the active controller, validating bids and broadcasting state changes to Observers.
+ * Acts as the active controller, validating bids, applying forced contracts (Troel/Troela),
+ * and broadcasting state changes to Observers.
  *
  * @author Stan Kestens, Tommy Wu
  * @since 01/03/2026
@@ -49,8 +50,8 @@ public class BidState extends State {
      */
     public BidState(WhistGame game) {
         super(game);
-        if (game.getPlayers() == null || game.getPlayers().isEmpty() || game.getPlayers().size() != 4) {
-            throw new IllegalArgumentException("Cannot start BidState: Game has no players or no 4 players.");
+        if (game.getPlayers() == null || game.getPlayers().size() != 4 || game.getPlayers().contains(null)) {
+            throw new IllegalArgumentException("Cannot start BidState: Game must have exactly 4 valid players.");
         }
 
         this.bids = new ArrayList<>();
@@ -62,7 +63,7 @@ public class BidState extends State {
             throw new IllegalStateException("Cannot start BidState: Dealer player is not set.");
         }
 
-        this.currentPlayer = game.getNextPlayer(game.getDealerPlayer());
+        this.currentPlayer = game.getNextPlayer(dealerPlayer);
 
         this.dealtTrumpSuit = game.dealCards();
         if (this.dealtTrumpSuit == null) {
@@ -78,7 +79,7 @@ public class BidState extends State {
         // Register forced bids. The forced player will be locked out of manual bidding.
         applyForcedBids();
 
-        // If the player who was supposed to go first was the forced bidder, skip them!
+        // If the player who was supposed to go first was the forced bidder, skip them
         if (playersWhoTookTurn.contains(currentPlayer.getId())) {
             updateCurrentPlayer();
         }
@@ -114,13 +115,33 @@ public class BidState extends State {
     // State Execution & Transitions
     // =========================================================================
 
+    /**
+     * Entry point into the bidding phase. Emits the initial Turn Result without
+     * processing any commands.
+     *
+     * @return A StateStep instructing the engine to stay in this state.
+     */
     @Override
     public StateStep executeState() {
         return StateStep.stay(buildBidTurnResult());
     }
 
+    /**
+     * Processes incoming bidding commands from the adapter.
+     * Handles standard bids, suit selection for bids that require it, rejected
+     * proposals, and safely fast-forwards through automated Bot turns.
+     *
+     * @param command The domain command from the adapter.
+     * @return StateStep detailing whether to transition or stay in the current state.
+     * @throws IllegalArgumentException if the provided command is null.
+     * @throws IllegalStateException if an unexpected command type is provided.
+     */
     @Override
     public StateStep executeState(GameCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("GameCommand cannot be null.");
+        }
+
         GameResult earlyReturn = switch (command) {
             case BidCommand b -> {
                 if (isBiddingComplete() && currentHighestBidType == BidType.PROPOSAL) {
@@ -137,6 +158,14 @@ public class BidState extends State {
         return StateStep.stay(buildBidTurnResult());
     }
 
+    /**
+     * Determines the next state to transition to after the bidding phase concludes.
+     * If everyone passed, the round is aborted and reshuffled for a new BidState.
+     * Otherwise, prepares the round and transitions to the PlayState.
+     *
+     * @return State The next state in the game lifecycle.
+     * @throws IllegalStateException if called before all players have successfully bid.
+     */
     @Override
     public State nextState() {
         if (!isBiddingComplete()) {
@@ -155,6 +184,14 @@ public class BidState extends State {
     // PRIMARY COMMAND HANDLERS & WORKFLOWS
     // =========================================================================
 
+    /**
+     * Handles a standard bid placement by a player.
+     * * @param chosenBidType The bid type selected by the player.
+     * @param preSuppliedSuit An optional suit provided by bots/automation.
+     * @return null to continue normal flow, or a GameResult if further action is required.
+     * @throws IllegalArgumentException if the chosen bid type is null or illegal.
+     * @throws IllegalStateException if bidding is already completed.
+     */
     private GameResult handleBidCommand(BidType chosenBidType, Suit preSuppliedSuit) {
         if (chosenBidType == null) {
             throw new IllegalArgumentException("chosenBidType cannot be null.");
@@ -204,6 +241,8 @@ public class BidState extends State {
      *
      * @param decision The bid type the proposer chose (must be PASS or SOLO_PROPOSAL).
      * @return GameResult indicating bidding has fully completed.
+     * @throws IllegalArgumentException if the decision is null or invalid.
+     * @throws IllegalStateException if the context does not involve a rejected proposal.
      */
     private GameResult handleRejectedProposal(BidType decision) {
         if (decision == null) {
@@ -218,7 +257,7 @@ public class BidState extends State {
 
         Bid proposalBid = findBid(BidType.PROPOSAL);
         if (proposalBid == null) {
-            throw new IllegalStateException("Critical error: PROPOSAL bid not found.");
+            throw new IllegalStateException("Critical error: PROPOSAL bid not found in memory.");
         }
 
         Player originalBidder = getGame().getPlayerById(proposalBid.getPlayerId());
@@ -241,8 +280,9 @@ public class BidState extends State {
     private GameResult handleEndOfBidding() {
         if (currentHighestBidType == BidType.PROPOSAL) {
             Bid proposalBid = findBid(BidType.PROPOSAL);
-            if (proposalBid == null)
+            if (proposalBid == null) {
                 throw new IllegalStateException("Critical error: Proposal bid missing at end of bidding.");
+            }
             Player proposer = getGame().getPlayerById(proposalBid.getPlayerId());
             return new ProposalRejected(proposer.getName());
         }
@@ -253,15 +293,14 @@ public class BidState extends State {
      * Injects the finalized bidding context into the Round object to prepare it for the PlayState.
      * Computes the primary player, the final trump suit, and the winning bid instance.
      *
-     * @throws IllegalStateException if a winning bid cannot be resolved, is an unresolved proposal,
-     * or if a required partner for a team bid is missing.
+     * @throws IllegalStateException if a winning bid cannot be resolved or is an unresolved proposal.
      */
     private void setRoundReadyForPlayState() {
         if (this.currentHighestBidType == null || this.currentHighestBidType == BidType.PASS) {
             throw new IllegalStateException("Cannot prepare play state: No winning bid was determined, or it was PASS.");
         }
         if (this.currentHighestBidType == BidType.PROPOSAL) {
-            throw new IllegalStateException("Cannot prepare play state: highest bid is an unresolved rejected proposal");
+            throw new IllegalStateException("Cannot prepare play state: highest bid is an unresolved rejected proposal.");
         }
 
         Bid winningBid = findBid(currentHighestBidType);
@@ -309,8 +348,6 @@ public class BidState extends State {
     /**
      * Advances the turn to the next player in rotational order.
      * Safely skips players who already possess a forced bid (e.g., Troel).
-     *
-     * @throws IllegalStateException if an infinite loop is detected (no valid player can be found).
      */
     private void updateCurrentPlayer() {
         if (isBiddingComplete()) return;
@@ -326,28 +363,60 @@ public class BidState extends State {
      */
     private void removeProposalBid() {
         Bid proposalBid = findBid(BidType.PROPOSAL);
-        bids.remove(proposalBid);
+        if (proposalBid != null) {
+            bids.remove(proposalBid);
+        }
         currentHighestBidType = BidType.PASS;
     }
 
     // =========================================================================
-    // GRASP HELPER FUNCTIONS (Newly extracted for High Cohesion)
+    // HELPER FUNCTIONS
     // =========================================================================
 
+    /**
+     * Asks the player for the exact count of Aces in their hand without exposing the entire hand.
+     * * @param player The player to interrogate.
+     * @return the number of Aces found.
+     * @throws IllegalArgumentException if player is null.
+     */
     private long countAces(Player player) {
+        if (player == null) {
+            throw new IllegalArgumentException("Player cannot be null when counting Aces.");
+        }
         return Arrays.stream(Suit.values())
                 .filter(suit -> player.hasCard(new Card(suit, Rank.ACE)))
                 .count();
     }
 
+    /**
+     * Asks the player which Ace suit they are missing (used exclusively for Troel).
+     * * @param player The player to interrogate.
+     * @return The Suit of the missing Ace.
+     * @throws IllegalArgumentException if player is null.
+     * @throws IllegalStateException if the missing suit cannot be logically resolved.
+     */
     private Suit findMissingAceSuit(Player player) {
+        if (player == null) {
+            throw new IllegalArgumentException("Player cannot be null when finding missing Ace suit.");
+        }
         return Arrays.stream(Suit.values())
                 .filter(suit -> !player.hasCard(new Card(suit, Rank.ACE)))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Critical Error: Could not find the missing Ace suit for Troel."));
     }
 
+    /**
+     * Processes bids that require the user or bot to declare a specific suit.
+     * * @param chosenBidType The base bid type chosen.
+     * @param preSuppliedSuit The suit chosen, if provided in advance.
+     * @return A GameResult demanding the user select a suit, or null if successfully processed.
+     * @throws IllegalArgumentException if the chosenBidType is null.
+     * @throws IllegalStateException if another bid is already pending suit resolution.
+     */
     private GameResult processSuitRequirement(BidType chosenBidType, Suit preSuppliedSuit) {
+        if (chosenBidType == null) {
+            throw new IllegalArgumentException("chosenBidType cannot be null when processing suit requirement.");
+        }
         if (preSuppliedSuit != null) {
             commitBid(chosenBidType.instantiate(currentPlayer.getId(), preSuppliedSuit));
             playersWhoTookTurn.add(currentPlayer.getId());
@@ -361,7 +430,18 @@ public class BidState extends State {
         return new SuitSelectionRequired(currentPlayer.getName(), chosenBidType, Suit.values());
     }
 
+    /**
+     * Determines which player leads the first trick, depending on the constraints of the winning contract.
+     * * @param winningBid The finalized winning bid.
+     * @return The Player object representing the trick leader.
+     * @throws IllegalArgumentException if the winning bid is null.
+     * @throws IllegalStateException if a required partner for a team bid cannot be found.
+     */
     private Player determineFirstPlayerToLead(Bid winningBid) {
+        if (winningBid == null) {
+            throw new IllegalArgumentException("Winning bid cannot be null when determining first player.");
+        }
+
         WhistGame game = this.getGame();
         List<Player> players = game.getPlayers();
 
@@ -376,13 +456,17 @@ public class BidState extends State {
             return game.getPlayerById(partnerId);
         }
 
-        return game.getNextPlayer(game.getDealerPlayer()); // Default
+        return game.getNextPlayer(game.getDealerPlayer()); // Default behavior
     }
 
     // =========================================================================
     // UTILITY, VALIDATION & QUERIES
     // =========================================================================
 
+    /**
+     * Constructs the standard payload requested by the UI layer to render the user's turn.
+     * * @return A populated BidTurnResult object.
+     */
     private BidTurnResult buildBidTurnResult() {
         return new BidTurnResult(
                 currentPlayer.getName(),
@@ -394,6 +478,11 @@ public class BidState extends State {
         );
     }
 
+    /**
+     * Maps a GameResult into the appropriate StateStep structure for the State Machine wrapper.
+     * * @param result The outcome of the current command execution.
+     * @return A StateStep representing transition instructions.
+     */
     private StateStep toStep(GameResult result) {
         return switch (result) {
             case BiddingCompleted ignored -> StateStep.transition(result);
@@ -406,8 +495,13 @@ public class BidState extends State {
      *
      * @param chosenBidType The type of bid the player wants to place.
      * @return true if the bid type is legally allowed given the current highest bid.
+     * @throws IllegalArgumentException if the chosen bid type is null.
      */
     private boolean isLegalBidType(BidType chosenBidType) {
+        if (chosenBidType == null) {
+            throw new IllegalArgumentException("BidType cannot be null when checking legality.");
+        }
+
         switch (chosenBidType) {
             case PASS -> { return true; }
             case ACCEPTANCE -> { if (currentHighestBidType != BidType.PROPOSAL) return false; }
@@ -427,26 +521,31 @@ public class BidState extends State {
     }
 
     /**
-     * Checks if the bidding cycle has concluded.
+     * Checks if the bidding cycle has concluded based on turn tracking.
      *
-     * @return true if all players have submitted exactly one bid.
+     * @return true if all players have submitted a valid turn/bid.
      */
     private boolean isBiddingComplete() {
         return this.playersWhoTookTurn.size() == getGame().getPlayers().size();
     }
 
     /**
-     * Utility method to find a specific bid type within the current bids.
+     * Utility method to find a specific bid type within the current bids memory.
      *
      * @param bidType the bid type to search for.
      * @return The Bid object linked to the bidType, or null if not found.
+     * @throws IllegalArgumentException if the requested bidType is null.
      */
     private Bid findBid(BidType bidType) {
+        if (bidType == null) {
+            throw new IllegalArgumentException("BidType cannot be null when finding a bid.");
+        }
         return bids.stream().filter(b -> b.getType() == bidType).findFirst().orElse(null);
     }
 
     /**
-     * Returns all legal bid types for a given player in the current bidding context.
+     * Returns all legal bid types for the current player in the current bidding context.
+     * * @return A list of legally allowed BidTypes.
      */
     private List<BidType> getLegalBids() {
         List<BidType> legalBids = new ArrayList<>();
