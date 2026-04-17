@@ -23,7 +23,7 @@ class HumanStrategyTest {
     @BeforeEach
     void setUp() {
         strategy = new HumanStrategy();
-        humanId = new PlayerId("human-player-001");
+        humanId = new PlayerId();
         dummyHand = List.of(new Card(Suit.HEARTS, Rank.ACE));
     }
 

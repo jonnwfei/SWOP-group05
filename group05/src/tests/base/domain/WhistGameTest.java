@@ -34,8 +34,8 @@ class WhistGameTest {
 
         mockPlayer1 = mock(Player.class);
         mockPlayer2 = mock(Player.class);
-        id1 = new PlayerId("p1");
-        id2 = new PlayerId("p2");
+        id1 = new PlayerId();
+        id2 = new PlayerId();
 
         lenient().when(mockPlayer1.getId()).thenReturn(id1);
         lenient().when(mockPlayer2.getId()).thenReturn(id2);
@@ -51,7 +51,7 @@ class WhistGameTest {
 
             assertEquals(mockPlayer1, game.getPlayerById(id1));
             // Verifying negative scenario: illegal input handled defensively 
-            assertThrows(IllegalStateException.class, () -> game.getPlayerById(new PlayerId("ghost")));
+            assertThrows(IllegalStateException.class, () -> game.getPlayerById(new PlayerId()));
         }
 
         @Test

@@ -24,7 +24,7 @@ class LowBotStrategyTest {
     @BeforeEach
     void setUp() {
         strategy = new LowBotStrategy();
-        botId = new PlayerId("low-bot-002");
+        botId = new PlayerId();
     }
 
     @Nested

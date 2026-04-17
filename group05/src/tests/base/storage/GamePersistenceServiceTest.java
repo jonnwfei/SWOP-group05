@@ -6,6 +6,7 @@ import base.domain.bid.BidType;
 import base.domain.bid.SoloBid;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.round.Round;
 import base.domain.strategy.HighBotStrategy;
 import base.domain.strategy.HumanStrategy;
@@ -53,10 +54,10 @@ class GamePersistenceServiceTest {
         mocks = MockitoAnnotations.openMocks(this);
         persistenceService = new GamePersistenceService(mockRepository);
 
-        p1 = new Player(new HumanStrategy(), "P1");
-        p2 = new Player(new HumanStrategy(), "P2");
-        p3 = new Player(new HumanStrategy(), "P3");
-        p4 = new Player(new HumanStrategy(), "P4");
+        p1 = new Player(new HumanStrategy(), "P1", new PlayerId());
+        p2 = new Player(new HumanStrategy(), "P2", new PlayerId());
+        p3 = new Player(new HumanStrategy(), "P3", new PlayerId());
+        p4 = new Player(new HumanStrategy(), "P4", new PlayerId());
         fourPlayers = List.of(p1, p2, p3, p4);
 
         when(mockGame.getPlayers()).thenReturn(fourPlayers);
@@ -93,10 +94,10 @@ class GamePersistenceServiceTest {
 
     private List<PlayerSnapshot> createValidPlayerSnapshots() {
         return List.of(
-                new PlayerSnapshot("P1", StrategySnapshotType.HUMAN, 0),
-                new PlayerSnapshot("P2", StrategySnapshotType.HUMAN, 0),
-                new PlayerSnapshot("P3", StrategySnapshotType.HUMAN, 0),
-                new PlayerSnapshot("P4", StrategySnapshotType.HUMAN, 0)
+                new PlayerSnapshot(new PlayerId().toString(),"P1", StrategySnapshotType.HUMAN, 0),
+                new PlayerSnapshot(new PlayerId().toString(),"P2", StrategySnapshotType.HUMAN, 0),
+                new PlayerSnapshot(new PlayerId().toString(),"P3", StrategySnapshotType.HUMAN, 0),
+                new PlayerSnapshot(new PlayerId().toString(),"P4", StrategySnapshotType.HUMAN, 0)
         );
     }
 
@@ -153,8 +154,8 @@ class GamePersistenceServiceTest {
         @Test
         @DisplayName("Successfully maps complex strategy types (HighBot, LowBot)")
         void shouldMapStrategyTypesCorrectly() {
-            Player highBot = new Player(new HighBotStrategy(), "HighBot");
-            Player lowBot = new Player(new LowBotStrategy(), "LowBot");
+            Player highBot = new Player(new HighBotStrategy(), "HighBot", new PlayerId());
+            Player lowBot = new Player(new LowBotStrategy(), "LowBot", new PlayerId());
             when(mockGame.getPlayers()).thenReturn(List.of(highBot, lowBot, p3, p4));
             when(mockGame.getDealerPlayer()).thenReturn(highBot);
 
@@ -184,7 +185,7 @@ class GamePersistenceServiceTest {
             when(mockGame.getDealerPlayer()).thenReturn(null);
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Null Dealer Save"));
 
-            Player ghostDealer = new Player(new HumanStrategy(), "Ghost");
+            Player ghostDealer = new Player(new HumanStrategy(), "Ghost", new PlayerId());
             when(mockGame.getDealerPlayer()).thenReturn(ghostDealer);
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Ghost Save"));
         }
@@ -314,7 +315,7 @@ class GamePersistenceServiceTest {
         @Test
         @DisplayName("Restoring rounds to a game without exactly 4 players throws IllegalStateException")
         void shouldEnforceFourPlayersDuringRoundRestoration() {
-            List<PlayerSnapshot> playerSnapshots = List.of(new PlayerSnapshot("P1", StrategySnapshotType.HUMAN, 0));
+            List<PlayerSnapshot> playerSnapshots = List.of(new PlayerSnapshot(new PlayerId().toString(),"P1", StrategySnapshotType.HUMAN, 0));
             List<RoundSnapshot> rounds = List.of(
                     new RoundSnapshot(BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30))
             );
