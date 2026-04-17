@@ -6,6 +6,7 @@ import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.results.PlayCardResult;
 import base.domain.round.Round;
+import base.domain.turn.PlayTurn;
 import cli.events.IOEvent;
 import cli.events.MessageIOEvent;
 
@@ -49,6 +50,8 @@ public class TerminalRenderer {
             case AddPlayerIOEvent ignored -> renderAddPlayerIOEvent();
 
             case MessageIOEvent t -> renderMessageEvent(t);
+            case LoadSaveIOEvent l -> renderLoadSaveEvent(l);
+            default -> throw new IllegalStateException("Unhandled IOEvent: " + event);
         }
     }
 
@@ -80,6 +83,15 @@ public class TerminalRenderer {
         System.out.println("Enter the new player name: ");
     }
 
+    private void renderLoadSaveEvent(LoadSaveIOEvent l) {
+        List<String> saveDescriptions = l.availableSaves();
+        System.out.println("\n========================================");
+        System.out.println("SELECT A SAVE TO LOAD:");
+        for (int i = 0; i < saveDescriptions.size(); i++) {
+            System.out.printf("[%2d] %s%n", (i + 1), saveDescriptions.get(i));
+        }
+        System.out.println("Your choice: ");
+    }
 
     private void renderConfigEvent(ConfirmationIOEvent e) {
         System.out.println("\n========================================");
@@ -101,18 +113,18 @@ public class TerminalRenderer {
 
         // 1. Table Display
         System.out.println("\nCARDS ON TABLE:");
-        if (data.tableCards().isEmpty()) {
+        if (data.turns().isEmpty()) {
             System.out.println("  [ Empty ]");
         } else {
             // Displays cards in a horizontal-ish list for better flow
-            String table = String.join(" | ", data.tableCards().stream()
-                    .map(Card::toString).toList());
-            System.out.println("  ➜ " + table);
+            String table = String.join("\n | ", data.turns().stream()
+                    .map(PlayTurn::toString).toList());
+            System.out.println(" | " + table);
         }
 
         // 2. Open Miserie (Exposed Hands)
         if (data.isOpenMiserie()) {
-            System.out.println("\n--- EXPOSED HANDS (OPEN MISERIE) ---");
+            System.out.println("\nEXPOSED HANDS (OPEN MISERIE)");
             for (int i = 0; i < data.exposedPlayerNames().size(); i++) {
                 String name = data.exposedPlayerNames().get(i);
                 List<Card> exposedHand = data.formattedExposedHands().get(i);

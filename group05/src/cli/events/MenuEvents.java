@@ -53,4 +53,8 @@ public sealed interface MenuEvents extends IOEvent {
             return true;
         }
     }
+
+    record LoadSaveIOEvent(List<String> availableSaves) implements MenuEvents {
+        public boolean needsInput() { return true; }
+    }
 }

@@ -161,7 +161,7 @@ class RoundTest {
             when(mockTrick.getTurns()).thenReturn(List.of(mock(), mock(), mock(), mock()));
             when(mockTrick.getWinningPlayerId()).thenReturn(id3);
 
-            round.registerCompletedTrick(mockTrick);
+            round.finalizeTrick(mockTrick);
 
             assertEquals(1, round.getTricks().size());
             assertEquals(p3, round.getCurrentPlayer());
@@ -182,7 +182,7 @@ class RoundTest {
             round.setHighestBid(mockP1Bid);
 
             Trick mockTrick = mockCompletedTrick(id1);
-            round.registerCompletedTrick(mockTrick);
+            round.finalizeTrick(mockTrick);
 
             assertTrue(round.isFinished());
         }
