@@ -1,4 +1,7 @@
 package base.domain.commands;
 
 
-public record StartGameCommand() implements GameCommand {}
+public record StartGameCommand() implements GameCommand {
+    public StartGameCommand() {
+    }
+}
