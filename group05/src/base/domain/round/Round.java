@@ -10,6 +10,7 @@ import base.domain.trick.Trick;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents a single Round in a game of Whist.
@@ -177,7 +178,7 @@ public class Round {
      * @throws IllegalArgumentException If the trick has not received exactly 4 turns yet.
      * @throws IllegalStateException    If the round has already reached the maximum number of tricks.
      */
-    public void registerCompletedTrick(Trick trick) {
+    public void finalizeTrick(Trick trick) {
         if (trick == null)
             throw new IllegalArgumentException("Trick must not be null.");
         if (trick.getTurns().size() != Trick.MAX_TURNS)
@@ -617,6 +618,5 @@ public class Round {
         this.countMiserieWinners = miserieWinners == null ? new ArrayList<>() : new ArrayList<>(miserieWinners);
         this.scoreDeltas.clear();
         this.scoreDeltas.addAll(restoredScoreDeltas);
-        this.isEarlyFinished = true;
     }
 }
