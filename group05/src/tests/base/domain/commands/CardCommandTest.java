@@ -7,8 +7,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Card Command Tests")
 class CardCommandTest {
@@ -26,16 +28,15 @@ class CardCommandTest {
             CardCommand command = new CardCommand(ACE_OF_SPADES);
 
             // Assert
-            assertThat(command.card()).isEqualTo(ACE_OF_SPADES);
+            assertEquals(ACE_OF_SPADES, command.card());
         }
 
         @Test
         @DisplayName("Should throw IllegalArgumentException if card is null")
         void shouldRejectNullCard() {
             // Assert
-            assertThatThrownBy(() -> new CardCommand(null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("card cannot be null");
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new CardCommand(null));
+            assertTrue(exception.getMessage().contains("card cannot be null"));
         }
     }
 
@@ -50,21 +51,22 @@ class CardCommandTest {
             CardCommand cmd2 = new CardCommand(new Card(Suit.SPADES, Rank.ACE));
             CardCommand cmd3 = new CardCommand(new Card(Suit.HEARTS, Rank.TWO));
 
-            assertThat(cmd1)
-                    .isEqualTo(cmd2)
-                    .hasSameHashCodeAs(cmd2)
-                    .isNotEqualTo(cmd3);
+            // Assert
+            assertEquals(cmd1, cmd2);
+            assertEquals(cmd1.hashCode(), cmd2.hashCode());
+            assertNotEquals(cmd1, cmd3);
         }
 
         @Test
         @DisplayName("toString should clearly show the encapsulated card")
         void shouldHaveDescriptiveToString() {
             CardCommand command = new CardCommand(ACE_OF_SPADES);
+            String commandString = command.toString();
 
-            assertThat(command.toString())
-                    .contains("CardCommand")
-                    .contains("ACE")
-                    .contains("SPADES");
+            // Assert
+            assertTrue(commandString.contains("CardCommand"));
+            assertTrue(commandString.contains("ACE"));
+            assertTrue(commandString.contains("SPADES"));
         }
     }
 }

@@ -6,9 +6,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Standard 52-Card Deck")
 class DeckTest {
@@ -29,11 +34,13 @@ class DeckTest {
         void constructor_InitializesFullStandardDeck() {
             List<Card> cards = deck.getCards();
 
-            // AssertJ chains make collection testing very readable
-            assertThat(cards)
-                    .hasSize(52)
-                    .doesNotContainNull()
-                    .containsOnlyOnceElementsOf(cards);
+            // Assert size and absence of nulls
+            assertEquals(52, cards.size());
+            assertFalse(cards.contains(null));
+
+            // Assert all cards are unique
+            Set<Card> uniqueCards = new HashSet<>(cards);
+            assertEquals(52, uniqueCards.size());
         }
     }
 
@@ -46,17 +53,22 @@ class DeckTest {
         void deal_DistributesCardsCorrectlyToFourPlayers() {
             List<List<Card>> hands = deck.deal();
 
-            assertThat(hands).hasSize(4);
+            assertEquals(4, hands.size());
 
             // Flatten all hands to check the total pool of dealt cards
             List<Card> allDealtCards = hands.stream()
                     .flatMap(List::stream)
                     .toList();
 
-            assertThat(allDealtCards).hasSize(52).doesNotHaveDuplicates();
+            // Assert exact amount of cards was dealt
+            assertEquals(52, allDealtCards.size());
+
+            // Assert no duplicates across all dealt hands
+            Set<Card> uniqueDealtCards = new HashSet<>(allDealtCards);
+            assertEquals(52, uniqueDealtCards.size());
 
             for (List<Card> hand : hands) {
-                assertThat(hand).hasSize(13);
+                assertEquals(13, hand.size());
             }
         }
     }
@@ -75,8 +87,8 @@ class DeckTest {
             externalList.clear();
 
             // Assert: Internal state of the deck remains untouched
-            assertThat(deck.getCards()).hasSize(originalSize);
-            assertThat(externalList).isEmpty();
+            assertEquals(originalSize, deck.getCards().size());
+            assertTrue(externalList.isEmpty());
         }
     }
 
@@ -92,10 +104,9 @@ class DeckTest {
             deck.shuffle();
             List<Card> shuffledOrder = deck.getCards();
 
-            assertThat(shuffledOrder)
-                    .hasSize(52)
-                    .containsExactlyInAnyOrderElementsOf(initialOrder)
-                    .isNotEqualTo(initialOrder); // Probability of 52! matching is effectively zero
+            assertEquals(52, shuffledOrder.size());
+            assertTrue(shuffledOrder.containsAll(initialOrder));
+            assertNotEquals(initialOrder, shuffledOrder); // Probability of 52! matching is effectively zero
         }
     }
 }

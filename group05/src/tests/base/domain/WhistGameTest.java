@@ -16,8 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @DisplayName("Whist Game Aggregate Root")
@@ -50,19 +49,20 @@ class WhistGameTest {
         void getPlayerById_Logic() {
             game.addPlayer(mockPlayer1);
 
-            assertThat(game.getPlayerById(id1)).isEqualTo(mockPlayer1);
-            assertThatThrownBy(() -> game.getPlayerById(new PlayerId("ghost")))
-                    .isInstanceOf(IllegalStateException.class);
+            assertEquals(mockPlayer1, game.getPlayerById(id1));
+            // Verifying negative scenario: illegal input handled defensively 
+            assertThrows(IllegalStateException.class, () -> game.getPlayerById(new PlayerId("ghost")));
         }
 
         @Test
         @DisplayName("getNextPlayer correctly calculates the next person in seating order")
         void getNextPlayer_ModuloRotation() {
+            // Clockwise fashion is the standard for Whist bidding and play 
             game.addPlayer(mockPlayer1);
             game.addPlayer(mockPlayer2);
 
-            assertThat(game.getNextPlayer(mockPlayer1)).isEqualTo(mockPlayer2);
-            assertThat(game.getNextPlayer(mockPlayer2)).isEqualTo(mockPlayer1); // Loop back
+            assertEquals(mockPlayer2, game.getNextPlayer(mockPlayer1));
+            assertEquals(mockPlayer1, game.getNextPlayer(mockPlayer2)); // Loop back (Modulo logic)
         }
     }
 
@@ -78,7 +78,7 @@ class WhistGameTest {
 
             game.advanceDealer();
 
-            assertThat(game.getDealerPlayer()).isEqualTo(mockPlayer2);
+            assertEquals(mockPlayer2, game.getDealerPlayer(), "Dealer must rotate clockwise[cite: 156].");
         }
     }
 
@@ -97,6 +97,7 @@ class WhistGameTest {
             game.setDeck(mockDeck);
 
             List<Card> hand = List.of(new Card(Suit.SPADES, Rank.ACE));
+            // Whist requires distributing a standard deck of 52 cards [cite: 156]
             when(mockDeck.deal()).thenReturn(List.of(hand, hand, hand, hand));
 
             // Act
@@ -115,7 +116,7 @@ class WhistGameTest {
         @Test
         @DisplayName("executeState(command) delegates strictly to the current state")
         void executeState_Delegation() {
-            // We use reflection to set a private mock state for testing delegation
+            // Test verifies delegation to maintain Low Representational Gap [cite: 327]
             State mockState = mock(State.class);
             setInternalState(game, mockState);
             GameCommand mockCommand = mock(GameCommand.class);
@@ -136,7 +137,7 @@ class WhistGameTest {
             when(mockRound.getWinningPlayers()).thenReturn(List.of(mockPlayer1));
             game.addRound(mockRound);
 
-            assertThat(game.getLastRoundWinner()).isEqualTo(mockPlayer1);
+            assertEquals(mockPlayer1, game.getLastRoundWinner());
         }
     }
 
@@ -163,7 +164,7 @@ class WhistGameTest {
             field.setAccessible(true);
             field.set(game, state);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Reflection failed during WhistGameState injection.", e);
         }
     }
 }

@@ -6,8 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Text Command Tests")
 class TextCommandTest {
@@ -23,23 +25,23 @@ class TextCommandTest {
             TextCommand command = new TextCommand("Save Game 1");
 
             // Assert
-            assertThat(command.text()).isEqualTo("Save Game 1");
+            assertEquals("Save Game 1", command.text());
         }
 
         @Test
         @DisplayName("Should throw IllegalArgumentException if text is null")
         void shouldRejectNullText() {
-            assertThatThrownBy(() -> new TextCommand(null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("cannot be null or blank");
+            // Assert
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new TextCommand(null));
+            assertTrue(exception.getMessage().contains("cannot be null or blank"));
         }
 
         @ParameterizedTest(name = "Should throw IllegalArgumentException for blank input: ''{0}''")
         @ValueSource(strings = {"", " ", "   ", "\n", "\t"})
         void shouldRejectBlankText(String invalidText) {
-            assertThatThrownBy(() -> new TextCommand(invalidText))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("cannot be null or blank");
+            // Assert
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new TextCommand(invalidText));
+            assertTrue(exception.getMessage().contains("cannot be null or blank"));
         }
     }
 
@@ -54,20 +56,21 @@ class TextCommandTest {
             TextCommand cmd2 = new TextCommand("Alpha");
             TextCommand cmd3 = new TextCommand("alpha"); // Different case
 
-            assertThat(cmd1)
-                    .isEqualTo(cmd2)
-                    .hasSameHashCodeAs(cmd2)
-                    .isNotEqualTo(cmd3);
+            // Assert
+            assertEquals(cmd1, cmd2);
+            assertEquals(cmd1.hashCode(), cmd2.hashCode());
+            assertNotEquals(cmd1, cmd3);
         }
 
         @Test
         @DisplayName("toString should contain the encapsulated text")
         void shouldHaveDescriptiveToString() {
             TextCommand command = new TextCommand("WhistRound1");
+            String commandString = command.toString();
 
-            assertThat(command.toString())
-                    .contains("TextCommand")
-                    .contains("WhistRound1");
+            // Assert
+            assertTrue(commandString.contains("TextCommand"));
+            assertTrue(commandString.contains("WhistRound1"));
         }
     }
 }

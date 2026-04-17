@@ -14,9 +14,16 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests for the Smart Bot Memory components.
+ * Smarter bots must remember which cards have been played to judge master cards[cite: 244, 246, 247].
+ */
 @DisplayName("Smart Bot Memory (Observer & Logic)")
 class SmartBotMemoryTest {
 
@@ -38,14 +45,17 @@ class SmartBotMemoryTest {
         @Test
         @DisplayName("onRoundStarted should reset all memory buffers")
         void shouldResetMemoryOnNewRound() {
+            // Arrange
             memory.onTrumpDetermined(Suit.HEARTS);
             memory.onBidPlaced(new BidTurn(p1, BidType.SOLO));
 
+            // Act
             memory.onRoundStarted(List.of(p1, p2, p3, p4));
 
-            assertThat(memory.getCurrentTrump()).isNull();
-            assertThat(memory.getHighestBid()).isNull();
-            assertThat(memory.isLeadPlayer()).isTrue();
+            // Assert
+            assertNull(memory.getCurrentTrump(), "Trump suit should be cleared on new round.");
+            assertNull(memory.getHighestBid(), "Bid history should be cleared on new round.");
+            assertTrue(memory.isLeadPlayer(), "Lead status should reset to true.");
         }
 
         @Test
@@ -54,14 +64,11 @@ class SmartBotMemoryTest {
             Card aceOfSpades = new Card(Suit.SPADES, Rank.ACE);
             memory.onTurnPlayed(new PlayTurn(p1, aceOfSpades));
 
-            // The card is no longer the highest unplayed because it IS played
-            // (or more accurately, it's removed from the unplayed pool)
-            assertThat(memory.isHighestUnplayedCardInSuit(aceOfSpades)).isTrue();
-            // ^ Note: isHighestUnplayedCardInSuit logic checks the pool.
-            // If the Ace is gone, the King becomes the new highest.
+            // Per project rules, bots remember played cards to judge if a card is master[cite: 247].
+            assertTrue(memory.isHighestUnplayedCardInSuit(aceOfSpades), "Ace should be tracked in the played pool.");
 
             Card kingOfSpades = new Card(Suit.SPADES, Rank.KING);
-            assertThat(memory.isHighestUnplayedCardInSuit(kingOfSpades)).isTrue();
+            assertTrue(memory.isHighestUnplayedCardInSuit(kingOfSpades), "King becomes the master unplayed card.");
         }
     }
 
@@ -71,26 +78,28 @@ class SmartBotMemoryTest {
 
         @BeforeEach
         void initTrick() {
-            memory.onTrumpDetermined(Suit.CLUBS); // Clubs are trump
+            memory.onTrumpDetermined(Suit.CLUBS); // Clubs are trump [cite: 158]
         }
 
         @Test
         @DisplayName("getCurrentWinningTurn identifies high card of lead suit")
         void shouldIdentifyWinningLeadSuit() {
-            memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.TEN))); // Lead
-            memory.onTurnPlayed(new PlayTurn(p2, new Card(Suit.HEARTS, Rank.QUEEN))); // Higher
+            // Lead suit is Hearts [cite: 162]
+            memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.TEN)));
+            memory.onTurnPlayed(new PlayTurn(p2, new Card(Suit.HEARTS, Rank.QUEEN)));
 
             PlayTurn winner = memory.getCurrentWinningTurn();
-            assertThat(winner.playerId()).isEqualTo(p2);
+            assertEquals(p2, winner.playerId(), "Queen of hearts should beat Ten of hearts.");
         }
 
         @Test
         @DisplayName("getCurrentWinningTurn identifies trump winner")
         void shouldIdentifyTrumpWinner() {
-            memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.ACE))); // High lead
-            memory.onTurnPlayed(new PlayTurn(p2, new Card(Suit.CLUBS, Rank.TWO)));  // Low Trump
+            // Trump cards beat all cards from other suits [cite: 160, 161]
+            memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.ACE)));
+            memory.onTurnPlayed(new PlayTurn(p2, new Card(Suit.CLUBS, Rank.TWO)));
 
-            assertThat(memory.calculateCurrentWinnerId()).isEqualTo(p2);
+            assertEquals(p2, memory.calculateCurrentWinnerId(), "Trump 2 should beat Ace of non-trump suit.");
         }
     }
 
@@ -101,7 +110,7 @@ class SmartBotMemoryTest {
         @Test
         @DisplayName("isTeamWinning correctly identifies partner in Proposal/Acceptance")
         void shouldIdentifyPartnershipWinning() {
-            // Arrange: P1 Proposes, P3 Accepts. They are now a team.
+            // Arrange: P1 Proposes, P3 Accepts. They form a team[cite: 174, 178].
             memory.onBidPlaced(new BidTurn(p1, BidType.PROPOSAL));
             memory.onBidPlaced(new BidTurn(p2, BidType.PASS));
             memory.onBidPlaced(new BidTurn(p3, BidType.ACCEPTANCE));
@@ -110,10 +119,9 @@ class SmartBotMemoryTest {
             // Act: P1 (Partner) plays a winning card
             memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.ACE)));
 
-            // Assert: P3 should recognize that their team is winning
-            assertThat(memory.isTeamWinning(p3)).isTrue();
-            // Assert: P2 (Opponent) should recognize their team is NOT winning
-            assertThat(memory.isTeamWinning(p2)).isFalse();
+            // Assert: Partnership recognition is vital for bot heuristics [cite: 285, 286]
+            assertTrue(memory.isTeamWinning(p3), "P3 should recognize that their partner is winning the trick.");
+            assertFalse(memory.isTeamWinning(p2), "Opponents should recognize their team is not winning.");
         }
 
         @Test
@@ -121,8 +129,8 @@ class SmartBotMemoryTest {
         void shouldThrowIfNoBids() {
             memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.ACE)));
 
-            assertThatThrownBy(() -> memory.isTeamWinning(p1))
-                    .isInstanceOf(IllegalStateException.class);
+            assertThrows(IllegalStateException.class, () -> memory.isTeamWinning(p1),
+                    "Should throw if attempting to check teams before bidding phase concludes.");
         }
     }
 
@@ -136,14 +144,14 @@ class SmartBotMemoryTest {
             Card kingOfHearts = new Card(Suit.HEARTS, Rank.KING);
             Card aceOfHearts = new Card(Suit.HEARTS, Rank.ACE);
 
-            // Initially, King is not the master because Ace is out there
-            assertThat(memory.isHighestUnplayedCardInSuit(kingOfHearts)).isFalse();
+            // Initially, King is not the master [cite: 159]
+            assertFalse(memory.isHighestUnplayedCardInSuit(kingOfHearts), "King is not the highest if Ace is unplayed.");
 
-            // Ace is played
+            // Ace is played [cite: 246]
             memory.onTurnPlayed(new PlayTurn(p4, aceOfHearts));
 
             // Now King is the master
-            assertThat(memory.isHighestUnplayedCardInSuit(kingOfHearts)).isTrue();
+            assertTrue(memory.isHighestUnplayedCardInSuit(kingOfHearts), "King should be identified as the highest remaining unplayed card.");
         }
     }
 }

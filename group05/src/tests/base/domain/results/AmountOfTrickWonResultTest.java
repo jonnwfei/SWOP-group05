@@ -3,7 +3,8 @@ package base.domain.results;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DisplayName("Amount Of Trick Won Result Tests")
 class AmountOfTrickWonResultTest {
@@ -15,7 +16,7 @@ class AmountOfTrickWonResultTest {
         AmountOfTrickWonResult result = new AmountOfTrickWonResult();
 
         // Assert
-        assertThat(result).isNotNull();
+        assertNotNull(result);
     }
 
     @Test
@@ -26,9 +27,8 @@ class AmountOfTrickWonResultTest {
         AmountOfTrickWonResult res2 = new AmountOfTrickWonResult();
 
         // Assert
-        assertThat(res1)
-                .isEqualTo(res2)
-                .hasSameHashCodeAs(res2);
+        assertEquals(res1, res2);
+        assertEquals(res1.hashCode(), res2.hashCode());
     }
 
     @Test
@@ -38,6 +38,6 @@ class AmountOfTrickWonResultTest {
         AmountOfTrickWonResult result = new AmountOfTrickWonResult();
 
         // Assert
-        assertThat(result.toString()).isEqualTo("AmountOfTrickWonResult[]");
+        assertEquals("AmountOfTrickWonResult[]", result.toString());
     }
 }
