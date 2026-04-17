@@ -2,6 +2,7 @@ package base.domain.bid;
 
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 
 import java.util.List;
 
@@ -9,21 +10,21 @@ import java.util.List;
  * Represents a Miserie contract where the bidder attempts to win zero tricks.
  * In Miserie, there is no trump suit, and multiple players can play simultaneously.
  *
- * @param player  The player who made this bid.
+ * @param playerId  The player who made this bid.
  * @param bidType The specific type of Miserie bid (e.g., MISERIE or OPEN_MISERIE).
  * @author Tommy Wu
  * @since 25/02/26
  */
-public record MiserieBid(Player player, BidType bidType) implements Bid {
+public record MiserieBid(PlayerId playerId, BidType bidType) implements Bid {
 
     public MiserieBid {
-        if (player == null) {throw new IllegalArgumentException("player cannot be null.");}
+        if (playerId == null) {throw new IllegalArgumentException("player cannot be null.");}
         if (bidType == null) {throw new IllegalArgumentException("BidType cannot be null.");}
         if (bidType.getCategory() != BidCategory.MISERIE) {throw new IllegalArgumentException("MiserieBid requires a MISERIE category!");}
     }
 
     @Override
-    public Player getPlayer() {return player;}
+    public PlayerId getPlayerId() {return playerId;}
 
     /**
      * Determines all players participating in the Miserie XOR Open Miserie contract.
@@ -32,11 +33,11 @@ public record MiserieBid(Player player, BidType bidType) implements Bid {
      * @return A list of all players who made a Miserie bid.
      */
     @Override
-    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
+    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
         // Find every player who made any type of Miserie bid this round
         return allBids.stream()
                 .filter(bid -> bid.getType() == bidType)
-                .map(Bid::getPlayer)
+                .map(Bid::getPlayerId)
                 .toList();
     }
 

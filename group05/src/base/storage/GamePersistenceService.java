@@ -1,10 +1,10 @@
 package base.storage;
 
 import base.domain.WhistGame;
-import base.domain.bid.BidType;
-import base.domain.bid.Bid;
+import base.domain.bid.*;
 import base.domain.deck.Deck;
 import base.domain.round.Round;
+import base.domain.strategy.*;
 import base.storage.snapshots.*;
 import base.domain.player.*;
 
@@ -119,7 +119,10 @@ public class GamePersistenceService {
         game.resetRounds();
 
         for (PlayerSnapshot playerSnapshot : snapshot.players()) {
-            Player player = new Player(toStrategy(playerSnapshot.strategyType()), playerSnapshot.name());
+            PlayerId restoredId = PlayerId.fromString(playerSnapshot.id());
+            Strategy playerStrategy = toStrategy(playerSnapshot.strategyType(), restoredId);
+
+            Player player = new Player(playerStrategy, playerSnapshot.name(), restoredId);
             player.updateScore(playerSnapshot.score());
             game.addPlayer(player);
         }
@@ -142,6 +145,7 @@ public class GamePersistenceService {
     private PlayerSnapshot toSnapshot(Player player) {
         if (player == null) throw new IllegalArgumentException("Cannot create a snapshot of a null player");
         return new PlayerSnapshot(
+                player.getId().id().toString(),
                 player.getName(),
                 toStrategyType(player.getDecisionStrategy()),
                 player.getScore());
@@ -165,12 +169,18 @@ public class GamePersistenceService {
         if (roundPlayers.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
 
         BidType bidType = highestBid.getType();
-        int bidderIndex = roundPlayers.indexOf(highestBid.getPlayer());
+        int bidderIndex = roundPlayers.indexOf(round.getPlayerById(highestBid.getPlayerId()));
+        if (bidderIndex < 0) {
+            throw new IllegalStateException("Cannot snapshot round: highest bid player is not in round players");
+        }
 
 
         List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()
             .map(roundPlayers::indexOf)
             .toList();
+        if (participantIndices.stream().anyMatch(i -> i < 0)) {
+            throw new IllegalStateException("Cannot snapshot round: bidding team contains players outside the round");
+        }
         if (participantIndices.isEmpty() && bidType != BidType.PASS) {
             throw new IllegalStateException("Cannot snapshot round without bidding team participants");
         }
@@ -178,6 +188,9 @@ public class GamePersistenceService {
         List<Integer> miserieWinnerIndices = round.getCountMiserieWinners().stream()
             .map(roundPlayers::indexOf)
             .toList();
+        if (miserieWinnerIndices.stream().anyMatch(i -> i < 0)) {
+            throw new IllegalStateException("Cannot snapshot round: miserie winners contain players outside the round");
+        }
 
         List<Integer> scoreDeltas = round.getScoreDeltas();
 
@@ -191,10 +204,11 @@ public class GamePersistenceService {
                     bidType,
                     bidderIndex,
                     participantIndices,
-                tricksWon,
-                miserieWinnerIndices,
-                round.getMultiplier(),
-                scoreDeltas);
+                    tricksWon,
+                    miserieWinnerIndices,
+                    round.getMultiplier(),
+                    scoreDeltas,
+                    round.getTrumpSuit());
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
         }
@@ -214,8 +228,43 @@ public class GamePersistenceService {
         List<Player> players = game.getPlayers();
         if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
 
+
         for (RoundSnapshot snapshot : roundSnapshots) {
-            game.addRound(new Round(players, players.get(snapshot.bidderIndex()), snapshot.multiplier()));
+            int bidderIndex = snapshot.bidderIndex();
+            if (bidderIndex < 0 || bidderIndex >= players.size()) {
+                throw new IllegalStateException("Cannot restore round: bidder index out of range");
+            }
+
+            Player mainBidder = players.get(bidderIndex);
+            Bid highestBid = snapshot.bidType().instantiate(mainBidder.getId(), snapshot.trumpSuit());
+
+            List<Player> participants = snapshot.participantIndices().stream()
+                    .map(index -> {
+                        if (index < 0 || index >= players.size()) {
+                            throw new IllegalStateException("Cannot restore round: participant index out of range");
+                        }
+                        return players.get(index);
+                    })
+                    .toList();
+
+            List<Player> miserieWinners = snapshot.miserieWinnerIndices().stream()
+                    .map(index -> {
+                        if (index < 0 || index >= players.size()) {
+                            throw new IllegalStateException("Cannot restore round: miserie winner index out of range");
+                        }
+                        return players.get(index);
+                    })
+                    .toList();
+
+            Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
+            restoredRound.restoreFromSnapshot(
+                    highestBid,
+                    snapshot.trumpSuit(),
+                    participants,
+                    snapshot.tricksWon(),
+                    miserieWinners,
+                    snapshot.scoreDeltas());
+            game.addRound(restoredRound);
         }
     }
 
@@ -234,29 +283,27 @@ public class GamePersistenceService {
             case HighBotStrategy _ -> {
                 return StrategySnapshotType.HIGH_BOT;
             }
-//            case LowBotStrategy _ -> { // TODO: fixed by merge
-//                return StrategySnapshotType.SMART_BOT;
-//            }
-//            default SmartBotStrategy _ -> { // TODO: fixed by merge
-//                return StrategySnapshotType.SMART_BOT;
-//            }
-            default -> {
+            case LowBotStrategy _ -> {
                 return StrategySnapshotType.LOW_BOT;
+            }
+            case SmartBotStrategy _  -> {
+                return StrategySnapshotType.SMART_BOT;
             }
         }
     }
+
 
     /**
      * Converts a StrategySnapshotType into its corresponding Strategy instance.
      * @param strategyType strategyType instance to convert into a Strategy instance
      * @return Strategy instance
      */
-    private Strategy toStrategy(StrategySnapshotType strategyType) {
+    private Strategy toStrategy(StrategySnapshotType strategyType, PlayerId restoredId) {
         return switch (strategyType) {
             case HUMAN -> new HumanStrategy();
             case HIGH_BOT -> new HighBotStrategy();
             case LOW_BOT -> new LowBotStrategy();
-//            case SMART_BOT -> new SmartBotStrategy(); // TODO: will be fixed with merge of Strats
+            case SMART_BOT -> new SmartBotStrategy(restoredId);
         };
     }
 }

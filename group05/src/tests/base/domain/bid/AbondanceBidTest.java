@@ -1,107 +1,117 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
-import base.domain.player.HumanStrategy;
-import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("Abondance Bid Rules & Calculations")
 class AbondanceBidTest {
 
-    private Player testPlayer;
+    private PlayerId testPlayerId;
     private BidType abondanceBidType;
-    private Suit testTrump;
+    private Suit chosenTrump;
     private AbondanceBid bid;
 
     @BeforeEach
     void setUp() {
-        testPlayer = new Player(new HumanStrategy(), "Jane Doe");
-        // Assuming BidType.ABONDANCE_9 exists and falls under BidCategory.ABONDANCE
-        abondanceBidType = BidType.ABONDANCE_9;
-        testTrump = Suit.SPADES;
+        // Arrange
+        testPlayerId = new PlayerId();
+        abondanceBidType = BidType.ABONDANCE_9; // Assumes this belongs to BidCategory.ABONDANCE
+        chosenTrump = Suit.SPADES;
 
-        // Instantiate once here to keep the test methods DRY
-        bid = new AbondanceBid(testPlayer, abondanceBidType, testTrump);
+        bid = new AbondanceBid(testPlayerId, abondanceBidType, chosenTrump);
     }
 
     @Test
-    void constructor_InvalidParameters_ThrowsException() {
-        // Enforce GRASP invariant: Cannot instantiate an AbondanceBid with a non-Abondance BidType
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                new AbondanceBid(testPlayer, BidType.MISERIE, testTrump)
+    @DisplayName("Constructor enforces non-null parameters")
+    void constructor_NullParameters_ThrowsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () ->
+                        new AbondanceBid(null, abondanceBidType, chosenTrump),
+                "Should reject null PlayerId"
         );
-        assertTrue(exception.getMessage().contains("ABONDANCE rank"));
-
-        exception = assertThrows(IllegalArgumentException.class, () ->
-                new AbondanceBid(null, BidType.ABONDANCE_9, testTrump)
-        );
-        assertTrue(exception.getMessage().contains("null"));
 
         assertThrows(IllegalArgumentException.class, () ->
-                new AbondanceBid(testPlayer, null, null)
+                        new AbondanceBid(testPlayerId, null, chosenTrump),
+                "Should reject null BidType"
         );
     }
 
     @Test
-    void getPlayer_ReturnsPlayer() {
-        assertEquals(testPlayer, bid.getPlayer());
+    @DisplayName("Constructor rejects BidTypes outside the ABONDANCE category")
+    void constructor_InvalidBidCategory_ThrowsIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                new AbondanceBid(testPlayerId, BidType.MISERIE, chosenTrump)
+        );
+        assertTrue(exception.getMessage().contains("ABONDANCE rank"));
     }
 
     @Test
-    void getType_ReturnsBidType() {
-        assertEquals(abondanceBidType, bid.getType());
+    @DisplayName("getTeam() returns only the solo bidder")
+    void getTeam_AlwaysReturnsOnlyTheBidder() {
+        // Act
+        // Abondance ignores the allBids and allPlayers lists, so empty lists are safe to pass
+        List<PlayerId> team = bid.getTeam(Collections.emptyList(), Collections.emptyList());
+
+        // Assert
+        assertEquals(1, team.size());
+        assertTrue(team.contains(testPlayerId));
     }
 
     @Test
-    void determineTrump_ReturnsSetTrump() {
-        // For an Abondance bid, the dealt trump is ignored; the player's chosen trump always applies
-        assertEquals(testTrump, bid.determineTrump(Suit.HEARTS));
+    @DisplayName("determineTrump() overrides dealt trump with the player's chosen suit")
+    void determineTrump_ValidDealtTrump_ReturnsChosenTrump() {
+        assertEquals(chosenTrump, bid.determineTrump(Suit.HEARTS));
     }
 
     @Test
-    void calculateBasePoints_Success() {
+    @DisplayName("determineTrump() rejects null dealt trump")
+    void determineTrump_NullDealtTrump_ThrowsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> bid.determineTrump(null));
+    }
+
+    @ParameterizedTest(name = "Winning with {0} tricks awards positive base points")
+    @ValueSource(ints = {9, 10, 13}) // Testing exact target, over target, and max tricks
+    void calculateBasePoints_TargetMetOrExceeded_ReturnsPositivePoints(int tricksWon) {
+        // Arrange
         int expectedPoints = abondanceBidType.getBasePoints();
-        int target = abondanceBidType.getTargetTricks();
 
-        // Case 1: Player gets exactly the target amount of tricks
-        assertEquals(expectedPoints, bid.calculateBasePoints(target));
+        // Act & Assert
+        assertEquals(expectedPoints, bid.calculateBasePoints(tricksWon));
+    }
 
-        // Case 2: Player gets more tricks than required
-        assertEquals(expectedPoints, bid.calculateBasePoints(target + 1));
+    @ParameterizedTest(name = "Failing with {0} tricks deducts base points")
+    @ValueSource(ints = {8, 4, 0}) // Testing barely failed, severely failed, and 0 tricks
+    void calculateBasePoints_BelowTarget_ReturnsNegativePoints(int tricksWon) {
+        // Arrange
+        int expectedPenalty = -1 * abondanceBidType.getBasePoints();
 
-        // Case 3: Player takes all 13 tricks
-        // (Standard Abondance math doesn't multiply points here unless explicitly coded)
-        assertEquals(expectedPoints, bid.calculateBasePoints(13));
+        // Act & Assert
+        assertEquals(expectedPenalty, bid.calculateBasePoints(tricksWon));
     }
 
     @Test
-    void calculateBasePoints_Failure() {
-        int negativePoints = -1 * abondanceBidType.getBasePoints();
-        int target = abondanceBidType.getTargetTricks();
-
-        // Failed by exactly 1 trick
-        assertEquals(negativePoints, bid.calculateBasePoints(target - 1));
-
-        // Failed completely (got 0 tricks)
-        assertEquals(negativePoints, bid.calculateBasePoints(0));
-    }
-
-    @Test
-    void calculateBasePoints_NegativeInput_ThrowsException() {
-        // Edge case: tricks won can never be physically negative
+    @DisplayName("calculateBasePoints() rejects negative trick counts")
+    void calculateBasePoints_NegativeInput_ThrowsIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 bid.calculateBasePoints(-1)
         );
-        assertTrue(exception.getMessage().contains("negative tricks won"));
+        assertTrue(exception.getMessage().contains("negative"));
     }
 
     @Test
+    @DisplayName("Native record accessors return correct values")
     void testRecordAccessors() {
-        // Testing native record accessors for 100% method and branch coverage
-        assertEquals(testPlayer, bid.player());
+        assertEquals(testPlayerId, bid.playerId());
         assertEquals(abondanceBidType, bid.bidType());
-        assertEquals(testTrump, bid.trump());
+        assertEquals(chosenTrump, bid.trump());
     }
 }

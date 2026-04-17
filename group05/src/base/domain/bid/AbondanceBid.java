@@ -2,27 +2,28 @@ package base.domain.bid;
 
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 
 import java.util.List;
 
 /**
  * Contract for Abondance bids (9 to 12 tricks) with a custom trump suit if applicable.
- * @param player The proposer of the bid.
+ * @param playerId The proposer of the bid.
  * @param bidType Specific ABONDANCE level (e.g., ABONDANCE_9).
  * @param trump The user-defined trump suit for the round.
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public record AbondanceBid(Player player, BidType bidType, Suit trump) implements Bid {
+public record AbondanceBid(PlayerId playerId, BidType bidType, Suit trump) implements Bid {
 
     public AbondanceBid {
-        if (player == null) {throw new IllegalArgumentException("Player cannot be null.");}
+        if (playerId == null) {throw new IllegalArgumentException("Player cannot be null.");}
         if (bidType == null) {throw new IllegalArgumentException("BidType cannot be null.");}
         if (bidType.getCategory() != BidCategory.ABONDANCE) {throw new IllegalArgumentException("AbondanceBid requires an ABONDANCE rank!");}
     }
 
     @Override
-    public Player getPlayer() {return player;}
+    public PlayerId getPlayerId() {return playerId;}
 
     /**
      * Determines the bidding team. In an Abondance contract, the bidder always plays alone.
@@ -32,8 +33,8 @@ public record AbondanceBid(Player player, BidType bidType, Suit trump) implement
      * @return A list containing only the solo bidder.
      */
     @Override
-    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        return List.of(player);
+    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
+        return List.of(playerId);
     }
 
     @Override

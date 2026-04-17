@@ -1,8 +1,10 @@
-package base.domain.player;
+package base.domain.strategy;
 
 import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.player.PlayerId;
+
 import java.util.List;
 
 /**
@@ -17,16 +19,16 @@ import java.util.List;
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public class HumanStrategy implements Strategy {
+public final class HumanStrategy implements Strategy {
 
     /**
      * Returns null as the bid is determined via external UI input
      * captured by the bidState
-     * @param player The player instance.
+     * @param playerId The player instance.
      * @return null.
      */
     @Override
-    public Bid determineBid(Player player) {
+    public Bid determineBid(PlayerId playerId, List<Card> hand) {
         return null;
     }
 

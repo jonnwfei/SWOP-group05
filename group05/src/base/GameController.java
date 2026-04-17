@@ -3,7 +3,9 @@ package base;
 import base.domain.WhistGame;
 import base.domain.commands.GameCommand;
 import base.domain.results.GameResult;
+import base.storage.GamePersistenceService;
 import base.domain.states.StateStep;
+import base.storage.GamePersistenceService;
 import cli.adapter.AdapterResponse;
 import cli.adapter.AdapterResult;
 import cli.events.IOEvent;
@@ -14,7 +16,7 @@ import cli.MenuFlow;
 
 /**
  * The main execution engine of the Whist application.
- * 
+ *
  * @author Stan Kestens
  * @since 01/03/2026
  */
@@ -28,7 +30,8 @@ public class GameController {
         this.game = new WhistGame();
         this.terminalManager = new TerminalManager();
         this.adapter = new Adapter(this.game);
-        this.menuFlow = new MenuFlow(terminalManager, game);
+        GamePersistenceService persistenceService = new GamePersistenceService();
+        this.menuFlow = new MenuFlow(terminalManager, persistenceService, game);
     }
 
     public void run() {

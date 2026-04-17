@@ -1,13 +1,12 @@
 package base.domain.commands;
 
-import base.domain.bid.BidType;
-import base.domain.player.Player;
+import base.domain.player.PlayerId;
 
 import java.util.List;
 
-public record PlayerListCommand(List<Player> players) implements GameCommand {
+public record PlayerListCommand(List<PlayerId> playerIds) implements GameCommand {
     public PlayerListCommand {
-        if (players == null) {
+        if (playerIds == null) {
             throw new IllegalArgumentException("players cannot be null");
         }
     }

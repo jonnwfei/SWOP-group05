@@ -3,195 +3,149 @@ package base.domain.trick;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.player.HumanStrategy;
-import base.domain.player.LowBotStrategy;
-import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Scenario tests for Trick logic, ensuring defensive handling of illegal inputs
+ * and correct winning card evaluation[cite: 56, 385].
+ */
+@DisplayName("Trick Logic")
 class TrickTest {
-    private Player p1;
-    private Player p2;
-    private Player p3;
-    private Player p4;
-    private Player p5;
-    private Trick currentTrick;
+
+    private static final PlayerId P1 = new PlayerId();
+    private static final PlayerId P2 = new PlayerId();
+    private static final PlayerId P3 = new PlayerId();
+    private static final PlayerId P4 = new PlayerId();
+
+    private Trick trick;
 
     @BeforeEach
     void setUp() {
-        p1 = new Player(new HumanStrategy(), "P1");
-        p2 = new Player(new LowBotStrategy(), "P2");
-        p3 = new Player(new LowBotStrategy(), "P3");
-        p4 = new Player(new LowBotStrategy(), "P4");
-        p5 = new Player(new LowBotStrategy(), "P5");
-
-        currentTrick = new Trick(p1, Suit.CLUBS);
+        // Initialize with P1 as starter and CLUBS as trump
+        trick = new Trick(P1, Suit.CLUBS);
     }
 
-    @Test
-    void getStartingPlayer() {
-        assertEquals(p1, currentTrick.getStartingPlayer());
+    @Nested
+    @DisplayName("Initialization & State")
+    class InitializationTests {
+
+        @Test
+        @DisplayName("New trick should have zero turns and no winner")
+        void shouldInitializeCorrectly() {
+            assertTrue(trick.getTurns().isEmpty());
+            assertEquals(P1, trick.getStartingPlayerId());
+            assertNull(trick.getWinningPlayerId());
+            assertNull(trick.getLeadingSuit());
+            assertFalse(trick.isCompleted());
+        }
+
+        @Test
+        @DisplayName("Constructor should throw if starting player is null")
+        void constructorShouldThrowOnNullStarter() {
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> new Trick(null, Suit.HEARTS));
+
+            assertTrue(exception.getMessage().contains("Starting player ID must exist"));
+        }
     }
 
-    @Test
-    void getWinningPlayer() {
-        assertNull(currentTrick.getWinningPlayer());
+    @Nested
+    @DisplayName("Turn Management")
+    class TurnTests {
+
+        @Test
+        @DisplayName("Adding a turn should update turns list and leading suit")
+        void shouldRecordTurnAndLeadSuit() {
+            Card leadCard = new Card(Suit.HEARTS, Rank.ACE);
+
+            trick.addTurn(P1, leadCard);
+
+            assertEquals(1, trick.getTurns().size());
+            assertEquals(Suit.HEARTS, trick.getLeadingSuit());
+            assertEquals(P1, trick.getWinningPlayerId());
+        }
+
+        @Test
+        @DisplayName("Should throw if same player tries to play twice")
+        void shouldPreventDuplicatePlayer() {
+            trick.addTurn(P1, new Card(Suit.HEARTS, Rank.ACE));
+
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> trick.addTurn(P1, new Card(Suit.HEARTS, Rank.KING)));
+
+            assertTrue(exception.getMessage().contains("already played"));
+        }
+
+        @Test
+        @DisplayName("Should throw if adding a 5th turn to a full trick")
+        void shouldPreventExtraTurns() {
+            playFullTrick();
+
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> trick.addTurn(new PlayerId(), new Card(Suit.DIAMONDS, Rank.TWO)));
+
+            assertTrue(exception.getMessage().contains("already full"));
+        }
     }
 
-    @Test
-    void constructorThrows() {
-        assertThrows(IllegalArgumentException.class, () -> new Trick(null, Suit.CLUBS));
+    @Nested
+    @DisplayName("Winner Calculation (Delegation to Evaluator)")
+    class WinningLogicTests {
 
+        @Test
+        @DisplayName("Higher rank of leading suit should win over lower rank")
+        void higherLeadShouldBeatLowerLead() {
+            trick.addTurn(P1, new Card(Suit.HEARTS, Rank.TEN));
+            trick.addTurn(P2, new Card(Suit.HEARTS, Rank.ACE)); // Higher lead
+            trick.addTurn(P3, new Card(Suit.DIAMONDS, Rank.ACE)); // Higher rank but wrong suit
+
+            assertEquals(P2, trick.getWinningPlayerId());
+        }
+
+        @Test
+        @DisplayName("Any trump card should win over the leading suit")
+        void trumpShouldBeatLead() {
+            // Trump is CLUBS (set in setUp) [cite: 160]
+            trick.addTurn(P1, new Card(Suit.HEARTS, Rank.ACE));
+            trick.addTurn(P2, new Card(Suit.CLUBS, Rank.TWO)); // Low Trump beats other suits [cite: 161]
+
+            assertEquals(P2, trick.getWinningPlayerId());
+        }
+
+        @Test
+        @DisplayName("Higher trump should win over lower trump")
+        void higherTrumpShouldBeatLowerTrump() {
+            trick.addTurn(P1, new Card(Suit.HEARTS, Rank.ACE));
+            trick.addTurn(P2, new Card(Suit.CLUBS, Rank.TWO)); // Low Trump
+            trick.addTurn(P3, new Card(Suit.CLUBS, Rank.KING)); // High Trump wins [cite: 161]
+
+            assertEquals(P3, trick.getWinningPlayerId());
+        }
+
+        @Test
+        @DisplayName("In a No-Trump game (Miserie), lead suit rules apply")
+        void shouldHandleNoTrumpGames() {
+            // There is no longer a trump suit in Miserie [cite: 186]
+            Trick miserieTrick = new Trick(P1, null);
+
+            miserieTrick.addTurn(P1, new Card(Suit.HEARTS, Rank.TEN));
+            miserieTrick.addTurn(P2, new Card(Suit.CLUBS, Rank.ACE)); // Would be trump, but isn't here
+            miserieTrick.addTurn(P3, new Card(Suit.HEARTS, Rank.JACK)); // Beats the 10 based on lead suit [cite: 162]
+
+            assertEquals(P3, miserieTrick.getWinningPlayerId());
+        }
     }
 
-    @Test
-    void playCardValidation() {
-        IllegalArgumentException nullPlayer = assertThrows(IllegalArgumentException.class,
-                () -> currentTrick.playCard(null, new Card(Suit.HEARTS, Rank.ACE)));
-        assertEquals("Trick: Player must exist.", nullPlayer.getMessage());
-
-        IllegalArgumentException nullCard = assertThrows(IllegalArgumentException.class,
-                () -> currentTrick.playCard(p1, null));
-        assertEquals("Trick: Card must exist.", nullCard.getMessage());
-
-        p1.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE), new Card(Suit.HEARTS, Rank.KING)));
-        currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.ACE));
-
-        assertFalse(p1.getHand().contains(new Card(Suit.HEARTS, Rank.ACE))); // check if removed or not
-        // cant play twice
-        IllegalArgumentException alreadyPlayed = assertThrows(IllegalArgumentException.class,
-                () -> currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.KING)));
-        assertEquals("Trick: Player already played this trick.", alreadyPlayed.getMessage());
-
-        p2.setHand(List.of(new Card(Suit.DIAMONDS, Rank.ACE), new Card(Suit.HEARTS, Rank.QUEEN)));
-        IllegalArgumentException mustFollowSuit = assertThrows(IllegalArgumentException.class,
-                () -> currentTrick.playCard(p2, new Card(Suit.DIAMONDS, Rank.ACE))); // You have to follow leadsuit
-        assertEquals("Trick: Must follow leading suit.", mustFollowSuit.getMessage());
-        currentTrick.playCard(p2, new Card(Suit.HEARTS, Rank.QUEEN));
-
-        // fill trick
-        p3.setHand(List.of(new Card(Suit.CLUBS, Rank.ACE), new Card(Suit.CLUBS, Rank.QUEEN)));
-        currentTrick.playCard(p3, new Card(Suit.CLUBS, Rank.ACE));
-
-        p4.setHand(List.of(new Card(Suit.SPADES, Rank.ACE), new Card(Suit.SPADES, Rank.QUEEN)));
-        currentTrick.playCard(p4, new Card(Suit.SPADES, Rank.ACE));
-        // System.out.println(currentTrick.getTurns().size());
-
-        // Trick is full cant play more
-        p5.setHand(List.of(new Card(Suit.SPADES, Rank.ACE), new Card(Suit.SPADES, Rank.QUEEN)));
-        IllegalArgumentException fullTrick = assertThrows(IllegalArgumentException.class,
-                () -> currentTrick.playCard(p5, new Card(Suit.SPADES, Rank.ACE)));
-        assertEquals("Trick: Trick is already full.", fullTrick.getMessage());
-
-    }
-
-    @Test
-    void getLeadingSuit() {
-        assertNull(currentTrick.getLeadingSuit());
-
-        p1.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE), new Card(Suit.HEARTS, Rank.KING)));
-        currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.ACE));
-        assertEquals(Suit.HEARTS, currentTrick.getLeadingSuit());
-    }
-
-    @Test
-    void getTurns() {
-        p1.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE), new Card(Suit.HEARTS, Rank.KING)));
-        currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.ACE));
-
-        p2.setHand(List.of(new Card(Suit.DIAMONDS, Rank.ACE), new Card(Suit.HEARTS, Rank.QUEEN)));
-        currentTrick.playCard(p2, new Card(Suit.HEARTS, Rank.QUEEN));
-
-        assertEquals(2, currentTrick.getTurns().size());
-        assertEquals(new Turn(p1, new Card(Suit.HEARTS, Rank.ACE)), currentTrick.getTurns().getFirst());
-        assertEquals(new Turn(p2, new Card(Suit.HEARTS, Rank.QUEEN)), currentTrick.getTurns().get(1));
-    }
-
-    @Test
-    void isCompleted() {
-        assertFalse(currentTrick.isCompleted());
-        playTestTrickTrumpWins();
-        assertTrue(currentTrick.isCompleted());
-
-    }
-
-    /**
-     * Plays a test trick simulating a full round of 4 turns:
-     * <ul>
-     * <li><b>Turn 1:</b> p1 leads the trick by playing the ACE of HEARTS.</li>
-     * <li><b>Turn 2:</b> p2 follows suit by playing the QUEEN of HEARTS.</li>
-     * <li><b>Turn 3:</b> p3 cannot follow suit and plays the ACE of CLUBS.</li>
-     * <li><b>Turn 4:</b> p4 cannot follow suit and plays the ACE of SPADES.</li>
-     * </ul>
-     */
-    void playTestTrickTrumpWins() {
-        p1.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE), new Card(Suit.HEARTS, Rank.KING)));
-        currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.ACE));
-        p2.setHand(List.of(new Card(Suit.DIAMONDS, Rank.ACE), new Card(Suit.HEARTS, Rank.QUEEN)));
-        currentTrick.playCard(p2, new Card(Suit.HEARTS, Rank.QUEEN));
-        p3.setHand(List.of(new Card(Suit.CLUBS, Rank.ACE), new Card(Suit.CLUBS, Rank.QUEEN)));
-        currentTrick.playCard(p3, new Card(Suit.CLUBS, Rank.ACE));
-        p4.setHand(List.of(new Card(Suit.SPADES, Rank.ACE), new Card(Suit.SPADES, Rank.QUEEN)));
-        currentTrick.playCard(p4, new Card(Suit.SPADES, Rank.ACE));
-    }
-
-    @Test
-    void determineWinner_HigherLeadBeatsLowerLead() {
-        // P1 leads, but P2 follows suit with a higher card. No trumps played.
-        p1.setHand(List.of(new Card(Suit.HEARTS, Rank.TEN)));
-        currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.TEN));
-
-        p2.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE))); // Higher lead suit
-        currentTrick.playCard(p2, new Card(Suit.HEARTS, Rank.ACE));
-
-        p3.setHand(List.of(new Card(Suit.DIAMONDS, Rank.ACE))); // Off suit
-        currentTrick.playCard(p3, new Card(Suit.DIAMONDS, Rank.ACE));
-
-        p4.setHand(List.of(new Card(Suit.SPADES, Rank.ACE))); // Off suit
-        currentTrick.playCard(p4, new Card(Suit.SPADES, Rank.ACE));
-
-        assertEquals(p2, currentTrick.getWinningPlayer());
-    }
-
-    @Test
-    void determineWinner_HigherTrumpBeatsLowerTrump() {
-        // P1 leads, P2 plays low Trump, P3 plays high Trump, P4 plays off-suit
-        p1.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE)));
-        currentTrick.playCard(p1, new Card(Suit.HEARTS, Rank.ACE));
-
-        p2.setHand(List.of(new Card(Suit.CLUBS, Rank.TWO))); // LOW TRUMP
-        currentTrick.playCard(p2, new Card(Suit.CLUBS, Rank.TWO));
-
-        p3.setHand(List.of(new Card(Suit.CLUBS, Rank.ACE))); // HIGH TRUMP
-        currentTrick.playCard(p3, new Card(Suit.CLUBS, Rank.ACE));
-
-        p4.setHand(List.of(new Card(Suit.CLUBS, Rank.TEN))); // LOWER TRUMP (Checks false branch)
-        currentTrick.playCard(p4, new Card(Suit.CLUBS, Rank.TEN));
-
-        assertEquals(p3, currentTrick.getWinningPlayer());
-    }
-
-    @Test
-    void determineWinner_NoTrumpGame() {
-        // Setup trick with NULL trump suit (e.g. Miserie)
-        Trick miserieTrick = new Trick(p1, null);
-
-        p1.setHand(List.of(new Card(Suit.HEARTS, Rank.TEN)));
-        miserieTrick.playCard(p1, new Card(Suit.HEARTS, Rank.TEN));
-
-        p2.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE))); // Higher lead suit wins
-        miserieTrick.playCard(p2, new Card(Suit.HEARTS, Rank.ACE));
-
-        p3.setHand(List.of(new Card(Suit.CLUBS, Rank.ACE))); // Normally trump, but null here so it loses
-        miserieTrick.playCard(p3, new Card(Suit.CLUBS, Rank.ACE));
-
-        p4.setHand(List.of(new Card(Suit.SPADES, Rank.ACE)));
-        miserieTrick.playCard(p4, new Card(Suit.SPADES, Rank.ACE));
-
-        assertEquals(p2, miserieTrick.getWinningPlayer());
+    private void playFullTrick() {
+        trick.addTurn(P1, new Card(Suit.HEARTS, Rank.TWO));
+        trick.addTurn(P2, new Card(Suit.HEARTS, Rank.THREE));
+        trick.addTurn(P3, new Card(Suit.HEARTS, Rank.FOUR));
+        trick.addTurn(P4, new Card(Suit.HEARTS, Rank.FIVE));
     }
 }

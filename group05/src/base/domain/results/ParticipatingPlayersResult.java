@@ -1,6 +1,7 @@
 package base.domain.results;
 
 import java.util.List;
+import java.util.Objects;
 
 public record ParticipatingPlayersResult(
         List<String> playerNames,
@@ -8,7 +9,7 @@ public record ParticipatingPlayersResult(
 ) implements GameResult {
 
     public ParticipatingPlayersResult {
-        if (playerNames == null || playerNames.isEmpty() || playerNames.contains(null)) {
+        if (playerNames == null || playerNames.isEmpty() || playerNames.stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("PlayerNames cannot be null or empty or contain null objects");
         }
 

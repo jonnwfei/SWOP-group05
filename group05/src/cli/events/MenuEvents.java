@@ -1,8 +1,10 @@
 package cli.events;
 
+import base.domain.round.Round;
+
 import java.util.List;
 
-public non-sealed interface MenuEvents extends IOEvent {
+public sealed interface MenuEvents extends IOEvent {
 
     record AmountOfBotsIOEvent() implements MenuEvents {
         public boolean needsInput() {
@@ -32,5 +34,27 @@ public non-sealed interface MenuEvents extends IOEvent {
         public boolean needsInput() {
             return true;
         }
+    }
+
+    record AddHumanPlayerIOEvent() implements MenuEvents {
+        public boolean needsInput() {
+            return true;
+        }
+    }
+
+    record AddPlayerIOEvent() implements MenuEvents {
+        public boolean needsInput() {
+            return true;
+        }
+    }
+
+    record DeleteRoundIOEvent(List<Round> rounds) implements MenuEvents {
+        public boolean needsInput() {
+            return true;
+        }
+    }
+
+    record LoadSaveIOEvent(List<String> availableSaves) implements MenuEvents {
+        public boolean needsInput() { return true; }
     }
 }

@@ -1,11 +1,12 @@
 package cli.events;
 
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.player.Player;
 
 import java.util.List;
 
-public non-sealed interface CountEvents extends IOEvent {
+public sealed interface CountEvents extends IOEvent {
 
     record BidSelectionIOEvent(BidType[] bidTypes) implements CountEvents {
         public boolean needsInput() {
@@ -13,7 +14,7 @@ public non-sealed interface CountEvents extends IOEvent {
         }
     }
 
-    record PlayerSelectionIOEvent(List<Player> players, boolean multi) implements CountEvents {
+    record PlayerSelectionIOEvent(List<Player> players, boolean multi, BidType type) implements CountEvents {
         public boolean needsInput() {
             return true;
         }
@@ -25,7 +26,7 @@ public non-sealed interface CountEvents extends IOEvent {
         }
     }
 
-    record ScoreBoardIOEvent(List<String> playerNames, List<Integer> scores) implements CountEvents {
+    record ScoreBoardIOEvent(List<String> playerNames, List<Integer> scores, boolean canRemovePlayer) implements CountEvents {
         public boolean needsInput() {
             return true;
         }

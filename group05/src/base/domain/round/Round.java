@@ -5,9 +5,12 @@ import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents a single Round in a game of Whist.
@@ -136,7 +139,7 @@ public class Round {
         }
 
         // The bid knows how to build its own team.
-        this.biddingTeam.addAll(this.highestBid.getTeam(this.bids, this.players));
+        this.biddingTeam.addAll(this.highestBid.getTeam(this.bids, this.players).stream().map(this::getPlayerById).toList());
     }
 
     /**
@@ -175,7 +178,7 @@ public class Round {
      * @throws IllegalArgumentException If the trick has not received exactly 4 turns yet.
      * @throws IllegalStateException    If the round has already reached the maximum number of tricks.
      */
-    public void registerCompletedTrick(Trick trick) {
+    public void finalizeTrick(Trick trick) {
         if (trick == null)
             throw new IllegalArgumentException("Trick must not be null.");
         if (trick.getTurns().size() != Trick.MAX_TURNS)
@@ -184,11 +187,14 @@ public class Round {
             throw new IllegalStateException("Cannot add trick: The round is already finished");
 
         this.playedTricks.add(trick);
-        this.currentPlayer = trick.getWinningPlayer();
 
-        // Only calculate scores automatically if we hit 13 and weren't already finished early
-        if (this.playedTricks.size() == MAX_TRICKS && !isEarlyFinished) {
-            calculateScores();
+        // Map the winning PlayerId back to the physical Player object
+        PlayerId winnerId = trick.getWinningPlayerId();
+        this.currentPlayer = getPlayerById(winnerId);
+
+        if (isFinished()) {
+            // Delegate scoring calculation to our Pure Fabrication math engine!
+            calculateAndDistributeScores();
         }
     }
 
@@ -210,7 +216,7 @@ public class Round {
         if (calculatedBid == null) {
             throw new IllegalArgumentException("Cannot calculate scores without a bid.");
         }
-        if (participants == null || participants.isEmpty() || participants.contains(null)) {
+        if (participants == null || participants.isEmpty() || participants.stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("Participants list cannot be null, empty, or contain null elements.");
         }
         if (participants.size() > 4) {
@@ -255,7 +261,11 @@ public class Round {
      *
      * @throws IllegalStateException if the round has not yet completed playing all 13 tricks
      */
-    private void calculateScores() {
+    private void calculateAndDistributeScores() {
+        if (!isFinished()) {
+            throw new IllegalStateException(
+                    "Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got " + playedTricks.size());
+        }
         if (highestBid == null)
             throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
 
@@ -320,13 +330,12 @@ public class Round {
         int points = highestBid.calculateBasePoints(tricksWon);
 
         // If points are positive, the Bidding team made their contract!
-        if (points > 0) {
-            return bidders;
-        } else {
-            List<Player> defenders = new ArrayList<>(this.players);
-            defenders.removeAll(bidders);
-            return defenders;
-        }
+        if (points > 0) return bidders;
+
+        List<Player> defenders = new ArrayList<>(this.players);
+        defenders.removeAll(bidders);
+        return defenders;
+
     }
 
     /**
@@ -360,6 +369,14 @@ public class Round {
         }
     }
 
+    // Currently duplicated in other classes to save time. definitely to be refactored in 3rd iteration
+    public Player getPlayerById(PlayerId id) {
+        return players.stream()
+                .filter(p -> p.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("PlayerId not found!"));
+    }
+
     /**
      * Extracts the team of players responsible for the highest bid.
      *
@@ -378,10 +395,11 @@ public class Round {
      * @param team The list of players to evaluate.
      * @return The number of tricks won by the provided team.
      */
-    private int getTricksWonBy(List<Player> team) {
+    public int getTricksWonBy(List<Player> team) {
+        List<PlayerId> teamIds = team.stream().map(Player::getId).toList();
         int count = 0;
         for (Trick t : playedTricks) {
-            if (team.contains(t.getWinningPlayer())) {
+            if (teamIds.contains(t.getWinningPlayerId())) {
                 count++;
             }
         }
@@ -417,7 +435,7 @@ public class Round {
 
     /**
      * Retrieves the players that participated in the bid contract for this round.
-     * 
+     *
      * @return A defensive copy of bidding team players.
      */
     public List<Player> getBiddingTeamPlayers() {
@@ -444,7 +462,7 @@ public class Round {
 
     /**
      * Retrieves the score multiplier applied by this round.
-     * 
+     *
      * @return Round multiplier.
      */
     public int getMultiplier() {
@@ -453,7 +471,7 @@ public class Round {
 
     /**
      * Retrieves cumulative per-player score deltas generated by this round.
-     * 
+     *
      * @return Per-player score deltas in players-list order.
      */
     public List<Integer> getScoreDeltas() {
@@ -462,7 +480,7 @@ public class Round {
 
     /**
      * Retrieves the tricks-won value recorded in count-mode scoring.
-     * 
+     *
      * @return tricks won or -1 when not applicable.
      */
     public int getCountTricksWon() {
@@ -471,7 +489,7 @@ public class Round {
 
     /**
      * Retrieves tricks won by the bidding team for play-mode rounds.
-     * 
+     *
      * @return tricks won or -1 when bidding team is unresolved.
      */
     public int getBiddingTeamTricksWon() {
@@ -483,7 +501,7 @@ public class Round {
 
     /**
      * Retrieves winners recorded during count-mode miserie scoring.
-     * 
+     *
      * @return defensive copy of winners list.
      */
     public List<Player> getCountMiserieWinners() {
@@ -512,29 +530,93 @@ public class Round {
     }
 
     /**
-     * Checks whether all 13 tricks have been played, signaling the end of the round.
+     * Checks whether the round has concluded.
+     * A round is considered finished under any of the following conditions:
+     * <ul>
+     * <li>All 13 tricks have been played.</li>
+     * <li>All players passed during the bidding phase.</li>
+     * <li>The active bid is a Miserie-category bid and the early termination condition is met
+     * (e.g., all Miserie players have won at least one trick, failing their contract).</li>
+     * </ul>
      *
-     * @return true if the round is finished, false otherwise.
-     */
-    private boolean isEarlyFinished = false;
-
-    /**
-     * Flags the round as finished even if 13 tricks haven't been played.
-     * Use this for Miserie failures.
-     */
-    public void signalEarlyFinish() {
-        this.isEarlyFinished = true;
-        calculateScores(); // Trigger scoring immediately
-    }
-
-    /**
-     * Checks whether the round is finished (either 13 tricks or flagged early).
+     * @return true if the round is finished based on trick count, passing, or Miserie early termination; false otherwise.
      */
     public boolean isFinished() {
-        return isEarlyFinished || playedTricks.size() == MAX_TRICKS;
+        if (playedTricks.size() >= MAX_TRICKS) return true;
+        if (highestBid.getType() == BidType.PASS && bids.size() == players.size()) return true;
+        if (this.highestBid.getType().getCategory() == BidCategory.MISERIE) return isMiserieEarlyTermination();
+        return false;
+    }
+
+    private boolean isMiserieEarlyTermination() {
+        List<PlayerId> miserieBidders = bids.stream()
+                    .filter(b -> b.getType() == highestBid.getType())
+                    .map(Bid::getPlayerId)
+                    .toList();
+
+        // Check if EVERY single one of them has won at least one trick
+        for (PlayerId bidderId : miserieBidders) {
+            boolean wonATrick = playedTricks.stream()
+                    .anyMatch(trick -> trick.getWinningPlayerId().equals(bidderId));
+
+            if (!wonATrick) {
+                return false; // Someone is still safe, round continues
+            }
+        }
+        return true; // All miserie players failed, round ends!
+
     }
 
     public void setHighestBid(Bid bid) {
         this.highestBid = bid;
+    }
+
+    /**
+     * Rehydrates a historical round from a persisted snapshot without re-running scoring logic.
+     *
+     * @param highestBid restored winning bid
+     * @param trumpSuit restored trump suit (can be null for no-trump bids)
+     * @param participants restored bidding team members
+     * @param tricksWon restored count-mode tricks won value
+     * @param miserieWinners restored count-mode miserie winners
+     * @param restoredScoreDeltas restored per-player score deltas
+     */
+    public void restoreFromSnapshot(
+            Bid highestBid,
+            Suit trumpSuit,
+            List<Player> participants,
+            int tricksWon,
+            List<Player> miserieWinners,
+            List<Integer> restoredScoreDeltas) {
+        if (highestBid == null) {
+            throw new IllegalArgumentException("Cannot restore round without a highest bid.");
+        }
+        if (participants == null || participants.isEmpty() || participants.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Participants list cannot be null, empty, or contain null elements.");
+        }
+        if (participants.stream().anyMatch(p -> !this.players.contains(p))) {
+            throw new IllegalArgumentException("All participants must belong to this round's players.");
+        }
+        if (tricksWon < -1 || tricksWon > MAX_TRICKS) {
+            throw new IllegalArgumentException("Tricks won must be -1 or between 0 and " + MAX_TRICKS + ".");
+        }
+        if (restoredScoreDeltas == null || restoredScoreDeltas.size() != this.players.size()) {
+            throw new IllegalArgumentException("Score deltas must contain exactly " + this.players.size() + " entries.");
+        }
+        if (restoredScoreDeltas.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Score deltas cannot contain null elements.");
+        }
+        if (miserieWinners != null && miserieWinners.stream().anyMatch(p -> !participants.contains(p))) {
+            throw new IllegalArgumentException("Miserie winners must be participants.");
+        }
+
+        this.highestBid = highestBid;
+        this.trumpSuit = trumpSuit;
+        this.biddingTeam.clear();
+        this.biddingTeam.addAll(participants);
+        this.countTricksWon = tricksWon;
+        this.countMiserieWinners = miserieWinners == null ? new ArrayList<>() : new ArrayList<>(miserieWinners);
+        this.scoreDeltas.clear();
+        this.scoreDeltas.addAll(restoredScoreDeltas);
     }
 }
