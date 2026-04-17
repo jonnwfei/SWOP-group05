@@ -46,8 +46,8 @@ class AdapterTest {
         humanPlayer = mock(Player.class);
         botPlayer = mock(Player.class);
 
-        humanId = new PlayerId("human-123");
-        botId = new PlayerId("bot-456");
+        humanId = new PlayerId();
+        botId = new PlayerId();
 
         lenient().when(humanPlayer.getId()).thenReturn(humanId);
         lenient().when(humanPlayer.getName()).thenReturn("Alice");
