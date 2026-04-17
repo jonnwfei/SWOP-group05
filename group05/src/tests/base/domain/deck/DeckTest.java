@@ -2,14 +2,15 @@ package base.domain.deck;
 
 import base.domain.card.Card;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
+@DisplayName("Standard 52-Card Deck")
 class DeckTest {
 
     private Deck deck;
@@ -19,68 +20,82 @@ class DeckTest {
         deck = new Deck();
     }
 
-    @Test
-    void constructor_InitializesFullStandardDeck() {
-        List<Card> cards = deck.getCards();
+    @Nested
+    @DisplayName("Deck Initialization")
+    class InitializationTests {
 
-        // A standard deck must contain exactly 52 cards
-        assertEquals(52, cards.size(), "Deck should contain exactly 52 cards.");
+        @Test
+        @DisplayName("Should initialize with exactly 52 unique cards")
+        void constructor_InitializesFullStandardDeck() {
+            List<Card> cards = deck.getCards();
 
-        // Using a Set to ensure every single card is entirely unique (no duplicates)
-        Set<Card> uniqueCards = new HashSet<>(cards);
-        assertEquals(52, uniqueCards.size(), "All 52 cards in the deck must be unique.");
-    }
-
-    @Test
-    void deal_DistributesCardsCorrectlyToFourPlayers() {
-        List<List<Card>> hands = deck.deal();
-
-        // Ensure exactly 4 hands are created
-        assertEquals(4, hands.size(), "The deck must deal exactly 4 hands.");
-
-        Set<Card> dealtCards = new HashSet<>();
-
-        for (List<Card> hand : hands) {
-            // Ensure each player gets exactly 13 cards (4 + 4 + 5 pattern)
-            assertEquals(13, hand.size(), "Each player must receive exactly 13 cards.");
-            dealtCards.addAll(hand);
+            // AssertJ chains make collection testing very readable
+            assertThat(cards)
+                    .hasSize(52)
+                    .doesNotContainNull()
+                    .containsOnlyOnceElementsOf(cards);
         }
-
-        // Ensure no cards were duplicated or lost during the dealing process
-        assertEquals(52, dealtCards.size(), "All 52 unique cards must be dealt across the 4 hands.");
     }
 
-    @Test
-    void getCards_ReturnsDefensiveCopy() {
-        List<Card> externalList = deck.getCards();
+    @Nested
+    @DisplayName("Dealing Logic")
+    class DealingTests {
 
-        // Attempt to modify the retrieved list (e.g., removing a card)
-        externalList.removeFirst();
+        @Test
+        @DisplayName("Should distribute 52 cards into four hands of 13 cards each")
+        void deal_DistributesCardsCorrectlyToFourPlayers() {
+            List<List<Card>> hands = deck.deal();
 
-        // Verify the external list was modified
-        assertEquals(51, externalList.size());
+            assertThat(hands).hasSize(4);
 
-        // Verify the internal state of the Deck remains strictly protected (Encapsulation/Information Hiding)
-        assertEquals(52, deck.getCards().size(), "Modifying the returned list should not affect the internal deck.");
+            // Flatten all hands to check the total pool of dealt cards
+            List<Card> allDealtCards = hands.stream()
+                    .flatMap(List::stream)
+                    .toList();
+
+            assertThat(allDealtCards).hasSize(52).doesNotHaveDuplicates();
+
+            for (List<Card> hand : hands) {
+                assertThat(hand).hasSize(13);
+            }
+        }
     }
 
-    @Test
-    void shuffle_RandomizesDeckOrder() {
-        List<Card> beforeShuffle = deck.getCards();
+    @Nested
+    @DisplayName("Encapsulation & Security")
+    class EncapsulationTests {
 
-        deck.shuffle();
+        @Test
+        @DisplayName("getCards() should return a defensive copy to prevent external mutation")
+        void getCards_ReturnsDefensiveCopy() {
+            List<Card> externalList = deck.getCards();
+            int originalSize = externalList.size();
 
-        List<Card> afterShuffle = deck.getCards();
+            // Act: Modify the list retrieved from the getter
+            externalList.clear();
 
-        // Ensure no cards are lost during the shuffle
-        assertEquals(52, afterShuffle.size(), "Deck must still have 52 cards after shuffling.");
+            // Assert: Internal state of the deck remains untouched
+            assertThat(deck.getCards()).hasSize(originalSize);
+            assertThat(externalList).isEmpty();
+        }
+    }
 
-        // Ensure the deck contains the exact same cards, just in a different order
-        assertTrue(afterShuffle.containsAll(beforeShuffle));
-        assertTrue(beforeShuffle.containsAll(afterShuffle));
+    @Nested
+    @DisplayName("Shuffling Behavior")
+    class ShufflingTests {
 
-        // Note: With 52! (factorial) possible permutations, the chance of the deck
-        // shuffling into the exact same order is statistically impossible.
-        assertNotEquals(beforeShuffle, afterShuffle, "The order of the cards should change after shuffling.");
+        @Test
+        @DisplayName("shuffle() should change the order of cards without losing data")
+        void shuffle_RandomizesDeckOrder() {
+            List<Card> initialOrder = deck.getCards();
+
+            deck.shuffle();
+            List<Card> shuffledOrder = deck.getCards();
+
+            assertThat(shuffledOrder)
+                    .hasSize(52)
+                    .containsExactlyInAnyOrderElementsOf(initialOrder)
+                    .isNotEqualTo(initialOrder); // Probability of 52! matching is effectively zero
+        }
     }
 }
