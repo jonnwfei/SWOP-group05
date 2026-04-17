@@ -210,7 +210,7 @@ public class Round {
         if (calculatedBid == null) {
             throw new IllegalArgumentException("Cannot calculate scores without a bid.");
         }
-        if (participants == null || participants.isEmpty() || participants.contains(null)) {
+        if (participants == null || participants.isEmpty() || participants.stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("Participants list cannot be null, empty, or contain null elements.");
         }
         if (participants.size() > 4) {
