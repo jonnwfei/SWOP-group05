@@ -5,25 +5,20 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
-import base.domain.commands.*;
-import base.domain.player.HumanStrategy;
+import base.domain.strategy.HumanStrategy;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
+import base.domain.commands.*;
 import base.domain.results.*;
 import base.domain.round.Round;
 import cli.TerminalParser;
 import cli.elements.Response;
 
-import cli.events.*;
-import cli.events.CountEvents.*;
-import cli.events.BidEvents.*;
-import cli.events.PlayEvents.*;
-import cli.events.menu.AddHumanPlayerIOEvent;
-import cli.events.menu.AddPlayerIOEvent;
-import cli.events.menu.DeleteRoundIOEvent;
 import cli.events.MessageIOEvent;
 
 import static cli.events.BidEvents.*;
 import static cli.events.CountEvents.*;
+import static cli.events.MenuEvents.*;
 import static cli.events.PlayEvents.*;
 
 import java.util.List;
@@ -204,8 +199,8 @@ public class Adapter {
                         yield AdapterResponse.toDomain(new PlayerListCommand(List.of()));
                     }
                     List<Integer> indices = parser.parseNumbersInput(raw);
-                    List<Player> players = indices.stream()
-                            .map(i -> game.getPlayers().get(i - 1))
+                    List<PlayerId> players = indices.stream()
+                            .map(i -> game.getPlayers().get(i - 1).getId())
                             .toList();
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
@@ -232,17 +227,18 @@ public class Adapter {
                 case ParticipatingPlayersResult p -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
 
-                    List<Player> players = indices.stream()
+                    List<PlayerId> playerIds = indices.stream()
                             // 1. Map the user's 1-based input to the name they actually saw on screen
                             .map(i -> p.playerNames().get(i - 1))
-                            // 2. Map that name to the actual Player object in the game
+                            // 2. Map that name to the actual Player object in the game, then extract its ID
                             .map(name -> game.getPlayers().stream()
                                     .filter(player -> player.getName().equals(name))
                                     .findFirst()
+                                    .map(Player::getId) // Grab the ID instead of the whole Player object
                                     .orElseThrow(() -> new IllegalArgumentException("Player not found: " + name)))
                             .toList();
 
-                    yield AdapterResponse.toDomain(new PlayerListCommand(players));
+                    yield AdapterResponse.toDomain(new PlayerListCommand(playerIds));
                 }
 
                 // --- Play Card

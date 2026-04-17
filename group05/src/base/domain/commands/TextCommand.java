@@ -7,4 +7,3 @@ public record TextCommand(String text) implements GameCommand {
         }
     }
 }
-

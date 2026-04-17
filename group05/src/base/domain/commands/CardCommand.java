@@ -9,4 +9,3 @@ public record CardCommand(Card card) implements GameCommand {
         }
     }
 }
-

@@ -3,6 +3,7 @@ package cli;
 import base.domain.WhistGame;
 import base.domain.deck.Deck;
 import base.domain.player.*;
+import base.domain.strategy.*;
 import cli.events.IOEvent;
 
 import static cli.events.MenuEvents.*;

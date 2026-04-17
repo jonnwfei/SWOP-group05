@@ -1,5 +1,7 @@
 package cli.events;
 
+import base.domain.round.Round;
+
 import java.util.List;
 
 public non-sealed interface MenuEvents extends IOEvent {
@@ -29,6 +31,24 @@ public non-sealed interface MenuEvents extends IOEvent {
     }
 
     record WelcomeMenuIOEvent() implements MenuEvents {
+        public boolean needsInput() {
+            return true;
+        }
+    }
+
+    record AddHumanPlayerIOEvent() implements MenuEvents {
+        public boolean needsInput() {
+            return true;
+        }
+    }
+
+    record AddPlayerIOEvent() implements MenuEvents {
+        public boolean needsInput() {
+            return true;
+        }
+    }
+
+    record DeleteRoundIOEvent(List<Round> rounds) implements MenuEvents {
         public boolean needsInput() {
             return true;
         }

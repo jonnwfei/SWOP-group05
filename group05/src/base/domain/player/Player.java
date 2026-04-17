@@ -2,13 +2,12 @@ package base.domain.player;
 
 import base.domain.bid.Bid;
 import base.domain.card.Card;
-import base.domain.card.Rank;
 import base.domain.card.Suit;
+import base.domain.strategy.Strategy;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Represents a participant in the trick-taking card game.
@@ -22,7 +21,8 @@ import java.util.List;
  */
 public class Player {
     private final Strategy decisionStrategy;
-    private final String name;
+    private final String playerName;
+    private final PlayerId playerId;
     private final List<Card> currentHand;
     private Integer playerScore;
 
@@ -36,7 +36,8 @@ public class Player {
     public Player(Strategy decisionStrategy, String name) {
         if (decisionStrategy == null || name == null) throw new IllegalArgumentException("Strategy and name can't be null");
         this.decisionStrategy = decisionStrategy;
-        this.name = name;
+        this.playerName = name;
+        this.playerId = new PlayerId(UUID.randomUUID().toString());
         this.currentHand = new ArrayList<>();
         this.playerScore = 0;
     }
@@ -110,7 +111,7 @@ public class Player {
      *
      * @return the {@link Bid} chosen by the player's strategy.
      */
-    public Bid chooseBid() {return this.decisionStrategy.determineBid(this);}
+    public Bid chooseBid() {return this.decisionStrategy.determineBid(playerId, currentHand);}
 
     /**
      * updates the player score.
@@ -140,7 +141,13 @@ public class Player {
      *
      * @return the player's name.
      */
-    public String getName() {return this.name;}
+    public String getName() {return this.playerName;}
+
+    /**
+     * Retrieves the player's unique Id
+     * @return the player's Id.
+     */
+    public PlayerId getId() {return this.playerId;}
 
     /**
      * Exposes the strategy type for persistence mapping.
@@ -162,15 +169,5 @@ public class Player {
     public boolean hasCard(Card card) {
         if (card == null) throw new IllegalArgumentException("card can't be null.");
         return currentHand.stream().anyMatch(card::equals);
-    }
-
-    /** Returns the highest rank of a given suit, or null if the player is void in that suit */
-    public Rank getHighestRankOfSuit(Suit suit) {
-        if (suit == null) throw new IllegalArgumentException("suit can't be null.");
-        return currentHand.stream()
-                .filter(c -> c.suit() == suit)
-                .map(Card::rank)
-                .max(base.domain.card.Rank::compareTo)
-                .orElse(null);
     }
 }

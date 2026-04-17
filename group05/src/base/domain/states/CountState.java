@@ -4,6 +4,7 @@ import base.domain.WhistGame;
 
 import base.domain.commands.*;
 
+import base.domain.player.PlayerId;
 import base.domain.results.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
@@ -13,6 +14,7 @@ import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.round.Round;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static base.domain.bid.BidType.*;
@@ -32,11 +34,11 @@ public class CountState extends State {
     }
 
     private CountPhase currentPhase = CountPhase.START;
-    private int keuze;
+    private int nextStateDecision;
     private Bid bid;
     private BidType selectedBidType;
     private Suit trumpSuit;
-    private List<Player> participatingPlayers;
+    private List<PlayerId> participatingPlayerIds; // Upgraded to PlayerId
     private final GamePersistenceService persistenceService;
 
     public CountState(WhistGame game) {
@@ -78,13 +80,13 @@ public class CountState extends State {
             case SuitCommand s -> StateStep.stay(handleSuit(s.suit()));
             case PlayerListCommand p -> {
                 if (currentPhase == CountPhase.REMOVE_PLAYER_SELECT){
-                    yield StateStep.stay(handleRemovePlayer(p.players()));
+                    yield StateStep.stay(handleRemovePlayer(p.playerIds()));
                 }
                 else if (currentPhase == CountPhase.ADD_PLAYER){
-                    yield StateStep.stay(handleAddPlayer(p.players()));
+                    yield StateStep.stay(handleAddPlayer(p.playerIds()));
                 }
                 else{
-                    yield StateStep.stay(handlePlayerInput(p.players()));
+                    yield StateStep.stay(handlePlayerInput(p.playerIds()));
                 }
 
             }
@@ -116,11 +118,11 @@ public class CountState extends State {
         // PROMPT_NEXT_STATE
         return switch (value) {
             case 1 -> {
-                this.keuze = 1;
+                nextStateDecision = 1;
                 yield StateStep.transitionWithoutResult();
             }
             case 2 -> {
-                this.keuze = 2;
+                nextStateDecision = 2;
                 yield StateStep.transitionWithoutResult();
             }
             case 3 -> {
@@ -180,7 +182,7 @@ public class CountState extends State {
      *
      * @return GameEvent
      */
-    private GameResult handlePlayerInput(List<Player> players) {
+    private GameResult handlePlayerInput(List<PlayerId> players) {
         if (currentPhase == CountPhase.SELECT_PLAYERS) {
             // If empty, stay in the same phase and return the selection result again
             if (players == null || players.isEmpty()) {
@@ -189,10 +191,10 @@ public class CountState extends State {
                 return new PlayerSelectionResult(getGame().getPlayers(), multiSelect);
             }
 
-            this.participatingPlayers = players;
+            this.participatingPlayerIds = players;
 
             // safe to call getFirst() now
-            this.bid = selectedBidType.instantiate(participatingPlayers.getFirst(), trumpSuit);
+            this.bid = selectedBidType.instantiate(participatingPlayerIds.getFirst(), trumpSuit);
 
             if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;
@@ -213,11 +215,21 @@ public class CountState extends State {
      *
      * @return GameEvent
      */
-    private GameResult finalizeCalculation(int tricks, List<Player> winners) {
-        Player primaryBidder = participatingPlayers.getFirst();
+    private GameResult finalizeCalculation(int tricks, List<PlayerId> winnersId) {
+        Player primaryBidder = getGame().getPlayerById(participatingPlayerIds.getFirst());
         Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
         round.setHighestBid(bid);
         getGame().addRound(round);
+
+        List<Player> participatingPlayers = participatingPlayerIds
+                .stream()
+                .map(playerId -> getGame().getPlayerById(playerId))
+                .toList();
+
+        List<Player> winners = new ArrayList<>();
+        if (winnersId != null) {
+            winners = winnersId.stream().map(playerId -> getGame().getPlayerById(playerId)).toList();
+        }
 
         round.calculateScoresForCount(bid, tricks, participatingPlayers, winners);
 
@@ -249,11 +261,11 @@ public class CountState extends State {
     }
 
     // Called when PlayerListCommand arrives during REMOVE_PLAYER_SELECT
-    private GameResult handleRemovePlayer(List<Player> players) {
-        if (players.isEmpty()) {
+    private GameResult handleRemovePlayer(List<PlayerId> playerIds ) {
+        if (playerIds.isEmpty()) {
             return new PlayerSelectionResult(getGame().getPlayers(), false); // re-prompt
         }
-        getGame().removePlayer(players.getFirst());
+        getGame().removePlayer(playerIds.getFirst());
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
         return getScoreBoard();
     }
@@ -264,7 +276,7 @@ public class CountState extends State {
     /** Returns to a fresh CountState or the Main Menu. */
     @Override
     public State nextState() {
-        if (keuze == 1) {
+        if (nextStateDecision == 1){
             return new CountState(getGame());
         } else {
             return null;
