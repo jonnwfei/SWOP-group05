@@ -200,20 +200,18 @@ public class Adapter {
                 case ParticipatingPlayersResult p -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
 
-                    List<Player> players = indices.stream()
+                    List<PlayerId> playerIds = indices.stream()
                             // 1. Map the user's 1-based input to the name they actually saw on screen
                             .map(i -> p.playerNames().get(i - 1))
-                            // 2. Map that name to the actual Player object in the game
+                            // 2. Map that name to the actual Player object in the game, then extract its ID
                             .map(name -> game.getPlayers().stream()
                                     .filter(player -> player.getName().equals(name))
                                     .findFirst()
+                                    .map(Player::getId) // Grab the ID instead of the whole Player object
                                     .orElseThrow(() -> new IllegalArgumentException("Player not found: " + name)))
                             .toList();
 
-                    List<PlayerId> players = indices.stream()
-                            .map(i -> game.getPlayers().get(i - 1).getId())
-                           .toList();
-                    yield AdapterResponse.toDomain(new PlayerListCommand(players));
+                    yield AdapterResponse.toDomain(new PlayerListCommand(playerIds));
                 }
 
                 // --- Play Card
