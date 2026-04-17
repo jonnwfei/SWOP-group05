@@ -180,12 +180,14 @@ public class Round {
             throw new IllegalArgumentException("Trick must not be null.");
         if (trick.getTurns().size() != Trick.MAX_TURNS)
             throw new IllegalArgumentException("Trick is not completed yet");
-        if (this.playedTricks.size() >= MAX_TRICKS)
+        if (this.isFinished()) // Updated check
             throw new IllegalStateException("Cannot add trick: The round is already finished");
+
         this.playedTricks.add(trick);
         this.currentPlayer = trick.getWinningPlayer();
 
-        if (this.playedTricks.size() == MAX_TRICKS) {
+        // Only calculate scores automatically if we hit 13 and weren't already finished early
+        if (this.playedTricks.size() == MAX_TRICKS && !isEarlyFinished) {
             calculateScores();
         }
     }
@@ -254,10 +256,6 @@ public class Round {
      * @throws IllegalStateException if the round has not yet completed playing all 13 tricks
      */
     private void calculateScores() {
-        if (playedTricks.size() != MAX_TRICKS) {
-            throw new IllegalStateException(
-                    "Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got " + playedTricks.size());
-        }
         if (highestBid == null)
             throw new IllegalStateException("Cannot calculate scores: highestBid is null.");
 
@@ -518,8 +516,22 @@ public class Round {
      *
      * @return true if the round is finished, false otherwise.
      */
+    private boolean isEarlyFinished = false;
+
+    /**
+     * Flags the round as finished even if 13 tricks haven't been played.
+     * Use this for Miserie failures.
+     */
+    public void signalEarlyFinish() {
+        this.isEarlyFinished = true;
+        calculateScores(); // Trigger scoring immediately
+    }
+
+    /**
+     * Checks whether the round is finished (either 13 tricks or flagged early).
+     */
     public boolean isFinished() {
-        return playedTricks.size() == MAX_TRICKS;
+        return isEarlyFinished || playedTricks.size() == MAX_TRICKS;
     }
 
     public void setHighestBid(Bid bid) {
