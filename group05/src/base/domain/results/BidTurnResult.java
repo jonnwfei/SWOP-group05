@@ -6,7 +6,6 @@ import base.domain.card.Suit;
 import base.domain.player.Player;
 
 import java.util.List;
-import java.util.Objects;
 
 public record BidTurnResult(
         String playerName,
@@ -14,15 +13,24 @@ public record BidTurnResult(
         BidType currentHighestBid,
         List<BidType> availableBids,
         List<Card> hand,
-        Player player) implements GameResult {
+        Player player
+) implements GameResult {
 
     public BidTurnResult {
-        Objects.requireNonNull(playerName);
-        Objects.requireNonNull(availableBids);
-        Objects.requireNonNull(hand);
+        if (playerName == null || playerName.isBlank()) {
+            throw new IllegalArgumentException("PlayerName cannot be null or blank");
+        }
+        if (availableBids == null || availableBids.isEmpty() || availableBids.contains(null)) {
+            throw new IllegalArgumentException("AvailableBids cannot be null or empty or contain null elements");
+        }
+        if (hand == null || hand.isEmpty() ||  hand.contains(null)) {
+            throw new IllegalArgumentException("Hand cannot be null or empty or contain null elements");
+        }
+        if (player == null) {
+            throw new IllegalArgumentException("Player cannot be null");
+        }
 
         availableBids = List.copyOf(availableBids);
         hand = List.copyOf(hand);
     }
-
 }

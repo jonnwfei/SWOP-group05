@@ -6,7 +6,6 @@ import base.domain.bid.BidType;
 import base.domain.player.Player;
 
 import java.util.List;
-import java.util.Objects;
 
 public record BidSelectionResult(
         BidType[] availableBids,
@@ -14,16 +13,17 @@ public record BidSelectionResult(
 ) implements GameResult {
 
     public BidSelectionResult {
-        // Null checks
-        Objects.requireNonNull(availableBids, "availableBids cannot be null");
-        Objects.requireNonNull(players, "players cannot be null");
+        if (availableBids == null || availableBids.length == 0) {
+            throw new IllegalArgumentException("availableBids cannot be null or empty");
+        }
+        if (players == null || players.isEmpty()) {
+            throw new IllegalArgumentException("players cannot be null or empty");
+        }
 
-        // Defensive copies
         availableBids = availableBids.clone();
         players = List.copyOf(players);
     }
 
-    // Optional: extra safety for array getter
     @Override
     public BidType[] availableBids() {
         return availableBids.clone();

@@ -20,7 +20,7 @@ import java.util.List;
  * @author Tommy Wu
  * @since 24/02/2026
  */
-public class    Player {
+public class Player {
     private final Strategy decisionStrategy;
     private final String name;
     private final List<Card> currentHand;

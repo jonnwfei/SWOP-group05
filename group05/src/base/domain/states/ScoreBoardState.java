@@ -11,6 +11,16 @@ import base.storage.snapshots.SaveMode;
 
 import java.util.List;
 
+import base.domain.commands.*;
+import base.domain.results.*;
+
+/**
+ * Handles the end-of-round scoreboard display and provides options for where
+ * they can go next.
+ * 
+ * @author John Cai
+ * @since 09/03/2026
+ */
 public class ScoreBoardState extends State {
 
     private enum Phase {
@@ -31,8 +41,30 @@ public class ScoreBoardState extends State {
         super(game);
     }
 
+    /**
+     * Executes the scoreboard state without user input, typically when first
+     * entering the state.
+     *
+     * @return a GameEvent
+     */
     @Override
-    public GameResult executeState(GameCommand command) {
+    public StateStep executeState() {
+        // If waiting for save description
+        if (phase == Phase.SAVE_DESCRIPTION) {
+            return StateStep.stay(new SaveDescriptionResult());
+        }
+        // No command → just render scoreboard
+        return StateStep.stay(buildScoreBoard());
+    }
+
+    /**
+     * Processes the scoreboard interaction.
+     *
+     * @param command The user action
+     * @return a GameEvent
+     */
+    @Override
+    public StateStep executeState(GameCommand command) {
 
         return switch (phase) {
 
@@ -47,23 +79,23 @@ public class ScoreBoardState extends State {
                     yield switch (input) {
                         case 1, 2 -> {
                             this.choice = input;
-                            yield new ScoreBoardCompleteResult();
+                            yield StateStep.transitionWithoutResult();
                         }
                         case 3 -> {
                             phase = Phase.SAVE_DESCRIPTION;
-                            yield new SaveDescriptionResult();
+                            yield StateStep.stay(new SaveDescriptionResult());
                         }
                         case 4 -> {
                             phase = Phase.REMOVE_ROUND;
-                            yield new DeleteRoundResult(getGame().getRounds());
+                            yield StateStep.stay(new DeleteRoundResult(getGame().getRounds()));
                         }
                         case 5 -> {
                             phase = Phase.ADD_PLAYER_TYPE;
-                            yield new AddPlayerResult();
+                            yield StateStep.stay(new AddPlayerResult());
                         }
                         case 6 ->{
                             phase = Phase.REMOVE_PLAYER;
-                            yield new PlayerSelectionResult(getGame().getPlayers(), false);
+                            yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false));
                         }
                         default -> throw new IllegalStateException("Invalid scoreboard input: " + input);
                     };
@@ -82,8 +114,7 @@ public class ScoreBoardState extends State {
                     phase = Phase.SHOW;
                     yield buildScoreBoard();
                 }
-
-                default -> new SaveDescriptionResult();
+                default -> StateStep.stay(new SaveDescriptionResult());
             };
 
             // =========================================
@@ -96,7 +127,7 @@ public class ScoreBoardState extends State {
 
                         case 1 -> {
                             phase = Phase.ADD_PLAYER_NAME;
-                            yield new AddHumanPlayerResult(); // UI will return PlayerListCommand
+                            yield StateStep.stay(new AddHumanPlayerResult()); // UI will return PlayerListCommand
                         }
 
                         case 2 -> {
@@ -121,7 +152,7 @@ public class ScoreBoardState extends State {
                     }
                 }
 
-                default -> new AddPlayerResult();
+                default -> StateStep.stay(new AddPlayerResult());
             };
 
             // =========================================
@@ -131,7 +162,7 @@ public class ScoreBoardState extends State {
 
                 case PlayerListCommand p -> {
                     if (p.players().isEmpty()) {
-                        yield new AddHumanPlayerResult(); // retry
+                        yield StateStep.stay(new AddHumanPlayerResult()); // retry
                     }
 
                     getGame().addPlayer(p.players().getFirst());
@@ -139,12 +170,12 @@ public class ScoreBoardState extends State {
                     yield buildScoreBoard();
                 }
 
-                default -> new AddHumanPlayerResult();
+                default -> StateStep.stay(new AddHumanPlayerResult());
             };
             case REMOVE_PLAYER ->  switch (command){
                 case PlayerListCommand p -> {
                     if (p.players().isEmpty()) {
-                        yield new PlayerSelectionResult(getGame().getPlayers(), false); // retry
+                        yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false)); // retry
                     }
 
                     getGame().removePlayer(p.players().getFirst());
@@ -152,7 +183,7 @@ public class ScoreBoardState extends State {
                     yield buildScoreBoard();
                 }
 
-                default -> new PlayerSelectionResult(getGame().getPlayers(), false);
+                default -> StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false));
                 };
             case REMOVE_ROUND -> switch (command){
                 case RoundCommand r ->{
@@ -161,17 +192,17 @@ public class ScoreBoardState extends State {
                     phase = Phase.SHOW;
                     yield buildScoreBoard();
                 }
-                default -> new DeleteRoundResult(getGame().getRounds());
+                default -> StateStep.stay(new DeleteRoundResult(getGame().getRounds()));
             };
         };
     }
 
-    private GameResult buildScoreBoard() {
+    private StateStep buildScoreBoard() {
         List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
         List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
         boolean canRemove = getGame().getPlayers().size() > 4;
 
-        return new ScoreBoardResult(names, scores, canRemove);
+        return StateStep.stay(new ScoreBoardResult(names, scores, canRemove));
     }
 
     @Override
