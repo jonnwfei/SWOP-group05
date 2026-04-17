@@ -1,6 +1,7 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.bid.BidType;
 import base.domain.commands.*;
 import base.domain.strategy.HighBotStrategy;
 import base.domain.strategy.HumanStrategy;
@@ -96,7 +97,7 @@ public class ScoreBoardState extends State {
                         }
                         case 6 -> {
                             phase = Phase.REMOVE_PLAYER;
-                            yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false));
+                            yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
                         }
                         default -> throw new IllegalStateException("Invalid scoreboard input: " + input);
                     };
@@ -178,7 +179,7 @@ public class ScoreBoardState extends State {
             case REMOVE_PLAYER -> switch (command) {
                 case PlayerListCommand p -> {
                     if (p.playerIds().isEmpty()) {
-                        yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false)); // retry
+                        yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers())); // retry
                     }
 
                     Player newPlayer = getGame().getPlayerById(p.playerIds().getFirst());
@@ -187,7 +188,7 @@ public class ScoreBoardState extends State {
                     yield buildScoreBoard();
                 }
 
-                default -> StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false));
+                default -> StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
             };
             case REMOVE_ROUND -> switch (command) {
                 case NumberCommand n -> {

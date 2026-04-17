@@ -136,7 +136,7 @@ public class CountState extends State {
             }
             case 6 -> {
                 currentPhase = CountPhase.REMOVE_PLAYER_SELECT;
-                yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), false));
+                yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
             }
             default -> throw new IllegalStateException("Unexpected number input: " + value);
         };
@@ -274,7 +274,7 @@ public class CountState extends State {
             return getScoreBoard();
         }
         if (playerIds.isEmpty()) {
-            return new PlayerSelectionResult(getGame().getPlayers(), false); // re-prompt
+            return new PlayerSelectionResult(getGame().getPlayers()); // re-prompt
         }
         Player newPlayer = getGame().getPlayerById(playerIds.getFirst());
         getGame().removePlayer(newPlayer);

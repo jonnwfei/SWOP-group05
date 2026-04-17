@@ -26,6 +26,15 @@ public class Player {
     private Integer playerScore;
 
     /**
+     * Constructs a new player with a specific decision-making strategy and name.
+     * @param decisionStrategy the behavior strategy used to make bids and play cards.
+     * @param playerName the display name of the player.
+     */
+    public Player(Strategy decisionStrategy, String playerName) {
+        this(decisionStrategy, playerName, new PlayerId());
+    }
+
+    /**
      * Constructs a new player with a specific decision-making strategy, name, and unique identifier.
      * <p>
      * This constructor requires an explicit {@link PlayerId} to ensure identity preservation
