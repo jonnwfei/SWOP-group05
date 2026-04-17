@@ -21,7 +21,6 @@ public sealed interface GameResult permits
         ProposalRejected,
         SaveDescriptionResult,
         ScoreBoardResult,
-        StateDoneResult,
         SuitSelectionRequired,
         SuitSelectionResult,
         TrickHistoryResult {
