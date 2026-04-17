@@ -1,6 +1,7 @@
 package cli.adapter;
 
 import base.domain.WhistGame;
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.bid.SoloBid;
 import base.domain.card.Card;
@@ -10,6 +11,7 @@ import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.results.*;
 import base.domain.trick.Trick;
+import base.domain.trick.Turn;
 import cli.events.*;
 import cli.events.BidEvents.*;
 import cli.events.CountEvents.*;
@@ -55,10 +57,12 @@ class AdapterTest {
     @Test
     void handleResult_playCard_botPlayer_passesLeadingSuitFromTableUsingCaptor() {
         Card leadCard = new Card(Suit.SPADES, Rank.KING);
+        Turn turn = new Turn(botPlayer, leadCard);
+
         when(botPlayer.chooseCard(any())).thenReturn(TEST_CARD);
 
         PlayCardResult result = new PlayCardResult(
-                List.of(leadCard), false, List.of(), List.of(),
+                List.of(turn), false, List.of(), List.of(),
                 1, botPlayer, List.of(TEST_CARD), null
         );
 
@@ -106,6 +110,51 @@ class AdapterTest {
         AdapterResult.Immediate immediateResult = assertInstanceOf(AdapterResult.Immediate.class, adapterResult);
         BidCommand command = assertInstanceOf(BidCommand.class, immediateResult.command());
         assertEquals(BidType.SOLO, command.bid());
+    }
+
+    @Test
+    void handleResult_bidTurn_botPlayer_noTrumpRound_nonSuitBid_skipsTrumpResolution() {
+        Bid mockBid = mock(Bid.class);
+        when(mockBid.getType()).thenReturn(BidType.PASS);
+        when(botPlayer.chooseBid()).thenReturn(mockBid);
+
+        BidTurnResult result = new BidTurnResult(
+                "Bot", null, null,
+                List.of(BidType.PASS, BidType.MISERIE, BidType.OPEN_MISERIE), List.of(TEST_CARD), botPlayer
+        );
+
+        AdapterResult adapterResult = adapter.handleResult(result);
+
+        verify(mockBid, never()).determineTrump(any());
+
+        AdapterResult.Immediate immediateResult = assertInstanceOf(AdapterResult.Immediate.class, adapterResult);
+        BidCommand command = assertInstanceOf(BidCommand.class, immediateResult.command());
+        assertEquals(BidType.PASS, command.bid());
+        assertNull(command.suit());
+    }
+
+    @Test
+    void handleResult_bidTurn_botPlayer_noTrumpRound_suitBid_usesSafeTrumpForResolution() {
+        SoloBid mockBid = mock(SoloBid.class);
+        when(mockBid.getType()).thenReturn(BidType.SOLO);
+        when(mockBid.determineTrump(any())).thenReturn(Suit.HEARTS);
+        when(botPlayer.chooseBid()).thenReturn(mockBid);
+
+        BidTurnResult result = new BidTurnResult(
+                "Bot", null, null,
+                List.of(BidType.PASS, BidType.SOLO), List.of(TEST_CARD), botPlayer
+        );
+
+        AdapterResult adapterResult = adapter.handleResult(result);
+
+        ArgumentCaptor<Suit> suitCaptor = ArgumentCaptor.forClass(Suit.class);
+        verify(mockBid).determineTrump(suitCaptor.capture());
+        assertNotNull(suitCaptor.getValue());
+
+        AdapterResult.Immediate immediateResult = assertInstanceOf(AdapterResult.Immediate.class, adapterResult);
+        BidCommand command = assertInstanceOf(BidCommand.class, immediateResult.command());
+        assertEquals(BidType.SOLO, command.bid());
+        assertEquals(Suit.HEARTS, command.suit());
     }
 
     @Test
@@ -250,10 +299,11 @@ class AdapterTest {
     @Test
     void handleResponse_playCard_botPlayer_autoPlaysAndReturnsCommandWithCaptor() {
         Card leadCard = new Card(Suit.DIAMONDS, Rank.QUEEN);
+        Turn turn = new Turn(botPlayer, leadCard);
         when(botPlayer.chooseCard(any())).thenReturn(TEST_CARD);
 
         PlayCardResult result = new PlayCardResult(
-                List.of(leadCard), false, List.of(), List.of(),
+                List.of(turn), false, List.of(), List.of(),
                 1, botPlayer, List.of(TEST_CARD), null
         );
 

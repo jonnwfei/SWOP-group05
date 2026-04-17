@@ -157,15 +157,13 @@ public class PlayState extends State {
             }
         }
 
-        List<Card> tableCards = currentTrick.getTurns()
-                .stream()
-                .map(Turn::playedCard)
-                .toList();
+        List<Turn> turns = currentTrick.getTurns(); // TODO: cant we change this tableCards to Turns or smth and use the inbuilt toString printer
+
 
         List<Card> legalCards = currentTrick.getLegalCards(player);
 
         return new PlayCardResult(
-                tableCards,
+                turns,
                 isOpenMiserie,
                 exposedNames,
                 exposedHands,

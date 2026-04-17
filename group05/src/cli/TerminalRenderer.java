@@ -5,6 +5,7 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.results.PlayCardResult;
+import base.domain.trick.Turn;
 import cli.events.IOEvent;
 import cli.events.MessageIOEvent;
 
@@ -86,18 +87,18 @@ public class TerminalRenderer {
 
         // 1. Table Display
         System.out.println("\nCARDS ON TABLE:");
-        if (data.tableCards().isEmpty()) {
+        if (data.turns().isEmpty()) {
             System.out.println("  [ Empty ]");
         } else {
             // Displays cards in a horizontal-ish list for better flow
-            String table = String.join(" | ", data.tableCards().stream()
-                    .map(Card::toString).toList());
-            System.out.println("  ➜ " + table);
+            String table = String.join("\n | ", data.turns().stream()
+                    .map(Turn::toString).toList());
+            System.out.println(" | " + table);
         }
 
         // 2. Open Miserie (Exposed Hands)
         if (data.isOpenMiserie()) {
-            System.out.println("\n--- EXPOSED HANDS (OPEN MISERIE) ---");
+            System.out.println("\nEXPOSED HANDS (OPEN MISERIE)");
             for (int i = 0; i < data.exposedPlayerNames().size(); i++) {
                 String name = data.exposedPlayerNames().get(i);
                 List<Card> exposedHand = data.formattedExposedHands().get(i);

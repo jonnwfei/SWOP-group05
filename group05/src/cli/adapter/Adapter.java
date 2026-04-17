@@ -50,7 +50,7 @@ public class Adapter {
                 // BOT → immediate domain command
                 if (!player.getRequiresConfirmation()) {
                     Card chosen = player.chooseCard(
-                            p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit());
+                            p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
                     yield new AdapterResult.Immediate(new CardCommand(chosen));
                 }
 
@@ -68,8 +68,18 @@ public class Adapter {
 
                 if (!player.getRequiresConfirmation()) {
                     Bid botBid = player.chooseBid();
-                    // BidCommand with suit so domain skips SuitSelectionRequired
-                    Suit chosenTrump = botBid.determineTrump(b.trumpSuit());
+                    Suit dealtTrump = b.trumpSuit();
+
+                    // In no-trump rounds, avoid asking bids that mirror dealt trump to resolve from null.
+                    // For suit-requiring bids, pass a non-null placeholder so the bid can return its own chosen suit.
+                    Suit chosenTrump = null;
+                    if (botBid.getType().getRequiresSuit()) {
+                        Suit safeDealtTrump = dealtTrump != null ? dealtTrump : Suit.CLUBS;
+                        chosenTrump = botBid.determineTrump(safeDealtTrump);
+                    } else if (dealtTrump != null) {
+                        chosenTrump = botBid.determineTrump(dealtTrump);
+                    }
+
                     yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), chosenTrump));
                 }
 
@@ -229,7 +239,7 @@ public class Adapter {
                     // BOT: auto-play
                     if (!player.getRequiresConfirmation()) {
                         Card chosen = player
-                                .chooseCard(p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit());
+                                .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
 
                         yield AdapterResponse.toDomain(new CardCommand(chosen));
                     }
