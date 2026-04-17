@@ -1,6 +1,7 @@
 package base.storage.snapshots;
 
 import base.domain.bid.BidType;
+import base.domain.card.Suit;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,7 +30,8 @@ public record RoundSnapshot(
         int tricksWon,
         List<Integer> miserieWinnerIndices,
         int multiplier,
-        List<Integer> scoreDeltas
+    List<Integer> scoreDeltas,
+    Suit trumpSuit
         ) {
     /**
      * Defensive constructor for RoundSnapshot
@@ -83,5 +85,19 @@ public record RoundSnapshot(
         participantIndices = List.copyOf(participantIndices);
         miserieWinnerIndices = List.copyOf(miserieWinnerIndices);
         scoreDeltas = List.copyOf(scoreDeltas);
+    }
+
+    /**
+     * Backward-compatible constructor used by existing callers that do not persist trump yet.
+     */
+    public RoundSnapshot(
+            BidType bidType,
+            int bidderIndex,
+            List<Integer> participantIndices,
+            int tricksWon,
+            List<Integer> miserieWinnerIndices,
+            int multiplier,
+            List<Integer> scoreDeltas) {
+        this(bidType, bidderIndex, participantIndices, tricksWon, miserieWinnerIndices, multiplier, scoreDeltas, null);
     }
 }

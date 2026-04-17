@@ -3,18 +3,24 @@ package cli;
 import base.domain.WhistGame;
 import base.domain.deck.Deck;
 import base.domain.player.*;
+import base.storage.GamePersistenceService;
+import base.storage.snapshots.SaveMode;
 import base.domain.strategy.*;
 import cli.events.IOEvent;
 
 import static cli.events.MenuEvents.*;
 
+import java.util.List;
+
 public class MenuFlow {
 
     private final TerminalManager terminalManager;
+    private final GamePersistenceService persistenceService;
     private final WhistGame game;
 
-    public MenuFlow(TerminalManager terminalManager, WhistGame game) {
+    public MenuFlow(TerminalManager terminalManager, GamePersistenceService persistenceService, WhistGame game) {
         this.terminalManager = terminalManager;
+        this.persistenceService = persistenceService;
         this.game = game;
     }
 
@@ -28,6 +34,8 @@ public class MenuFlow {
             setupGame();
         else if (choice == 2)
             setupCount();
+        else if (choice == 3)
+            setupLoadSave();
 
     }
 
@@ -66,6 +74,27 @@ public class MenuFlow {
                 game.getPlayers().stream().map(Player::getName).toList()));
 
         game.startCount();
+    }
+
+    private void setupLoadSave() {
+        List<String> availableSaves = persistenceService.listDescriptions();
+        if (availableSaves.isEmpty()) {
+            System.out.println("No saved games found. Returning to main menu.");
+            run(); // re-run the menu flow to show the main menu again
+        }
+
+        int saveFileChoice = askInt(new LoadSaveIOEvent(availableSaves), 1, availableSaves.size());
+        String chosenDescription = availableSaves.get(saveFileChoice - 1); // off by one
+        SaveMode saveMode;
+        try {
+            saveMode = persistenceService.loadIntoGame(game, chosenDescription);
+            switch (saveMode) {
+                case GAME -> game.startGame();
+                case COUNT -> game.startCount();
+            }
+        } catch (Exception e) {
+            System.out.println("Error while loading game: " + e);
+        }
     }
 
     // --- Input Helpers ---

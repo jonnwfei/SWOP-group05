@@ -118,7 +118,7 @@ public class PlayState extends State {
             Player winningPlayer = getGame().getPlayerById(currentTrick.getWinningPlayerId());
 
             // Round registers the trick and automatically scores itself if it's the 13th or all miserie players won
-            currentRound.registerCompletedTrick(currentTrick);
+            currentRound.finalizeTrick(currentTrick);
 
             this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getTrumpSuit());
         } else {
@@ -138,12 +138,11 @@ public class PlayState extends State {
             populateExposedHands(exposedNames, exposedHands);
         }
 
-        List<Card> tableCards = currentTrick.getTurns().stream()
-                .map(PlayTurn::playedCard).toList();
+        List<PlayTurn> turns = currentTrick.getTurns();
         List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
 
         return new PlayCardResult(
-                tableCards, isOpenMiserie, exposedNames, exposedHands,
+                turns, isOpenMiserie, exposedNames, exposedHands,
                 currentRound.getTricks().size() + 1, player, legalCards,
                 currentRound.getLastPlayedTrick()
         );
@@ -162,6 +161,11 @@ public class PlayState extends State {
         }
     }
 
+    /**
+     * Determines the next state based on whether all tricks have been played.
+     * * @return ScoreBoardState if the round is finished, otherwise remains in
+     * PlayState.
+     */
     @Override
     public State nextState() {
         if (currentRound.isFinished()) {
