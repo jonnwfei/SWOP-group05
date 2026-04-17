@@ -187,6 +187,10 @@ public class SmartBotMemory implements GameObserver {
     public boolean isTeamWinning(PlayerId askingPlayerId) {
         if (askingPlayerId == null) throw new IllegalArgumentException("askingPlayerId cannot be null");
 
+        if (playersAtTable.isEmpty() || bidsMemory.size() < playersAtTable.size()) {
+            throw new IllegalStateException("State violation: Cannot evaluate teams before the bidding phase concludes.");
+        }
+
         PlayTurn winningPlayTurn = getCurrentWinningTurn();
 
         if (winningPlayTurn == null) {

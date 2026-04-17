@@ -110,16 +110,22 @@ class SmartBotMemoryTest {
         @Test
         @DisplayName("isTeamWinning correctly identifies partner in Proposal/Acceptance")
         void shouldIdentifyPartnershipWinning() {
-            // Arrange: P1 Proposes, P3 Accepts. They form a team[cite: 174, 178].
+            // Arrange: Start the round properly so the memory knows the 4 players at the table
+            memory.onRoundStarted(List.of(p1, p2, p3, p4));
+
+            // Arrange: P1 Proposes, P2 Passes, P3 Accepts, P4 Passes.
+            // We MUST have 4 bids to signify the end of the bidding phase!
             memory.onBidPlaced(new BidTurn(p1, BidType.PROPOSAL));
             memory.onBidPlaced(new BidTurn(p2, BidType.PASS));
             memory.onBidPlaced(new BidTurn(p3, BidType.ACCEPTANCE));
+            memory.onBidPlaced(new BidTurn(p4, BidType.PASS));
+
             memory.onTrumpDetermined(Suit.HEARTS);
 
             // Act: P1 (Partner) plays a winning card
             memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.ACE)));
 
-            // Assert: Partnership recognition is vital for bot heuristics [cite: 285, 286]
+            // Assert: Partnership recognition is vital for bot heuristics
             assertTrue(memory.isTeamWinning(p3), "P3 should recognize that their partner is winning the trick.");
             assertFalse(memory.isTeamWinning(p2), "Opponents should recognize their team is not winning.");
         }
