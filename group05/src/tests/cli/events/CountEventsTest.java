@@ -32,8 +32,8 @@ class CountEventsTest {
         List<Player> players = List.of(mockPlayer1, mockPlayer2);
 
         // Act
-        CountEvents.PlayerSelectionIOEvent eventSingle = new CountEvents.PlayerSelectionIOEvent(players, false);
-        CountEvents.PlayerSelectionIOEvent eventMulti = new CountEvents.PlayerSelectionIOEvent(players, true);
+        CountEvents.PlayerSelectionIOEvent eventSingle = new CountEvents.PlayerSelectionIOEvent(players, false, BidType.SOLO);
+        CountEvents.PlayerSelectionIOEvent eventMulti = new CountEvents.PlayerSelectionIOEvent(players, true, BidType.SOLO);
 
         // Assert
         assertEquals(players, eventSingle.players(), "Should store the exact player list");

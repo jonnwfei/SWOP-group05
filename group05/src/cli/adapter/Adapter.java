@@ -110,7 +110,7 @@ public class Adapter {
             case PlayerSelectionResult p ->
                 new AdapterResult.NeedsIO(
                         List.of(),
-                        new PlayerSelectionIOEvent(p.players(), p.multiSelect()));
+                        new PlayerSelectionIOEvent(p.players(), p.multiSelect(), p.type()));
 
             case AmountOfTrickWonResult ignored ->
                 new AdapterResult.NeedsIO(List.of(), new TrickInputIOEvent());
@@ -162,17 +162,33 @@ public class Adapter {
                 // --- Bidding State ---
                 case BidTurnResult b -> {
                     int choice = parser.parseNumberInput(raw);
+
+                    if (choice < 1 || choice > b.availableBids().size()) {
+                        throw new IllegalArgumentException("Invalid bid selection");
+                    }
+
                     yield AdapterResponse.toDomain(
                             new BidCommand(b.availableBids().get(choice - 1)));
                 }
                 case SuitSelectionRequired ignored -> {
                     int choice = parser.parseNumberInput(raw);
+
+                    if (choice < 1 || choice > Suit.values().length) {
+                        throw new IllegalArgumentException("Invalid suit selection");
+                    }
+
                     yield AdapterResponse.toDomain(new SuitCommand(Suit.values()[choice - 1]));
                 }
 
                 case ProposalRejected ignored -> {
                     int choice = parser.parseNumberInput(raw);
-                    yield AdapterResponse.toDomain(new BidCommand(choice == 1 ? BidType.PASS : BidType.SOLO_PROPOSAL));
+
+                    if (choice != 1 && choice != 2) {
+                        throw new IllegalArgumentException("Invalid choice");
+                    }
+
+                    yield AdapterResponse.toDomain(
+                            new BidCommand(choice == 1 ? BidType.PASS : BidType.SOLO_PROPOSAL));
                 }
 
                 case BiddingCompleted ignored -> AdapterResponse.toDomain(null);
@@ -185,27 +201,50 @@ public class Adapter {
 
                 case SuitSelectionResult ignored -> {
                     int choice = parser.parseNumberInput(raw);
+
+                    if (choice < 1 || choice > Suit.values().length) {
+                        throw new IllegalArgumentException("Invalid suit selection");
+                    }
+
                     yield AdapterResponse.toDomain(new SuitCommand(Suit.values()[choice - 1]));
                 }
 
-                case PlayerSelectionResult ignored -> {
+                case PlayerSelectionResult p -> {
                     if (raw.equals("0")) {
+                        if (requiresAtLeastOne(p.type())) {
+                            throw new IllegalArgumentException("At least one player required");
+                        }
                         yield AdapterResponse.toDomain(new PlayerListCommand(List.of()));
                     }
+
                     List<Integer> indices = parser.parseNumbersInput(raw);
+
                     List<PlayerId> players = indices.stream()
                             .map(i -> game.getPlayers().get(i - 1).getId())
                             .toList();
+
+                    validatePlayerSelection(p.type(), players.size());
+
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
 
                 case AmountOfTrickWonResult ignored -> {
                     int tricks = parser.parseNumberInput(raw);
+
+                    if (tricks < 0 || tricks > 13) {
+                        throw new IllegalArgumentException("Tricks cannot be negative");
+                    }
                     yield AdapterResponse.toDomain(new NumberCommand(tricks));
                 }
 
                 case ScoreBoardResult ignored -> {
                     int choice = parser.parseNumberInput(raw);
+
+                    // TODO: define valid range (depends on UI options)
+                    if (choice < 1) {
+                        throw new IllegalArgumentException("Invalid scoreboard selection");
+                    }
+
                     yield AdapterResponse.toDomain(new NumberCommand(choice));
                 }
 
@@ -221,14 +260,19 @@ public class Adapter {
                 case ParticipatingPlayersResult p -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
 
+                    int max = p.playerNames().size();
+                    for (int i : indices) {
+                        if (i < 1 || i > max) {
+                            throw new IllegalArgumentException("Player index out of range");
+                        }
+                    }
+
                     List<PlayerId> playerIds = indices.stream()
-                            // 1. Map the user's 1-based input to the name they actually saw on screen
                             .map(i -> p.playerNames().get(i - 1))
-                            // 2. Map that name to the actual Player object in the game, then extract its ID
                             .map(name -> game.getPlayers().stream()
                                     .filter(player -> player.getName().equals(name))
                                     .findFirst()
-                                    .map(Player::getId) // Grab the ID instead of the whole Player object
+                                    .map(Player::getId)
                                     .orElseThrow(() -> new IllegalArgumentException("Player not found: " + name)))
                             .toList();
 
@@ -238,7 +282,7 @@ public class Adapter {
                 // --- Play Card
                 case PlayCardResult p -> {
                     Player player = p.player();
-                    // BOT: auto-play
+
                     if (!player.getRequiresConfirmation()) {
                         Card chosen = player
                                 .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
@@ -246,7 +290,6 @@ public class Adapter {
                         yield AdapterResponse.toDomain(new CardCommand(chosen));
                     }
 
-                    // HUMAN: parse input
                     int choice = parser.parseNumberInput(raw);
 
                     if (choice == 0) {
@@ -258,9 +301,10 @@ public class Adapter {
                         }
                     }
 
-                    if (choice < 1 || choice > p.legalCards().size()) {
-                        yield AdapterResponse.uiOnly(
-                                new MessageIOEvent("Invalid selection. Choose 0 to " + p.legalCards().size()));
+                    int max = p.legalCards().size();
+
+                    if (choice < 1 || choice > max) {
+                        throw new IllegalArgumentException("Invalid card selection");
                     }
 
                     Card selected = p.legalCards().get(choice - 1);
@@ -270,5 +314,32 @@ public class Adapter {
         } catch (Exception e) {
             return AdapterResponse.uiOnly(new MessageIOEvent("Invalid input: \"" + raw + "\". Please try again."));
         }
+    }
+    private void validatePlayerSelection(BidType type, int count) {
+        switch (type) {
+            case MISERIE, OPEN_MISERIE -> {
+                if (count < 1) {
+                    throw new IllegalArgumentException("At least one player required");
+                }
+            }
+            case PROPOSAL, TROEL, TROELA -> {
+                if (count != 2) {
+                    throw new IllegalArgumentException("Exactly two players required");
+                }
+            }
+            default -> {
+                if (count != 1) {
+                    throw new IllegalArgumentException("Exactly one player required");
+                }
+            }
+        }
+    }
+
+    private boolean requiresAtLeastOne(BidType type) {
+        return switch (type) {
+            case MISERIE, OPEN_MISERIE -> false;
+            case PROPOSAL, TROEL, TROELA -> true;
+            default -> true;
+        };
     }
 }
