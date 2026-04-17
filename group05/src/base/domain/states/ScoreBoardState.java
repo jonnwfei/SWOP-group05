@@ -3,11 +3,13 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.bid.BidType;
 import base.domain.commands.*;
+import base.domain.player.PlayerId;
 import base.domain.strategy.HighBotStrategy;
 import base.domain.strategy.HumanStrategy;
 import base.domain.strategy.LowBotStrategy;
 import base.domain.player.Player;
 import base.domain.results.*;
+import base.domain.strategy.SmartBotStrategy;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
 
@@ -133,7 +135,8 @@ public class ScoreBoardState extends State {
                         }
 
                         case 2 -> {
-                            getGame().addPlayer(new Player(new HighBotStrategy(), "Smart bot")); // TODO: change to SmartBot after TOmmy merge
+                            PlayerId playerId = new PlayerId();
+                            getGame().addPlayer(new Player(new SmartBotStrategy(playerId), "Smart bot", playerId));
                             phase = Phase.SHOW;
                             yield buildScoreBoard();
                         }
