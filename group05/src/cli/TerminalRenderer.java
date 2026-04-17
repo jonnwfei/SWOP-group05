@@ -45,10 +45,20 @@ public class TerminalRenderer {
             case BotStrategyIOEvent e -> renderBotStrategyEvent(e);
             case PrintNamesIOEvent e -> renderPrintNamesEvent(e);
             case MessageIOEvent t -> renderMessageEvent(t);
+            case LoadSaveIOEvent l -> renderLoadSaveEvent(l);
             default -> throw new IllegalStateException("Unhandled IOEvent: " + event);
         }
     }
 
+    private void renderLoadSaveEvent(LoadSaveIOEvent l) {
+        List<String> saveDescriptions = l.availableSaves();
+        System.out.println("\n========================================");
+        System.out.println("SELECT A SAVE TO LOAD:");
+        for (int i = 0; i < saveDescriptions.size(); i++) {
+            System.out.printf("[%2d] %s%n", (i + 1), saveDescriptions.get(i));
+        }
+        System.out.println("Your choice: ");
+    }
 
     private void renderConfigEvent(ConfirmationIOEvent e) {
         System.out.println("\n========================================");

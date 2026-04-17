@@ -1,6 +1,7 @@
 package base.storage;
 
 import base.domain.bid.BidType;
+import base.domain.card.Suit;
 import base.storage.snapshots.GameSnapshot;
 import base.storage.snapshots.PlayerSnapshot;
 import base.storage.snapshots.RoundSnapshot;
@@ -219,6 +220,7 @@ public class SaveRepository {
             RoundSnapshot round = snapshot.rounds().get(i);
             String prefix = "round." + i + ".";
             properties.setProperty(prefix + "bidType", round.bidType().name());
+            properties.setProperty(prefix + "trumpSuit", round.trumpSuit() == null ? "NONE" : round.trumpSuit().name());
             properties.setProperty(prefix + "bidderIndex", String.valueOf(round.bidderIndex()));
             properties.setProperty(prefix + "tricksWon", String.valueOf(round.tricksWon()));
             properties.setProperty(prefix + "multiplier", String.valueOf(round.multiplier()));
@@ -274,6 +276,8 @@ public class SaveRepository {
             for (int i = 0; i < roundCount; i++) {
                 String prefix = "round." + i + ".";
                 BidType bidType = BidType.valueOf(properties.getProperty(prefix + "bidType", BidType.PASS.name()));
+                String rawTrumpSuit = properties.getProperty(prefix + "trumpSuit", "NONE");
+                Suit trumpSuit = "NONE".equals(rawTrumpSuit) ? null : Suit.valueOf(rawTrumpSuit);
                 int bidderIndex = Integer.parseInt(properties.getProperty(prefix + "bidderIndex", "0"));
                 int tricksWon = Integer.parseInt(properties.getProperty(prefix + "tricksWon", "-1"));
                 int multiplier = Integer.parseInt(properties.getProperty(prefix + "multiplier", "1"));
@@ -303,7 +307,8 @@ public class SaveRepository {
                         tricksWon,
                         miserieWinnerIndices,
                         multiplier,
-                        scoreDeltas));
+                    scoreDeltas,
+                    trumpSuit));
             }
             return new GameSnapshot(description, mode, dealerIndex, players, rounds);
         } catch (RuntimeException e) {
