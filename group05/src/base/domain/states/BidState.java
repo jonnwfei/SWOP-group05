@@ -4,6 +4,7 @@ import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
+import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.commands.BidCommand;
@@ -19,6 +20,7 @@ import base.domain.results.SuitSelectionRequired;
 import base.domain.turn.BidTurn;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -89,25 +91,18 @@ public class BidState extends State {
      */
     private void applyForcedBids() {
         for (Player player : getGame().getPlayers()) {
-
-            long aceCount = player.getHand().stream()
-                    .filter(card -> card.rank() == Rank.ACE)
-                    .count();
+            long aceCount = countAces(player);
 
             if (aceCount == 3) {
-                // The missing Ace's suit becomes the Trump suit for Troel
-                Suit missingSuit = java.util.Arrays.stream(Suit.values())
-                        .filter(suit -> player.getHand().stream()
-                                .noneMatch(c -> c.rank() == Rank.ACE && c.suit() == suit))
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Critical Error: Could not find the missing Ace suit for Troel."));
-
+                Suit missingSuit = findMissingAceSuit(player);
                 Bid forcedBid = BidType.TROEL.instantiate(player.getId(), missingSuit);
+
                 commitBid(forcedBid);
                 playersWhoTookTurn.add(player.getId());
                 break;
             } else if (aceCount == 4) {
                 Bid forcedBid = BidType.TROELA.instantiate(player.getId(), Suit.HEARTS);
+
                 commitBid(forcedBid);
                 playersWhoTookTurn.add(player.getId());
                 break;
@@ -119,33 +114,11 @@ public class BidState extends State {
     // State Execution & Transitions
     // =========================================================================
 
-    /**
-     * Processes incoming bidding commands from the adapter.
-     * Handles the initial entry into the bidding phase by returning the current
-     * turn result,
-     * and then delegates to the overloaded executeState(GameCommand) for any actual
-     * commands received.
-     *
-     * @return GameResult
-     * @throws IllegalArgumentException if the provided command is null.
-     * @throws IllegalStateException    if an unexpected command type is provided.
-     */
     @Override
     public StateStep executeState() {
         return StateStep.stay(buildBidTurnResult());
     }
 
-    /**
-     * Processes incoming bidding commands from the adapter.
-     * Handles standard bids, suit selection for bids that require it, rejected
-     * proposals,
-     * and safely fast-forwards through automated Bot turns.
-     *
-     * @param command The domain command from the adapter.
-     * @return GameResult
-     * @throws IllegalArgumentException if the provided command is null.
-     * @throws IllegalStateException if an unexpected command type is provided.
-     */
     @Override
     public StateStep executeState(GameCommand command) {
         GameResult earlyReturn = switch (command) {
@@ -164,14 +137,6 @@ public class BidState extends State {
         return StateStep.stay(buildBidTurnResult());
     }
 
-    /**
-     * Determines the next state to transition to after the bidding phase concludes.
-     * If everyone passed, the round is aborted and reshuffled for a new BidState.
-     * Otherwise, prepares the round and transitions to the PlayState.
-     *
-     * @return State The next state in the game lifecycle.
-     * @throws IllegalStateException if called before all players have successfully bid.
-     */
     @Override
     public State nextState() {
         if (!isBiddingComplete()) {
@@ -202,17 +167,7 @@ public class BidState extends State {
         }
 
         if (chosenBidType.getRequiresSuit()) {
-            if (preSuppliedSuit != null) {
-                commitBid(chosenBidType.instantiate(currentPlayer.getId(), preSuppliedSuit));
-                playersWhoTookTurn.add(currentPlayer.getId());
-                updateCurrentPlayer();
-                return null;
-            }
-            if (pendingBidType != null) {
-                throw new IllegalStateException("State violation: pendingBidType is already set.");
-            }
-            this.pendingBidType = chosenBidType;
-            return new SuitSelectionRequired(currentPlayer.getName(), chosenBidType, Suit.values());
+            return processSuitRequirement(chosenBidType, preSuppliedSuit);
         }
 
         commitBid(chosenBidType.instantiate(currentPlayer.getId(), null));
@@ -309,35 +264,14 @@ public class BidState extends State {
             throw new IllegalStateException("Cannot prepare play state: highest bid is an unresolved rejected proposal");
         }
 
-        WhistGame game = this.getGame();
-        List<Player> players = game.getPlayers();
-        Player firstPlayer = game.getNextPlayer(game.getDealerPlayer()); // Default: player after dealer
-
-        // Override first player based on specific bid rules
-        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE ||
-                this.currentHighestBidType.getCategory() == BidCategory.SOLO) {
-
-            firstPlayer = game.getPlayerById(findBid(currentHighestBidType).getPlayerId());
-
-        } else if (this.currentHighestBidType.getCategory() == BidCategory.TROEL) {
-
-            Bid troelBid = findBid(currentHighestBidType);
-
-            // TROEL RULE: The partner (who holds the 4th Ace) MUST start the first trick.
-            PlayerId partnerId = troelBid.getTeam(this.bids, players).stream()
-                    .filter(p -> !p.equals(troelBid.getPlayerId()))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("No partner found in the Troel team!"));
-
-            firstPlayer = game.getPlayerById(partnerId);
-        }
-
         Bid winningBid = findBid(currentHighestBidType);
         if (winningBid == null) {
             throw new IllegalStateException("Critical error: The declared winning bid (" + currentHighestBidType + ") is not present in the bids list.");
         }
 
-        game.getCurrentRound().startPlayPhase(this.bids, winningBid, this.currentTrumpSuit, firstPlayer);
+        Player firstPlayer = determineFirstPlayerToLead(winningBid);
+
+        getGame().getCurrentRound().startPlayPhase(this.bids, winningBid, this.currentTrumpSuit, firstPlayer);
     }
 
     // =========================================================================
@@ -394,6 +328,55 @@ public class BidState extends State {
         Bid proposalBid = findBid(BidType.PROPOSAL);
         bids.remove(proposalBid);
         currentHighestBidType = BidType.PASS;
+    }
+
+    // =========================================================================
+    // GRASP HELPER FUNCTIONS (Newly extracted for High Cohesion)
+    // =========================================================================
+
+    private long countAces(Player player) {
+        return Arrays.stream(Suit.values())
+                .filter(suit -> player.hasCard(new Card(suit, Rank.ACE)))
+                .count();
+    }
+
+    private Suit findMissingAceSuit(Player player) {
+        return Arrays.stream(Suit.values())
+                .filter(suit -> !player.hasCard(new Card(suit, Rank.ACE)))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Critical Error: Could not find the missing Ace suit for Troel."));
+    }
+
+    private GameResult processSuitRequirement(BidType chosenBidType, Suit preSuppliedSuit) {
+        if (preSuppliedSuit != null) {
+            commitBid(chosenBidType.instantiate(currentPlayer.getId(), preSuppliedSuit));
+            playersWhoTookTurn.add(currentPlayer.getId());
+            updateCurrentPlayer();
+            return null;
+        }
+        if (pendingBidType != null) {
+            throw new IllegalStateException("State violation: pendingBidType is already set.");
+        }
+        this.pendingBidType = chosenBidType;
+        return new SuitSelectionRequired(currentPlayer.getName(), chosenBidType, Suit.values());
+    }
+
+    private Player determineFirstPlayerToLead(Bid winningBid) {
+        WhistGame game = this.getGame();
+        List<Player> players = game.getPlayers();
+
+        if (winningBid.getType().getCategory() == BidCategory.ABONDANCE ||
+                winningBid.getType().getCategory() == BidCategory.SOLO) {
+            return game.getPlayerById(winningBid.getPlayerId());
+        } else if (winningBid.getType().getCategory() == BidCategory.TROEL) {
+            PlayerId partnerId = winningBid.getTeam(this.bids, players).stream()
+                    .filter(p -> !p.equals(winningBid.getPlayerId()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("No partner found in the Troel team!"));
+            return game.getPlayerById(partnerId);
+        }
+
+        return game.getNextPlayer(game.getDealerPlayer()); // Default
     }
 
     // =========================================================================
