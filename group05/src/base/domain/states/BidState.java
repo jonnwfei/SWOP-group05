@@ -366,6 +366,7 @@ public class BidState extends State {
             case PASS -> { return true; }
             case ACCEPTANCE -> { if (currentHighestBidType != BidType.PROPOSAL) return false; }
             case SOLO_PROPOSAL -> { if (!isBiddingComplete()) return false; }
+            case TROEL, TROELA -> { return false; }
             default -> {}
         }
 
