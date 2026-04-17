@@ -20,7 +20,7 @@ class BidTypeTest {
     @BeforeEach
     void setUp() {
         // Arrange: Using lightweight PlayerId instead of physical Player objects
-        testPlayerId = new PlayerId("player-123");
+        testPlayerId = new PlayerId();
         testSuit = Suit.HEARTS;
     }
 

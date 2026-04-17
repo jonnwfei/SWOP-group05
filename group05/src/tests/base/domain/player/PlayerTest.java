@@ -5,7 +5,7 @@ import base.domain.bid.SoloBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.strategy.HumanStrategy; // Using a concrete implementation
+import base.domain.strategy.HumanStrategy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,19 +29,22 @@ import static org.mockito.Mockito.*;
 class PlayerTest {
 
     @Mock
-    private HumanStrategy mockStrategy; // Mocking the class avoids sealed interface restrictions
+    private HumanStrategy mockStrategy;
 
     @Mock
-    private SoloBid mockBid; // Mock a concrete class instead of the sealed 'Bid' interface
+    private SoloBid mockBid;
 
     private AutoCloseable mocks;
     private Player player;
+    private PlayerId defaultPlayerId;
 
     @BeforeEach
     void setUp() {
         mocks = MockitoAnnotations.openMocks(this);
-        // HumanStrategy implements Strategy, so this is type-safe
-        player = new Player(mockStrategy, "Alice");
+        defaultPlayerId = new PlayerId();
+
+        // Using the updated constructor signature: (Strategy, String, PlayerId)
+        player = new Player(mockStrategy, "Alice", defaultPlayerId);
     }
 
     @AfterEach
@@ -56,9 +59,11 @@ class PlayerTest {
     class ConstructorTests {
 
         @Test
-        @DisplayName("Should initialize player with a unique ID and empty state")
+        @DisplayName("Should initialize player with an explicit ID and empty state")
         void createsPlayerSuccessfully() {
             assertNotNull(player.getId());
+            assertNotNull(player.getId().id()); // Ensure the internal UUID exists
+            assertEquals(defaultPlayerId, player.getId());
             assertEquals("Alice", player.getName());
             assertEquals(0, player.getScore());
             assertTrue(player.getHand().isEmpty());
@@ -66,10 +71,14 @@ class PlayerTest {
         }
 
         @Test
-        @DisplayName("Should reject null strategy or name")
+        @DisplayName("Should reject null strategy, name, or explicit ID")
         void throwsOnNullInputs() {
-            assertThrows(IllegalArgumentException.class, () -> new Player(null, "Alice"));
-            assertThrows(IllegalArgumentException.class, () -> new Player(mockStrategy, null));
+            PlayerId validId = new PlayerId();
+
+            // Testing the single primary constructor constraints
+            assertThrows(IllegalArgumentException.class, () -> new Player(null, "Alice", validId));
+            assertThrows(IllegalArgumentException.class, () -> new Player(mockStrategy, null, validId));
+            assertThrows(IllegalArgumentException.class, () -> new Player(mockStrategy, "Alice", null));
         }
     }
 
@@ -113,7 +122,8 @@ class PlayerTest {
             player.removeCard(heartTen);
             assertTrue(player.getHand().isEmpty());
 
-            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> player.removeCard(heartTen));
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> player.removeCard(heartTen));
             assertTrue(exception.getMessage().contains("not in player hand"));
         }
     }
@@ -135,7 +145,7 @@ class PlayerTest {
         }
 
         @Test
-        @DisplayName("chooseBid() should delegate decision to strategy")
+        @DisplayName("chooseBid() should delegate decision to strategy using player's ID")
         void delegatesChooseBid() {
             when(mockStrategy.determineBid(eq(player.getId()), anyList())).thenReturn(mockBid);
 

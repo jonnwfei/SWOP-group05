@@ -28,8 +28,8 @@ class TroelBidTest {
 
     @BeforeEach
     void setUp() {
-        testPlayerId = new PlayerId("troel-bidder");
-        partnerId = new PlayerId("forced-partner");
+        testPlayerId = new PlayerId();
+        partnerId = new PlayerId();
     }
 
     @Test
@@ -118,7 +118,7 @@ class TroelBidTest {
         // Bidder's hand is ignored by the algorithm because they cannot be their own partner
 
         Player mockBystander = mock(Player.class);
-        when(mockBystander.getId()).thenReturn(new PlayerId("bystander"));
+        when(mockBystander.getId()).thenReturn(new PlayerId());
         when(mockBystander.getHand()).thenReturn(List.of(new Card(Suit.HEARTS, Rank.TWO)));
 
         Player mockPartner = mock(Player.class);

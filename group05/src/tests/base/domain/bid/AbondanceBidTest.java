@@ -24,7 +24,7 @@ class AbondanceBidTest {
     @BeforeEach
     void setUp() {
         // Arrange
-        testPlayerId = new PlayerId("player-123");
+        testPlayerId = new PlayerId();
         abondanceBidType = BidType.ABONDANCE_9; // Assumes this belongs to BidCategory.ABONDANCE
         chosenTrump = Suit.SPADES;
 

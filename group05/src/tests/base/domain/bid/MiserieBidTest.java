@@ -25,7 +25,7 @@ class MiserieBidTest {
     @BeforeEach
     void setUp() {
         // Arrange
-        testPlayerId = new PlayerId("player-123");
+        testPlayerId = new PlayerId();
         miserieBidType = BidType.MISERIE;
         bid = new MiserieBid(testPlayerId, miserieBidType);
     }
@@ -73,8 +73,8 @@ class MiserieBidTest {
     @DisplayName("getTeam() returns all players who played this exact type of Miserie")
     void getTeam_MultipleMiserieBids_ReturnsAllMatchingPlayerIds() {
         // Arrange
-        PlayerId player2Id = new PlayerId("player-456");
-        PlayerId player3Id = new PlayerId("player-789");
+        PlayerId player2Id = new PlayerId();
+        PlayerId player3Id = new PlayerId();
 
         // Mock 1: Another normal Miserie bid
         Bid mockMiserie = mock(Bid.class);

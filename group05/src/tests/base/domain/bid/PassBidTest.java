@@ -22,7 +22,7 @@ class PassBidTest {
     @BeforeEach
     void setUp() {
         // Arrange
-        testPlayerId = new PlayerId("passer-123");
+        testPlayerId = new PlayerId();
         bid = new PassBid(testPlayerId);
     }
 

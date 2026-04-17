@@ -24,7 +24,7 @@ class SoloBidTest {
     @BeforeEach
     void setUp() {
         // Arrange
-        testPlayerId = new PlayerId("solo-player-123");
+        testPlayerId = new PlayerId();
         soloBidType = BidType.SOLO;
         chosenTrump = Suit.DIAMONDS;
 

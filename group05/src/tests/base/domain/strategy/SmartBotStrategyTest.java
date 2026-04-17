@@ -26,7 +26,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("SmartBot AI Strategy Rules & Tactics")
 class SmartBotStrategyTest {
     private SmartBotStrategy strategy;
-    private final PlayerId botId = new PlayerId("smart-bot-007");
+    private final PlayerId botId = new PlayerId();
 
     // 1. Remove the @Mock annotations
     private SmartBotMemory mockMemory;
@@ -211,7 +211,7 @@ class SmartBotStrategyTest {
             when(mockMemory.isLeadPlayer()).thenReturn(false);
 
             // Assume the opponent played a Jack.
-            PlayTurn playTurn = new PlayTurn(new PlayerId("opponent"), new Card(Suit.HEARTS, Rank.JACK));
+            PlayTurn playTurn = new PlayTurn(new PlayerId(), new Card(Suit.HEARTS, Rank.JACK));
             when(mockMemory.getCurrentWinningTurn()).thenReturn(playTurn);
 
             Card played = strategy.chooseCardToPlay(hand, Suit.HEARTS);
@@ -225,7 +225,7 @@ class SmartBotStrategyTest {
     @DisplayName("Play Phase Tactics: ANTI-MISERIE Mode")
     class AntiMiserieTacticTests {
 
-        private final PlayerId opponentId = new PlayerId("opponent-miserie");
+        private final PlayerId opponentId = new PlayerId();
 
         @BeforeEach
         void setupAntiMiserieMode() {
