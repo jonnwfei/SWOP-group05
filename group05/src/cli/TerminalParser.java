@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 /**
  * Utility for parsing and sanitizing terminal input into structured data.
- * * @author Stan Kestens
+ * @author Stan Kestens
  * @since 02/03/2026
  */
 public class TerminalParser {

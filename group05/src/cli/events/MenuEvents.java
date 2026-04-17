@@ -4,7 +4,7 @@ import base.domain.round.Round;
 
 import java.util.List;
 
-public non-sealed interface MenuEvents extends IOEvent {
+public sealed interface MenuEvents extends IOEvent {
 
     record AmountOfBotsIOEvent() implements MenuEvents {
         public boolean needsInput() {
