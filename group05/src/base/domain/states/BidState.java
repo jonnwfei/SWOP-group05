@@ -31,11 +31,12 @@ import java.util.List;
 public class BidState extends State {
     private final List<Bid> bids;
     private final List<PlayerId> playersWhoTookTurn; // Explicit turn tracking
-    private BidType currentHighestBidType;
-    private Player currentPlayer;
     private final Suit dealtTrumpSuit;
+
+    private BidType currentHighestBidType;
     private Suit currentTrumpSuit;
     private BidType pendingBidType;
+    private Player currentPlayer;
 
     /**
      * Initializes a new bidding round, deals cards, determines the initial trump
@@ -114,6 +115,10 @@ public class BidState extends State {
         }
     }
 
+    // =========================================================================
+    // State Execution & Transitions
+    // =========================================================================
+
     /**
      * Processes incoming bidding commands from the adapter.
      * Handles the initial entry into the bidding phase by returning the current
@@ -159,16 +164,31 @@ public class BidState extends State {
         return StateStep.stay(buildBidTurnResult());
     }
 
-    private BidTurnResult buildBidTurnResult() {
-        return new BidTurnResult(
-                currentPlayer.getName(),
-                currentTrumpSuit,
-                currentHighestBidType,
-                getLegalBids(),
-                currentPlayer.getHand(),
-                currentPlayer
-        );
+    /**
+     * Determines the next state to transition to after the bidding phase concludes.
+     * If everyone passed, the round is aborted and reshuffled for a new BidState.
+     * Otherwise, prepares the round and transitions to the PlayState.
+     *
+     * @return State The next state in the game lifecycle.
+     * @throws IllegalStateException if called before all players have successfully bid.
+     */
+    @Override
+    public State nextState() {
+        if (!isBiddingComplete()) {
+            throw new IllegalStateException("State violation: Cannot transition to next state before bidding is complete.");
+        }
+
+        if (currentHighestBidType == BidType.PASS) {
+            getGame().getCurrentRound().abortWithAllPass(bids);
+            return new BidState(getGame());
+        }
+        setRoundReadyForPlayState();
+        return new PlayState(getGame());
     }
+
+    // =========================================================================
+    // PRIMARY COMMAND HANDLERS & WORKFLOWS
+    // =========================================================================
 
     private GameResult handleBidCommand(BidType chosenBidType, Suit preSuppliedSuit) {
         if (chosenBidType == null) {
@@ -199,35 +219,6 @@ public class BidState extends State {
         playersWhoTookTurn.add(currentPlayer.getId());
         updateCurrentPlayer();
         return null;
-    }
-
-    /**
-     * Determines the next state to transition to after the bidding phase concludes.
-     * If everyone passed, the round is aborted and reshuffled for a new BidState.
-     * Otherwise, prepares the round and transitions to the PlayState.
-     *
-     * @return State The next state in the game lifecycle.
-     * @throws IllegalStateException if called before all players have successfully bid.
-     */
-    @Override
-    public State nextState() {
-        if (!isBiddingComplete()) {
-            throw new IllegalStateException("State violation: Cannot transition to next state before bidding is complete.");
-        }
-
-        if (currentHighestBidType == BidType.PASS) {
-            getGame().getCurrentRound().abortWithAllPass(bids);
-            return new BidState(getGame());
-        }
-        setRoundReadyForPlayState();
-        return new PlayState(getGame());
-    }
-
-    private StateStep toStep(GameResult result) {
-        return switch (result) {
-            case BiddingCompleted ignored -> StateStep.transition(result);
-            default -> StateStep.stay(result);
-        };
     }
 
     /**
@@ -304,6 +295,56 @@ public class BidState extends State {
     }
 
     /**
+     * Injects the finalized bidding context into the Round object to prepare it for the PlayState.
+     * Computes the primary player, the final trump suit, and the winning bid instance.
+     *
+     * @throws IllegalStateException if a winning bid cannot be resolved, is an unresolved proposal,
+     * or if a required partner for a team bid is missing.
+     */
+    private void setRoundReadyForPlayState() {
+        if (this.currentHighestBidType == null || this.currentHighestBidType == BidType.PASS) {
+            throw new IllegalStateException("Cannot prepare play state: No winning bid was determined, or it was PASS.");
+        }
+        if (this.currentHighestBidType == BidType.PROPOSAL) {
+            throw new IllegalStateException("Cannot prepare play state: highest bid is an unresolved rejected proposal");
+        }
+
+        WhistGame game = this.getGame();
+        List<Player> players = game.getPlayers();
+        Player firstPlayer = game.getNextPlayer(game.getDealerPlayer()); // Default: player after dealer
+
+        // Override first player based on specific bid rules
+        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE ||
+                this.currentHighestBidType.getCategory() == BidCategory.SOLO) {
+
+            firstPlayer = game.getPlayerById(findBid(currentHighestBidType).getPlayerId());
+
+        } else if (this.currentHighestBidType.getCategory() == BidCategory.TROEL) {
+
+            Bid troelBid = findBid(currentHighestBidType);
+
+            // TROEL RULE: The partner (who holds the 4th Ace) MUST start the first trick.
+            PlayerId partnerId = troelBid.getTeam(this.bids, players).stream()
+                    .filter(p -> !p.equals(troelBid.getPlayerId()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("No partner found in the Troel team!"));
+
+            firstPlayer = game.getPlayerById(partnerId);
+        }
+
+        Bid winningBid = findBid(currentHighestBidType);
+        if (winningBid == null) {
+            throw new IllegalStateException("Critical error: The declared winning bid (" + currentHighestBidType + ") is not present in the bids list.");
+        }
+
+        game.getCurrentRound().startPlayPhase(this.bids, winningBid, this.currentTrumpSuit, firstPlayer);
+    }
+
+    // =========================================================================
+    // SECONDARY STATE MUTATORS
+    // =========================================================================
+
+    /**
      * Saves the bid to the state's memory, updating the current highest bid type
      * and the active trump suit if applicable.
      *
@@ -355,6 +396,28 @@ public class BidState extends State {
         currentHighestBidType = BidType.PASS;
     }
 
+    // =========================================================================
+    // UTILITY, VALIDATION & QUERIES
+    // =========================================================================
+
+    private BidTurnResult buildBidTurnResult() {
+        return new BidTurnResult(
+                currentPlayer.getName(),
+                currentTrumpSuit,
+                currentHighestBidType,
+                getLegalBids(),
+                currentPlayer.getHand(),
+                currentPlayer
+        );
+    }
+
+    private StateStep toStep(GameResult result) {
+        return switch (result) {
+            case BiddingCompleted ignored -> StateStep.transition(result);
+            default -> StateStep.stay(result);
+        };
+    }
+
     /**
      * Enforces the strict hierarchical rules of Whist bidding.
      *
@@ -397,52 +460,6 @@ public class BidState extends State {
      */
     private Bid findBid(BidType bidType) {
         return bids.stream().filter(b -> b.getType() == bidType).findFirst().orElse(null);
-    }
-
-    /**
-     * Injects the finalized bidding context into the Round object to prepare it for the PlayState.
-     * Computes the primary player, the final trump suit, and the winning bid instance.
-     *
-     * @throws IllegalStateException if a winning bid cannot be resolved, is an unresolved proposal,
-     * or if a required partner for a team bid is missing.
-     */
-    private void setRoundReadyForPlayState() {
-        if (this.currentHighestBidType == null || this.currentHighestBidType == BidType.PASS) {
-            throw new IllegalStateException("Cannot prepare play state: No winning bid was determined, or it was PASS.");
-        }
-        if (this.currentHighestBidType == BidType.PROPOSAL) {
-            throw new IllegalStateException("Cannot prepare play state: highest bid is an unresolved rejected proposal");
-        }
-
-        WhistGame game = this.getGame();
-        List<Player> players = game.getPlayers();
-        Player firstPlayer = game.getNextPlayer(game.getDealerPlayer()); // Default: player after dealer
-
-        // Override first player based on specific bid rules
-        if (this.currentHighestBidType.getCategory() == BidCategory.ABONDANCE ||
-                this.currentHighestBidType.getCategory() == BidCategory.SOLO) {
-
-            firstPlayer = game.getPlayerById(findBid(currentHighestBidType).getPlayerId());
-
-        } else if (this.currentHighestBidType.getCategory() == BidCategory.TROEL) {
-
-            Bid troelBid = findBid(currentHighestBidType);
-
-            // TROEL RULE: The partner (who holds the 4th Ace) MUST start the first trick.
-            PlayerId partnerId = troelBid.getTeam(this.bids, players).stream()
-                    .filter(p -> !p.equals(troelBid.getPlayerId()))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("No partner found in the Troel team!"));
-
-            firstPlayer = game.getPlayerById(partnerId);
-        }
-
-        Bid winningBid = findBid(currentHighestBidType);
-        if (winningBid == null) {
-            throw new IllegalStateException("Critical error: The declared winning bid (" + currentHighestBidType + ") is not present in the bids list.");
-        }
-
-        game.getCurrentRound().startPlayPhase(this.bids, winningBid, this.currentTrumpSuit, firstPlayer);
     }
 
     /**
