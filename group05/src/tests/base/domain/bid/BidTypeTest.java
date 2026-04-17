@@ -1,110 +1,118 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
-import base.domain.player.HumanStrategy;
-import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("BidType Enum Rules & Factory")
 class BidTypeTest {
 
-    private Player testPlayer;
+    private PlayerId testPlayerId;
     private Suit testSuit;
 
     @BeforeEach
     void setUp() {
-        testPlayer = new Player(new HumanStrategy(), "Tester");
+        // Arrange: Using lightweight PlayerId instead of physical Player objects
+        testPlayerId = new PlayerId("player-123");
         testSuit = Suit.HEARTS;
     }
 
-    // -------- GETTER & FLYWEIGHT TESTS --------
+    @Nested
+    @DisplayName("Static Data & Getters (Flyweight Pattern)")
+    class StaticDataTests {
 
-    @Test
-    void enumGetters_ReturnCorrectStaticData() {
-        // Test a few representative enums to ensure the constructor mapped fields correctly
+        @Test
+        @DisplayName("PASS holds correct static game rules")
+        void pass_ReturnsCorrectStaticData() {
+            assertEquals(0, BidType.PASS.getTargetTricks());
+            assertEquals(0, BidType.PASS.getBasePoints());
+            assertEquals(BidCategory.PASS, BidType.PASS.getCategory());
+            assertFalse(BidType.PASS.getRequiresSuit());
+        }
 
-        // PASS check
-        assertEquals(0, BidType.PASS.getTargetTricks());
-        assertEquals(0, BidType.PASS.getBasePoints());
-        assertEquals(BidCategory.PASS, BidType.PASS.getCategory());
-        assertFalse(BidType.PASS.getRequiresSuit());
+        @Test
+        @DisplayName("MISERIE holds correct static game rules")
+        void miserie_ReturnsCorrectStaticData() {
+            assertEquals(0, BidType.MISERIE.getTargetTricks());
+            assertEquals(21, BidType.MISERIE.getBasePoints());
+            assertEquals(BidCategory.MISERIE, BidType.MISERIE.getCategory());
+            assertFalse(BidType.MISERIE.getRequiresSuit());
+        }
 
-        // MISERIE check
-        assertEquals(0, BidType.MISERIE.getTargetTricks());
-        assertEquals(21, BidType.MISERIE.getBasePoints());
-        assertEquals(BidCategory.MISERIE, BidType.MISERIE.getCategory());
-        assertFalse(BidType.MISERIE.getRequiresSuit());
-
-        // ABONDANCE_9 check
-        assertEquals(9, BidType.ABONDANCE_9.getTargetTricks());
-        assertEquals(15, BidType.ABONDANCE_9.getBasePoints());
-        assertEquals(BidCategory.ABONDANCE, BidType.ABONDANCE_9.getCategory());
-        assertTrue(BidType.ABONDANCE_9.getRequiresSuit());
-    }
-
-    // -------- FACTORY METHOD (INSTANTIATE) TESTS --------
-
-    @Test
-    void instantiate_Pass_ReturnsPassBid() {
-        assertInstanceOf(PassBid.class, BidType.PASS.instantiate(testPlayer, null));
-    }
-
-    @Test
-    void instantiate_Proposal_ReturnsProposalBid() {
-        assertInstanceOf(ProposalBid.class, BidType.PROPOSAL.instantiate(testPlayer, null));
-    }
-
-    @Test
-    void instantiate_SoloProposal_ReturnsSoloProposalBid() {
-        assertInstanceOf(SoloProposalBid.class, BidType.SOLO_PROPOSAL.instantiate(testPlayer, null));
-    }
-
-    @Test
-    void instantiate_Acceptance_ReturnsAcceptedBid() {
-        assertInstanceOf(AcceptedBid.class, BidType.ACCEPTANCE.instantiate(testPlayer, null));
-    }
-
-    @Test
-    void instantiate_AbondanceVariants_ReturnAbondanceBid() {
-        BidType[] abondanceTypes = {
-                BidType.ABONDANCE_9, BidType.ABONDANCE_9_OT,
-                BidType.ABONDANCE_10, BidType.ABONDANCE_10_OT,
-                BidType.ABONDANCE_11, BidType.ABONDANCE_11_OT,
-                BidType.ABONDANCE_12, BidType.ABONDANCE_12_OT
-        };
-
-        for (BidType type : abondanceTypes) {
-            Bid bid = type.instantiate(testPlayer, testSuit);
-            assertInstanceOf(AbondanceBid.class, bid, type.name() + " should instantiate an AbondanceBid");
+        @Test
+        @DisplayName("ABONDANCE_9 holds correct static game rules")
+        void abondance9_ReturnsCorrectStaticData() {
+            assertEquals(9, BidType.ABONDANCE_9.getTargetTricks());
+            assertEquals(15, BidType.ABONDANCE_9.getBasePoints());
+            assertEquals(BidCategory.ABONDANCE, BidType.ABONDANCE_9.getCategory());
+            assertTrue(BidType.ABONDANCE_9.getRequiresSuit());
         }
     }
 
-    @Test
-    void instantiate_MiserieVariants_ReturnMiserieBid() {
-        assertInstanceOf(MiserieBid.class, BidType.MISERIE.instantiate(testPlayer, null));
-        assertInstanceOf(MiserieBid.class, BidType.OPEN_MISERIE.instantiate(testPlayer, null));
-    }
+    @Nested
+    @DisplayName("Factory Method: instantiate()")
+    class FactoryMethodTests {
 
-    @Test
-    void instantiate_SoloVariants_ReturnSoloBid() {
-        assertInstanceOf(SoloBid.class, BidType.SOLO.instantiate(testPlayer, testSuit));
-        assertInstanceOf(SoloBid.class, BidType.SOLO_SLIM.instantiate(testPlayer, null));
-    }
+        @Test
+        @DisplayName("PASS instantiates a PassBid")
+        void instantiate_Pass_ReturnsPassBid() {
+            assertInstanceOf(PassBid.class, BidType.PASS.instantiate(testPlayerId, null));
+        }
 
-    @Test
-    void instantiate_TroelVariants_WithEmptyHand_ThrowsIllegalArgumentException() {
-        // Because the testPlayer has no Aces, the TroelBid constructor will throw an exception.
-        // We assertThrows to handle it gracefully, which STILL gives 100% coverage
-        // because the 'instantiate' method successfully executes 'return new TroelBid(...)'.
+        @Test
+        @DisplayName("PROPOSAL instantiates a ProposalBid")
+        void instantiate_Proposal_ReturnsProposalBid() {
+            assertInstanceOf(ProposalBid.class, BidType.PROPOSAL.instantiate(testPlayerId, null));
+        }
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            BidType.TROEL.instantiate(testPlayer, null);
-        }, "TROEL should throw exception due to lack of Aces");
+        @Test
+        @DisplayName("SOLO_PROPOSAL instantiates a SoloProposalBid")
+        void instantiate_SoloProposal_ReturnsSoloProposalBid() {
+            assertInstanceOf(SoloProposalBid.class, BidType.SOLO_PROPOSAL.instantiate(testPlayerId, null));
+        }
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            BidType.TROELA.instantiate(testPlayer, null);
-        }, "TROELA should throw exception due to lack of Aces");
+        @Test
+        @DisplayName("ACCEPTANCE instantiates an AcceptedBid")
+        void instantiate_Acceptance_ReturnsAcceptedBid() {
+            assertInstanceOf(AcceptedBid.class, BidType.ACCEPTANCE.instantiate(testPlayerId, null));
+        }
+
+        @ParameterizedTest(name = "{0} instantiates an AbondanceBid")
+        @EnumSource(mode = EnumSource.Mode.INCLUDE, names = {
+                "ABONDANCE_9", "ABONDANCE_9_OT",
+                "ABONDANCE_10", "ABONDANCE_10_OT",
+                "ABONDANCE_11", "ABONDANCE_11_OT",
+                "ABONDANCE_12", "ABONDANCE_12_OT"
+        })
+        void instantiate_AbondanceVariants_ReturnsAbondanceBid(BidType type) {
+            assertInstanceOf(AbondanceBid.class, type.instantiate(testPlayerId, testSuit));
+        }
+
+        @ParameterizedTest(name = "{0} instantiates a MiserieBid")
+        @EnumSource(mode = EnumSource.Mode.INCLUDE, names = {"MISERIE", "OPEN_MISERIE"})
+        void instantiate_MiserieVariants_ReturnsMiserieBid(BidType type) {
+            assertInstanceOf(MiserieBid.class, type.instantiate(testPlayerId, null));
+        }
+
+        @ParameterizedTest(name = "{0} instantiates a SoloBid")
+        @EnumSource(mode = EnumSource.Mode.INCLUDE, names = {"SOLO", "SOLO_SLIM"})
+        void instantiate_SoloVariants_ReturnsSoloBid(BidType type) {
+            assertInstanceOf(SoloBid.class, type.instantiate(testPlayerId, testSuit));
+        }
+
+        @ParameterizedTest(name = "{0} instantiates a TroelBid")
+        @EnumSource(mode = EnumSource.Mode.INCLUDE, names = {"TROEL", "TROELA"})
+        void instantiate_TroelVariants_ReturnsTroelBid(BidType type) {
+            // FIX: Because TroelBid now uses PlayerId and Suit (passed in by BidState),
+            // it safely instantiates without needing to inspect an actual hand for Aces!
+            assertInstanceOf(TroelBid.class, type.instantiate(testPlayerId, testSuit));
+        }
     }
 }

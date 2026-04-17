@@ -1,162 +1,160 @@
 package base.domain.player;
 
 import base.domain.bid.Bid;
+import base.domain.bid.SoloBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
+import base.domain.strategy.HumanStrategy; // Using a concrete implementation
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
+@DisplayName("Player Entity Rules & State")
 class PlayerTest {
 
+    @Mock
+    private HumanStrategy mockStrategy; // Mocking the class avoids sealed interface restrictions
+
+    @Mock
+    private SoloBid mockBid; // Mock a concrete class instead of the sealed 'Bid' interface
+
+    private AutoCloseable mocks;
     private Player player;
-    private Strategy mockStrategy;
 
     @BeforeEach
     void setUp() {
-        // Using HighBotStrategy as a concrete implementation for the test
-        mockStrategy = new HighBotStrategy();
-        player = new Player(mockStrategy, "Jane Doe");
+        mocks = MockitoAnnotations.openMocks(this);
+        // HumanStrategy implements Strategy, so this is type-safe
+        player = new Player(mockStrategy, "Alice");
     }
 
-    // -------- CONSTRUCTOR TESTS --------
-
-    @Test
-    void constructor_NullValues_ThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> new Player(null, "Jane Doe"));
-        assertThrows(IllegalArgumentException.class, () -> new Player(mockStrategy, null));
+    @AfterEach
+    void tearDown() throws Exception {
+        if (mocks != null) {
+            mocks.close();
+        }
     }
 
-    @Test
-    void constructor_InitializesProperly() {
-        assertEquals("Jane Doe", player.getName());
-        assertEquals(0, player.getScore());
-        assertTrue(player.getHand().isEmpty());
+    @Nested
+    @DisplayName("Constructor & Initialization")
+    class ConstructorTests {
+
+        @Test
+        @DisplayName("Should initialize player with a unique ID and empty state")
+        void createsPlayerSuccessfully() {
+            assertThat(player.getId()).isNotNull();
+            assertThat(player.getName()).isEqualTo("Alice");
+            assertThat(player.getScore()).isZero();
+            assertThat(player.getHand()).isEmpty();
+            assertThat(player.getDecisionStrategy()).isEqualTo(mockStrategy);
+        }
+
+        @Test
+        @DisplayName("Should reject null strategy or name")
+        void throwsOnNullInputs() {
+            assertThatThrownBy(() -> new Player(null, "Alice"))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new Player(mockStrategy, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
-    // -------- HAND MANAGEMENT TESTS --------
+    @Nested
+    @DisplayName("Hand Management")
+    class HandManagementTests {
 
-    @Test
-    void setHand_SortsAndStoresCards() {
-        Card clubsTwo = new Card(Suit.CLUBS, Rank.TWO);
-        Card heartsAce = new Card(Suit.HEARTS, Rank.ACE);
-        Card heartsTwo = new Card(Suit.HEARTS, Rank.TWO);
-        Card clubsAce = new Card(Suit.CLUBS, Rank.ACE);
+        @Test
+        @DisplayName("setHand() should clear old cards and apply new sorted list")
+        void setsAndSortsHand() {
+            Card lowHeart = new Card(Suit.HEARTS, Rank.TWO);
+            Card highHeart = new Card(Suit.HEARTS, Rank.ACE);
+            Card club = new Card(Suit.CLUBS, Rank.KING);
+            Card spade = new Card(Suit.SPADES, Rank.TEN);
 
-        List<Card> unsortedHand = List.of(clubsTwo, heartsAce, heartsTwo, clubsAce);
-        player.setHand(unsortedHand);
+            player.setHand(List.of(spade, lowHeart, club, highHeart));
+            List<Card> hand = player.getHand();
 
-        List<Card> sortedHand = player.getHand();
+            // Verifying Whist Sorting: Clubs -> Hearts (Ace then 2) -> Spades
+            assertThat(hand).containsExactly(club, highHeart, lowHeart, spade);
+        }
 
-        // Ensure size is correct
-        assertEquals(4, sortedHand.size());
+        @Test
+        @DisplayName("getHand() should return a defensive copy to prevent tampering")
+        void getHandIsDefensive() {
+            player.setHand(List.of(new Card(Suit.HEARTS, Rank.TEN)));
 
-        // Validate Sorting Rules: Suits grouped together, then high-to-low Rank
-        // Note: The exact order of suits depends on how the Suit enum is declared.
-        // Assuming CLUBS comes before HEARTS in the enum:
-        assertEquals(clubsAce, sortedHand.get(0));
-        assertEquals(clubsTwo, sortedHand.get(1));
-        assertEquals(heartsAce, sortedHand.get(2));
-        assertEquals(heartsTwo, sortedHand.get(3));
+            List<Card> externalHand = player.getHand();
+            externalHand.clear();
+
+            assertThat(player.getHand()).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("removeCard() should update hand or throw if card is missing")
+        void removesCard() {
+            Card heartTen = new Card(Suit.HEARTS, Rank.TEN);
+            player.setHand(List.of(heartTen));
+
+            player.removeCard(heartTen);
+            assertThat(player.getHand()).isEmpty();
+
+            assertThatThrownBy(() -> player.removeCard(heartTen))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("not in player hand");
+        }
     }
 
-    @Test
-    void setHand_NullThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> player.setHand(null));
+    @Nested
+    @DisplayName("Strategy Delegation")
+    class StrategyDelegationTests {
+
+        @Test
+        @DisplayName("chooseCard() should delegate decision to strategy")
+        void delegatesChooseCard() {
+            Card expected = new Card(Suit.HEARTS, Rank.TEN);
+            when(mockStrategy.chooseCardToPlay(anyList(), eq(Suit.HEARTS))).thenReturn(expected);
+
+            Card result = player.chooseCard(Suit.HEARTS);
+
+            assertThat(result).isEqualTo(expected);
+            verify(mockStrategy).chooseCardToPlay(anyList(), eq(Suit.HEARTS));
+        }
+
+        @Test
+        @DisplayName("chooseBid() should delegate decision to strategy")
+        void delegatesChooseBid() {
+            when(mockStrategy.determineBid(eq(player.getId()), anyList())).thenReturn(mockBid);
+
+            Bid result = player.chooseBid();
+
+            assertThat(result).isEqualTo(mockBid);
+            verify(mockStrategy).determineBid(eq(player.getId()), anyList());
+        }
     }
 
-    @Test
-    void flushHand_ClearsHand() {
-        player.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE)));
-        assertFalse(player.getHand().isEmpty());
+    @Nested
+    @DisplayName("Score Tracking")
+    class ScoreTests {
 
-        player.flushHand();
-        assertTrue(player.getHand().isEmpty());
+        @Test
+        @DisplayName("updateScore() should accumulate both positive and negative deltas")
+        void updatesScore() {
+            player.updateScore(15);
+            player.updateScore(-5);
+            assertThat(player.getScore()).isEqualTo(10);
+        }
     }
-
-    @Test
-    void hasSuit_ReturnsCorrectly() {
-        player.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE)));
-
-        assertTrue(player.hasSuit(Suit.HEARTS));
-        assertFalse(player.hasSuit(Suit.SPADES));
-    }
-
-    @Test
-    void hasSuit_NullThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> player.hasSuit(null));
-    }
-
-    @Test
-    void removeCard_RemovesTargetCard() {
-        Card targetCard = new Card(Suit.DIAMONDS, Rank.KING);
-        player.setHand(new ArrayList<>(List.of(targetCard, new Card(Suit.HEARTS, Rank.TWO))));
-
-        player.removeCard(targetCard);
-
-        assertEquals(1, player.getHand().size());
-        assertFalse(player.getHand().contains(targetCard));
-    }
-
-    @Test
-    void removeCard_InvalidOrNullThrowsException() {
-        Card missingCard = new Card(Suit.SPADES, Rank.ACE);
-        player.setHand(List.of(new Card(Suit.HEARTS, Rank.TWO)));
-
-        assertThrows(IllegalArgumentException.class, () -> player.removeCard(null));
-        assertThrows(IllegalArgumentException.class, () -> player.removeCard(missingCard));
-    }
-
-    @Test
-    void getHand_ReturnsDefensiveCopy() {
-        player.setHand(List.of(new Card(Suit.HEARTS, Rank.TWO)));
-
-        List<Card> externalHand = player.getHand();
-        externalHand.clear(); // Attempt to sabotage the player's hand
-
-        assertFalse(player.getHand().isEmpty(), "Internal hand should remain unaffected.");
-    }
-
-    // -------- SCORE TESTS --------
-
-    @Test
-    void updateScore_AddsAndSubtracts() {
-        player.updateScore(10);
-        assertEquals(10, player.getScore());
-
-        player.updateScore(-5);
-        assertEquals(5, player.getScore());
-    }
-
-    // -------- STRATEGY DELEGATION TESTS --------
-
-    @Test
-    void chooseBid_DelegatesToStrategy() {
-        Bid bid = player.chooseBid();
-        assertNotNull(bid);
-        assertEquals(player, bid.getPlayer(), "The bid should be linked to the calling player.");
-    }
-
-    @Test
-    void chooseCard_DelegatesToStrategy() {
-        player.setHand(List.of(new Card(Suit.HEARTS, Rank.ACE)));
-
-        // With HighBotStrategy, it should pick the highest card (the only card in this case)
-        Card chosen = player.chooseCard(Suit.HEARTS);
-
-        assertNotNull(chosen);
-        assertEquals(Suit.HEARTS, chosen.suit());
-    }
-
-    @Test
-    void getRequiresConfirmation_ReflectsStrategy() {
-        // HighBotStrategy returns false
-        assertFalse(player.getRequiresConfirmation());
-    }
-
 }

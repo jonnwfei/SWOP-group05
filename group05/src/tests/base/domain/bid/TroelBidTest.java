@@ -3,191 +3,197 @@ package base.domain.bid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.player.HumanStrategy;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+@DisplayName("Troel & Troela Bid Rules & Calculations")
 class TroelBidTest {
 
-    private Player testPlayer;
-    private BidType troelType;
-    private BidType troelaType;
+    private PlayerId testPlayerId;
+    private PlayerId partnerId;
 
     @BeforeEach
     void setUp() {
-        testPlayer = new Player(new HumanStrategy(), "TroelPlayer");
-        troelType = BidType.TROEL;
-        troelaType = BidType.TROELA;
+        testPlayerId = new PlayerId("troel-bidder");
+        partnerId = new PlayerId("forced-partner");
     }
-
-    /** Helper method to quickly give the testPlayer a hand with specific Aces */
-    private void setAcesInHand(Suit... aceSuits) {
-        List<Card> hand = new ArrayList<>();
-        // Add the requested aces
-        for (Suit suit : aceSuits) {
-            hand.add(new Card(suit, Rank.ACE));
-        }
-        // Fill the rest of the hand with dummy low cards so it's a valid hand (optional but safe)
-        while (hand.size() < 13) {
-            hand.add(new Card(Suit.SPADES, Rank.TWO));
-        }
-        testPlayer.setHand(hand);
-    }
-
-    // -------- CONSTRUCTOR TESTS --------
 
     @Test
-    void constructor_NullParameters_ThrowsException() {
-        setAcesInHand(Suit.HEARTS, Suit.DIAMONDS, Suit.SPADES); // 3 Aces
-
-        // Null player
+    @DisplayName("Constructor enforces non-null parameters and correct categories")
+    void constructor_InvalidParameters_ThrowsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () ->
-                new TroelBid(null, troelType)
+                        new TroelBid(null, BidType.TROEL, Suit.SPADES),
+                "Should reject null PlayerId"
         );
 
-        // Null bidType
         assertThrows(IllegalArgumentException.class, () ->
-                new TroelBid(testPlayer, null)
+                        new TroelBid(testPlayerId, null, Suit.SPADES),
+                "Should reject null BidType"
         );
-    }
 
-    @Test
-    void constructor_InvalidCategory_ThrowsException() {
-        setAcesInHand(Suit.HEARTS, Suit.DIAMONDS, Suit.SPADES);
         assertThrows(IllegalArgumentException.class, () ->
-                new TroelBid(testPlayer, BidType.MISERIE)
+                        new TroelBid(testPlayerId, BidType.SOLO, Suit.SPADES),
+                "Should reject BidTypes outside the TROEL category"
         );
     }
 
     @Test
-    void constructor_NotEnoughAces_ThrowsException() {
-        setAcesInHand(Suit.HEARTS, Suit.SPADES); // Only 2 Aces
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                new TroelBid(testPlayer, troelType)
+    @DisplayName("TROEL requires an explicit missing Ace suit")
+    void constructor_TroelNullSuit_ThrowsIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                new TroelBid(testPlayerId, BidType.TROEL, null)
         );
-        assertTrue(ex.getMessage().toLowerCase().contains("conditions"));
+        assertTrue(exception.getMessage().contains("requires the suit of the missing Ace"));
     }
 
     @Test
-    void constructor_MismatchedAcesAndBidType_ThrowsException() {
-        // Case 1: Has 4 Aces, but tries to bid regular TROEL
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS, Suit.CLUBS);
-        assertThrows(IllegalArgumentException.class, () ->
-                new TroelBid(testPlayer, troelType)
-        );
-
-        // Case 2: Has 3 Aces, but tries to bid TROELA
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS);
-        assertThrows(IllegalArgumentException.class, () ->
-                new TroelBid(testPlayer, troelaType)
-        );
+    @DisplayName("TROELA automatically overrides trump suit to Hearts")
+    void constructor_Troela_AlwaysSetsTrumpToHearts() {
+        // Even if we pass null or SPADES, TROELA always forces Hearts
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROELA, Suit.SPADES);
+        assertEquals(Suit.HEARTS, bid.determineTrump(Suit.CLUBS), "TROELA trump must always be Hearts");
     }
 
-    // -------- GETTER & ACCESSOR TESTS --------
-
     @Test
-    void gettersAndAccessors_ReturnCorrectData() {
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS); // 3 Aces -> Valid Troel
-        TroelBid bid = new TroelBid(testPlayer, troelType);
+    @DisplayName("Basic Accessors return correctly assigned values")
+    void basicAccessors_ReturnExpectedValues() {
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROEL, Suit.CLUBS);
 
-        assertEquals(testPlayer, bid.getPlayer());
-        assertEquals(troelType, bid.getType());
-        assertEquals(testPlayer, bid.player());
-        assertEquals(troelType, bid.bidType());
-    }
-
-    // -------- TRUMP SELECTION TESTS --------
-
-    @Test
-    void determineTrump_Troel_ReturnsMissingAceSuit() {
-        // Player has Hearts, Spades, and Diamonds. Missing Clubs.
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS);
-        TroelBid bid = new TroelBid(testPlayer, troelType);
-
-        // Trump is the suit of the fourth ace [cite: 191-192]
+        assertEquals(testPlayerId, bid.getPlayerId());
+        assertEquals(testPlayerId, bid.playerId());
+        assertEquals(BidType.TROEL, bid.getType());
+        assertEquals(BidType.TROEL, bid.bidType());
+        assertEquals(Suit.CLUBS, bid.trumpSuit());
         assertEquals(Suit.CLUBS, bid.determineTrump(Suit.HEARTS));
     }
 
     @Test
-    void determineTrump_Troela_ReturnsHearts() {
-        // Player has all 4 Aces
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS, Suit.CLUBS);
-        TroelBid bid = new TroelBid(testPlayer, troelaType);
+    @DisplayName("getTeam() for TROEL finds the player holding the missing Ace")
+    void getTeam_Troel_FindsPartnerWithMissingAce() {
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROEL, Suit.CLUBS);
 
-        // Trump is ALWAYS Hearts for Troela [cite: 194-195]
-        assertEquals(Suit.HEARTS, bid.determineTrump(Suit.SPADES));
-    }
+        // Arrange Mocks
+        Player mockBidder = mock(Player.class);
+        when(mockBidder.getId()).thenReturn(testPlayerId);
+        when(mockBidder.hasCard(any())).thenReturn(false);
 
-    // -------- SCORING TESTS --------
+        Player mockPartner = mock(Player.class);
+        when(mockPartner.getId()).thenReturn(partnerId);
+        // The partner holds the missing Ace of Clubs
+        when(mockPartner.hasCard(new Card(Suit.CLUBS, Rank.ACE))).thenReturn(true);
 
-    @Test
-    void calculateBasePoints_Troel_Success() {
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS);
-        TroelBid bid = new TroelBid(testPlayer, troelType);
+        List<Player> allPlayers = List.of(mockBidder, mockPartner);
 
-        int target = troelType.getTargetTricks(); // 8
-        int base = troelType.getBasePoints();     // 4
+        // Act
+        List<PlayerId> team = bid.getTeam(Collections.emptyList(), allPlayers);
 
-        // Exact target: 4 points
-        assertEquals(base, bid.calculateBasePoints(target));
-
-        // Overtricks (+2 for each excess trick) [cite: 229]
-        // 10 tricks -> 2 excess -> 4 + 4 = 8
-        assertEquals(base + 4, bid.calculateBasePoints(10));
-    }
-
-    @Test
-    void calculateBasePoints_Troela_Success() {
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS, Suit.CLUBS);
-        TroelBid bid = new TroelBid(testPlayer, troelaType);
-
-        int target = troelaType.getTargetTricks(); // 9
-        int base = troelaType.getBasePoints();     // 4
-
-        // Exact target: 4 points
-        assertEquals(base, bid.calculateBasePoints(target));
-
-        // Overtricks (+2 for each excess trick)
-        // 11 tricks -> 2 excess -> 4 + 4 = 8
-        assertEquals(base + 4, bid.calculateBasePoints(11));
+        // Assert
+        assertEquals(2, team.size());
+        assertTrue(team.contains(testPlayerId));
+        assertTrue(team.contains(partnerId));
     }
 
     @Test
-    void calculateBasePoints_Slam_DoublesPoints() {
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS);
-        TroelBid bid = new TroelBid(testPlayer, troelType);
+    @DisplayName("getTeam() for TROELA finds the player with the highest Heart")
+    void getTeam_Troela_FindsPartnerWithHighestHeart() {
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROELA, null); // Trump is forced to HEARTS internally
 
-        int target = troelType.getTargetTricks(); // 8
-        int base = troelType.getBasePoints();     // 4
+        // Arrange Mocks
+        Player mockBidder = mock(Player.class);
+        when(mockBidder.getId()).thenReturn(testPlayerId);
+        // Bidder's hand is ignored by the algorithm because they cannot be their own partner
 
-        // 13 tricks -> 5 excess -> 4 + 10 = 14 -> Doubled to 28 [cite: 229]
-        int excess = 13 - target;
-        int expected = (base + (excess * 2)) * 2;
+        Player mockBystander = mock(Player.class);
+        when(mockBystander.getId()).thenReturn(new PlayerId("bystander"));
+        when(mockBystander.getHand()).thenReturn(List.of(new Card(Suit.HEARTS, Rank.TWO)));
 
-        assertEquals(expected, bid.calculateBasePoints(13));
+        Player mockPartner = mock(Player.class);
+        when(mockPartner.getId()).thenReturn(partnerId);
+        // Partner holds the King of Hearts, which beats the bystander's Two of Hearts
+        when(mockPartner.getHand()).thenReturn(List.of(new Card(Suit.HEARTS, Rank.KING)));
+
+        List<Player> allPlayers = List.of(mockBidder, mockBystander, mockPartner);
+
+        // Act
+        List<PlayerId> team = bid.getTeam(Collections.emptyList(), allPlayers);
+
+        // Assert
+        assertEquals(2, team.size());
+        assertEquals(testPlayerId, team.get(0)); // Bidder first
+        assertEquals(partnerId, team.get(1));    // Partner second
     }
 
     @Test
-    void calculateBasePoints_Failure() {
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS);
-        TroelBid bid = new TroelBid(testPlayer, troelType);
+    @DisplayName("getTeam() throws Exception if corrupted deck prevents finding a partner")
+    void getTeam_PartnerNotFound_ThrowsIllegalStateException() {
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROEL, Suit.CLUBS);
 
-        // Failed bid returns negative base points
-        assertEquals(-troelType.getBasePoints(), bid.calculateBasePoints(7));
+        // Create a game where NO ONE has the missing Ace
+        Player mockBidder = mock(Player.class);
+        when(mockBidder.getId()).thenReturn(testPlayerId);
+        when(mockBidder.hasCard(any())).thenReturn(false);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
+                bid.getTeam(Collections.emptyList(), List.of(mockBidder))
+        );
+        assertTrue(exception.getMessage().contains("Corrupted deck"));
+    }
+
+    @ParameterizedTest(name = "TROEL (Target 8) - Winning {0} tricks yields {1} points (Base 4 + 2/overtrick)")
+    @CsvSource({
+            "8, 4",    // Exact target
+            "10, 8",   // 2 Overtricks -> 4 + (2 * 2) = 8
+    })
+    void calculateBasePoints_TroelSuccess_ReturnsPoints(int tricksWon, int expectedPoints) {
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROEL, Suit.CLUBS);
+        assertEquals(expectedPoints, bid.calculateBasePoints(tricksWon));
+    }
+
+    @ParameterizedTest(name = "TROELA (Target 9) - Winning {0} tricks yields {1} points (Base 4 + 2/overtrick)")
+    @CsvSource({
+            "9, 4",    // Exact target
+            "11, 8",   // 2 Overtricks -> 4 + (2 * 2) = 8
+    })
+    void calculateBasePoints_TroelaSuccess_ReturnsPoints(int tricksWon, int expectedPoints) {
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROELA, Suit.HEARTS);
+        assertEquals(expectedPoints, bid.calculateBasePoints(tricksWon));
     }
 
     @Test
-    void calculateBasePoints_OutOfBounds_ThrowsException() {
-        setAcesInHand(Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS);
-        TroelBid bid = new TroelBid(testPlayer, troelType);
+    @DisplayName("Winning all 13 tricks (Slam) doubles the total accumulated points")
+    void calculateBasePoints_SlamAchieved_DoublesTotalPoints() {
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROEL, Suit.CLUBS);
 
+        // Base(4) + 5 Overtricks(10) = 14 points. Doubled for Slam = 28 points.
+        assertEquals(28, bid.calculateBasePoints(13));
+    }
+
+    @ParameterizedTest(name = "Failing contract yields negative base points (-4)")
+    @ValueSource(ints = {7, 4, 0})
+    void calculateBasePoints_BelowTarget_ReturnsNegativeBasePoints(int tricksWon) {
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROEL, Suit.CLUBS);
+        int expectedPenalty = -1 * BidType.TROEL.getBasePoints();
+        assertEquals(expectedPenalty, bid.calculateBasePoints(tricksWon));
+    }
+
+    @Test
+    @DisplayName("calculateBasePoints() rejects negative trick counts")
+    void calculateBasePoints_NegativeInput_ThrowsIllegalArgumentException() {
+        TroelBid bid = new TroelBid(testPlayerId, BidType.TROEL, Suit.CLUBS);
         assertThrows(IllegalArgumentException.class, () -> bid.calculateBasePoints(-1));
     }
 }

@@ -2,7 +2,7 @@ package base.domain.bid;
 
 import base.domain.card.Suit;
 import base.domain.player.Player;
-import base.domain.trick.Trick;
+import base.domain.player.PlayerId;
 
 import java.util.List;
 
@@ -10,18 +10,18 @@ import java.util.List;
  * Contract for a proposer who chooses to play alone after their initial proposal is rejected.
  * The trump suit defaults to the originally dealt trump.
  *
- * @param player The original proposer now playing solo.
+ * @param playerId The original proposer now playing solo.
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public record SoloProposalBid(Player player) implements Bid {
+public record SoloProposalBid(PlayerId playerId) implements Bid {
 
     public SoloProposalBid {
-        if (player == null) {throw new IllegalArgumentException("Player cannot be null.");}
+        if (playerId == null) {throw new IllegalArgumentException("Player cannot be null.");}
     }
 
     @Override
-    public Player getPlayer() {return player;}
+    public PlayerId getPlayerId() {return playerId;}
 
     /**
      * Determines the bidding team. Since the proposal was rejected, the bidder plays alone.
@@ -31,8 +31,8 @@ public record SoloProposalBid(Player player) implements Bid {
      * @return A list containing only the solo player.
      */
     @Override
-    public List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        return List.of(player);
+    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
+        return List.of(playerId);
     }
 
     @Override

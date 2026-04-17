@@ -1,7 +1,8 @@
 package base.domain.bid;
 
-import base.domain.player.Player;
 import base.domain.card.Suit;
+import base.domain.player.Player;
+import base.domain.player.PlayerId;
 
 import java.util.List;
 
@@ -23,11 +24,11 @@ public sealed interface Bid extends Comparable<Bid> permits
         TroelBid
 {
     /**
-     * Retrieves the player who holds this bid contract.
+     * Retrieves the playerId who holds this bid contract.
      *
      * @return The {@link Player} who made the bid.
      */
-    Player getPlayer();
+    PlayerId getPlayerId();
 
     /**
      * Determines the bidding team for this bid based on its specific rules.
@@ -39,7 +40,7 @@ public sealed interface Bid extends Comparable<Bid> permits
      * @return A list of players forming the bidding team.
      * @throws IllegalStateException if the team cannot be determined (e.g., partner not found).
      */
-    List<Player> getTeam(List<Bid> allBids, List<Player> allPlayers);
+    List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers);
 
     /**
      * Retrieves the specific type of the bid.

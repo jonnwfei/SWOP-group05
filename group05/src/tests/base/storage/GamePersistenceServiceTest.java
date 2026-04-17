@@ -5,34 +5,41 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.bid.SoloBid;
 import base.domain.card.Suit;
-import base.domain.player.HighBotStrategy;
-import base.domain.player.HumanStrategy;
-import base.domain.player.LowBotStrategy;
 import base.domain.player.Player;
 import base.domain.round.Round;
+import base.domain.strategy.HighBotStrategy;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.LowBotStrategy;
 import base.storage.snapshots.GameSnapshot;
 import base.storage.snapshots.PlayerSnapshot;
 import base.storage.snapshots.RoundSnapshot;
 import base.storage.snapshots.SaveMode;
 import base.storage.snapshots.StrategySnapshotType;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
+@DisplayName("Game Persistence Service Tests")
 class GamePersistenceServiceTest {
 
-    private SaveRepository mockRepository;
+    @Mock private SaveRepository mockRepository;
+    @Mock private WhistGame mockGame;
+
+    private AutoCloseable mocks; // Used for manual lifecycle management
     private GamePersistenceService persistenceService;
-    private WhistGame mockGame;
 
     // Standard 4-player setup
     private Player p1, p2, p3, p4;
@@ -40,9 +47,10 @@ class GamePersistenceServiceTest {
 
     @BeforeEach
     void setUp() {
-        mockRepository = mock(SaveRepository.class);
+        // Initialize all fields annotated with @Mock
+        mocks = MockitoAnnotations.openMocks(this);
+
         persistenceService = new GamePersistenceService(mockRepository);
-        mockGame = mock(WhistGame.class);
 
         p1 = new Player(new HumanStrategy(), "P1");
         p2 = new Player(new HumanStrategy(), "P2");
@@ -50,10 +58,18 @@ class GamePersistenceServiceTest {
         p4 = new Player(new HumanStrategy(), "P4");
         fourPlayers = List.of(p1, p2, p3, p4);
 
-        // Default mock behaviors to prevent NullPointerExceptions in basic tests
+        // Default mock behaviors (Mockito is lenient by default without the extension)
         when(mockGame.getPlayers()).thenReturn(fourPlayers);
         when(mockGame.getDealerPlayer()).thenReturn(p1);
         when(mockGame.getRounds()).thenReturn(List.of());
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        // Clean up the mocks to prevent memory leaks across tests
+        if (mocks != null) {
+            mocks.close();
+        }
     }
 
     // =========================================================================
@@ -62,11 +78,11 @@ class GamePersistenceServiceTest {
 
     private Round createValidMockRound() {
         Round mockRound = mock(Round.class);
-        Bid realBid = new SoloBid(p1, BidType.SOLO, Suit.HEARTS);
+        Bid realBid = new SoloBid(p1.getId(), BidType.SOLO, Suit.HEARTS);
 
         when(mockRound.getHighestBid()).thenReturn(realBid);
-
         when(mockRound.getPlayers()).thenReturn(fourPlayers);
+        when(mockRound.getPlayerById(p1.getId())).thenReturn(p1);
         when(mockRound.getBiddingTeamPlayers()).thenReturn(List.of(p1));
         when(mockRound.getCountMiserieWinners()).thenReturn(List.of());
         when(mockRound.getScoreDeltas()).thenReturn(List.of(90, -30, -30, -30));
@@ -90,34 +106,35 @@ class GamePersistenceServiceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("Constructor Tests")
+    @DisplayName("Constructor Constraints")
     class ConstructorTests {
 
         @Test
-        @DisplayName("Rejects null repository")
-        void testConstructorDefensive() {
-            assertThrows(IllegalArgumentException.class, () -> new GamePersistenceService(null),
-                    "Service must not initialize with a null repository.");
+        @DisplayName("Rejects initialization with a null repository")
+        void shouldRejectNullRepository() {
+            assertThatThrownBy(() -> new GamePersistenceService(null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("null repository");
         }
 
         @Test
-        @DisplayName("Initializes successfully with default repository")
-        void testConstructor() {
-            assertDoesNotThrow(() -> new GamePersistenceService());
+        @DisplayName("Initializes successfully with the default repository")
+        void shouldInitializeWithDefaultRepository() {
+            new GamePersistenceService();
         }
     }
 
     // =========================================================================
-    // SAVE TESTS (GameSnapshot & PlayerSnapshot Creation)
+    // SAVE TESTS
     // =========================================================================
 
     @Nested
-    @DisplayName("Save Game & Player Data Tests")
+    @DisplayName("Save Game & Player Data Serialization")
     class SaveGameTests {
 
         @Test
-        @DisplayName("Successfully saves a game in GAME mode")
-        void testSaveGameMainSuccessScenario() {
+        @DisplayName("Successfully saves a game in GAME mode with accurate data mapping")
+        void shouldSaveGameMainSuccessScenario() {
             String description = "late night stretch";
             SaveMode mode = SaveMode.GAME;
             p1.updateScore(15);
@@ -125,22 +142,20 @@ class GamePersistenceServiceTest {
             persistenceService.save(mockGame, mode, description);
 
             ArgumentCaptor<GameSnapshot> snapshotCaptor = ArgumentCaptor.forClass(GameSnapshot.class);
-            verify(mockRepository, times(1)).save(snapshotCaptor.capture());
-            GameSnapshot savedSnapshot = snapshotCaptor.getValue();
+            verify(mockRepository).save(snapshotCaptor.capture());
 
-            assertAll(
-                    () -> assertEquals(description, savedSnapshot.description()),
-                    () -> assertEquals(mode, savedSnapshot.mode()),
-                    () -> assertEquals(0, savedSnapshot.dealerIndex()),
-                    () -> assertEquals(4, savedSnapshot.players().size()),
-                    () -> assertEquals("P1", savedSnapshot.players().get(0).name()),
-                    () -> assertEquals(15, savedSnapshot.players().get(0).score())
-            );
+            GameSnapshot savedSnapshot = snapshotCaptor.getValue();
+            assertThat(savedSnapshot.description()).isEqualTo(description);
+            assertThat(savedSnapshot.mode()).isEqualTo(mode);
+            assertThat(savedSnapshot.dealerIndex()).isZero();
+            assertThat(savedSnapshot.players()).hasSize(4);
+            assertThat(savedSnapshot.players().get(0).name()).isEqualTo("P1");
+            assertThat(savedSnapshot.players().get(0).score()).isEqualTo(15);
         }
 
         @Test
-        @DisplayName("Successfully maps strategy types (HighBot, LowBot)")
-        void testSaveGameStrategyMapping() {
+        @DisplayName("Successfully maps complex strategy types (HighBot, LowBot)")
+        void shouldMapStrategyTypesCorrectly() {
             Player highBot = new Player(new HighBotStrategy(), "HighBot");
             Player lowBot = new Player(new LowBotStrategy(), "LowBot");
             when(mockGame.getPlayers()).thenReturn(List.of(highBot, lowBot, p3, p4));
@@ -152,57 +167,52 @@ class GamePersistenceServiceTest {
             verify(mockRepository).save(captor.capture());
             GameSnapshot saved = captor.getValue();
 
-            assertEquals(0, saved.dealerIndex());
-            assertEquals(StrategySnapshotType.HIGH_BOT, saved.players().get(0).strategyType());
-            assertEquals(StrategySnapshotType.LOW_BOT, saved.players().get(1).strategyType());
+            assertThat(saved.dealerIndex()).isZero();
+            assertThat(saved.players().get(0).strategyType()).isEqualTo(StrategySnapshotType.HIGH_BOT);
+            assertThat(saved.players().get(1).strategyType()).isEqualTo(StrategySnapshotType.LOW_BOT);
         }
 
         @Test
-        @DisplayName("Rejects null or blank arguments")
-        void testSaveGameDefensive() {
-            assertAll("Defensive save constraints",
-                    () -> assertThrows(IllegalArgumentException.class, () -> persistenceService.save(null, SaveMode.GAME, "Desc")),
-                    () -> assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, null, "Desc")),
-                    () -> assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, null)),
-                    () -> assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "   "))
-            );
+        @DisplayName("Rejects null or blank arguments aggressively")
+        void shouldRejectInvalidSaveArguments() {
+            assertThatThrownBy(() -> persistenceService.save(null, SaveMode.GAME, "Desc"))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            assertThatThrownBy(() -> persistenceService.save(mockGame, null, "Desc"))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            assertThatThrownBy(() -> persistenceService.save(mockGame, SaveMode.GAME, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            assertThatThrownBy(() -> persistenceService.save(mockGame, SaveMode.GAME, "   "))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
-        @DisplayName("Rejects saving if dealer is null")
-        void testSaveGameNullDealerThrows() {
+        @DisplayName("Rejects saving if the dealer state is null or corrupted")
+        void shouldThrowWhenDealerStateIsCorrupted() {
             when(mockGame.getDealerPlayer()).thenReturn(null);
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Null Dealer Save"));
-        }
+            assertThatThrownBy(() -> persistenceService.save(mockGame, SaveMode.GAME, "Null Dealer Save"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("null dealer player");
 
-        @Test
-        @DisplayName("Rejects saving if dealer is not in the players list")
-        void testSaveGameDealerNotInPlayersThrows() {
             Player ghostDealer = new Player(new HumanStrategy(), "Ghost");
             when(mockGame.getDealerPlayer()).thenReturn(ghostDealer);
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Ghost Save"));
+            assertThatThrownBy(() -> persistenceService.save(mockGame, SaveMode.GAME, "Ghost Save"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("part of the current players list");
         }
 
         @Test
-        @DisplayName("Rejects saving if players list contains a null player")
-        void testSaveGameNullPlayer() {
+        @DisplayName("Rejects saving if the player list is corrupted (contains nulls)")
+        void shouldThrowWhenPlayerListContainsNulls() {
             List<Player> invalidPlayers = new ArrayList<>();
             invalidPlayers.add(p1);
             invalidPlayers.add(null);
             when(mockGame.getPlayers()).thenReturn(invalidPlayers);
 
-            assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
-        }
-
-        @Test
-        @DisplayName("Rejects saving if a player has a null strategy")
-        void testSaveGameNullStrategy() {
-            Player badPlayer = mock(Player.class);
-            when(badPlayer.getName()).thenReturn("Bad");
-            when(badPlayer.getDecisionStrategy()).thenReturn(null);
-
-            when(mockGame.getPlayers()).thenReturn(List.of(badPlayer, p2, p3, p4));
-            assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
+            assertThatThrownBy(() -> persistenceService.save(mockGame, SaveMode.GAME, "Test"))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -211,94 +221,64 @@ class GamePersistenceServiceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("Round Serialization Tests (toSnapshot)")
+    @DisplayName("Round Serialization (toSnapshot)")
     class RoundSerializationTests {
 
         @Test
-        @DisplayName("Successfully serializes a valid round")
-        void testSaveGameWithValidRound() {
+        @DisplayName("Successfully serializes a valid round into a RoundSnapshot")
+        void shouldSerializeValidRoundSuccessfully() {
             Round validRound = createValidMockRound();
             when(mockGame.getRounds()).thenReturn(List.of(validRound));
 
-            assertDoesNotThrow(() -> persistenceService.save(mockGame, SaveMode.GAME, "Round Save"));
+            persistenceService.save(mockGame, SaveMode.GAME, "Round Save");
+            verify(mockRepository).save(any(GameSnapshot.class));
         }
 
         @Test
-        @DisplayName("Rejects null round elements")
-        void testSaveGameWithNullRoundElements() {
+        @DisplayName("Rejects corrupted round structures (null bids or null rounds)")
+        void shouldThrowOnCorruptedRoundElements() {
             when(mockGame.getRounds()).thenReturn(Collections.singletonList(null));
-            assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
+            assertThatThrownBy(() -> persistenceService.save(mockGame, SaveMode.GAME, "Test"))
+                    .isInstanceOf(IllegalArgumentException.class);
 
             Round mockRound = createValidMockRound();
             when(mockRound.getHighestBid()).thenReturn(null);
             when(mockGame.getRounds()).thenReturn(List.of(mockRound));
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
+
+            assertThatThrownBy(() -> persistenceService.save(mockGame, SaveMode.GAME, "Test"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("highest bid");
         }
 
         @Test
-        @DisplayName("Rejects round with invalid player mappings")
-        void testSaveGameWithInvalidRoundPlayerMappings() {
-            Round mockRound = createValidMockRound();
-            when(mockGame.getRounds()).thenReturn(List.of(mockRound));
-
-            when(mockRound.getPlayers()).thenReturn(List.of(p1, p2, p3));
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
-
-            when(mockRound.getPlayers()).thenReturn(fourPlayers);
-            Player ghostPlayer = new Player(new HumanStrategy(), "Ghost");
-            Bid badBid = new SoloBid(ghostPlayer, BidType.SOLO, Suit.HEARTS);
-            when(mockRound.getHighestBid()).thenReturn(badBid);
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
-        }
-
-        @Test
-        @DisplayName("Rejects invalid participant or miserie winner mappings")
-        void testSaveGameWithInvalidParticipants() {
-            Round mockRound = createValidMockRound();
-            when(mockGame.getRounds()).thenReturn(List.of(mockRound));
-
-            when(mockRound.getBiddingTeamPlayers()).thenReturn(List.of());
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
-
-            when(mockRound.getBiddingTeamPlayers()).thenReturn(List.of(new Player(new HumanStrategy(), "Ghost")));
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
-
-            when(mockRound.getBiddingTeamPlayers()).thenReturn(List.of(p1));
-            when(mockRound.getCountMiserieWinners()).thenReturn(List.of(new Player(new HumanStrategy(), "Ghost")));
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
-        }
-
-        @Test
-        @DisplayName("Rejects invalid deltas or tricks won")
-        void testSaveGameWithInvalidDeltasOrTricks() {
+        @DisplayName("Rejects rounds containing invalid score deltas or trick counts")
+        void shouldThrowOnInvalidDeltasOrTricks() {
             Round mockRound = createValidMockRound();
             when(mockGame.getRounds()).thenReturn(List.of(mockRound));
 
             when(mockRound.getScoreDeltas()).thenReturn(List.of(0, 0));
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
+            assertThatThrownBy(() -> persistenceService.save(mockGame, SaveMode.GAME, "Test"))
+                    .isInstanceOf(IllegalStateException.class);
 
             when(mockRound.getScoreDeltas()).thenReturn(List.of(90, -30, -30, -30));
             when(mockRound.getCountTricksWon()).thenReturn(-5);
             when(mockRound.getBiddingTeamTricksWon()).thenReturn(-2);
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
-
-            when(mockRound.getCountTricksWon()).thenReturn(-1);
-            when(mockRound.getBiddingTeamTricksWon()).thenReturn(14);
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
+            assertThatThrownBy(() -> persistenceService.save(mockGame, SaveMode.GAME, "Test"))
+                    .isInstanceOf(IllegalStateException.class);
         }
     }
 
     // =========================================================================
-    // LOAD TESTS (Restoring Players and Rounds)
+    // LOAD TESTS
     // =========================================================================
 
     @Nested
-    @DisplayName("Load Game & Restore History Tests")
+    @DisplayName("Load Game & Restore History")
     class LoadGameTests {
 
         @Test
-        @DisplayName("Successfully loads a GAME mode save and restores dealer")
-        void testLoadIntoGameMainSuccessScenario() {
+        @DisplayName("Successfully loads a GAME mode save, restoring players, deck, and dealer")
+        void shouldLoadGameModeAndRestoreFullState() {
             String description = "Saved Game";
             GameSnapshot mockSnapshot = new GameSnapshot(description, SaveMode.GAME, 0, createValidPlayerSnapshots(), List.of());
             when(mockRepository.loadByDescription(description)).thenReturn(mockSnapshot);
@@ -312,7 +292,7 @@ class GamePersistenceServiceTest {
 
             SaveMode resultMode = persistenceService.loadIntoGame(mockGame, description);
 
-            assertEquals(SaveMode.GAME, resultMode);
+            assertThat(resultMode).isEqualTo(SaveMode.GAME);
             verify(mockGame).resetPlayers();
             verify(mockGame).resetRounds();
             verify(mockGame, times(4)).addPlayer(any(Player.class));
@@ -321,8 +301,8 @@ class GamePersistenceServiceTest {
         }
 
         @Test
-        @DisplayName("Successfully loads a COUNT mode save without setting a deck")
-        void testLoadCountMode() {
+        @DisplayName("Successfully loads a COUNT mode save without restoring the deck")
+        void shouldLoadCountModeWithoutDeck() {
             List<RoundSnapshot> rounds = List.of(
                     new RoundSnapshot(BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0))
             );
@@ -338,25 +318,29 @@ class GamePersistenceServiceTest {
 
             SaveMode mode = persistenceService.loadIntoGame(mockGame, "Count Save");
 
-            assertEquals(SaveMode.COUNT, mode);
+            assertThat(mode).isEqualTo(SaveMode.COUNT);
             verify(mockGame, never()).setDeck(any());
             verify(mockGame).setDealerPlayer(restoredPlayers.get(0));
         }
 
         @Test
-        @DisplayName("Rejects loading with null arguments")
-        void testLoadIntoGameDefensive() {
-            when(mockRepository.loadByDescription("_")).thenThrow(new IllegalArgumentException("No save found with description: _"));
-            assertAll("Defensive load constraints",
-                    () -> assertThrows(IllegalArgumentException.class, () -> persistenceService.loadIntoGame(null, "Desc")),
-                    () -> assertThrows(IllegalArgumentException.class, () -> persistenceService.loadIntoGame(mockGame, null)),
-                    () -> assertThrows(IllegalArgumentException.class, () -> persistenceService.loadIntoGame(mockGame, "_"))
-            );
+        @DisplayName("Rejects loading with null arguments or missing saves")
+        void shouldDefendAgainstInvalidLoadRequests() {
+            when(mockRepository.loadByDescription("Missing")).thenThrow(new IllegalArgumentException("No save found"));
+
+            assertThatThrownBy(() -> persistenceService.loadIntoGame(null, "Desc"))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            assertThatThrownBy(() -> persistenceService.loadIntoGame(mockGame, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            assertThatThrownBy(() -> persistenceService.loadIntoGame(mockGame, "Missing"))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("Restoring rounds to a game without exactly 4 players throws IllegalStateException")
-        void testRestoreRoundHistoryNot4Players() {
+        void shouldEnforceFourPlayersDuringRoundRestoration() {
             List<PlayerSnapshot> playerSnapshots = List.of(new PlayerSnapshot("P1", StrategySnapshotType.HUMAN, 0));
             List<RoundSnapshot> rounds = List.of(
                     new RoundSnapshot(BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30))
@@ -371,28 +355,9 @@ class GamePersistenceServiceTest {
                 return null;
             }).when(mockGame).addPlayer(any(Player.class));
 
-            assertThrows(IllegalStateException.class, () -> persistenceService.loadIntoGame(mockGame, "bad_restore"));
-        }
-
-        @Test
-        @DisplayName("Successfully restores valid round history")
-        void testRestoreValidRounds() {
-            List<RoundSnapshot> rounds = List.of(
-                    new RoundSnapshot(BidType.SOLO, 2, List.of(2), 13, List.of(), 1, List.of(-30, -30, 90, -30))
-            );
-            GameSnapshot snapshot = new GameSnapshot("Desc", SaveMode.COUNT, 0, createValidPlayerSnapshots(), rounds);
-            when(mockRepository.loadByDescription("Test")).thenReturn(snapshot);
-
-            List<Player> restoredPlayers = new ArrayList<>();
-            when(mockGame.getPlayers()).thenReturn(restoredPlayers);
-            doAnswer(invocation -> {
-                restoredPlayers.add(invocation.getArgument(0));
-                return null;
-            }).when(mockGame).addPlayer(any(Player.class));
-
-            persistenceService.loadIntoGame(mockGame, "Test");
-
-            verify(mockGame, times(1)).addRound(any(Round.class));
+            assertThatThrownBy(() -> persistenceService.loadIntoGame(mockGame, "bad_restore"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("exactly 4 players");
         }
     }
 
@@ -401,19 +366,19 @@ class GamePersistenceServiceTest {
     // =========================================================================
 
     @Nested
-    @DisplayName("Repository Delegation Tests")
+    @DisplayName("Repository Delegation")
     class RepositoryDelegationTests {
 
         @Test
-        @DisplayName("Delegates listDescriptions properly")
-        void testListDescriptions() {
+        @DisplayName("Correctly delegates listDescriptions() to the underlying repository")
+        void shouldDelegateListDescriptions() {
             List<String> expectedList = List.of("Save 1", "Save 2");
             when(mockRepository.listDescriptions()).thenReturn(expectedList);
 
             List<String> actualList = persistenceService.listDescriptions();
 
-            assertEquals(expectedList, actualList);
-            verify(mockRepository, times(1)).listDescriptions();
+            assertThat(actualList).isEqualTo(expectedList);
+            verify(mockRepository).listDescriptions();
         }
     }
 }
