@@ -529,9 +529,16 @@ public class Round {
     }
 
     /**
-     * Checks whether all 13 tricks have been played, signaling the end of the round.
+     * Checks whether the round has concluded.
+     * A round is considered finished under any of the following conditions:
+     * <ul>
+     * <li>All 13 tricks have been played.</li>
+     * <li>All players passed during the bidding phase.</li>
+     * <li>The active bid is a Miserie-category bid and the early termination condition is met
+     * (e.g., all Miserie players have won at least one trick, failing their contract).</li>
+     * </ul>
      *
-     * @return true if the round is finished, false otherwise.
+     * @return true if the round is finished based on trick count, passing, or Miserie early termination; false otherwise.
      */
     public boolean isFinished() {
         if (playedTricks.size() >= MAX_TRICKS) return true;

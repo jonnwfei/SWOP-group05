@@ -17,19 +17,11 @@ import java.util.List;
 
 /**
  * Manages the active gameplay phase where players play cards to complete tricks.
- *
- * @author Stan Kestens
- * @since 01/03/2026
  */
 public class PlayState extends State {
     private final Round currentRound;
     private Trick currentTrick;
 
-    /**
-     * Initializes the PlayState and sets up the first trick.
-     * @param game The current game instance.
-     * @throws IllegalStateException if no round is currently active.
-     */
     public PlayState(WhistGame game) {
         super(game);
         Round round = game.getCurrentRound();
@@ -40,11 +32,6 @@ public class PlayState extends State {
         this.currentTrick = new Trick(currentRound.getCurrentPlayer().getId(), currentRound.getTrumpSuit());
     }
 
-    /**
-     * Executes a single turn without a user command (e.g. when a bot is playing).
-     *
-     * @return The event to be rendered by the UI.
-     */
     @Override
     public StateStep executeState() {
         if (currentRound.isFinished()) {
@@ -56,16 +43,9 @@ public class PlayState extends State {
             return toStep(handleBotTurn(currentPlayer));
         }
 
-        // Always return current state view
         return StateStep.stay(buildNeedCardResult(currentPlayer));
     }
 
-    /**
-     * Executes a single turn based on a user command.
-     *
-     * @param command The user action (typically a card selection or a request to view the last trick)
-     * @return The event to be rendered by the UI.
-     */
     @Override
     public StateStep executeState(GameCommand command) {
         if (currentRound.isFinished()) {
@@ -75,72 +55,75 @@ public class PlayState extends State {
         Player currentPlayer = currentRound.getCurrentPlayer();
         GameResult result = handlePlayerMove(currentPlayer, command);
 
-        GameResult viewResult = switch (result) {
-            // If the round ended during the move, return the result immediately
-            case GameResult r when currentRound.isFinished() -> r;
-            // Return an explicit EndOfRoundResult as-is
-            case EndOfRoundResult e -> e;
-            // If it's a PlayCardResult (UI refresh), intercept it and build the needed view
-            case PlayCardResult p -> buildNeedCardResult(currentPlayer);
-            // All other meaningful results (EndOfTrickResult, TrickHistoryResult, etc.)
-            default -> result;
-        };
+        // CLEANUP: Greatly simplified. If the result is a prompt for a card, rebuild the fresh UI.
+        // Otherwise, just return the meaningful result (EndOfTrick, TrickHistory, etc.)
+        if (result instanceof PlayCardResult) {
+            return toStep(buildNeedCardResult(currentPlayer));
+        }
 
-        return toStep(viewResult);
+        return toStep(result);
     }
 
-    /**
-     * Handles the player turn
-     *
-     * @param player The current human player
-     * @param command The command received from the UI
-     * @return The resulting GameResult
-     */
     private GameResult handlePlayerMove(Player player, GameCommand command) {
         return switch (command) {
             case NumberCommand n when n.choice() == 0 -> {
                 Trick last = currentRound.getLastPlayedTrick();
-                yield (last == null)
-                        ? buildNeedCardResult(currentRound.getCurrentPlayer())
-                        : new TrickHistoryResult(last);
+                yield (last == null) ? buildNeedCardResult(player) : new TrickHistoryResult(last);
             }
-
             case CardCommand c -> {
                 Card card = c.card();
+                List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
 
-                if (!player.getHand().contains(card)) {
+                // CLEANUP: Validate explicitly instead of using try/catch for flow control
+                if (!legalCards.contains(card)) {
                     yield buildNeedCardResult(player);
                 }
 
-                try {
-                    currentTrick.addTurn(player.getId(), card);
-                    // FIX: Notify observers so Smart Bots can see the card!
-                    getGame().notifyTurnPlayed(new PlayTurn(player.getId(), card));
-                } catch (IllegalArgumentException e) {
-                    yield buildNeedCardResult(player);
-                }
-
-                boolean trickFinished = currentTrick.isCompleted();
-
-                // Note: Not hacky! We must extract this before processTurnOutcome resets the trick.
-                String winner = null;
-                if (trickFinished) {
-                    winner = getGame().getPlayerById(currentTrick.getWinningPlayerId()).getName();
-                }
-
-                processTurnOutcome();
-
-                if (currentRound.isFinished())
-                    yield new EndOfRoundResult(player.getName(), card);
-
-                if (trickFinished)
-                    yield new EndOfTrickResult(player.getName(), card, winner);
-
-                yield new EndOfTurnResult(player.getName(), card);
+                yield executeCardPlay(player, card);
             }
-
             default -> buildNeedCardResult(player);
         };
+    }
+
+    private GameResult handleBotTurn(Player player) {
+        Card card = player.chooseCard(currentTrick.getLeadingSuit());
+        return executeCardPlay(player, card);
+    }
+
+    /**
+     * CLEANUP: Extracted the massive duplication between bots and humans into a single method.
+     * Both actors play cards the exact same way.
+     */
+    private GameResult executeCardPlay(Player player, Card card) {
+        // 1. Play card, remove from hand, and broadcast
+        currentTrick.addTurn(player.getId(), card);
+        player.removeCard(card);
+        getGame().notifyTurnPlayed(new PlayTurn(player.getId(), card));
+
+        // 2. Pre-calculate winner before processTurnOutcome clears the trick
+        boolean trickFinished = currentTrick.isCompleted();
+        String winner = trickFinished ? getGame().getPlayerById(currentTrick.getWinningPlayerId()).getName() : null;
+
+        // 3. Let the round handle the physics
+        processTurnOutcome();
+
+        // 4. Return the correct progression event
+        if (currentRound.isFinished()) return new EndOfRoundResult(player.getName(), card);
+        if (trickFinished) return new EndOfTrickResult(player.getName(), card, winner);
+        return new EndOfTurnResult(player.getName(), card);
+    }
+
+    private void processTurnOutcome() {
+        if (currentTrick.isCompleted()) {
+            Player winningPlayer = getGame().getPlayerById(currentTrick.getWinningPlayerId());
+
+            // Round registers the trick and automatically scores itself if it's the 13th or all miserie players won
+            currentRound.registerCompletedTrick(currentTrick);
+
+            this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getTrumpSuit());
+        } else {
+            currentRound.advanceToNextPlayer();
+        }
     }
 
     private GameResult buildNeedCardResult(Player player) {
@@ -150,86 +133,37 @@ public class PlayState extends State {
         List<String> exposedNames = new ArrayList<>();
         List<List<Card>> exposedHands = new ArrayList<>();
 
+        // CLEANUP: Helper method call to keep this builder clean and readable
         if (isOpenMiserie) {
-            for (Bid bid : currentRound.getBids()) {
-                if (bid.getType() == BidType.OPEN_MISERIE) {
-                    Player proposer = getGame().getPlayerById(bid.getPlayerId());
-                    exposedNames.add(proposer.getName());
-                    exposedHands.add(proposer.getHand());
-                }
-            }
+            populateExposedHands(exposedNames, exposedHands);
         }
 
-        List<Card> tableCards = currentTrick.getTurns()
-                .stream()
-                .map(PlayTurn::playedCard)
-                .toList();
-
+        List<Card> tableCards = currentTrick.getTurns().stream()
+                .map(PlayTurn::playedCard).toList();
         List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
 
         return new PlayCardResult(
-                tableCards,
-                isOpenMiserie,
-                exposedNames,
-                exposedHands,
-                currentRound.getTricks().size() + 1,
-                player,
-                legalCards,
-                currentRound.getLastPlayedTrick());
+                tableCards, isOpenMiserie, exposedNames, exposedHands,
+                currentRound.getTricks().size() + 1, player, legalCards,
+                currentRound.getLastPlayedTrick()
+        );
     }
 
     /**
-     * Handle a bot turn
+     * Helper method to isolate the Open Miserie visibility logic
      */
-    private GameResult handleBotTurn(Player player) {
-        Card card = player.chooseCard(currentTrick.getLeadingSuit());
-        currentTrick.addTurn(player.getId(), card);
-
-        // FIX: Notify observers so other Smart Bots can see the card!
-        getGame().notifyTurnPlayed(new PlayTurn(player.getId(), card));
-
-        boolean trickFinished = currentTrick.isCompleted();
-        String winner = null;
-        if (trickFinished) {
-            winner = getGame().getPlayerById(currentTrick.getWinningPlayerId()).getName();
-        }
-
-        processTurnOutcome();
-
-        if (currentRound.isFinished())
-            return new EndOfRoundResult(player.getName(), card);
-
-        if (trickFinished)
-            return new EndOfTrickResult(player.getName(), card, winner);
-
-        return new EndOfTurnResult(player.getName(), card);
-    }
-
-    /**
-     * Updates the round state and initializes the next trick if the current one is full.
-     */
-    private void processTurnOutcome() {
-        if (currentTrick.isCompleted()) {
-            Player winningPlayer = getGame().getPlayerById(currentTrick.getWinningPlayerId());
-
-            // FIX: registerCompletedTrick internally checks for max tricks AND Miserie early termination!
-            currentRound.registerCompletedTrick(currentTrick);
-
-            if (!currentRound.isFinished()) {
-                // FIX: Pass the PlayerId to the Trick constructor
-                this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getTrumpSuit());
+    private void populateExposedHands(List<String> exposedNames, List<List<Card>> exposedHands) {
+        for (Bid bid : currentRound.getBids()) {
+            if (bid.getType() == BidType.OPEN_MISERIE) {
+                Player proposer = getGame().getPlayerById(bid.getPlayerId());
+                exposedNames.add(proposer.getName());
+                exposedHands.add(proposer.getHand());
             }
-        } else {
-            currentRound.advanceToNextPlayer();
         }
     }
 
-    /**
-     * Determines the next state based on whether all tricks have been played.
-     */
     @Override
     public State nextState() {
-        // Since Round is the Information Expert, we just ask it if it is done.
         if (currentRound.isFinished()) {
             return new ScoreBoardState(this.getGame());
         }

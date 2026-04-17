@@ -25,22 +25,22 @@ import static org.mockito.Mockito.*;
 
 @DisplayName("SmartBot AI Strategy Rules & Tactics")
 class SmartBotStrategyTest {
-
     private SmartBotStrategy strategy;
     private final PlayerId botId = new PlayerId("smart-bot-007");
 
-    @Mock
+    // 1. Remove the @Mock annotations
     private SmartBotMemory mockMemory;
-
-    @Mock
     private Random mockRandom;
 
     @BeforeEach
     void setUp() throws Exception {
+        // 2. Initialize the mocks manually before passing them to the strategy
+        mockMemory = mock(SmartBotMemory.class);
+        mockRandom = mock(Random.class);
+
         strategy = new SmartBotStrategy(botId);
 
         // INJECTION REFLECTION: Swap the internal Memory and Random objects with our Mocks
-        // This allows us to control the game state and eliminate RNG for deterministic tests.
         Field memoryField = SmartBotStrategy.class.getDeclaredField("memory");
         memoryField.setAccessible(true);
         memoryField.set(strategy, mockMemory);

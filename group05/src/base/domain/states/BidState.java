@@ -96,11 +96,17 @@ public class BidState extends State {
                     .count();
 
             if (aceCount == 3) {
-                Bid forcedBid = BidType.TROEL.instantiate(player.getId(), null);
+                Suit missingSuit = java.util.Arrays.stream(Suit.values())
+                        .filter(suit -> player.getHand().stream()
+                                .noneMatch(c -> c.rank() == Rank.ACE && c.suit() == suit))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("Critical Error: Could not find the missing Ace suit for Troel."));
+
+                Bid forcedBid = BidType.TROEL.instantiate(player.getId(), missingSuit);
                 commitBid(forcedBid);
                 break;
             } else if (aceCount == 4) {
-                Bid forcedBid = BidType.TROELA.instantiate(player.getId(), null);
+                Bid forcedBid = BidType.TROELA.instantiate(player.getId(), Suit.HEARTS);
                 commitBid(forcedBid);
                 break;
             }
