@@ -1,24 +1,26 @@
+// base/domain/states/CountState.java
 package base.domain.states;
 
 import base.domain.WhistGame;
-
-import base.domain.commands.*;
-
-import base.domain.results.*;
-import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
-import base.domain.player.Player;
-
-import base.domain.bid.*;
+import base.domain.bid.Bid;
+import base.domain.bid.BidType;
 import base.domain.card.Suit;
+import base.domain.commands.*;
+import base.domain.player.Player;
+import base.domain.results.*;
 import base.domain.round.Round;
+import base.storage.snapshots.SaveMode;
 
 import java.util.List;
 
 import static base.domain.bid.BidType.*;
 
 /**
- * State responsible for manual score calculation. (use case 1)
+ * Manual score-counting flow (use case 1).
+ * <p>
+ * IO-agnostic: the adapter owns persistence. When the user picks "save" this
+ * state emits a {@link SaveDescriptionResult} and, once the follow-up
+ * {@link TextCommand} arrives, simply resumes the scoreboard.
  *
  * @author Stan Kestens
  * @since 01/03/2026
@@ -26,7 +28,8 @@ import static base.domain.bid.BidType.*;
 public class CountState extends State {
 
     private enum CountPhase {
-        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, SELECT_WINNERS, CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION
+        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, SELECT_WINNERS,
+        CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION
     }
 
     private CountPhase currentPhase = CountPhase.START;
@@ -35,35 +38,20 @@ public class CountState extends State {
     private BidType selectedBidType;
     private Suit trumpSuit;
     private List<Player> participatingPlayers;
-    private final GamePersistenceService persistenceService;
 
     public CountState(WhistGame game) {
         super(game);
-        this.persistenceService = new GamePersistenceService();
     }
 
-    /**
-     * Executes the current phase of the scoring process without user input (e.g.
-     * initial entry into CountState).
-     * 
-     * @return The next event in the scoring sequence.
-     */
     @Override
     public StateStep executeState() {
         if (currentPhase == CountPhase.START) {
             currentPhase = CountPhase.SELECT_BID;
             return StateStep.stay(new BidSelectionResult(values(), getGame().getPlayers()));
         }
-
         return StateStep.stay(nextStep());
     }
 
-    /**
-     * Routes the user action to the current phase of the scoring wizard.
-     *
-     * @param command The user input.
-     * @return The next event in the scoring sequence.
-     */
     @Override
     public StateStep executeState(GameCommand command) {
         if (currentPhase == CountPhase.START) {
@@ -72,11 +60,15 @@ public class CountState extends State {
         }
 
         return switch (command) {
-            case BidCommand b -> StateStep.stay(handleBidType(b.bid()));
-            case SuitCommand s -> StateStep.stay(handleSuit(s.suit()));
+            case BidCommand b        -> StateStep.stay(handleBidType(b.bid()));
+            case SuitCommand s       -> StateStep.stay(handleSuit(s.suit()));
             case PlayerListCommand p -> StateStep.stay(handlePlayerInput(p.players()));
-            case NumberCommand n -> handleNumberInput(n.choice());
-            case TextCommand t -> StateStep.stay(handleSaveDescription(t.text()));
+            case NumberCommand n     -> handleNumberInput(n.choice());
+            // Adapter has already performed the save — just resume the scoreboard.
+            case TextCommand ignored -> {
+                currentPhase = CountPhase.PROMPT_NEXT_STATE;
+                yield StateStep.stay(getScoreBoard());
+            }
             default -> throw new IllegalStateException("Unexpected value: " + command);
         };
     }
@@ -88,7 +80,7 @@ public class CountState extends State {
         // PROMPT_NEXT_STATE
         if (value == 3) {
             currentPhase = CountPhase.SAVE_DESCRIPTION;
-            return StateStep.stay(new SaveDescriptionResult());
+            return StateStep.stay(new SaveDescriptionResult(SaveMode.COUNT));
         }
         this.keuze = value;
         return StateStep.transitionWithoutResult();
@@ -99,14 +91,8 @@ public class CountState extends State {
         return new BidSelectionResult(values(), getGame().getPlayers());
     }
 
-    /**
-     * Processes the selected bid type
-     *
-     * @return GameEvent
-     */
     private GameResult handleBidType(BidType type) {
         this.selectedBidType = type;
-
         if (type == MISERIE || type == OPEN_MISERIE) {
             currentPhase = CountPhase.SELECT_PLAYERS;
             return new PlayerSelectionResult(getGame().getPlayers(), true);
@@ -115,55 +101,33 @@ public class CountState extends State {
         return new SuitSelectionResult();
     }
 
-    /**
-     * Processes the trump suit selection.
-     *
-     * @return GameEvent
-     */
     private GameResult handleSuit(Suit suit) {
         this.trumpSuit = suit;
         currentPhase = CountPhase.SELECT_PLAYERS;
         return new PlayerSelectionResult(getGame().getPlayers(), false);
     }
 
-    /**
-     * Identifies which players were involved in the bid.
-     *
-     * @return GameEvent
-     */
     private GameResult handlePlayerInput(List<Player> players) {
         if (currentPhase == CountPhase.SELECT_PLAYERS) {
-            // If empty, stay in the same phase and return the selection result again
             if (players == null || players.isEmpty()) {
-                // We stay in SELECT_PLAYERS phase
                 boolean multiSelect = (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE);
                 return new PlayerSelectionResult(getGame().getPlayers(), multiSelect);
             }
 
             this.participatingPlayers = players;
-
-            // safe to call getFirst() now
             this.bid = selectedBidType.instantiate(participatingPlayers.getFirst(), trumpSuit);
 
             if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;
                 return new PlayerSelectionResult(getGame().getPlayers(), true);
             }
-
             currentPhase = CountPhase.CALCULATE;
             return new AmountOfTrickWonResult();
         }
-
-        // SELECT_WINNERS — players here are the winners, participatingPlayers already set
-        // An empty list here is fine (means everyone lost their miserie)
+        // SELECT_WINNERS — participatingPlayers already set
         return finalizeCalculation(0, players);
     }
 
-    /**
-     * Performs final score calculation based on tricks won or miserie results.
-     *
-     * @return GameEvent
-     */
     private GameResult finalizeCalculation(int tricks, List<Player> winners) {
         Player primaryBidder = participatingPlayers.getFirst();
         Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
@@ -181,28 +145,13 @@ public class CountState extends State {
         return new ScoreBoardResult(getPlayerNames(), scores);
     }
 
-    private GameResult handleSaveDescription(String text) {
-        try {
-            persistenceService.save(getGame(), SaveMode.COUNT, text); // TODO: this needs to be checked and fixed,
-                                                                      // shouldnt be in domain layer
-        } catch (Exception e) {
-            throw new IllegalStateException("Error in CountState handleSaveDescription", e);
-        }
-        currentPhase = CountPhase.PROMPT_NEXT_STATE;
-        return getScoreBoard();
-    }
-
     private List<String> getPlayerNames() {
         return getGame().getPlayers().stream().map(Player::getName).toList();
     }
 
-    /** Returns to a fresh CountState or the Main Menu. */
     @Override
     public State nextState() {
-        if (keuze == 1) {
-            return new CountState(getGame());
-        } else {
-            return null;
-        }
+        if (keuze == 1) return new CountState(getGame());
+        return null;
     }
 }
