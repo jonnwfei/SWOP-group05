@@ -77,17 +77,17 @@ class MiserieBidTest {
         PlayerId player3Id = new PlayerId("player-789");
 
         // Mock 1: Another normal Miserie bid
-        Bid mockMiserie = mock(Bid.class);
+        Bid mockMiserie = mock(MiserieBid.class);
         when(mockMiserie.getType()).thenReturn(BidType.MISERIE);
         when(mockMiserie.getPlayerId()).thenReturn(player2Id);
 
         // Mock 2: An OPEN Miserie bid (should NOT be grouped with normal Miserie)
-        Bid mockOpenMiserie = mock(Bid.class);
+        Bid mockOpenMiserie = mock(MiserieBid.class);
         when(mockOpenMiserie.getType()).thenReturn(BidType.OPEN_MISERIE);
         when(mockOpenMiserie.getPlayerId()).thenReturn(player3Id);
 
         // Mock 3: A PASS bid
-        Bid mockPass = mock(Bid.class);
+        Bid mockPass = mock(PassBid.class);
         when(mockPass.getType()).thenReturn(BidType.PASS);
 
         List<Bid> bidHistory = List.of(mockPass, mockMiserie, mockOpenMiserie, bid);
