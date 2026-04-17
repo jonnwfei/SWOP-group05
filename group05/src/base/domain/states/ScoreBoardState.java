@@ -132,7 +132,7 @@ public class ScoreBoardState extends State {
                         }
 
                         case 2 -> {
-                            getGame().addPlayer(new Player(new HighBotStrategy(), "Smart bot"));
+                            getGame().addPlayer(new Player(new HighBotStrategy(), "Smart bot")); // TODO: change to SmartBot after TOmmy merge
                             phase = Phase.SHOW;
                             yield buildScoreBoard();
                         }

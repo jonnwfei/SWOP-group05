@@ -243,7 +243,7 @@ public class CountState extends State {
 
     private GameResult getScoreBoard() {
         List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-        boolean canRemove = getGame().getPlayers().size() > 4;
+        boolean canRemove = canRemovePlayer();
         return new ScoreBoardResult(getPlayerNames(), scores, canRemove);
     }
 
@@ -273,6 +273,10 @@ public class CountState extends State {
 
     // Called when PlayerListCommand arrives during REMOVE_PLAYER_SELECT
     private GameResult handleRemovePlayer(List<PlayerId> playerIds) {
+        if (!canRemovePlayer()) {
+            currentPhase = CountPhase.PROMPT_NEXT_STATE;
+            return getScoreBoard();
+        }
         if (playerIds.isEmpty()) {
             return new PlayerSelectionResult(getGame().getPlayers(), false); // re-prompt
         }
@@ -284,6 +288,10 @@ public class CountState extends State {
 
     private List<String> getPlayerNames() {
         return getGame().getPlayers().stream().map(Player::getName).toList();
+    }
+
+    private boolean canRemovePlayer() {
+        return getGame().getPlayers().size() > 4;
     }
 
     /** Returns to a fresh CountState or the Main Menu. */
