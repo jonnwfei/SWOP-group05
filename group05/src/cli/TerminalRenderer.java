@@ -5,7 +5,7 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.results.PlayCardResult;
-import base.domain.trick.Turn;
+import base.domain.turn.PlayTurn;
 import cli.events.IOEvent;
 import cli.events.MessageIOEvent;
 
@@ -92,7 +92,7 @@ public class TerminalRenderer {
         } else {
             // Displays cards in a horizontal-ish list for better flow
             String table = String.join("\n | ", data.turns().stream()
-                    .map(Turn::toString).toList());
+                    .map(PlayTurn::toString).toList());
             System.out.println(" | " + table);
         }
 
