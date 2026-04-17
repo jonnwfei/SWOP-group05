@@ -537,4 +537,54 @@ public class Round {
     public void setHighestBid(Bid bid) {
         this.highestBid = bid;
     }
+
+    /**
+     * Rehydrates a historical round from a persisted snapshot without re-running scoring logic.
+     *
+     * @param highestBid restored winning bid
+     * @param trumpSuit restored trump suit (can be null for no-trump bids)
+     * @param participants restored bidding team members
+     * @param tricksWon restored count-mode tricks won value
+     * @param miserieWinners restored count-mode miserie winners
+     * @param restoredScoreDeltas restored per-player score deltas
+     */
+    public void restoreFromSnapshot(
+            Bid highestBid,
+            Suit trumpSuit,
+            List<Player> participants,
+            int tricksWon,
+            List<Player> miserieWinners,
+            List<Integer> restoredScoreDeltas) {
+        if (highestBid == null) {
+            throw new IllegalArgumentException("Cannot restore round without a highest bid.");
+        }
+        if (participants == null || participants.isEmpty() || participants.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Participants list cannot be null, empty, or contain null elements.");
+        }
+        if (participants.stream().anyMatch(p -> !this.players.contains(p))) {
+            throw new IllegalArgumentException("All participants must belong to this round's players.");
+        }
+        if (tricksWon < -1 || tricksWon > MAX_TRICKS) {
+            throw new IllegalArgumentException("Tricks won must be -1 or between 0 and " + MAX_TRICKS + ".");
+        }
+        if (restoredScoreDeltas == null || restoredScoreDeltas.size() != this.players.size()) {
+            throw new IllegalArgumentException("Score deltas must contain exactly " + this.players.size() + " entries.");
+        }
+        if (restoredScoreDeltas.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Score deltas cannot contain null elements.");
+        }
+        if (miserieWinners != null && miserieWinners.stream().anyMatch(p -> !participants.contains(p))) {
+            throw new IllegalArgumentException("Miserie winners must be participants.");
+        }
+
+        this.highestBid = highestBid;
+        this.trumpSuit = trumpSuit;
+        this.biddingTeam.clear();
+        this.biddingTeam.addAll(participants);
+        this.countTricksWon = tricksWon;
+        this.countMiserieWinners = miserieWinners == null ? new ArrayList<>() : new ArrayList<>(miserieWinners);
+        this.scoreDeltas.clear();
+        this.scoreDeltas.addAll(restoredScoreDeltas);
+        this.isEarlyFinished = true;
+    }
 }

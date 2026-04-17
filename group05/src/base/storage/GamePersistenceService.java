@@ -1,8 +1,7 @@
 package base.storage;
 
 import base.domain.WhistGame;
-import base.domain.bid.BidType;
-import base.domain.bid.Bid;
+import base.domain.bid.*;
 import base.domain.deck.Deck;
 import base.domain.round.Round;
 import base.storage.snapshots.*;
@@ -166,11 +165,17 @@ public class GamePersistenceService {
 
         BidType bidType = highestBid.getType();
         int bidderIndex = roundPlayers.indexOf(highestBid.getPlayer());
+        if (bidderIndex < 0) {
+            throw new IllegalStateException("Cannot snapshot round: highest bid player is not in round players");
+        }
 
 
         List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()
             .map(roundPlayers::indexOf)
             .toList();
+        if (participantIndices.stream().anyMatch(i -> i < 0)) {
+            throw new IllegalStateException("Cannot snapshot round: bidding team contains players outside the round");
+        }
         if (participantIndices.isEmpty() && bidType != BidType.PASS) {
             throw new IllegalStateException("Cannot snapshot round without bidding team participants");
         }
@@ -178,6 +183,9 @@ public class GamePersistenceService {
         List<Integer> miserieWinnerIndices = round.getCountMiserieWinners().stream()
             .map(roundPlayers::indexOf)
             .toList();
+        if (miserieWinnerIndices.stream().anyMatch(i -> i < 0)) {
+            throw new IllegalStateException("Cannot snapshot round: miserie winners contain players outside the round");
+        }
 
         List<Integer> scoreDeltas = round.getScoreDeltas();
 
@@ -191,10 +199,11 @@ public class GamePersistenceService {
                     bidType,
                     bidderIndex,
                     participantIndices,
-                tricksWon,
-                miserieWinnerIndices,
-                round.getMultiplier(),
-                scoreDeltas);
+                    tricksWon,
+                    miserieWinnerIndices,
+                    round.getMultiplier(),
+                    scoreDeltas,
+                    round.getTrumpSuit());
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
         }
@@ -214,8 +223,43 @@ public class GamePersistenceService {
         List<Player> players = game.getPlayers();
         if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
 
+
         for (RoundSnapshot snapshot : roundSnapshots) {
-            game.addRound(new Round(players, players.get(snapshot.bidderIndex()), snapshot.multiplier()));
+            int bidderIndex = snapshot.bidderIndex();
+            if (bidderIndex < 0 || bidderIndex >= players.size()) {
+                throw new IllegalStateException("Cannot restore round: bidder index out of range");
+            }
+
+            Player mainBidder = players.get(bidderIndex);
+            Bid highestBid = snapshot.bidType().instantiate(mainBidder, snapshot.trumpSuit());
+
+            List<Player> participants = snapshot.participantIndices().stream()
+                    .map(index -> {
+                        if (index < 0 || index >= players.size()) {
+                            throw new IllegalStateException("Cannot restore round: participant index out of range");
+                        }
+                        return players.get(index);
+                    })
+                    .toList();
+
+            List<Player> miserieWinners = snapshot.miserieWinnerIndices().stream()
+                    .map(index -> {
+                        if (index < 0 || index >= players.size()) {
+                            throw new IllegalStateException("Cannot restore round: miserie winner index out of range");
+                        }
+                        return players.get(index);
+                    })
+                    .toList();
+
+            Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
+            restoredRound.restoreFromSnapshot(
+                    highestBid,
+                    snapshot.trumpSuit(),
+                    participants,
+                    snapshot.tricksWon(),
+                    miserieWinners,
+                    snapshot.scoreDeltas());
+            game.addRound(restoredRound);
         }
     }
 
