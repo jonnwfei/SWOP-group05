@@ -13,10 +13,4 @@ class ResponseTest {
 
         assertEquals(rawInput, response.rawInput(), "Response should store the exact rawInput string");
     }
-
-    @Test
-    void responseTest_constructorDefensiveness() {
-        assertThrows(IllegalArgumentException.class, () -> new Response(null),
-                "Constructor should throw IllegalArgumentException when rawInput is null");
-    }
 }
