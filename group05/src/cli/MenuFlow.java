@@ -5,7 +5,8 @@ import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.domain.strategy.*;
 import cli.events.IOEvent;
-import cli.events.menu.*;
+
+import static cli.events.MenuEvents.*;
 
 public class MenuFlow {
 
@@ -23,8 +24,10 @@ public class MenuFlow {
 
         int choice = askInt(new WelcomeMenuIOEvent(), 1, 3);
 
-        if (choice == 1) setupGame();
-        else if (choice == 2) setupCount();
+        if (choice == 1)
+            setupGame();
+        else if (choice == 2)
+            setupCount();
 
     }
 
@@ -49,8 +52,7 @@ public class MenuFlow {
         game.setRandomDealer();
 
         terminalManager.handle(new PrintNamesIOEvent(
-                game.getPlayers().stream().map(Player::getName).toList()
-        ));
+                game.getPlayers().stream().map(Player::getName).toList()));
         game.startGame();
     }
 
@@ -61,8 +63,7 @@ public class MenuFlow {
         }
 
         terminalManager.handle(new PrintNamesIOEvent(
-                game.getPlayers().stream().map(Player::getName).toList()
-        ));
+                game.getPlayers().stream().map(Player::getName).toList()));
 
         game.startCount();
     }
@@ -83,7 +84,8 @@ public class MenuFlow {
     private int askInt(IOEvent event, int min, int max) {
         while (true) {
             int value = askInt(event);
-            if (value >= min && value <= max) return value;
+            if (value >= min && value <= max)
+                return value;
             System.out.println("Please enter a number between " + min + " and " + max + ".");
         }
     }
@@ -91,7 +93,8 @@ public class MenuFlow {
     private String askString(IOEvent event) {
         while (true) {
             String raw = terminalManager.handle(event).rawInput();
-            if (raw != null && !raw.isBlank()) return raw.trim();
+            if (raw != null && !raw.isBlank())
+                return raw.trim();
             System.out.println("Input cannot be empty.");
         }
     }

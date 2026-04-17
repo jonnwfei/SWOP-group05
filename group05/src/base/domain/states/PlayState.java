@@ -29,6 +29,7 @@ public class PlayState extends State {
     /**
      * Initializes the PlayState and sets up the first trick.
      * * @param game The current game instance.
+     *
      * @throws IllegalStateException if no round is currently active.
      */
     public PlayState(WhistGame game) {
@@ -42,23 +43,59 @@ public class PlayState extends State {
     }
 
     /**
-     * Executes a single turn.
-     * * @param command The user action (typically a card selection or "Continue").
+     * Executes a single turn without a user command (e.g. when a bot is playing).
+     *
      * @return The event to be rendered by the UI.
      */
     @Override
-    public GameResult executeState(GameCommand command) {
-        Player currentPlayer = currentRound.getCurrentPlayer();
+    public StateStep executeState() {
 
-        return switch (command) {
-            case CardCommand c -> handleCardPlay(currentPlayer, c.card());
-            case ContinueCommand ignored -> buildNeedCardResult(currentPlayer);
-            default -> throw new IllegalStateException("Unexpected command in PlayState: " + command);
+        if (currentRound.isFinished()) {
+            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
+        }
+
+        Player currentPlayer = currentRound.getCurrentPlayer();
+        if (!currentPlayer.getRequiresConfirmation()) { // TODO: fix with polymorph ish shit?
+            return toStep(handleBotTurn(currentPlayer));
+        }
+
+        // Always return current state view
+        return StateStep.stay(buildNeedCardResult(currentPlayer));
+    }
+
+    /**
+     * Executes a single turn based on a user command.
+     *
+     * @param command The user action (typically a card selection or a request to view the last trick)
+     * @return The event to be rendered by the UI.
+     */
+    @Override
+    public StateStep executeState(GameCommand command) {
+
+        if (currentRound.isFinished()) {
+            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
+        }
+
+        Player currentPlayer = currentRound.getCurrentPlayer();
+        GameResult result = handlePlayerMove(currentPlayer, command);
+
+        GameResult viewResult = switch (result) {
+            // If the round ended during the move, return the result immediately
+            case GameResult r when currentRound.isFinished() -> r;
+            // Return an explicit EndOfRoundResult as-is
+            case EndOfRoundResult e -> e;
+            // If it's a PlayCardResult (UI refresh), intercept it and build the needed view
+            case PlayCardResult p -> buildNeedCardResult(currentPlayer); // TODO: should use parameter p?
+            // All other meaningful results (EndOfTrickResult, TrickHistoryResult, etc.)
+            default -> result;
         };
+
+        return toStep(viewResult);
     }
 
     /**
      * Handles the player turn
+     *
      * @param player The current human player
      * @param card card chosen
      * @return The resulting GameResult
@@ -75,6 +112,7 @@ public class PlayState extends State {
         // 3. BROADCAST: Notify all GameObservers (like SmartBotMemory) that a card was played!
         getGame().notifyTurnPlayed(new PlayTurn(player.getId(), card));
 
+        // TODO: this is a bit hacky, we should probably return the winning player from processTurnOutcome instead of re-checking here
         boolean trickFinished = currentTrick.isCompleted();
         String winnerName = trickFinished ? getGame().getPlayerById(currentTrick.getWinningPlayerId()).getName() : null;
 
@@ -127,10 +165,58 @@ public class PlayState extends State {
                 currentRound.getTricks().size() + 1,
                 player,
                 legalCards,
-                currentRound.getLastPlayedTrick()
-        );
+                currentRound.getLastPlayedTrick());
     }
 
+
+    /**
+     * Handle a bot turn
+     */
+    private GameResult handleBotTurn(Player player) {
+        Card card = player.chooseCard(currentTrick.getLeadingSuit());
+        currentTrick.playCard(player, card);
+
+        boolean trickFinished = currentTrick.isCompleted();
+        String winner = trickFinished ? currentTrick.getWinningPlayer().getName() : null;
+
+        processTurnOutcome();
+
+        if (roundOver)
+            return new EndOfRoundResult(player.getName(), card);
+
+        if (trickFinished)
+            return new EndOfTrickResult(player.getName(), card, winner);
+
+        return new EndOfTurnResult(player.getName(), card);
+    }
+
+    /**
+     * Updates the round state and initializes the next trick if the current one is
+     * full.
+     */
+    private void processTurnOutcome() {
+        if (currentTrick.isCompleted()) {
+            Player winningPlayer = currentTrick.getWinningPlayer();
+            currentRound.registerCompletedTrick(currentTrick);
+
+            // Extension 11a: Check if a Miserie bidder won this trick
+            if (currentRound.getHighestBid().getType() == BidType.MISERIE &&
+                    currentRound.getBiddingTeamPlayers().contains(winningPlayer)) {
+                roundOver = true;
+                currentRound.signalEarlyFinish(); // This updates scores and flags the round as done
+                return;
+            }
+
+            if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
+                roundOver = true;
+            } else {
+                // Only start a new trick if the round isn't over
+                this.currentTrick = new Trick(winningPlayer, currentRound.getTrumpSuit());
+            }
+        } else {
+            currentRound.advanceToNextPlayer();
+        }
+    }
 
     /**
      * Determines the next state based on whether all tricks have been played.
@@ -139,9 +225,18 @@ public class PlayState extends State {
      */
     @Override
     public State nextState() {
-        if (currentRound.getTricks().size() >= Round.MAX_TRICKS) {
+        // CRITICAL: Use the same logic that processTurnOutcome uses.
+        // If roundOver is true, we MUST move to ScoreBoardState.
+        if (roundOver || currentRound.isFinished()) {
             return new ScoreBoardState(this.getGame());
         }
         return this;
+    }
+
+    private StateStep toStep(GameResult result) {
+        return switch (result) {
+            case EndOfRoundResult ignored -> StateStep.transition(result);
+            default -> StateStep.stay(result);
+        };
     }
 }

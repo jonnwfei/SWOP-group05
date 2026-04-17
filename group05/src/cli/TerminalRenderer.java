@@ -4,52 +4,63 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.results.PlayCardResult;
 import cli.events.IOEvent;
-import cli.events.BidEvents.*;
-import cli.events.CountEvents.*;
 import cli.events.MessageIOEvent;
-import cli.events.PlayEvents.*;
-import cli.events.menu.*;
+
+import static cli.events.BidEvents.*;
+import static cli.events.CountEvents.*;
+import static cli.events.MenuEvents.*;
+import static cli.events.PlayEvents.*;
 
 import java.util.List;
 
 public class TerminalRenderer {
-
     public void render(IOEvent event) {
         switch (event) {
             // --- play state ---
+            case ConfirmationIOEvent e -> renderConfigEvent(e);
             case PlayCardIOEvent e -> renderPlayCardEvent(e);
-            case EndOfTurnIOEvent e          -> renderEndOfTurnEvent(e);
-            case EndOfTrickIOEvent e         -> renderEndOfTrickEvent(e);
-            case EndOfRoundIOEvent e         -> renderEndOfRoundEvent(e);
-            case TrickHistoryIOEvent t       -> renderTrickHistoryEvent(t);
+            case EndOfTurnIOEvent e -> renderEndOfTurnEvent(e);
+            case EndOfTrickIOEvent e -> renderEndOfTrickEvent(e);
+            case EndOfRoundIOEvent e -> renderEndOfRoundEvent(e);
+            case TrickHistoryIOEvent t -> renderTrickHistoryEvent(t);
             case ParticipatingPlayersIOEvent e -> renderParticipatingPlayersEvent(e);
-            case BotCardIOEvent e -> renderBotCardEvent(e);
+            // case BotCardIOEvent e -> renderBotCardEvent(e); //TODO is this even used?
             // --- bid state ---
-            case BidTurnIOEvent e              -> renderBidTurnEvent(e);
-            case SuitSelectionIOEvent ignored  -> renderSuitSelectionEvent();
-            case ProposalRejectedIOEvent e     -> renderRejectedProposalEvent(e);
+            case BidTurnIOEvent e -> renderBidTurnEvent(e);
+            case SuitSelectionIOEvent ignored -> renderSuitSelectionEvent();
+            case ProposalRejectedIOEvent e -> renderRejectedProposalEvent(e);
             case BiddingCompletedIOEvent ignored -> renderBiddingCompleteEvent();
             // --- count state ---
-            case BidSelectionIOEvent e         -> renderBidSelectionEvent(e);
-            case PlayerSelectionIOEvent e      -> renderPlayerSelectionEvent(e);
-            case TrickInputIOEvent ignored     -> renderTrickInputEvent();
-            case ScoreBoardIOEvent e           -> renderScoreBoardEvent(e);
+            case BidSelectionIOEvent e -> renderBidSelectionEvent(e);
+            case PlayerSelectionIOEvent e -> renderPlayerSelectionEvent(e);
+            case TrickInputIOEvent ignored -> renderTrickInputEvent();
+            case ScoreBoardIOEvent e -> renderScoreBoardEvent(e);
             case SaveDescriptionIOEvent ignored -> renderSaveDescriptionEvent();
-            case ScoreBoardCompleteIOEvent ignored -> {}
             // --- menu ---
-            case WelcomeMenuIOEvent ignored    -> renderWelcomeMenuEvent();
-            case AmountOfBotsIOEvent ignored   -> renderAmountOfBotsEvent();
-            case PlayerNameIOEvent e           -> renderPlayerNameEvent(e);
-            case BotStrategyIOEvent e          -> renderBotStrategyEvent(e);
-            case PrintNamesIOEvent e           -> renderPrintNamesEvent(e);
+            case WelcomeMenuIOEvent ignored -> renderWelcomeMenuEvent();
+            case AmountOfBotsIOEvent ignored -> renderAmountOfBotsEvent();
+            case PlayerNameIOEvent e -> renderPlayerNameEvent(e);
+            case BotStrategyIOEvent e -> renderBotStrategyEvent(e);
+            case PrintNamesIOEvent e -> renderPrintNamesEvent(e);
             case MessageIOEvent t -> renderMessageEvent(t);
             default -> throw new IllegalStateException("Unhandled IOEvent: " + event);
         }
     }
 
+
+    private void renderConfigEvent(ConfirmationIOEvent e) {
+        System.out.println("\n========================================");
+        System.out.println("  NEXT PLAYER: " + e.playerName().toUpperCase());
+        System.out.println("  Pass the device, then press ENTER.");
+        System.out.println("========================================");
+    }
+
     private void renderBotCardEvent(BotCardIOEvent e) {
         System.out.println("Bot played " + e.card());
+        System.out.println("\n[ Press ENTER to view cards on table ]"); // TODO: wat is dit?
+
     }
 
     private void renderMessageEvent(MessageIOEvent t) {
@@ -57,7 +68,7 @@ public class TerminalRenderer {
     }
 
     private void renderPlayCardEvent(PlayCardIOEvent event) {
-        base.domain.results.PlayCardResult data = event.data();
+        PlayCardResult data = event.data();
 
         System.out.println("\n=============================================");
         System.out.println("  TRICK #" + data.trickNumber() + " | TURN: " + data.player().getName().toUpperCase());
@@ -79,9 +90,9 @@ public class TerminalRenderer {
             System.out.println("\n--- EXPOSED HANDS (OPEN MISERIE) ---");
             for (int i = 0; i < data.exposedPlayerNames().size(); i++) {
                 String name = data.exposedPlayerNames().get(i);
-                List<Card> exposedHand = data.formattedExposedHand().get(i);
+                List<Card> exposedHand = data.formattedExposedHands().get(i);
 
-                System.out.print(String.format("%-12s : ", name)); // Aligns names
+                System.out.printf("%-12s : ", name); // Aligns names
                 System.out.println(exposedHand);
             }
         }
@@ -124,6 +135,7 @@ public class TerminalRenderer {
 
         System.out.print("Your choice: ");
     }
+
     private void renderSuitSelectionEvent() {
         System.out.println("Choose a trump suit:");
         Suit[] suits = Suit.values();
@@ -155,7 +167,9 @@ public class TerminalRenderer {
     }
 
     private void renderPlayerSelectionEvent(PlayerSelectionIOEvent event) {
-        System.out.println(event.multi() ? "Select all players involved (participating or winners) (comma-separated, 0 for none):" : "Select the main bidder:");
+        System.out.println(
+                event.multi() ? "Select all players involved (participating or winners) (comma-separated, 0 for none):"
+                        : "Select the main bidder:");
         List<String> names = event.players()
                 .stream()
                 .map(Player::getName)
@@ -183,6 +197,7 @@ public class TerminalRenderer {
         System.out.println("(2) Go back to the main menu");
         System.out.println("(3) Save this session");
         System.out.print("Your choice: ");
+
     }
 
     private void renderSaveDescriptionEvent() {

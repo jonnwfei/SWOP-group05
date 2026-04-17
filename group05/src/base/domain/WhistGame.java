@@ -8,7 +8,6 @@ import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
-import base.domain.results.GameResult;
 import base.domain.round.Round;
 import base.domain.states.BidState;
 import base.domain.states.CountState;
@@ -24,7 +23,7 @@ import java.util.Random;
 /**
  * Represents a game of Whist.
  * Acts as the Aggregate Root, managing the global player roster, round history, and state transitions.
- * * @author Stan Kestens, Tommy Wu
+ * @author Stan Kestens, Tommy Wu
  * @since 28/02/2026
  */
 public class WhistGame {
@@ -143,12 +142,27 @@ public class WhistGame {
         return rounds.isEmpty() ? null : rounds.getLast();
     }
 
+    /**
+     * Determines the winner of the most recent round.
+     *
+     * @return The winning {@link Player}, or null if no rounds have finished.
+     */
     public Player getLastRoundWinner() {
-        if (this.rounds.isEmpty()) return null;
+        if (this.rounds.isEmpty())
+            return null;
         List<Player> winningPlayers = rounds.getLast().getWinningPlayers();
-        return winningPlayers.isEmpty() ? null : winningPlayers.getFirst();
+        if (winningPlayers.isEmpty())
+            return null;
+        return winningPlayers.getFirst();
     }
 
+    /**
+     * Deals 13 cards to each player and determines the initial dealt trump suit.
+     *
+     * @return The originally dealt trump suit (the suit of the last card dealt).
+     * @throws IllegalStateException if the deck is not set, if there are not exactly 4 players,
+     * or if the deck deals invalid hands.
+     */
     public Suit dealCards() {
         if (this.deck == null) throw new IllegalStateException("Cannot deal cards: Deck is not set.");
         if (this.players.size() != 4) throw new IllegalStateException("Cannot deal cards: Table must have exactly 4 players.");
@@ -185,14 +199,29 @@ public class WhistGame {
         this.state = new CountState(this);
     }
 
+    /**
+     * Triggers a transition to the next game state based on internal logic.
+     */
     public void nextState() {
-        if (this.state != null) {
-            this.state = state.nextState();
-        }
+        this.state = state.nextState();
     }
 
-    public GameResult executeState(GameCommand command) {
-        if (this.state == null) throw new IllegalStateException("Cannot execute command: Game state is null.");
+    /**
+     * Executes the current state without a user command (e.g. for bot turns or automatic transitions).
+     *
+     * @return The resulting event to be rendered by the UI.
+     */
+    public StateStep executeState() {
+        return state.executeState();
+    }
+
+    /**
+     * Delegates the provided action to the current state for processing.
+     *
+     * @param command The user action to process.
+     * @return The resulting event to be rendered by the UI.
+     */
+    public StateStep executeState(GameCommand command) {
         return state.executeState(command);
     }
 

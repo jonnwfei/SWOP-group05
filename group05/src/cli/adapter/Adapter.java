@@ -11,10 +11,11 @@ import base.domain.player.PlayerId;
 import base.domain.results.*;
 import cli.TerminalParser;
 import cli.elements.Response;
-import cli.events.*;
-import cli.events.CountEvents.*;
-import cli.events.BidEvents.*;
-import cli.events.PlayEvents.*;
+import cli.events.MessageIOEvent;
+
+import static cli.events.BidEvents.*;
+import static cli.events.CountEvents.*;
+import static cli.events.PlayEvents.*;
 
 import java.util.List;
 
@@ -30,47 +31,107 @@ public class Adapter {
 
     public AdapterResult handleResult(GameResult result) {
         return switch (result) {
+
+            // =========================
+            // PLAY CARD
+            // =========================
             case PlayCardResult p -> {
-                if (!p.player().getRequiresConfirmation()) {
-                    Card chosen = p.player().chooseCard(
-                            p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit()
-                    );
+                Player player = p.player();
+
+                // BOT → immediate domain command
+                if (!player.getRequiresConfirmation()) {
+                    Card chosen = player.chooseCard(
+                            p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit());
                     yield new AdapterResult.Immediate(new CardCommand(chosen));
                 }
-                yield new AdapterResult.NeedsIO(new PlayCardIOEvent(p));
+
+                // HUMAN → show UI (+ optional confirmation preamble)
+                yield new AdapterResult.NeedsIO(
+                        List.of(new ConfirmationIOEvent(player.getName())),
+                        new PlayCardIOEvent(p));
             }
 
+            // =========================
+            // BIDDING
+            // =========================
             case BidTurnResult b -> {
                 Player player = b.player();
+
                 if (!player.getRequiresConfirmation()) {
                     Bid botBid = player.chooseBid();
                     // BidCommand with suit so domain skips SuitSelectionRequired
                     Suit chosenTrump = botBid.determineTrump(b.trumpSuit());
                     yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), chosenTrump));
                 }
-                yield new AdapterResult.NeedsIO(new BidTurnIOEvent(b));
+
+                yield new AdapterResult.NeedsIO(
+                        List.of(),
+                        new BidTurnIOEvent(b));
             }
-            case SuitSelectionRequired ignored -> new AdapterResult.NeedsIO(new SuitSelectionIOEvent());
-            case ProposalRejected p            -> new AdapterResult.NeedsIO(new ProposalRejectedIOEvent(p));
-            case BiddingCompleted ignored      -> new AdapterResult.NeedsIO(new BiddingCompletedIOEvent());
-            case BidSelectionResult b          -> new AdapterResult.NeedsIO(new BidSelectionIOEvent(b.availableBids()));
-            case SuitSelectionResult ignore
-                   -> new AdapterResult.NeedsIO(new SuitSelectionIOEvent());
-            case PlayerSelectionResult p       -> new AdapterResult.NeedsIO(new PlayerSelectionIOEvent(p.players(), p.multiSelect()));
-            case TrickInputResult ignored      -> new AdapterResult.NeedsIO(new TrickInputIOEvent());
-            case ScoreBoardResult s            -> new AdapterResult.NeedsIO(new ScoreBoardIOEvent(s.names(), s.scores()));
-            case SaveDescriptionResult ignored -> new AdapterResult.NeedsIO(new SaveDescriptionIOEvent());
-            case ScoreBoardCompleteResult ignored -> new AdapterResult.NeedsIO(new ScoreBoardCompleteIOEvent());
-            case EndOfTurnResult e             -> new AdapterResult.NeedsIO(new EndOfTurnIOEvent(e));
-            case EndOfTrickResult e            -> new AdapterResult.NeedsIO(new EndOfTrickIOEvent(e));
-            case EndOfRoundResult e            -> new AdapterResult.NeedsIO(new EndOfRoundIOEvent(e));
-            case TrickHistoryResult t          -> new AdapterResult.NeedsIO(new TrickHistoryIOEvent(t));
-            case ParticipatingPlayersResult p  -> new AdapterResult.NeedsIO(new ParticipatingPlayersIOEvent(p));
+
+            case SuitSelectionRequired ignored ->
+                new AdapterResult.NeedsIO(List.of(), new SuitSelectionIOEvent());
+
+            case ProposalRejected p ->
+                new AdapterResult.NeedsIO(List.of(), new ProposalRejectedIOEvent(p));
+
+            case BiddingCompleted ignored ->
+                new AdapterResult.NeedsIO(List.of(), new BiddingCompletedIOEvent());
+
+            case BidSelectionResult b ->
+                new AdapterResult.NeedsIO(List.of(), new BidSelectionIOEvent(b.availableBids()));
+
+            case SuitSelectionResult ignored ->
+                new AdapterResult.NeedsIO(List.of(), new SuitSelectionIOEvent());
+
+            // =========================
+            // PLAYER SELECTION / COUNT
+            // =========================
+            case PlayerSelectionResult p ->
+                new AdapterResult.NeedsIO(
+                        List.of(),
+                        new PlayerSelectionIOEvent(p.players(), p.multiSelect()));
+
+            case AmountOfTrickWonResult ignored ->
+                new AdapterResult.NeedsIO(List.of(), new TrickInputIOEvent());
+
+            case SaveDescriptionResult ignored ->
+                new AdapterResult.NeedsIO(List.of(), new SaveDescriptionIOEvent());
+
+            case ScoreBoardResult s ->
+                new AdapterResult.NeedsIO(List.of(), new ScoreBoardIOEvent(s.names(), s.scores()));
+
+            // =========================
+            // FLOW EVENTS (ENTER TO CONTINUE)
+            // =========================
+            case EndOfTurnResult e ->
+                new AdapterResult.NeedsIO(List.of(), new EndOfTurnIOEvent(e));
+
+            case EndOfTrickResult e ->
+                new AdapterResult.NeedsIO(List.of(), new EndOfTrickIOEvent(e));
+
+            case EndOfRoundResult e ->
+                new AdapterResult.NeedsIO(List.of(), new EndOfRoundIOEvent(e));
+
+            case TrickHistoryResult t ->
+                new AdapterResult.NeedsIO(List.of(), new TrickHistoryIOEvent(t));
+
+            case ParticipatingPlayersResult p ->
+                new AdapterResult.NeedsIO(
+                        List.of(),
+                        new ParticipatingPlayersIOEvent(p));
+
+            // =========================
+            // SAFETY
+            // =========================
+            default -> throw new IllegalStateException(
+                    "Unexpected GameResult: " + result);
         };
     }
+
     public AdapterResponse handleResponse(Response response, GameResult result) {
-        if (response.rawInput() == null) {
-            return AdapterResponse.toDomain(new ContinueCommand());
+        if (response.rawInput() == null || response.rawInput().isBlank()) {
+            return AdapterResponse.toDomain(null);
         }
 
         String raw = response.rawInput().trim();
@@ -81,8 +142,7 @@ public class Adapter {
                 case BidTurnResult b -> {
                     int choice = parser.parseNumberInput(raw);
                     yield AdapterResponse.toDomain(
-                            new BidCommand(b.availableBids().get(choice - 1))
-                    );
+                            new BidCommand(b.availableBids().get(choice - 1)));
                 }
                 case SuitSelectionRequired ignored -> {
                     int choice = parser.parseNumberInput(raw);
@@ -94,7 +154,7 @@ public class Adapter {
                     yield AdapterResponse.toDomain(new BidCommand(choice == 1 ? BidType.PASS : BidType.SOLO_PROPOSAL));
                 }
 
-                case BiddingCompleted ignored -> AdapterResponse.toDomain(new ContinueCommand());
+                case BiddingCompleted ignored -> AdapterResponse.toDomain(null);
 
                 // --- Count/Setup State ---
                 case BidSelectionResult b -> {
@@ -118,7 +178,7 @@ public class Adapter {
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
 
-                case TrickInputResult ignored -> {
+                case AmountOfTrickWonResult ignored -> {
                     int tricks = parser.parseNumberInput(raw);
                     yield AdapterResponse.toDomain(new NumberCommand(tricks));
                 }
@@ -134,24 +194,35 @@ public class Adapter {
                 }
 
                 // --- Gameplay Results (Usually just "Press Enter") ---
-                case EndOfTurnResult _, EndOfTrickResult _, EndOfRoundResult _, TrickHistoryResult _ ->
-                        AdapterResponse.toDomain(new ContinueCommand());
+                case EndOfTurnResult _,EndOfTrickResult _,EndOfRoundResult _,TrickHistoryResult _ ->
+                    AdapterResponse.toDomain(null);
 
-                case ParticipatingPlayersResult _ -> {
+                case ParticipatingPlayersResult p -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
+
+                    List<Player> players = indices.stream()
+                            // 1. Map the user's 1-based input to the name they actually saw on screen
+                            .map(i -> p.playerNames().get(i - 1))
+                            // 2. Map that name to the actual Player object in the game
+                            .map(name -> game.getPlayers().stream()
+                                    .filter(player -> player.getName().equals(name))
+                                    .findFirst()
+                                    .orElseThrow(() -> new IllegalArgumentException("Player not found: " + name)))
+                            .toList();
+
                     List<PlayerId> players = indices.stream()
                             .map(i -> game.getPlayers().get(i - 1).getId())
                            .toList();
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
-                                
 
                 // --- Play Card
                 case PlayCardResult p -> {
                     Player player = p.player();
-                    //  BOT: auto-play
+                    // BOT: auto-play
                     if (!player.getRequiresConfirmation()) {
-                        Card chosen = player.chooseCard(p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit());
+                        Card chosen = player
+                                .chooseCard(p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit());
 
                         yield AdapterResponse.toDomain(new CardCommand(chosen));
                     }
@@ -162,16 +233,15 @@ public class Adapter {
                     if (choice == 0) {
                         if (p.lastPlayedTrick() == null) {
                             yield AdapterResponse.uiOnly(new MessageIOEvent("No tricks have been played yet!"));
+                        } else {
+                            yield AdapterResponse.uiOnly(
+                                    new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick())));
                         }
-                        yield AdapterResponse.uiOnly(
-                                new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick()))
-                        );
                     }
 
                     if (choice < 1 || choice > p.legalCards().size()) {
                         yield AdapterResponse.uiOnly(
-                                new MessageIOEvent("Invalid selection. Choose 0 to " + p.legalCards().size())
-                        );
+                                new MessageIOEvent("Invalid selection. Choose 0 to " + p.legalCards().size()));
                     }
 
                     Card selected = p.legalCards().get(choice - 1);
@@ -180,8 +250,8 @@ public class Adapter {
 
                 default -> throw new IllegalStateException("Unexpected GameResult in response handling: " + result);
             };
-        }  catch (Exception e) {
-        return AdapterResponse.uiOnly(new MessageIOEvent("Invalid input: \"" + raw + "\". Please try again."));
-    }
+        } catch (Exception e) {
+            return AdapterResponse.uiOnly(new MessageIOEvent("Invalid input: \"" + raw + "\". Please try again."));
+        }
     }
 }

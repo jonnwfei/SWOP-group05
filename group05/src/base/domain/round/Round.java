@@ -90,11 +90,9 @@ public class Round {
         this.highestBid = null;
         this.trumpSuit = null;
         this.multiplier = multiplier;
-
-        this.scoreDeltas = new ArrayList<>();
-        for (int i = 0; i < 4; i++) {
-            this.scoreDeltas.add(0);
-        }
+        this.scoreDeltas = new ArrayList<>(List.of(0, 0, 0, 0));
+        this.countTricksWon = -1;
+        this.countMiserieWinners = new ArrayList<>();
     }
 
     /**
@@ -184,15 +182,16 @@ public class Round {
             throw new IllegalArgumentException("Trick must not be null.");
         if (trick.getTurns().size() != Trick.MAX_TURNS)
             throw new IllegalArgumentException("Trick is not completed yet");
-        if (this.playedTricks.size() >= MAX_TRICKS)
+        if (this.isFinished()) // Updated check
             throw new IllegalStateException("Cannot add trick: The round is already finished");
+
         this.playedTricks.add(trick);
 
         // Map the winning PlayerId back to the physical Player object
         PlayerId winnerId = trick.getWinningPlayerId();
         this.currentPlayer = getPlayerById(winnerId);
 
-        if (this.playedTricks.size() == MAX_TRICKS) {
+        if (isFinished()) {
             // Delegate scoring calculation to our Pure Fabrication math engine!
             calculateAndDistributeScores();
         }
@@ -258,10 +257,11 @@ public class Round {
      * each player's score accordingly.
      * Miserie bids are calculated individually against the defending players, while
      * other bids are calculated as a team.
+     *
      * @throws IllegalStateException if the round has not yet completed playing all 13 tricks
      */
     private void calculateAndDistributeScores() {
-        if (playedTricks.size() != MAX_TRICKS) {
+        if (!isFinished()) {
             throw new IllegalStateException(
                     "Cannot calculate scores: expected " + MAX_TRICKS + " tricks but got " + playedTricks.size());
         }
