@@ -1,19 +1,10 @@
 package cli.events;
 
-import base.domain.card.Card;
 import base.domain.results.*;
 
-public non-sealed interface PlayEvents extends IOEvent {
-
-    record BotCardIOEvent(Card card) implements PlayEvents {
-        @Override
-        public boolean needsInput() {
-            return false;
-        }
-    }
+public sealed interface PlayEvents extends IOEvent {
 
     record ConfirmationIOEvent(String playerName) implements PlayEvents {
-        @Override
         public boolean needsInput() {
             return true;
         }

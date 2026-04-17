@@ -9,6 +9,7 @@ import base.domain.results.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
+import base.domain.strategy.HumanStrategy;
 
 import base.domain.bid.*;
 import base.domain.card.Suit;
@@ -28,7 +29,9 @@ import static base.domain.bid.BidType.*;
 public class CountState extends State {
 
     private enum CountPhase {
-        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, SELECT_WINNERS, CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION
+        START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, SELECT_WINNERS,
+        CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION,
+        ADD_PLAYER, REMOVE_PLAYER_SELECT, REMOVE_ROUND
     }
 
     private CountPhase currentPhase = CountPhase.START;
@@ -76,9 +79,25 @@ public class CountState extends State {
         return switch (command) {
             case BidCommand b -> StateStep.stay(handleBidType(b.bid()));
             case SuitCommand s -> StateStep.stay(handleSuit(s.suit()));
-            case PlayerListCommand p -> StateStep.stay(handlePlayerInput(p.playerIds()));
+            case PlayerListCommand p -> {
+                if (currentPhase == CountPhase.REMOVE_PLAYER_SELECT) {
+                    yield StateStep.stay(handleRemovePlayer(p.playerIds()));
+                } else {
+                    yield StateStep.stay(handlePlayerInput(p.playerIds()));
+                }
+
+            }
             case NumberCommand n -> handleNumberInput(n.choice());
-            case TextCommand t -> StateStep.stay(handleSaveDescription(t.text()));
+            case TextCommand t -> {
+                if (currentPhase == CountPhase.SAVE_DESCRIPTION) {
+                    yield StateStep.stay(handleSaveDescription(t.text()));
+                }
+                if (currentPhase == CountPhase.ADD_PLAYER) {
+                    yield StateStep.stay(handleAddPlayer(t.text()));
+                }
+                throw new IllegalStateException("Unexpected text input in phase: " + currentPhase);
+            }
+            case RoundCommand r -> StateStep.stay(handleRound(r.round()));
             default -> throw new IllegalStateException("Unexpected value: " + command);
         };
     }
@@ -87,14 +106,40 @@ public class CountState extends State {
         if (currentPhase == CountPhase.CALCULATE) {
             return StateStep.stay(finalizeCalculation(value, null));
         }
-        // PROMPT_NEXT_STATE
-        if (value == 3) {
-            currentPhase = CountPhase.SAVE_DESCRIPTION;
-            return StateStep.stay(new SaveDescriptionResult());
-        }
-        this.nextStateDecision = value;
 
-        return StateStep.transitionWithoutResult();
+        if (currentPhase == CountPhase.REMOVE_ROUND && value == 0) {
+            currentPhase = CountPhase.PROMPT_NEXT_STATE;
+            return StateStep.stay(getScoreBoard());
+        }
+
+        // PROMPT_NEXT_STATE
+        return switch (value) {
+            case 1 -> {
+                nextStateDecision = 1;
+                yield StateStep.transitionWithoutResult();
+            }
+            case 2 -> {
+                nextStateDecision = 2;
+                yield StateStep.transitionWithoutResult();
+            }
+            case 3 -> {
+                currentPhase = CountPhase.SAVE_DESCRIPTION;
+                yield StateStep.stay(new SaveDescriptionResult());
+            }
+            case 4 -> {// remove rounds
+                currentPhase = CountPhase.REMOVE_ROUND;
+                yield StateStep.stay(new DeleteRoundResult(getGame().getRounds()));
+            }
+            case 5 -> {
+                currentPhase = CountPhase.ADD_PLAYER;
+                yield StateStep.stay(new AddHumanPlayerResult());
+            }
+            case 6 -> {
+                currentPhase = CountPhase.REMOVE_PLAYER_SELECT;
+                yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
+            }
+            default -> throw new IllegalStateException("Unexpected number input: " + value);
+        };
     }
 
     private GameResult nextStep() {
@@ -176,7 +221,10 @@ public class CountState extends State {
         round.setHighestBid(bid);
         getGame().addRound(round);
 
-        List<Player> participatingPlayers = participatingPlayerIds.stream().map(playerId -> getGame().getPlayerById(playerId)).toList();
+        List<Player> participatingPlayers = participatingPlayerIds
+                .stream()
+                .map(playerId -> getGame().getPlayerById(playerId))
+                .toList();
 
         List<Player> winners = new ArrayList<>();
         if (winnersId != null) {
@@ -191,7 +239,8 @@ public class CountState extends State {
 
     private GameResult getScoreBoard() {
         List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-        return new ScoreBoardResult(getPlayerNames(), scores);
+        boolean canRemove = canRemovePlayer();
+        return new ScoreBoardResult(getPlayerNames(), scores, canRemove);
     }
 
     private GameResult handleSaveDescription(String text) {
@@ -205,14 +254,58 @@ public class CountState extends State {
         return getScoreBoard();
     }
 
+    // Called when TextCommand arrives during ADD_PLAYER
+    private GameResult handleAddPlayer(String name) {
+        String cleanName = name == null ? "" : name.trim();
+        if (cleanName.isBlank()) {
+            return new AddHumanPlayerResult(); // re-prompt
+        }
+
+        Player newPlayer = new Player(new HumanStrategy(), cleanName);
+        getGame().addPlayer(newPlayer);
+        currentPhase = CountPhase.PROMPT_NEXT_STATE;
+        return getScoreBoard();
+    }
+
+    // Called when PlayerListCommand arrives during REMOVE_PLAYER_SELECT
+    private GameResult handleRemovePlayer(List<PlayerId> playerIds) {
+        if (!canRemovePlayer()) {
+            currentPhase = CountPhase.PROMPT_NEXT_STATE;
+            return getScoreBoard();
+        }
+        if (playerIds.isEmpty()) {
+            return new PlayerSelectionResult(getGame().getPlayers()); // re-prompt
+        }
+        Player newPlayer = getGame().getPlayerById(playerIds.getFirst());
+        getGame().removePlayer(newPlayer);
+        currentPhase = CountPhase.PROMPT_NEXT_STATE;
+        return getScoreBoard();
+    }
+
     private List<String> getPlayerNames() {
         return getGame().getPlayers().stream().map(Player::getName).toList();
+    }
+
+    private boolean canRemovePlayer() {
+        return getGame().getPlayers().size() > 4;
+    }
+
+    private GameResult handleRound(Round round) {
+        // Remove the round from the game's internal list
+        getGame().removeRound(round);
+
+        // Recalculate everyone's score based on the remaining rounds
+        getGame().recalibrateScores();
+
+        // Return to the scoreboard menu
+        currentPhase = CountPhase.PROMPT_NEXT_STATE;
+        return getScoreBoard();
     }
 
     /** Returns to a fresh CountState or the Main Menu. */
     @Override
     public State nextState() {
-        if (nextStateDecision == 1){
+        if (nextStateDecision == 1) {
             return new CountState(getGame());
         } else {
             return null;

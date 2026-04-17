@@ -253,6 +253,35 @@ public class WhistGame {
         for (GameObserver observer : observers) observer.onBidPlaced(bidTurn);
     }
 
+    public void removePlayer(Player player) {
+        this.players.remove(player);
+    }
+    public  void removeRound(Round round){
+        this.rounds.remove(round);
+    }
+    /**
+     * Recalculates all player scores from scratch based on the current round history.
+     * Call this after removing a round to ensure the scoreboard is accurate.
+     */
+    public void recalibrateScores() {
+        // 1. Reset all players to 0
+        for (Player p : this.players) {
+            p.updateScore(-p.getScore());
+        }
+
+        // 2. Re-apply deltas from all rounds currently in the list
+        for (Round round : this.rounds) {
+            List<Integer> deltas = round.getScoreDeltas();
+            List<Player> roundPlayers = round.getPlayers();
+
+            // Map the deltas back to the players based on their index in the round
+            for (int i = 0; i < roundPlayers.size(); i++) {
+                Player p = roundPlayers.get(i);
+                int delta = deltas.get(i);
+                p.updateScore(delta);
+            }
+        }
+    }
     public void notifyTurnPlayed(PlayTurn playTurn) {
         for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
     }

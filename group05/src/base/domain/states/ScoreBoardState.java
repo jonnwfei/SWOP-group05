@@ -1,14 +1,16 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-
-import base.domain.commands.GameCommand;
-import base.domain.commands.TextCommand;
-
-import base.domain.results.GameResult;
+import base.domain.bid.BidType;
+import base.domain.commands.*;
+import base.domain.strategy.HighBotStrategy;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.LowBotStrategy;
+import base.domain.player.Player;
+import base.domain.results.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
-import base.domain.player.Player;
+
 import java.util.List;
 
 import base.domain.commands.*;
@@ -23,15 +25,20 @@ import base.domain.results.*;
  */
 public class ScoreBoardState extends State {
 
-    private int choice = 0; // 0 = undecided, 1 = restart, 2 = quit
-    private boolean awaitingSaveDescription = false;
+    private enum Phase {
+        SHOW,
+        SAVE_DESCRIPTION,
+        ADD_PLAYER_TYPE,
+        ADD_PLAYER_NAME,
+        REMOVE_PLAYER,
+        REMOVE_ROUND
+    }
+
+    private Phase phase = Phase.SHOW;
+    private int choice = 0;
+
     private final GamePersistenceService persistenceService = new GamePersistenceService();
 
-    /**
-     * Initializes the scoreboard state.
-     * 
-     * @param game The current game instance.
-     */
     public ScoreBoardState(WhistGame game) {
         super(game);
     }
@@ -45,11 +52,11 @@ public class ScoreBoardState extends State {
     @Override
     public StateStep executeState() {
         // If waiting for save description
-        if (awaitingSaveDescription) {
+        if (phase == Phase.SAVE_DESCRIPTION) {
             return StateStep.stay(new SaveDescriptionResult());
         }
         // No command → just render scoreboard
-        return StateStep.stay(buildScoreBoard());
+        return buildScoreBoard();
     }
 
     /**
@@ -61,56 +68,159 @@ public class ScoreBoardState extends State {
     @Override
     public StateStep executeState(GameCommand command) {
 
-        // If waiting for save description
-        if (awaitingSaveDescription) {
-            return switch (command) {
+        return switch (phase) {
+
+            // =========================================
+            // MAIN SCOREBOARD
+            // =========================================
+            case SHOW -> switch (command) {
+
+                case NumberCommand n -> {
+                    int input = n.choice();
+
+                    yield switch (input) {
+                        case 1, 2 -> {
+                            this.choice = input;
+                            yield StateStep.transitionWithoutResult();
+                        }
+                        case 3 -> {
+                            phase = Phase.SAVE_DESCRIPTION;
+                            yield StateStep.stay(new SaveDescriptionResult());
+                        }
+                        case 4 -> {
+                            phase = Phase.REMOVE_ROUND;
+                            yield StateStep.stay(new DeleteRoundResult(getGame().getRounds()));
+                        }
+                        case 5 -> {
+                            phase = Phase.ADD_PLAYER_TYPE;
+                            yield StateStep.stay(new AddPlayerResult());
+                        }
+                        case 6 -> {
+                            phase = Phase.REMOVE_PLAYER;
+                            yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
+                        }
+                        default -> throw new IllegalStateException("Invalid scoreboard input: " + input);
+                    };
+                }
+
+                default -> buildScoreBoard();
+            };
+
+            // =========================================
+            // SAVE DESCRIPTION
+            // =========================================
+            case SAVE_DESCRIPTION -> switch (command) {
+
                 case TextCommand t -> {
-                    try {
-                        persistenceService.save(getGame(), SaveMode.GAME, t.text());
-                        awaitingSaveDescription = false;
-                        yield StateStep.stay(buildScoreBoard());
-                    } catch (RuntimeException e) {
-                        awaitingSaveDescription = false;
-                        throw new IllegalStateException(
-                                "executeState in Scoreboard state failed to save", e);
-                    }
+                    persistenceService.save(getGame(), SaveMode.GAME, t.text());
+                    phase = Phase.SHOW;
+                    yield buildScoreBoard();
                 }
                 default -> StateStep.stay(new SaveDescriptionResult());
             };
-        }
-        // Normal flow
-        return switch (command) {
-            case NumberCommand n -> {
-                if (n.choice() == 1 || n.choice() == 2) {
-                    this.choice = n.choice();
-                    yield StateStep.transitionWithoutResult();
+
+            // =========================================
+            // ADD PLAYER TYPE
+            // =========================================
+            case ADD_PLAYER_TYPE -> switch (command) {
+
+                case NumberCommand n -> {
+                    switch (n.choice()) {
+
+                        case 1 -> {
+                            phase = Phase.ADD_PLAYER_NAME;
+                            yield StateStep.stay(new AddHumanPlayerResult()); // UI will return PlayerListCommand
+                        }
+
+                        case 2 -> {
+                            getGame().addPlayer(new Player(new HighBotStrategy(), "Smart bot")); // TODO: change to SmartBot after TOmmy merge
+                            phase = Phase.SHOW;
+                            yield buildScoreBoard();
+                        }
+
+                        case 3 -> {
+                            getGame().addPlayer(new Player(new HighBotStrategy(), "High bot"));
+                            phase = Phase.SHOW;
+                            yield buildScoreBoard();
+                        }
+
+                        case 4 -> {
+                            getGame().addPlayer(new Player(new LowBotStrategy(), "Low bot"));
+                            phase = Phase.SHOW;
+                            yield buildScoreBoard();
+                        }
+
+                        default -> throw new IllegalStateException("Invalid player type choice");
+                    }
                 }
-                if (n.choice() == 3) {
-                    awaitingSaveDescription = true;
-                    yield StateStep.stay(new SaveDescriptionResult());
+
+                default -> StateStep.stay(new AddPlayerResult());
+            };
+
+            // =========================================
+            // ADD HUMAN PLAYER
+            // =========================================
+            case ADD_PLAYER_NAME -> switch (command) {
+
+                case TextCommand t -> {
+                    String name = t.text().trim();
+                    if (name.isBlank()) {
+                        yield StateStep.stay(new AddHumanPlayerResult()); // retry
+                    }
+
+                    Player newPlayer = new Player(new HumanStrategy(), name);
+                    getGame().addPlayer(newPlayer);
+                    phase = Phase.SHOW;
+                    yield buildScoreBoard();
                 }
-                yield StateStep.stay(buildScoreBoard());
-            }
-            default -> StateStep.stay(buildScoreBoard()); // No command → just render scoreboard
+
+                default -> StateStep.stay(new AddHumanPlayerResult());
+            };
+            case REMOVE_PLAYER -> switch (command) {
+                case PlayerListCommand p -> {
+                    if (p.playerIds().isEmpty()) {
+                        yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers())); // retry
+                    }
+
+                    Player newPlayer = getGame().getPlayerById(p.playerIds().getFirst());
+                    getGame().removePlayer(newPlayer);
+                    phase = Phase.SHOW;
+                    yield buildScoreBoard();
+                }
+
+                default -> StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
+            };
+            case REMOVE_ROUND -> switch (command) {
+                case NumberCommand n -> {
+                    if (n.choice() == 0) {
+                        phase = Phase.SHOW;
+                        yield buildScoreBoard();
+                    }
+                    yield StateStep.stay(new DeleteRoundResult(getGame().getRounds()));
+                }
+                case RoundCommand r -> {
+                    getGame().removeRound(r.round());
+                    getGame().recalibrateScores();
+                    phase = Phase.SHOW;
+                    yield buildScoreBoard();
+                }
+                default -> StateStep.stay(new DeleteRoundResult(getGame().getRounds()));
+            };
         };
     }
 
-    private GameResult buildScoreBoard() {
+    private StateStep buildScoreBoard() {
         List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
         List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-        return new ScoreBoardResult(names, scores);
+        boolean canRemove = getGame().getPlayers().size() > 4;
+
+        return StateStep.stay(new ScoreBoardResult(names, scores, canRemove));
     }
 
-    /**
-     * Determines the next state based on the user's selection.
-     * 
-     * @return The next state
-     */
     @Override
     public State nextState() {
-        if (choice == 2) {
+        if (choice == 2)
             return null;
-        }
 
         if (choice == 1) {
             getGame().advanceDealer();
