@@ -1,104 +1,127 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
-import base.domain.strategy.HumanStrategy;
-import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+@DisplayName("Miserie Bid Rules & Calculations")
 class MiserieBidTest {
 
-    private Player testPlayer;
-    private BidType miserieNormal;
+    private PlayerId testPlayerId;
+    private BidType miserieBidType;
     private MiserieBid bid;
 
     @BeforeEach
     void setUp() {
-        testPlayer = new Player(new HumanStrategy(), "Jane Doe");
-        // Assuming BidType.MISERIE exists and falls under BidCategory.MISERIE
-        miserieNormal = BidType.MISERIE;
-        bid = new MiserieBid(testPlayer, miserieNormal);
+        // Arrange
+        testPlayerId = new PlayerId("player-123");
+        miserieBidType = BidType.MISERIE;
+        bid = new MiserieBid(testPlayerId, miserieBidType);
     }
 
     @Test
-    void constructor_InvalidCategory_ThrowsException() {
-        // Enforce GRASP invariant: Cannot instantiate a MiserieBid with a non-Miserie BidType
-        // Assuming ABONDANCE_9 belongs to BidCategory.ABONDANCE, not MISERIE
+    @DisplayName("Constructor enforces non-null parameters")
+    void constructor_NullParameters_ThrowsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () ->
+                        new MiserieBid(null, miserieBidType),
+                "Should reject null PlayerId"
+        );
+
+        assertThrows(IllegalArgumentException.class, () ->
+                        new MiserieBid(testPlayerId, null),
+                "Should reject null BidType"
+        );
+    }
+
+    @Test
+    @DisplayName("Constructor rejects BidTypes outside the MISERIE category")
+    void constructor_InvalidBidCategory_ThrowsIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                new MiserieBid(testPlayer, BidType.ABONDANCE_9)
+                new MiserieBid(testPlayerId, BidType.ABONDANCE_9)
         );
         assertTrue(exception.getMessage().contains("MISERIE category"));
     }
 
     @Test
-    void constructor_NullPlayer_ThrowsException() {
-        // Enforce GRASP invariant: Cannot instantiate a bid without a valid player
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                new MiserieBid(null, BidType.MISERIE)
-        );
+    @DisplayName("Basic Accessors return correctly assigned values")
+    void basicAccessors_ReturnExpectedValues() {
+        assertEquals(testPlayerId, bid.getPlayerId(), "getPlayerId() should return the player's ID");
+        assertEquals(testPlayerId, bid.playerId(), "Record accessor should return the player's ID");
+        assertEquals(miserieBidType, bid.getType(), "getType() should return the assigned BidType");
+        assertEquals(miserieBidType, bid.bidType(), "Record accessor should return the assigned BidType");
     }
 
     @Test
-    void constructor_NullBidType_ThrowsException() {
-        // Enforce GRASP invariant: Cannot instantiate a bid without a valid player
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                new MiserieBid(testPlayer, null)
-        );
-    }
-
-    @Test
-    void getPlayer_ReturnsPlayer() {
-        assertEquals(testPlayer, bid.getPlayerId());
-    }
-
-    @Test
-    void getType_ReturnsBidType() {
-        assertEquals(miserieNormal, bid.getType());
-    }
-
-    @Test
+    @DisplayName("determineTrump() always returns null (No Trumps)")
     void determineTrump_AlwaysReturnsNull() {
-        // Miserie is always played "Sans Atout" (No Trumps), so this must explicitly return null
-        assertNull(bid.determineTrump(Suit.SPADES));
-        assertNull(bid.determineTrump(null));
+        assertNull(bid.determineTrump(Suit.SPADES), "Miserie ignores dealt trump and returns null");
+        assertNull(bid.determineTrump(null), "Miserie returns null even if dealt trump is null");
     }
 
     @Test
-    void calculateBasePoints_Success_ZeroTricks() {
-        int expectedPoints = miserieNormal.getBasePoints();
-        int target = miserieNormal.getTargetTricks(); // Should evaluate to 0
+    @DisplayName("getTeam() returns all players who played this exact type of Miserie")
+    void getTeam_MultipleMiserieBids_ReturnsAllMatchingPlayerIds() {
+        // Arrange
+        PlayerId player2Id = new PlayerId("player-456");
+        PlayerId player3Id = new PlayerId("player-789");
 
-        // Case 1: Achieved exactly the target tricks (0 tricks for a perfect Miserie)
-        assertEquals(expectedPoints, bid.calculateBasePoints(target));
+        // Mock 1: Another normal Miserie bid
+        Bid mockMiserie = mock(Bid.class);
+        when(mockMiserie.getType()).thenReturn(BidType.MISERIE);
+        when(mockMiserie.getPlayerId()).thenReturn(player2Id);
+
+        // Mock 2: An OPEN Miserie bid (should NOT be grouped with normal Miserie)
+        Bid mockOpenMiserie = mock(Bid.class);
+        when(mockOpenMiserie.getType()).thenReturn(BidType.OPEN_MISERIE);
+        when(mockOpenMiserie.getPlayerId()).thenReturn(player3Id);
+
+        // Mock 3: A PASS bid
+        Bid mockPass = mock(Bid.class);
+        when(mockPass.getType()).thenReturn(BidType.PASS);
+
+        List<Bid> bidHistory = List.of(mockPass, mockMiserie, mockOpenMiserie, bid);
+
+        // Act
+        List<PlayerId> team = bid.getTeam(bidHistory, Collections.emptyList());
+
+        // Assert
+        assertEquals(2, team.size(), "Should only group players playing normal MISERIE");
+        assertTrue(team.contains(testPlayerId), "Team should contain the primary bidder");
+        assertTrue(team.contains(player2Id), "Team should contain the other Miserie bidder");
+        assertFalse(team.contains(player3Id), "Team should NOT contain the Open Miserie bidder");
     }
 
     @Test
-    void calculateBasePoints_Failure_OneOrMoreTricks() {
-        int negativePoints = -1 * miserieNormal.getBasePoints();
-        int target = miserieNormal.getTargetTricks();
+    @DisplayName("Winning the contract (0 tricks) yields positive base points")
+    void calculateBasePoints_ZeroTricks_ReturnsPositivePoints() {
+        int expectedPoints = miserieBidType.getBasePoints();
+        assertEquals(expectedPoints, bid.calculateBasePoints(0));
+    }
 
-        // Case 2: Took more tricks than the target (Miserie contract broken)
-        assertEquals(negativePoints, bid.calculateBasePoints(target + 1));
-
-        // Extreme case: Took all 13 tricks
-        assertEquals(negativePoints, bid.calculateBasePoints(13));
+    @ParameterizedTest(name = "Failing contract by taking {0} tricks yields negative base points")
+    @ValueSource(ints = {1, 2, 7, 13})
+    void calculateBasePoints_OneOrMoreTricks_ReturnsNegativePoints(int tricksWon) {
+        int expectedPenalty = -1 * miserieBidType.getBasePoints();
+        assertEquals(expectedPenalty, bid.calculateBasePoints(tricksWon));
     }
 
     @Test
-    void calculateBasePoints_NegativeInput_ThrowsException() {
-        // Edge case: tricks won can never be mathematically negative
+    @DisplayName("calculateBasePoints() rejects negative trick counts")
+    void calculateBasePoints_NegativeInput_ThrowsIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 bid.calculateBasePoints(-1)
         );
-        assertTrue(exception.getMessage().contains("negative tricks won"));
-    }
-
-    @Test
-    void testRecordAccessors() {
-        // Testing native record accessors for 100% method coverage
-        assertEquals(testPlayer, bid.player());
-        assertEquals(miserieNormal, bid.bidType());
+        assertTrue(exception.getMessage().contains("negative"));
     }
 }

@@ -1,101 +1,143 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
-import base.domain.strategy.HumanStrategy;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+@DisplayName("Proposal Bid Rules & Calculations")
 class ProposalBidTest {
 
-    private Player proposer;
+    private PlayerId proposerId;
     private Suit dealtTrump;
     private ProposalBid bid;
 
     @BeforeEach
     void setUp() {
-        proposer = new Player(new HumanStrategy(), "Voorsteller");
+        // Arrange
+        proposerId = new PlayerId("proposer-123");
         dealtTrump = Suit.HEARTS;
-        bid = new ProposalBid(proposer);
+        bid = new ProposalBid(proposerId);
     }
 
     @Test
-    void constructor_NullPlayer_ThrowsException() {
-        // Enforce GRASP invariant: Cannot instantiate a bid without a valid player
+    @DisplayName("Constructor enforces non-null parameters")
+    void constructor_NullParameters_ThrowsIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 new ProposalBid(null)
         );
+        assertTrue(exception.getMessage().toLowerCase().contains("null"), "Should reject null Proposer PlayerId");
     }
 
     @Test
-    void getPlayer() {
-        assertEquals(proposer, bid.getPlayer());
+    @DisplayName("Basic Accessors return correctly assigned values")
+    void basicAccessors_ReturnExpectedValues() {
+        assertEquals(proposerId, bid.getPlayerId(), "getPlayerId() should return the proposer's ID");
+        assertEquals(proposerId, bid.proposer(), "Record accessor should return the proposer's ID");
+        assertEquals(BidType.PROPOSAL, bid.getType(), "getType() should always return PROPOSAL");
     }
 
     @Test
-    void getType() {
-        assertEquals(BidType.PROPOSAL, bid.getType());
-    }
-
-    @Test
-    void determineTrump_ReturnsDealtTrump() {
-        // Volgens de nieuwe implementatie wordt de originele troef gewoon teruggegeven
+    @DisplayName("determineTrump() enforces the originally dealt trump suit")
+    void determineTrump_ValidDealtTrump_ReturnsDealtTrump() {
         assertEquals(dealtTrump, bid.determineTrump(dealtTrump));
+        assertEquals(Suit.SPADES, bid.determineTrump(Suit.SPADES));
     }
 
     @Test
-    void determineTrump_NullDealtTrump_ThrowsException() {
-        // Enforce GRASP invariant: A Proposal bid relies on the dealt trump, which cannot be null.
-        Player testPlayer = new Player(new HumanStrategy(), "Proposer");
-        ProposalBid bid = new ProposalBid(testPlayer);
-
+    @DisplayName("determineTrump() rejects null dealt trump")
+    void determineTrump_NullDealtTrump_ThrowsIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
                 bid.determineTrump(null)
         );
-
-        assertTrue(exception.getMessage().toLowerCase().contains("null"),
-                "Exception message should mention null.");
+        assertTrue(exception.getMessage().toLowerCase().contains("null"));
     }
 
     @Test
-    void calculateBasePoints_ExactTarget_ReturnsBasePoints() {
-        // Target is 8 tricks. Extra = 0.
-        // Expected: 2 base points + 0 extra = 2 points.
-        assertEquals(2, bid.calculateBasePoints(8));
+    @DisplayName("getTeam() successfully finds the acceptor and pairs them with the proposer")
+    void getTeam_AcceptanceExists_ReturnsProposerAndAcceptor() {
+        // Arrange
+        PlayerId acceptorId = new PlayerId("acceptor-456");
+
+        // Mocking the bid history to isolate this test from the concrete AcceptedBid class
+        Bid mockAcceptance = mock(Bid.class);
+        when(mockAcceptance.getType()).thenReturn(BidType.ACCEPTANCE);
+        when(mockAcceptance.getPlayerId()).thenReturn(acceptorId);
+
+        Bid mockPass = mock(Bid.class);
+        when(mockPass.getType()).thenReturn(BidType.PASS);
+
+        List<Bid> bidHistory = List.of(bid, mockPass, mockAcceptance);
+        List<Player> allPlayers = Collections.emptyList(); // Not used by ProposalBid
+
+        // Act
+        List<PlayerId> team = bid.getTeam(bidHistory, allPlayers);
+
+        // Assert
+        assertEquals(2, team.size(), "Team should consist of exactly 2 players");
+        assertEquals(proposerId, team.get(0), "Team must contain the original proposer first");
+        assertEquals(acceptorId, team.get(1), "Team must contain the acceptor second");
     }
 
     @Test
-    void calculateBasePoints_WithExcessTricks_AddsExtraPoints() {
-        // 10 tricks won. Target is 8. Extra = 2.
-        // Expected: 2 base points + 2 extra = 4 points.
-        assertEquals(4, bid.calculateBasePoints(10));
+    @DisplayName("getTeam() throws an exception if no Acceptance bid exists in history")
+    void getTeam_NoAcceptanceExists_ThrowsIllegalArgumentException() {
+        // Arrange: A bid history with only PASS bids and the Proposal itself
+        Bid mockPass = mock(Bid.class);
+        when(mockPass.getType()).thenReturn(BidType.PASS);
+
+        List<Bid> bidHistory = List.of(bid, mockPass, mockPass, mockPass);
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                bid.getTeam(bidHistory, Collections.emptyList())
+        );
+        assertTrue(exception.getMessage().contains("impossible to have ProposalBid without AcceptedBid"));
+    }
+
+    @ParameterizedTest(name = "Winning {0} tricks yields {1} base points (including overtricks)")
+    @CsvSource({
+            "8, 2",   // Target met exactly
+            "10, 4",  // 2 Overtricks
+            "12, 6"   // 4 Overtricks
+    })
+    void calculateBasePoints_TargetMet_ReturnsBasePlusOvertricks(int tricksWon, int expectedPoints) {
+        assertEquals(expectedPoints, bid.calculateBasePoints(tricksWon));
     }
 
     @Test
-    void calculateBasePoints_AllTricks_DoublesTotalPoints() {
-        // 13 tricks won. Target is 8. Extra = 5.
-        // Expected: (2 base points + 5 extra) * 2 = 14 points.
+    @DisplayName("Winning all 13 tricks (Slam) doubles the total accumulated points")
+    void calculateBasePoints_SlamAchieved_DoublesTotalPoints() {
+        // Base(2) + Overtricks(5) = 7. Doubled for Slam = 14.
         assertEquals(14, bid.calculateBasePoints(13));
     }
 
-    @Test
-    void calculateBasePoints_FailedBid_ReturnsNegativeBase() {
-        // 7 tricks won. Target is 8.
-        // Expected: -2 points (losing a standard proposal loses the base points).
-        assertEquals(-2, bid.calculateBasePoints(7));
+    @ParameterizedTest(name = "Failing contract by taking only {0} tricks yields negative base points")
+    @ValueSource(ints = {7, 4, 0})
+    void calculateBasePoints_BelowTarget_ReturnsNegativeBasePoints(int tricksWon) {
+        // When failing a proposal, overtricks logic is skipped and the flat base penalty is applied (-2)
+        int expectedPenalty = -1 * BidType.ACCEPTANCE.getBasePoints();
+        assertEquals(expectedPenalty, bid.calculateBasePoints(tricksWon));
     }
 
-    @Test
-    void calculateBasePoints_OutOfBounds_ThrowsException() {
-        // Defensive checks for impossible trick counts
-        assertThrows(IllegalArgumentException.class, () -> bid.calculateBasePoints(-1));
-        assertThrows(IllegalArgumentException.class, () -> bid.calculateBasePoints(14));
-    }
-
-    @Test
-    void testRecordAccessor() {
-        assertEquals(proposer, bid.proposer());
+    @ParameterizedTest(name = "calculateBasePoints() rejects out-of-bounds trick count: {0}")
+    @ValueSource(ints = {-1, 14, 100})
+    void calculateBasePoints_OutOfBoundsInput_ThrowsIllegalArgumentException(int tricksWon) {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                bid.calculateBasePoints(tricksWon)
+        );
+        assertTrue(exception.getMessage().contains("out of bound"));
     }
 }
