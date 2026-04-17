@@ -19,8 +19,11 @@ import base.domain.results.ProposalRejected;
 import base.domain.results.SuitSelectionRequired;
 import base.domain.turn.BidTurn;
 
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 /**
  * Manages the Bidding phase of the Whist game.
  * Acts as the active controller, validating bids, applying forced contracts (Troel/Troela),
@@ -393,7 +396,7 @@ public class BidState extends State {
 
     /**
      * Asks the player which Ace suit they are missing (used exclusively for Troel).
-     * * @param player The player to interrogate.
+     * @param player The player to interrogate.
      * @return The Suit of the missing Ace.
      * @throws IllegalArgumentException if player is null.
      * @throws IllegalStateException if the missing suit cannot be logically resolved.
@@ -548,7 +551,7 @@ public class BidState extends State {
 
     /**
      * Returns all legal bid types for the current player in the current bidding context.
-     * * @return A list of legally allowed BidTypes.
+     * @return A list of legally allowed BidTypes.
      */
     private List<BidType> getLegalBids() {
         List<BidType> legalBids = new ArrayList<>();
