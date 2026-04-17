@@ -16,8 +16,11 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -55,20 +58,18 @@ class PlayerTest {
         @Test
         @DisplayName("Should initialize player with a unique ID and empty state")
         void createsPlayerSuccessfully() {
-            assertThat(player.getId()).isNotNull();
-            assertThat(player.getName()).isEqualTo("Alice");
-            assertThat(player.getScore()).isZero();
-            assertThat(player.getHand()).isEmpty();
-            assertThat(player.getDecisionStrategy()).isEqualTo(mockStrategy);
+            assertNotNull(player.getId());
+            assertEquals("Alice", player.getName());
+            assertEquals(0, player.getScore());
+            assertTrue(player.getHand().isEmpty());
+            assertEquals(mockStrategy, player.getDecisionStrategy());
         }
 
         @Test
         @DisplayName("Should reject null strategy or name")
         void throwsOnNullInputs() {
-            assertThatThrownBy(() -> new Player(null, "Alice"))
-                    .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> new Player(mockStrategy, null))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThrows(IllegalArgumentException.class, () -> new Player(null, "Alice"));
+            assertThrows(IllegalArgumentException.class, () -> new Player(mockStrategy, null));
         }
     }
 
@@ -88,7 +89,8 @@ class PlayerTest {
             List<Card> hand = player.getHand();
 
             // Verifying Whist Sorting: Clubs -> Hearts (Ace then 2) -> Spades
-            assertThat(hand).containsExactly(club, highHeart, lowHeart, spade);
+            List<Card> expectedOrder = List.of(club, highHeart, lowHeart, spade);
+            assertEquals(expectedOrder, hand);
         }
 
         @Test
@@ -99,7 +101,7 @@ class PlayerTest {
             List<Card> externalHand = player.getHand();
             externalHand.clear();
 
-            assertThat(player.getHand()).isNotEmpty();
+            assertFalse(player.getHand().isEmpty());
         }
 
         @Test
@@ -109,11 +111,10 @@ class PlayerTest {
             player.setHand(List.of(heartTen));
 
             player.removeCard(heartTen);
-            assertThat(player.getHand()).isEmpty();
+            assertTrue(player.getHand().isEmpty());
 
-            assertThatThrownBy(() -> player.removeCard(heartTen))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("not in player hand");
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> player.removeCard(heartTen));
+            assertTrue(exception.getMessage().contains("not in player hand"));
         }
     }
 
@@ -129,7 +130,7 @@ class PlayerTest {
 
             Card result = player.chooseCard(Suit.HEARTS);
 
-            assertThat(result).isEqualTo(expected);
+            assertEquals(expected, result);
             verify(mockStrategy).chooseCardToPlay(anyList(), eq(Suit.HEARTS));
         }
 
@@ -140,7 +141,7 @@ class PlayerTest {
 
             Bid result = player.chooseBid();
 
-            assertThat(result).isEqualTo(mockBid);
+            assertEquals(mockBid, result);
             verify(mockStrategy).determineBid(eq(player.getId()), anyList());
         }
     }
@@ -154,7 +155,8 @@ class PlayerTest {
         void updatesScore() {
             player.updateScore(15);
             player.updateScore(-5);
-            assertThat(player.getScore()).isEqualTo(10);
+
+            assertEquals(10, player.getScore());
         }
     }
 }

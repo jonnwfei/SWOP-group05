@@ -3,7 +3,8 @@ package base.domain.results;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DisplayName("Bidding Completed Result Tests")
 class BiddingCompletedTest {
@@ -11,11 +12,11 @@ class BiddingCompletedTest {
     @Test
     @DisplayName("Should be successfully instantiated")
     void shouldInstantiate() {
-        // Act
+        // Act: Create the marker result [cite: 377]
         BiddingCompleted result = new BiddingCompleted();
 
-        // Assert
-        assertThat(result).isNotNull();
+        // Assert: Ensure it exists for the state transition [cite: 48]
+        assertNotNull(result, "The result instance should not be null.");
     }
 
     @Test
@@ -25,10 +26,9 @@ class BiddingCompletedTest {
         BiddingCompleted res1 = new BiddingCompleted();
         BiddingCompleted res2 = new BiddingCompleted();
 
-        // Assert
-        assertThat(res1)
-                .isEqualTo(res2)
-                .hasSameHashCodeAs(res2);
+        // Assert: Records must handle equality by value [cite: 42, 44]
+        assertEquals(res1, res2, "Instances of the same empty record should be equal.");
+        assertEquals(res1.hashCode(), res2.hashCode(), "Hash codes for equal instances should match.");
     }
 
     @Test
@@ -38,6 +38,6 @@ class BiddingCompletedTest {
         BiddingCompleted result = new BiddingCompleted();
 
         // Assert
-        assertThat(result.toString()).isEqualTo("BiddingCompleted[]");
+        assertEquals("BiddingCompleted[]", result.toString(), "toString should follow standard record formatting.");
     }
 }

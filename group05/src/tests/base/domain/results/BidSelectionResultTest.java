@@ -12,9 +12,16 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Unit tests for the BidSelectionResult record, focusing on defensive programming
+ * and validation of game state data.
+ */
 @DisplayName("Bid Selection Result Tests")
 class BidSelectionResultTest {
 
@@ -54,8 +61,12 @@ class BidSelectionResultTest {
 
             BidSelectionResult result = new BidSelectionResult(bids, players);
 
-            assertThat(result.availableBids()).containsExactly(BidType.PASS, BidType.SOLO);
-            assertThat(result.players()).hasSize(2).contains(mockPlayer1, mockPlayer2);
+            // Assert
+            assertNotNull(result);
+            assertArrayEquals(new BidType[]{BidType.PASS, BidType.SOLO}, result.availableBids());
+            assertEquals(2, result.players().size());
+            assertTrue(result.players().contains(mockPlayer1));
+            assertTrue(result.players().contains(mockPlayer2));
         }
 
         @Test
@@ -63,11 +74,9 @@ class BidSelectionResultTest {
         void shouldRejectInvalidBids() {
             List<Player> players = List.of(mockPlayer1);
 
-            assertThatThrownBy(() -> new BidSelectionResult(null, players))
-                    .isInstanceOf(IllegalArgumentException.class);
-
-            assertThatThrownBy(() -> new BidSelectionResult(new BidType[]{}, players))
-                    .isInstanceOf(IllegalArgumentException.class);
+            // Negative scenarios: verify defensive handling of illegal input
+            assertThrows(IllegalArgumentException.class, () -> new BidSelectionResult(null, players));
+            assertThrows(IllegalArgumentException.class, () -> new BidSelectionResult(new BidType[]{}, players));
         }
 
         @Test
@@ -75,11 +84,8 @@ class BidSelectionResultTest {
         void shouldRejectInvalidPlayers() {
             BidType[] bids = validBids();
 
-            assertThatThrownBy(() -> new BidSelectionResult(bids, null))
-                    .isInstanceOf(IllegalArgumentException.class);
-
-            assertThatThrownBy(() -> new BidSelectionResult(bids, List.of()))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThrows(IllegalArgumentException.class, () -> new BidSelectionResult(bids, null));
+            assertThrows(IllegalArgumentException.class, () -> new BidSelectionResult(bids, List.of()));
         }
     }
 
@@ -93,11 +99,11 @@ class BidSelectionResultTest {
             BidType[] inputBids = {BidType.PASS};
             BidSelectionResult result = new BidSelectionResult(inputBids, List.of(mockPlayer1));
 
-            // Mutate the array we passed in
+            // Act: Mutate the array we passed in (External mutation attempt)
             inputBids[0] = BidType.ABONDANCE_10;
 
-            // Internal state should remain PASS
-            assertThat(result.availableBids()).containsExactly(BidType.PASS);
+            // Assert: Internal state should remain PASS due to defensive cloning [cite: 49]
+            assertArrayEquals(new BidType[]{BidType.PASS}, result.availableBids());
         }
 
         @Test
@@ -105,12 +111,12 @@ class BidSelectionResultTest {
         void shouldProtectAgainstAccessorMutation() {
             BidSelectionResult result = new BidSelectionResult(validBids(), List.of(mockPlayer1));
 
-            // Mutate the array we got back from the getter
+            // Act: Mutate the array we got back from the getter
             BidType[] externalBids = result.availableBids();
             externalBids[0] = BidType.ABONDANCE_9;
 
-            // Internal state should remain PASS
-            assertThat(result.availableBids()[0]).isEqualTo(BidType.PASS);
+            // Assert: Internal state remains PASS [cite: 49]
+            assertEquals(BidType.PASS, result.availableBids()[0]);
         }
 
         @Test
@@ -118,8 +124,8 @@ class BidSelectionResultTest {
         void shouldReturnUnmodifiablePlayersList() {
             BidSelectionResult result = new BidSelectionResult(validBids(), List.of(mockPlayer1));
 
-            assertThatThrownBy(() -> result.players().add(mockPlayer2))
-                    .isInstanceOf(UnsupportedOperationException.class);
+            // Verify unmodifiable collection [cite: 48]
+            assertThrows(UnsupportedOperationException.class, () -> result.players().add(mockPlayer2));
         }
     }
 
@@ -131,11 +137,11 @@ class BidSelectionResultTest {
         @DisplayName("toString should clearly show field contents")
         void shouldHaveDescriptiveToString() {
             BidSelectionResult result = new BidSelectionResult(new BidType[]{BidType.PASS}, List.of(mockPlayer1));
+            String output = result.toString();
 
-            assertThat(result.toString())
-                    .contains("BidSelectionResult")
-                    .contains("availableBids")
-                    .contains("players");
+            assertTrue(output.contains("BidSelectionResult"));
+            assertTrue(output.contains("availableBids"));
+            assertTrue(output.contains("players"));
         }
     }
 }

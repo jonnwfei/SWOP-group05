@@ -21,9 +21,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Tests for the CLI Adapter.
+ * The adapter acts as a bridge between the Domain State Machine and the In-Terminal View.
+ */
 @DisplayName("CLI Adapter")
 class AdapterTest {
 
@@ -38,7 +42,6 @@ class AdapterTest {
 
     @BeforeEach
     void setUp() {
-        // Arrange
         game = mock(WhistGame.class);
         humanPlayer = mock(Player.class);
         botPlayer = mock(Player.class);
@@ -46,12 +49,10 @@ class AdapterTest {
         humanId = new PlayerId("human-123");
         botId = new PlayerId("bot-456");
 
-        // Human Mock Setup
         lenient().when(humanPlayer.getId()).thenReturn(humanId);
         lenient().when(humanPlayer.getName()).thenReturn("Alice");
         lenient().when(humanPlayer.getRequiresConfirmation()).thenReturn(true);
 
-        // Bot Mock Setup
         lenient().when(botPlayer.getId()).thenReturn(botId);
         lenient().when(botPlayer.getName()).thenReturn("Bob-Bot");
         lenient().when(botPlayer.getRequiresConfirmation()).thenReturn(false);
@@ -73,11 +74,11 @@ class AdapterTest {
 
             AdapterResult adapterResult = adapter.handleResult(result);
 
-            assertThat(adapterResult).isInstanceOf(AdapterResult.Immediate.class);
+            assertTrue(adapterResult instanceof AdapterResult.Immediate);
             GameCommand command = ((AdapterResult.Immediate) adapterResult).command();
 
-            assertThat(command).isInstanceOf(CardCommand.class);
-            assertThat(((CardCommand) command).card()).isEqualTo(TEST_CARD);
+            assertTrue(command instanceof CardCommand);
+            assertEquals(TEST_CARD, ((CardCommand) command).card());
             verify(botPlayer).chooseCard(any());
         }
 
@@ -88,13 +89,12 @@ class AdapterTest {
 
             AdapterResult adapterResult = adapter.handleResult(result);
 
-            assertThat(adapterResult).isInstanceOf(AdapterResult.NeedsIO.class);
+            assertTrue(adapterResult instanceof AdapterResult.NeedsIO);
             AdapterResult.NeedsIO needsIO = (AdapterResult.NeedsIO) adapterResult;
 
-            // FIXED: Using preamble() instead of preambles()
-            assertThat(needsIO.preamble()).hasSize(1);
-            assertThat(needsIO.preamble().getFirst()).isInstanceOf(PlayEvents.ConfirmationIOEvent.class);
-            assertThat(needsIO.event()).isInstanceOf(PlayEvents.PlayCardIOEvent.class);
+            assertEquals(1, needsIO.preamble().size());
+            assertTrue(needsIO.preamble().get(0) instanceof PlayEvents.ConfirmationIOEvent);
+            assertTrue(needsIO.event() instanceof PlayEvents.PlayCardIOEvent);
         }
 
         @Test
@@ -109,20 +109,21 @@ class AdapterTest {
 
             AdapterResult adapterResult = adapter.handleResult(result);
 
-            assertThat(adapterResult).isInstanceOf(AdapterResult.Immediate.class);
+            assertTrue(adapterResult instanceof AdapterResult.Immediate);
             GameCommand command = ((AdapterResult.Immediate) adapterResult).command();
 
-            assertThat(command).isInstanceOf(BidCommand.class);
-            assertThat(((BidCommand) command).bid()).isEqualTo(BidType.SOLO);
-            assertThat(((BidCommand) command).suit()).isEqualTo(Suit.HEARTS);
+            assertTrue(command instanceof BidCommand);
+            assertEquals(BidType.SOLO, ((BidCommand) command).bid());
+            assertEquals(Suit.HEARTS, ((BidCommand) command).suit());
         }
 
         @Test
         @DisplayName("Flow Events (EndOfTrick, ScoreBoard) translate to NeedsIO")
         void flowEvents_ReturnNeedsIO() {
             AdapterResult result = adapter.handleResult(new ScoreBoardResult(List.of(), List.of()));
-            assertThat(result).isInstanceOf(AdapterResult.NeedsIO.class);
-            assertThat(((AdapterResult.NeedsIO) result).event()).isInstanceOf(CountEvents.ScoreBoardIOEvent.class);
+
+            assertTrue(result instanceof AdapterResult.NeedsIO);
+            assertTrue(((AdapterResult.NeedsIO) result).event() instanceof CountEvents.ScoreBoardIOEvent);
         }
     }
 
@@ -135,8 +136,8 @@ class AdapterTest {
         void blankInput_ReturnsNullCommand() {
             AdapterResponse response = adapter.handleResponse(new Response("   "), playCardResult(humanPlayer));
 
-            assertThat(response.command()).isNull();
-            assertThat(response.shouldReRenderLastResult()).isFalse();
+            assertNull(response.command());
+            assertFalse(response.shouldReRenderLastResult());
         }
 
         @Test
@@ -145,14 +146,14 @@ class AdapterTest {
             PlayCardResult result = playCardResult(humanPlayer);
             AdapterResponse response = adapter.handleResponse(new Response("1"), result);
 
-            assertThat(response.command()).isInstanceOf(CardCommand.class);
-            assertThat(((CardCommand) response.command()).card()).isEqualTo(TEST_CARD);
+            assertTrue(response.command() instanceof CardCommand);
+            assertEquals(TEST_CARD, ((CardCommand) response.command()).card());
         }
 
         @Test
         @DisplayName("PlayCardResult: Input '0' without history returns UI Error")
         void playCard_ZeroInputNoHistory_ReturnsUIError() {
-            PlayCardResult result = playCardResult(humanPlayer); // lastPlayedTrick is null by default
+            PlayCardResult result = playCardResult(humanPlayer);
             AdapterResponse response = adapter.handleResponse(new Response("0"), result);
 
             assertUiOnlyError(response, "No tricks have been played yet!");
@@ -170,19 +171,15 @@ class AdapterTest {
         @Test
         @DisplayName("ParticipatingPlayersResult: Valid indices map to PlayerIds successfully")
         void participatingPlayers_ValidInput_MapsToPlayerIds() {
-            // FIXED: Added 'true' to satisfy the multiSelect boolean requirement
             ParticipatingPlayersResult result = new ParticipatingPlayersResult(List.of("Alice", "Bob-Bot"), true);
 
-            // User types "1" to select Alice
             AdapterResponse response = adapter.handleResponse(new Response("1"), result);
 
-            assertThat(response.command()).isInstanceOf(PlayerListCommand.class);
-
-            // FIXED: Using playerIds() instead of players()
+            assertTrue(response.command() instanceof PlayerListCommand);
             List<PlayerId> ids = ((PlayerListCommand) response.command()).playerIds();
 
-            assertThat(ids).hasSize(1);
-            assertThat(ids.getFirst()).isEqualTo(humanId);
+            assertEquals(1, ids.size());
+            assertEquals(humanId, ids.get(0));
         }
 
         @Test
@@ -190,7 +187,6 @@ class AdapterTest {
         void unparseableInput_CatchesException_ReturnsUIError() {
             PlayCardResult result = playCardResult(humanPlayer);
 
-            // User types letters instead of numbers
             AdapterResponse response = adapter.handleResponse(new Response("ABC"), result);
 
             assertUiOnlyError(response, "Invalid input: \"ABC\". Please try again.");
@@ -202,11 +198,11 @@ class AdapterTest {
     // =========================================================================
 
     private void assertUiOnlyError(AdapterResponse response, String expectedMessagePart) {
-        assertThat(response.command()).isNull();
-        assertThat(response.shouldReRenderLastResult()).isTrue();
+        assertNull(response.command(), "An error response should not yield a domain command.");
+        assertTrue(response.shouldReRenderLastResult(), "UI errors should trigger a re-render of the prompt.");
 
-        MessageIOEvent message = (MessageIOEvent) response.immediateEvents().getFirst();
-        assertThat(message.text()).contains(expectedMessagePart);
+        MessageIOEvent message = (MessageIOEvent) response.immediateEvents().get(0);
+        assertTrue(message.text().contains(expectedMessagePart));
     }
 
     private PlayCardResult playCardResult(Player player) {

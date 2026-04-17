@@ -9,9 +9,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Scenario tests for Trick logic, ensuring defensive handling of illegal inputs
+ * and correct winning card evaluation[cite: 56, 385].
+ */
 @DisplayName("Trick Logic")
 class TrickTest {
 
@@ -35,19 +38,20 @@ class TrickTest {
         @Test
         @DisplayName("New trick should have zero turns and no winner")
         void shouldInitializeCorrectly() {
-            assertThat(trick.getTurns()).isEmpty();
-            assertThat(trick.getStartingPlayerId()).isEqualTo(P1);
-            assertThat(trick.getWinningPlayerId()).isNull();
-            assertThat(trick.getLeadingSuit()).isNull();
-            assertThat(trick.isCompleted()).isFalse();
+            assertTrue(trick.getTurns().isEmpty());
+            assertEquals(P1, trick.getStartingPlayerId());
+            assertNull(trick.getWinningPlayerId());
+            assertNull(trick.getLeadingSuit());
+            assertFalse(trick.isCompleted());
         }
 
         @Test
         @DisplayName("Constructor should throw if starting player is null")
         void constructorShouldThrowOnNullStarter() {
-            assertThatThrownBy(() -> new Trick(null, Suit.HEARTS))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Starting player ID must exist");
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> new Trick(null, Suit.HEARTS));
+
+            assertTrue(exception.getMessage().contains("Starting player ID must exist"));
         }
     }
 
@@ -62,9 +66,9 @@ class TrickTest {
 
             trick.addTurn(P1, leadCard);
 
-            assertThat(trick.getTurns()).hasSize(1);
-            assertThat(trick.getLeadingSuit()).isEqualTo(Suit.HEARTS);
-            assertThat(trick.getWinningPlayerId()).isEqualTo(P1);
+            assertEquals(1, trick.getTurns().size());
+            assertEquals(Suit.HEARTS, trick.getLeadingSuit());
+            assertEquals(P1, trick.getWinningPlayerId());
         }
 
         @Test
@@ -72,9 +76,10 @@ class TrickTest {
         void shouldPreventDuplicatePlayer() {
             trick.addTurn(P1, new Card(Suit.HEARTS, Rank.ACE));
 
-            assertThatThrownBy(() -> trick.addTurn(P1, new Card(Suit.HEARTS, Rank.KING)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("already played");
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> trick.addTurn(P1, new Card(Suit.HEARTS, Rank.KING)));
+
+            assertTrue(exception.getMessage().contains("already played"));
         }
 
         @Test
@@ -82,9 +87,10 @@ class TrickTest {
         void shouldPreventExtraTurns() {
             playFullTrick();
 
-            assertThatThrownBy(() -> trick.addTurn(new PlayerId("p5"), new Card(Suit.DIAMONDS, Rank.TWO)))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("already full");
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> trick.addTurn(new PlayerId("p5"), new Card(Suit.DIAMONDS, Rank.TWO)));
+
+            assertTrue(exception.getMessage().contains("already full"));
         }
     }
 
@@ -99,17 +105,17 @@ class TrickTest {
             trick.addTurn(P2, new Card(Suit.HEARTS, Rank.ACE)); // Higher lead
             trick.addTurn(P3, new Card(Suit.DIAMONDS, Rank.ACE)); // Higher rank but wrong suit
 
-            assertThat(trick.getWinningPlayerId()).isEqualTo(P2);
+            assertEquals(P2, trick.getWinningPlayerId());
         }
 
         @Test
         @DisplayName("Any trump card should win over the leading suit")
         void trumpShouldBeatLead() {
-            // Trump is CLUBS (set in setUp)
+            // Trump is CLUBS (set in setUp) [cite: 160]
             trick.addTurn(P1, new Card(Suit.HEARTS, Rank.ACE));
-            trick.addTurn(P2, new Card(Suit.CLUBS, Rank.TWO)); // Low Trump
+            trick.addTurn(P2, new Card(Suit.CLUBS, Rank.TWO)); // Low Trump beats other suits [cite: 161]
 
-            assertThat(trick.getWinningPlayerId()).isEqualTo(P2);
+            assertEquals(P2, trick.getWinningPlayerId());
         }
 
         @Test
@@ -117,21 +123,22 @@ class TrickTest {
         void higherTrumpShouldBeatLowerTrump() {
             trick.addTurn(P1, new Card(Suit.HEARTS, Rank.ACE));
             trick.addTurn(P2, new Card(Suit.CLUBS, Rank.TWO)); // Low Trump
-            trick.addTurn(P3, new Card(Suit.CLUBS, Rank.KING)); // High Trump
+            trick.addTurn(P3, new Card(Suit.CLUBS, Rank.KING)); // High Trump wins [cite: 161]
 
-            assertThat(trick.getWinningPlayerId()).isEqualTo(P3);
+            assertEquals(P3, trick.getWinningPlayerId());
         }
 
         @Test
         @DisplayName("In a No-Trump game (Miserie), lead suit rules apply")
         void shouldHandleNoTrumpGames() {
+            // There is no longer a trump suit in Miserie [cite: 186]
             Trick miserieTrick = new Trick(P1, null);
 
             miserieTrick.addTurn(P1, new Card(Suit.HEARTS, Rank.TEN));
             miserieTrick.addTurn(P2, new Card(Suit.CLUBS, Rank.ACE)); // Would be trump, but isn't here
-            miserieTrick.addTurn(P3, new Card(Suit.HEARTS, Rank.JACK)); // Beats the 10
+            miserieTrick.addTurn(P3, new Card(Suit.HEARTS, Rank.JACK)); // Beats the 10 based on lead suit [cite: 162]
 
-            assertThat(miserieTrick.getWinningPlayerId()).isEqualTo(P3);
+            assertEquals(P3, miserieTrick.getWinningPlayerId());
         }
     }
 
