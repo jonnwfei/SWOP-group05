@@ -2,7 +2,6 @@ package cli.events;
 
 import base.domain.card.Card;
 import base.domain.results.*;
-import base.domain.trick.Trick;
 
 public non-sealed interface PlayEvents extends IOEvent {
 
@@ -47,13 +46,6 @@ public non-sealed interface PlayEvents extends IOEvent {
     record PlayCardIOEvent(PlayCardResult data) implements PlayEvents {
         public boolean needsInput() {
             return true;
-        }
-    }
-
-    record ShowLastTrickIOEvent(Trick lastTrick) implements PlayEvents {
-        @Override
-        public boolean needsInput() {
-            return false;
         }
     }
 
