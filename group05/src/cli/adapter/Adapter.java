@@ -284,8 +284,8 @@ public class Adapter {
                     Player player = p.player();
 
                     if (!player.getRequiresConfirmation()) {
-                        Card chosen = player.chooseCard(
-                                p.tableCards().isEmpty() ? null : p.tableCards().getFirst().suit());
+                        Card chosen = player
+                                .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
 
                         yield AdapterResponse.toDomain(new CardCommand(chosen));
                     }

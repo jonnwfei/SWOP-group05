@@ -3,13 +3,13 @@ package base.domain.results;
 import base.domain.card.Card;
 import base.domain.player.Player;
 import base.domain.trick.Trick;
-import base.domain.trick.Turn;
+import base.domain.turn.PlayTurn;
 
 import java.util.List;
 import java.util.Objects;
 
 public record PlayCardResult(
-        List<Turn> turns,
+        List<PlayTurn> turns,
         boolean isOpenMiserie,
         List<String> exposedPlayerNames,
         List<List<Card>> formattedExposedHands,

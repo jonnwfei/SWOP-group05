@@ -138,12 +138,11 @@ public class PlayState extends State {
             populateExposedHands(exposedNames, exposedHands);
         }
 
-        List<Card> tableCards = currentTrick.getTurns().stream()
-                .map(PlayTurn::playedCard).toList();
+        List<PlayTurn> turns = currentTrick.getTurns();
         List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
 
         return new PlayCardResult(
-                tableCards, isOpenMiserie, exposedNames, exposedHands,
+                turns, isOpenMiserie, exposedNames, exposedHands,
                 currentRound.getTricks().size() + 1, player, legalCards,
                 currentRound.getLastPlayedTrick()
         );

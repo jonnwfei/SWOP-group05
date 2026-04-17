@@ -169,6 +169,9 @@ public class GamePersistenceService {
 
         BidType bidType = highestBid.getType();
         int bidderIndex = roundPlayers.indexOf(round.getPlayerById(highestBid.getPlayerId()));
+        if (bidderIndex < 0) {
+            throw new IllegalStateException("Cannot snapshot round: highest bid player is not in round players");
+        }
 
 
         List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()
@@ -232,7 +235,7 @@ public class GamePersistenceService {
             }
 
             Player mainBidder = players.get(bidderIndex);
-            Bid highestBid = snapshot.bidType().instantiate(mainBidder, snapshot.trumpSuit());
+            Bid highestBid = snapshot.bidType().instantiate(mainBidder.getId(), snapshot.trumpSuit());
 
             List<Player> participants = snapshot.participantIndices().stream()
                     .map(index -> {

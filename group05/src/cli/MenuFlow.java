@@ -30,9 +30,12 @@ public class MenuFlow {
 
         int choice = askInt(new WelcomeMenuIOEvent(), 1, 3);
 
-        if (choice == 1) setupGame();
-        else if (choice == 2) setupCount();
-        else if (choice == 3) setupLoadSave();
+        if (choice == 1)
+            setupGame();
+        else if (choice == 2)
+            setupCount();
+        else if (choice == 3)
+            setupLoadSave();
 
     }
 
