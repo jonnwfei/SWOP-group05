@@ -152,11 +152,6 @@ public class Adapter {
 
             case DeleteRoundResult g ->
                 new AdapterResult.NeedsIO(List.of(), new DeleteRoundIOEvent(g.rounds()));
-            // =========================
-            // SAFETY
-            // =========================
-            default -> throw new IllegalStateException(
-                    "Unexpected GameResult: " + result);
         };
     }
 
@@ -302,7 +297,6 @@ public class Adapter {
                     yield AdapterResponse.toDomain(new CardCommand(selected));
                 }
 
-//                default -> throw new IllegalStateException("Unexpected GameResult in response handling: " + result);
             };
         } catch (Exception e) {
             return AdapterResponse.uiOnly(new MessageIOEvent("Invalid input: \"" + raw + "\". Please try again."));
