@@ -41,7 +41,8 @@ public class MenuFlow {
 
     private void setupGame() {
         int bots = askInt(new AmountOfBotsIOEvent(), 0, WhistGame.REQUIRED_PLAYERS );
-        int humans = WhistGame.REQUIRED_PLAYERS - bots;
+        int minHumans = WhistGame.REQUIRED_PLAYERS - bots;
+        int humans = askInt(new AmountOfHumansIOEvent(minHumans, WhistGame.MAX_PLAYERS), minHumans, WhistGame.MAX_PLAYERS );
 
         addHumanPlayers(1, humans);
         addBotPlayers(humans + 1, bots);
@@ -81,6 +82,7 @@ public class MenuFlow {
             }
         } catch (Exception e) {
             System.out.println("Error while loading game: " + e);
+            throw new IllegalArgumentException("Failed to load game with description: " + chosenDescription, e);
         }
     }
 

@@ -42,6 +42,7 @@ public class TerminalRenderer {
             // --- menu ---
             case WelcomeMenuIOEvent ignored -> renderWelcomeMenuEvent();
             case AmountOfBotsIOEvent ignored -> renderAmountOfBotsEvent();
+            case AmountOfHumansIOEvent e -> renderAmountOfHumansEvent(e.minHumans(), e.maxHumans());
             case PlayerNameIOEvent e -> renderPlayerNameEvent(e);
             case BotStrategyIOEvent e -> renderBotStrategyEvent(e);
             case PrintNamesIOEvent e -> renderPrintNamesEvent(e);
@@ -119,8 +120,10 @@ public class TerminalRenderer {
             System.out.println("  [ Empty ]");
         } else {
             // Displays cards in a horizontal-ish list for better flow
-            String table = String.join("\n | ", data.turns().stream()
-                    .map(PlayTurn::toString).toList());
+            String table = String.join("\n | ",data.turns().stream()
+                    .map(PlayTurn::playedCard)
+                    .map(Card::toString)
+                    .toList());
             System.out.println(" | " + table);
         }
 
@@ -154,7 +157,8 @@ public class TerminalRenderer {
 
     private void renderBidTurnEvent(BidTurnIOEvent event) {
         System.out.println("\n=== BIDDING TURN: " + event.data().playerName().toUpperCase() + " ===");
-        System.out.println("Dealt Trump: " + event.data().trumpSuit());
+        String dealTrump = event.data().trumpSuit() == null ? "[None]" : event.data().trumpSuit().toString();
+        System.out.println("Dealt Trump: " + dealTrump);
         System.out.println("Your hand: ");
         System.out.println(event.data().hand());
 
@@ -276,6 +280,11 @@ public class TerminalRenderer {
         System.out.print("Your choice: ");
     }
 
+    private void renderAmountOfHumansEvent(int minHumans, int maxHumans) {
+        System.out.printf("How many humans will be playing? (%d-%d):\n", minHumans, maxHumans);
+        System.out.print("Your choice: ");
+    }
+
     private void renderAmountOfBotsEvent() {
         System.out.println("How many bots will be playing? (0-4):");
         System.out.print("Your choice: ");
@@ -283,7 +292,7 @@ public class TerminalRenderer {
 
     private void renderBotStrategyEvent(BotStrategyIOEvent event) {
         System.out.println("Which strategy should bot " + event.botIndex() + " use?");
-        System.out.println("(1) High Bot\n(2) Low Bot");
+        System.out.println("(1) High Bot\n(2) Low Bot\n(3) SmartBot");
         System.out.print("Your choice: ");
     }
 
