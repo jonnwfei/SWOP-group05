@@ -28,7 +28,7 @@ import java.util.Random;
  * @author Stan Kestens, Tommy Wu
  * @since 28/02/2026
  */
-public class WhistGame implements GameEventPublisher {
+public class WhistGame {
 
     private State state;
     private Deck deck;
@@ -83,8 +83,7 @@ public class WhistGame implements GameEventPublisher {
         if (player == null) throw new IllegalArgumentException("Player cannot be null");
         if (players.contains(player)) throw new IllegalArgumentException("Player already in Game");
         this.players.add(player);
-        player.getDecisionStrategy().onJoinGame(this);
-    }
+        player.getDecisionStrategy().onJoinGame(this::addObserver);    }
 
     public void resetPlayers() {
         this.players.clear();
