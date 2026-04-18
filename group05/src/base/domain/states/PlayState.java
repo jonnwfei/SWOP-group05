@@ -5,13 +5,16 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
-import base.domain.commands.*;
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 import base.domain.player.Player;
 import base.domain.results.*;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 import java.util.ArrayList;
 import java.util.List;
 

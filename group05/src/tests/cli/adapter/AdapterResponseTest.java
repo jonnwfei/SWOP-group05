@@ -1,7 +1,7 @@
 package cli.adapter;
 
 import base.domain.commands.GameCommand;
-import base.domain.commands.StartGameCommand;
+import base.domain.commands.GameCommand.*;
 import cli.events.BidEvents;
 import cli.events.IOEvent;
 import org.junit.jupiter.api.Test;

@@ -4,7 +4,9 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
-import base.domain.results.PlayCardResult;
+import base.domain.results.BidResults.*;
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 import base.domain.round.Round;
 import base.domain.turn.PlayTurn;
 import cli.events.IOEvent;
@@ -104,6 +106,7 @@ public class TerminalRenderer {
         System.out.println(t.text());
     }
 
+
     private void renderPlayCardEvent(PlayCardIOEvent event) {
         PlayCardResult data = event.data();
 
@@ -127,7 +130,7 @@ public class TerminalRenderer {
             System.out.println("\nEXPOSED HANDS (OPEN MISERIE)");
             for (int i = 0; i < data.exposedPlayerNames().size(); i++) {
                 String name = data.exposedPlayerNames().get(i);
-                List<Card> exposedHand = data.formattedExposedHands().get(i);
+                List<Card> exposedHand = data.formattedExposedHand().get(i);
 
                 System.out.printf("%-12s : ", name); // Aligns names
                 System.out.println(exposedHand);

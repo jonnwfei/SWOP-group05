@@ -1,6 +1,7 @@
 package cli.events;
 
-import base.domain.results.*;
+
+import base.domain.results.PlayResults.*;
 
 public sealed interface PlayEvents extends IOEvent {
 

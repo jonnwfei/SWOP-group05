@@ -1,28 +1,5 @@
 package base.domain.results;
-
 /**
  * Sealed interface represents the result of a game action or event.
  */
-public sealed interface GameResult permits
-        AddHumanPlayerResult,
-
-        AmountOfTrickWonResult,
-        AddPlayerResult,
-        BiddingCompleted,
-        BidSelectionResult,
-        BidTurnResult,
-        DeleteRoundResult,
-        EndOfRoundResult,
-        EndOfTrickResult,
-        EndOfTurnResult,
-        ParticipatingPlayersResult,
-        PlayCardResult,
-        PlayerSelectionResult,
-        ProposalRejected,
-        SaveDescriptionResult,
-        ScoreBoardResult,
-        SuitSelectionRequired,
-        SuitSelectionResult,
-        TrickHistoryResult {
-
-}
+public sealed interface GameResult permits BidResults, PlayResults, CountResults {}

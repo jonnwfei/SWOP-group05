@@ -1,7 +1,8 @@
 package cli.events;
 
-import base.domain.results.BidTurnResult;
-import base.domain.results.ProposalRejected;
+import base.domain.results.BidResults.*;
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
