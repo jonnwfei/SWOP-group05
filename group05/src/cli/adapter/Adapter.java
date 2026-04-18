@@ -192,10 +192,16 @@ public class Adapter {
                 }
                 case AddPlayerResult ignored -> {
                     int choice = parser.parseNumberInput(raw);
+                    if (choice < 1 || choice > 4){
+                        throw new IllegalArgumentException("No valid answer");
+                    }
                     yield AdapterResponse.toDomain(new NumberCommand(choice));
                 }
                 case AddHumanPlayerResult ignored -> {
                     String name = parser.parseString(raw);
+                    if (raw.equals("")){
+                        throw new IllegalArgumentException("Name cannot be \"\"");
+                    }
                     yield AdapterResponse.toDomain(new TextCommand(name));
                 }
                 // --- Bidding State ---
@@ -276,10 +282,9 @@ public class Adapter {
                     yield AdapterResponse.toDomain(new NumberCommand(tricks));
                 }
 
-                case ScoreBoardResult ignored -> {
+                case ScoreBoardResult g -> {
                     int choice = parser.parseNumberInput(raw);
 
-                    // TODO: define valid range (depends on UI options)
                     if (choice < 1) {
                         throw new IllegalArgumentException("Invalid scoreboard selection");
                     }
