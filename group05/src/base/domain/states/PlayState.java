@@ -79,11 +79,6 @@ public class PlayState extends State {
         };
     }
 
-    private GameResult handleBotTurn(Player player) {
-        Card card = player.chooseCard(currentTrick.getLeadingSuit());
-        return executeCardPlay(player, card);
-    }
-
     /**
      * CLEANUP: Extracted the massive duplication between bots and humans into a single method.
      * Both actors play cards the exact same way.
