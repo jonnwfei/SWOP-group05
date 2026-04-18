@@ -1,21 +1,14 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.bid.Bid;
-import base.domain.bid.BidType;
+import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.commands.*;
-
+import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.*;
 import base.domain.round.Round;
-import base.storage.snapshots.SaveMode;
-import base.domain.player.Player;
 import base.domain.strategy.HumanStrategy;
-
-import base.domain.bid.*;
-import base.domain.card.Suit;
-import base.domain.round.Round;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,11 +16,11 @@ import java.util.List;
 import static base.domain.bid.BidType.*;
 
 /**
- * Manual score-counting flow (use case 1).
+ * State responsible for manual score calculation (use case 1).
  * <p>
  * IO-agnostic: the adapter owns persistence. When the user picks "save" this
- * state emits a SaveDescriptionResult and, once the follow-up
- * TextCommand arrives, simply resumes the scoreboard.
+ * state emits a {@link CountSaveDescriptionResult} and, once the follow-up
+ * {@link TextCommand} arrives, simply returns to the scoreboard.
  *
  * @author Stan Kestens
  * @since 01/03/2026
@@ -45,34 +38,21 @@ public class CountState extends State {
     private Bid bid;
     private BidType selectedBidType;
     private Suit trumpSuit;
-    private List<PlayerId> participatingPlayerIds; // Upgraded to PlayerId
+    private List<PlayerId> participatingPlayerIds;
 
     public CountState(WhistGame game) {
         super(game);
     }
 
-    /**
-     * Executes the current phase of the scoring process without user input (e.g.
-     * initial entry into CountState).
-     *
-     * @return The next event in the scoring sequence.
-     */
     @Override
     public StateStep executeState() {
         if (currentPhase == CountPhase.START) {
             currentPhase = CountPhase.SELECT_BID;
             return StateStep.stay(new BidSelectionResult(values(), getGame().getPlayers()));
         }
-
         return StateStep.stay(nextStep());
     }
 
-    /**
-     * Routes the user action to the current phase of the scoring wizard.
-     *
-     * @param command The user input.
-     * @return The next event in the scoring sequence.
-     */
     @Override
     public StateStep executeState(GameCommand command) {
         if (currentPhase == CountPhase.START) {
@@ -86,15 +66,15 @@ public class CountState extends State {
             case PlayerListCommand p -> {
                 if (currentPhase == CountPhase.REMOVE_PLAYER_SELECT) {
                     yield StateStep.stay(handleRemovePlayer(p.playerIds()));
-                } else {
-                    yield StateStep.stay(handlePlayerInput(p.playerIds()));
                 }
-
+                yield StateStep.stay(handlePlayerInput(p.playerIds()));
             }
             case NumberCommand n -> handleNumberInput(n.choice());
             case TextCommand t -> {
                 if (currentPhase == CountPhase.SAVE_DESCRIPTION) {
-                    yield StateStep.stay(handleSaveDescription(t.text()));
+                    // Adapter has already persisted; just resume the scoreboard.
+                    currentPhase = CountPhase.PROMPT_NEXT_STATE;
+                    yield StateStep.stay(getScoreBoard());
                 }
                 if (currentPhase == CountPhase.ADD_PLAYER) {
                     yield StateStep.stay(handleAddPlayer(t.text()));
@@ -116,7 +96,6 @@ public class CountState extends State {
             return StateStep.stay(getScoreBoard());
         }
 
-        // PROMPT_NEXT_STATE
         return switch (value) {
             case 1 -> {
                 nextStateDecision = 1;
@@ -128,9 +107,9 @@ public class CountState extends State {
             }
             case 3 -> {
                 currentPhase = CountPhase.SAVE_DESCRIPTION;
-                yield StateStep.stay(new SaveDescriptionResult(SaveMode.COUNT));
+                yield StateStep.stay(new CountSaveDescriptionResult());
             }
-            case 4 -> {// remove rounds
+            case 4 -> {
                 currentPhase = CountPhase.REMOVE_ROUND;
                 yield StateStep.stay(new DeleteRoundResult(getGame().getRounds()));
             }
@@ -151,14 +130,8 @@ public class CountState extends State {
         return new BidSelectionResult(values(), getGame().getPlayers());
     }
 
-    /**
-     * Processes the selected bid type
-     *
-     * @return GameEvent
-     */
     private GameResult handleBidType(BidType type) {
         this.selectedBidType = type;
-
         if (type == MISERIE || type == OPEN_MISERIE) {
             currentPhase = CountPhase.SELECT_PLAYERS;
             return new PlayerSelectionResult(getGame().getPlayers(), true, type);
@@ -167,70 +140,49 @@ public class CountState extends State {
         return new SuitSelectionResult();
     }
 
-    /**
-     * Processes the trump suit selection.
-     *
-     * @return GameEvent
-     */
     private GameResult handleSuit(Suit suit) {
         this.trumpSuit = suit;
         currentPhase = CountPhase.SELECT_PLAYERS;
-        if (selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA){
+        if (selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA) {
             return new PlayerSelectionResult(getGame().getPlayers(), true, selectedBidType);
         }
         return new PlayerSelectionResult(getGame().getPlayers(), false, selectedBidType);
     }
 
-    /**
-     * Identifies which players were involved in the bid.
-     *
-     * @return GameEvent
-     */
     private GameResult handlePlayerInput(List<PlayerId> players) {
         if (currentPhase == CountPhase.SELECT_PLAYERS) {
-            // If empty, stay in the same phase and return the selection result again
             if (players == null || players.isEmpty()) {
-                // We stay in SELECT_PLAYERS phase
-                boolean multiSelect = (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE || selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA);
+                boolean multiSelect = (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE
+                        || selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA);
                 return new PlayerSelectionResult(getGame().getPlayers(), multiSelect, selectedBidType);
             }
 
             this.participatingPlayerIds = players;
-
-            // safe to call getFirst() now
             this.bid = selectedBidType.instantiate(participatingPlayerIds.getFirst(), trumpSuit);
 
             if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;
                 return new PlayerSelectionResult(getGame().getPlayers(), true, bid.getType());
             }
-
             currentPhase = CountPhase.CALCULATE;
             return new AmountOfTrickWonResult();
         }
-        // SELECT_WINNERS — participatingPlayers already set
         return finalizeCalculation(0, players);
     }
 
-    /**
-     * Performs final score calculation based on tricks won or miserie results.
-     *
-     * @return GameEvent
-     */
     private GameResult finalizeCalculation(int tricks, List<PlayerId> winnersId) {
         Player primaryBidder = getGame().getPlayerById(participatingPlayerIds.getFirst());
         Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
         round.setHighestBid(bid);
         getGame().addRound(round);
 
-        List<Player> participatingPlayers = participatingPlayerIds
-                .stream()
-                .map(playerId -> getGame().getPlayerById(playerId))
+        List<Player> participatingPlayers = participatingPlayerIds.stream()
+                .map(getGame()::getPlayerById)
                 .toList();
 
         List<Player> winners = new ArrayList<>();
         if (winnersId != null) {
-            winners = winnersId.stream().map(playerId -> getGame().getPlayerById(playerId)).toList();
+            winners = winnersId.stream().map(getGame()::getPlayerById).toList();
         }
 
         round.calculateScoresForCount(bid, tricks, participatingPlayers, winners);
@@ -245,27 +197,23 @@ public class CountState extends State {
         return new ScoreBoardResult(getPlayerNames(), scores, canRemove);
     }
 
-    // Called when TextCommand arrives during ADD_PLAYER
     private GameResult handleAddPlayer(String name) {
         String cleanName = name == null ? "" : name.trim();
         if (cleanName.isBlank()) {
-            return new AddHumanPlayerResult(); // re-prompt
+            return new AddHumanPlayerResult();
         }
-
-        Player newPlayer = new Player(new HumanStrategy(), cleanName);
-        getGame().addPlayer(newPlayer);
+        getGame().addPlayer(new Player(new HumanStrategy(), cleanName));
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
         return getScoreBoard();
     }
 
-    // Called when PlayerListCommand arrives during REMOVE_PLAYER_SELECT
     private GameResult handleRemovePlayer(List<PlayerId> playerIds) {
         if (!canRemovePlayer()) {
             currentPhase = CountPhase.PROMPT_NEXT_STATE;
             return getScoreBoard();
         }
         if (playerIds.isEmpty()) {
-            return new PlayerSelectionResult(getGame().getPlayers()); // re-prompt
+            return new PlayerSelectionResult(getGame().getPlayers());
         }
         Player newPlayer = getGame().getPlayerById(playerIds.getFirst());
         getGame().removePlayer(newPlayer);
@@ -282,24 +230,15 @@ public class CountState extends State {
     }
 
     private GameResult handleRound(Round round) {
-        // Remove the round from the game's internal list
         getGame().removeRound(round);
-
-        // Recalculate everyone's score based on the remaining rounds
         getGame().recalibrateScores();
-
-        // Return to the scoreboard menu
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
         return getScoreBoard();
     }
 
-    /** Returns to a fresh CountState or the Main Menu. */
     @Override
     public State nextState() {
-        if (nextStateDecision == 1) {
-            return new CountState(getGame());
-        } else {
-            return null;
-        }
+        if (nextStateDecision == 1) return new CountState(getGame());
+        return null;
     }
 }

@@ -5,24 +5,23 @@ package base.domain.results;
  */
 public sealed interface GameResult permits
         AddHumanPlayerResult,
-
         AmountOfTrickWonResult,
         AddPlayerResult,
         BiddingCompleted,
         BidSelectionResult,
         BidTurnResult,
+        CountSaveDescriptionResult,
         DeleteRoundResult,
         EndOfRoundResult,
         EndOfTrickResult,
         EndOfTurnResult,
+        GameSaveDescriptionResult,
         ParticipatingPlayersResult,
         PlayCardResult,
         PlayerSelectionResult,
         ProposalRejected,
-        SaveDescriptionResult,
         ScoreBoardResult,
         SuitSelectionRequired,
         SuitSelectionResult,
         TrickHistoryResult {
-
 }

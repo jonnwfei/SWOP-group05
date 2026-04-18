@@ -11,6 +11,7 @@ import base.domain.commands.*;
 import base.domain.results.*;
 import base.domain.round.Round;
 import base.storage.GamePersistenceService;
+import base.storage.snapshots.SaveMode;
 import cli.TerminalParser;
 import cli.elements.Response;
 
@@ -131,8 +132,11 @@ public class Adapter {
             case AmountOfTrickWonResult ignored ->
                 new AdapterResult.NeedsIO(List.of(), new TrickInputIOEvent());
 
-            case SaveDescriptionResult ignored ->
-                new AdapterResult.NeedsIO(List.of(), new SaveDescriptionIOEvent());
+            case GameSaveDescriptionResult ignored ->
+                    new AdapterResult.NeedsIO(List.of(), new SaveDescriptionIOEvent());
+
+            case CountSaveDescriptionResult ignored ->
+                    new AdapterResult.NeedsIO(List.of(), new SaveDescriptionIOEvent());
 
             case ScoreBoardResult s ->
                 new AdapterResult.NeedsIO(List.of(), new ScoreBoardIOEvent(s.names(), s.scores(), s.canRemovePlayer()));
@@ -292,16 +296,9 @@ public class Adapter {
 
                 // The save is the adapter's responsibility. The state only gets a
                 // TextCommand afterwards to signal "done, resume your flow".
-                case SaveDescriptionResult s -> {
-                    String description = parser.parseString(raw);
-                    try {
-                        persistenceService.save(game, s.mode(), description);
-                    } catch (RuntimeException e) {
-                        yield AdapterResponse.uiOnly(
-                                new MessageIOEvent("Save failed: " + e.getMessage()));
-                    }
-                    yield AdapterResponse.toDomain(new TextCommand(description));
-                }
+                case GameSaveDescriptionResult ignored -> performSave(raw, SaveMode.GAME);
+                case CountSaveDescriptionResult ignored -> performSave(raw, SaveMode.COUNT);
+
 
                 // --- Gameplay Results (Usually just "Press Enter") ---
                 case EndOfTurnResult _,EndOfTrickResult _,EndOfRoundResult _,TrickHistoryResult _ ->
@@ -394,5 +391,14 @@ public class Adapter {
             case PROPOSAL, TROEL, TROELA -> true;
             default -> true;
         };
+    }
+    private AdapterResponse performSave(String raw, SaveMode mode) {
+        String description = parser.parseString(raw);
+        try {
+            persistenceService.save(game, mode, description);
+        } catch (RuntimeException e) {
+            return AdapterResponse.uiOnly(new MessageIOEvent("Save failed: " + e.getMessage()));
+        }
+        return AdapterResponse.toDomain(new TextCommand(description));
     }
 }
