@@ -139,11 +139,6 @@ public final class SmartBotStrategy implements Strategy {
         };
     }
 
-    @Override
-    public boolean requiresConfirmation() {
-        return false;
-    }
-
     // --- State Routing Helper ---
 
     /**

@@ -51,16 +51,4 @@ class HumanStrategyTest {
                     "Human strategy should return null. The UI/State machine handles actual card selection.");
         }
     }
-
-    @Nested
-    @DisplayName("System Configuration")
-    class ConfigTests {
-
-        @Test
-        @DisplayName("requiresConfirmation() must be true for human interaction")
-        void requiresConfirmationIsTrue() {
-            assertTrue(strategy.requiresConfirmation(),
-                    "Human strategy must always flag that it requires UI confirmation/input to proceed.");
-        }
-    }
 }

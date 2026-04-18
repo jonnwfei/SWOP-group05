@@ -10,6 +10,7 @@ import base.domain.player.PlayerId;
 import base.domain.commands.*;
 import base.domain.results.*;
 import base.domain.round.Round;
+import base.domain.strategy.HumanStrategy;
 import cli.TerminalParser;
 import cli.elements.Response;
 
@@ -52,7 +53,7 @@ public class Adapter {
                 Player player = p.player();
 
                 // BOT → immediate domain command
-                if (!player.getRequiresConfirmation()) {
+                if (!(player.getDecisionStrategy() instanceof HumanStrategy)) {
                     Card chosen = player.chooseCard(
                             p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
                     yield new AdapterResult.Immediate(new CardCommand(chosen));
@@ -70,7 +71,7 @@ public class Adapter {
             case BidTurnResult b -> {
                 Player player = b.player();
 
-                if (!player.getRequiresConfirmation()) {
+                if (!(player.getDecisionStrategy() instanceof HumanStrategy)) {
                     Bid botBid = player.chooseBid();
                     Suit dealtTrump = b.trumpSuit();
 
@@ -313,7 +314,7 @@ public class Adapter {
                 case PlayCardResult p -> {
                     Player player = p.player();
 
-                    if (!player.getRequiresConfirmation()) {
+                    if (!(player.getDecisionStrategy() instanceof HumanStrategy)) {
                         Card chosen = player
                                 .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
 

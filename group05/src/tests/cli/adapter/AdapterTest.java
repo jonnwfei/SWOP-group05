@@ -3,7 +3,7 @@ package cli.adapter;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
-import base.domain.bid.PassBid;
+import base.domain.bid.SoloBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
@@ -11,6 +11,8 @@ import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.*;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.SmartBotStrategy;
 import cli.elements.Response;
 import cli.events.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +31,7 @@ import static org.mockito.Mockito.*;
  * Tests for the CLI Adapter.
  * The adapter acts as a bridge between the Domain State Machine and the In-Terminal View.
  */
-@DisplayName("CLI Adapter Integration Tests")
+@DisplayName("CLI Adapter")
 class AdapterTest {
 
     private WhistGame game;
@@ -52,11 +54,11 @@ class AdapterTest {
 
         lenient().when(humanPlayer.getId()).thenReturn(humanId);
         lenient().when(humanPlayer.getName()).thenReturn("Alice");
-        lenient().when(humanPlayer.getRequiresConfirmation()).thenReturn(true);
+        lenient().when(humanPlayer.getDecisionStrategy()).thenReturn(new HumanStrategy());
 
         lenient().when(botPlayer.getId()).thenReturn(botId);
         lenient().when(botPlayer.getName()).thenReturn("Bob-Bot");
-        lenient().when(botPlayer.getRequiresConfirmation()).thenReturn(false);
+        lenient().when(botPlayer.getDecisionStrategy()).thenReturn(new SmartBotStrategy(botId));
 
         lenient().when(game.getPlayers()).thenReturn(List.of(humanPlayer, botPlayer));
 
@@ -70,14 +72,11 @@ class AdapterTest {
         @Test
         @DisplayName("PlayCardResult for Bot delegates to strategy and returns Immediate CardCommand")
         void playCard_BotPlayer_ReturnsImmediateCommand() {
-            // Arrange
             when(botPlayer.chooseCard(any())).thenReturn(TEST_CARD);
             PlayCardResult result = playCardResult(botPlayer);
 
-            // Act
             AdapterResult adapterResult = adapter.handleResult(result);
 
-            // Assert
             assertInstanceOf(AdapterResult.Immediate.class, adapterResult);
             GameCommand command = ((AdapterResult.Immediate) adapterResult).command();
 
@@ -89,13 +88,10 @@ class AdapterTest {
         @Test
         @DisplayName("PlayCardResult for Human returns NeedsIO with Confirmation preamble")
         void playCard_HumanPlayer_ReturnsNeedsIO() {
-            // Arrange
             PlayCardResult result = playCardResult(humanPlayer);
 
-            // Act
             AdapterResult adapterResult = adapter.handleResult(result);
 
-            // Assert
             assertInstanceOf(AdapterResult.NeedsIO.class, adapterResult);
             AdapterResult.NeedsIO needsIO = (AdapterResult.NeedsIO) adapterResult;
 
@@ -107,18 +103,15 @@ class AdapterTest {
         @Test
         @DisplayName("BidTurnResult for Bot resolves trump rules and returns Immediate BidCommand")
         void bidTurn_BotPlayer_ReturnsImmediateCommand() {
-            // Arrange
-            Bid mockBid = mock(PassBid.class);
+            Bid mockBid = mock(SoloBid.class);
             when(mockBid.getType()).thenReturn(BidType.SOLO);
             when(mockBid.determineTrump(any())).thenReturn(Suit.HEARTS);
             when(botPlayer.chooseBid()).thenReturn(mockBid);
 
             BidTurnResult result = bidTurnResult(botPlayer);
 
-            // Act
             AdapterResult adapterResult = adapter.handleResult(result);
 
-            // Assert
             assertInstanceOf(AdapterResult.Immediate.class, adapterResult);
             GameCommand command = ((AdapterResult.Immediate) adapterResult).command();
 
