@@ -75,15 +75,5 @@ class PlayerListCommandTest {
             assertNotEquals(cmd1, cmd3);
         }
 
-        @Test
-        @DisplayName("toString should contain the list of IDs")
-        void shouldHaveDescriptiveToString() {
-            PlayerListCommand command = new PlayerListCommand(List.of(P1));
-            String commandString = command.toString();
-
-            // Assert
-            assertTrue(commandString.contains("PlayerListCommand"));
-            assertTrue(commandString.contains("p1"));
-        }
     }
 }

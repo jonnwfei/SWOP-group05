@@ -193,10 +193,17 @@ public class GamePersistenceService {
         }
 
         List<Integer> scoreDeltas = round.getScoreDeltas();
+        if (scoreDeltas == null || scoreDeltas.size() != 4) {
+            throw new IllegalStateException("Cannot snapshot round: score deltas must contain exactly 4 values");
+        }
 
         int tricksWon = round.getCountTricksWon();
         if (tricksWon < 0) {
             tricksWon = round.getBiddingTeamTricksWon();
+        }
+
+        if (tricksWon < 0 || tricksWon > 13) {
+            throw new IllegalStateException("Cannot snapshot round: invalid trick count");
         }
 
         try {
