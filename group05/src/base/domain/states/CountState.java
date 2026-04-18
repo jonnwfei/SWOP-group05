@@ -61,7 +61,7 @@ public class CountState extends State {
         return switch (command) {
             case BidCommand b -> StateStep.stay(handleBidType(b.bid()));
             case SuitCommand s -> StateStep.stay(handleSuit(s.suit()));
-            case PlayerListCommand p -> StateStep.stay(handlePlayerInput(p.playerIds()));
+            case PlayerListCommand p -> handlePlayerInput(p.playerIds()); // now returns StateStep directly
             case NumberCommand n -> handleNumberInput(n.choice());
             default -> throw new IllegalStateException("Unexpected value: " + command);
         };
@@ -69,7 +69,7 @@ public class CountState extends State {
 
     private StateStep handleNumberInput(int value) {
         if (currentPhase == CountPhase.CALCULATE) {
-            return StateStep.stay(finalizeCalculation(value, null));
+            return finalizeCalculation(value, null); // now returns StateStep directly
         }
 
         // PROMPT_NEXT_STATE — user picks continue (1) or quit (2).
@@ -111,28 +111,28 @@ public class CountState extends State {
         return new PlayerSelectionResult(getGame().getPlayers(), false, selectedBidType);
     }
 
-    private GameResult handlePlayerInput(List<PlayerId> players) {
+    private StateStep handlePlayerInput(List<PlayerId> players) {
         if (currentPhase == CountPhase.SELECT_PLAYERS) {
             if (players == null || players.isEmpty()) {
                 boolean multiSelect = (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE
                         || selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA);
-                return new PlayerSelectionResult(getGame().getPlayers(), multiSelect, selectedBidType);
+                return StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), multiSelect, selectedBidType));
             }
-
             this.participatingPlayerIds = players;
             this.bid = selectedBidType.instantiate(participatingPlayerIds.getFirst(), trumpSuit);
 
             if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;
-                return new PlayerSelectionResult(getGame().getPlayers(), true, bid.getType());
+                return StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), true, bid.getType()));
             }
             currentPhase = CountPhase.CALCULATE;
-            return new AmountOfTrickWonResult();
+            return StateStep.stay(new AmountOfTrickWonResult());
         }
+        // SELECT_WINNERS
         return finalizeCalculation(0, players);
     }
 
-    private GameResult finalizeCalculation(int tricks, List<PlayerId> winnersId) {
+    private StateStep finalizeCalculation(int tricks, List<PlayerId> winnersId) {
         Player primaryBidder = getGame().getPlayerById(participatingPlayerIds.getFirst());
         Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
         round.setHighestBid(bid);
@@ -142,22 +142,15 @@ public class CountState extends State {
                 .map(getGame()::getPlayerById)
                 .toList();
 
-        List<Player> winners = new ArrayList<>();
-        if (winnersId != null) {
-            winners = winnersId.stream().map(getGame()::getPlayerById).toList();
-        }
+        List<Player> winners = winnersId == null ? List.of()
+                : winnersId.stream().map(getGame()::getPlayerById).toList();
 
         round.calculateScoresForCount(bid, tricks, participatingPlayers, winners);
 
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
-        return getScoreBoard();
+        return StateStep.transitionWithoutResult(); // ScoreBoardFlow owns the scoreboard display
     }
 
-    private GameResult getScoreBoard() {
-        List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-        List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
-        return new ScoreBoardResult(names, scores, getGame().canRemovePlayer());
-    }
 
     @Override
     public State nextState() {

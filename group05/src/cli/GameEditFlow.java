@@ -4,10 +4,7 @@ import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.round.Round;
-import base.domain.strategy.HighBotStrategy;
-import base.domain.strategy.HumanStrategy;
-import base.domain.strategy.LowBotStrategy;
-import base.domain.strategy.SmartBotStrategy;
+import base.domain.strategy.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
 import cli.events.IOEvent;
@@ -20,10 +17,8 @@ import java.util.List;
 
 /**
  * Shared IO flow for cross-cutting game editing actions.
- * <p>
- * Reused by any higher-level flow that wants to offer save / add-player /
- * remove-player / remove-round. Each public method is a single, self-contained
- * user interaction; composition is the caller's responsibility.
+ * Behaviour differs between COUNT and GAME mode — e.g. only GAME mode
+ * allows adding bots.
  *
  * @author John Cai
  * @since 18/04/2026
@@ -33,31 +28,27 @@ public class GameEditFlow {
     private final TerminalManager terminalManager;
     private final WhistGame game;
     private final GamePersistenceService persistenceService;
+    private final SaveMode mode;   // COUNT or GAME — governs what actions are available
 
     public GameEditFlow(TerminalManager terminalManager,
                         WhistGame game,
-                        GamePersistenceService persistenceService) {
-        if (terminalManager == null)
-            throw new IllegalArgumentException("terminalManager cannot be null");
-        if (game == null)
-            throw new IllegalArgumentException("game cannot be null");
-        if (persistenceService == null)
-            throw new IllegalArgumentException("persistenceService cannot be null");
-        this.terminalManager = terminalManager;
-        this.game = game;
+                        GamePersistenceService persistenceService,
+                        SaveMode mode) {
+        if (terminalManager == null) throw new IllegalArgumentException("terminalManager cannot be null");
+        if (game == null)            throw new IllegalArgumentException("game cannot be null");
+        if (persistenceService == null) throw new IllegalArgumentException("persistenceService cannot be null");
+        if (mode == null)            throw new IllegalArgumentException("mode cannot be null");
+        this.terminalManager   = terminalManager;
+        this.game              = game;
         this.persistenceService = persistenceService;
+        this.mode              = mode;
     }
 
     // =========================================================================
     // SAVE
     // =========================================================================
 
-    /**
-     * Prompts the user for a save description and persists the game.
-     * Save failures are printed to the terminal; game state is unaffected.
-     */
-    public void saveGame(SaveMode mode) {
-        if (mode == null) throw new IllegalArgumentException("mode cannot be null");
+    public void saveGame() {
         String description = askNonBlankString(new SaveDescriptionIOEvent());
         try {
             persistenceService.save(game, mode, description);
@@ -71,9 +62,16 @@ public class GameEditFlow {
     // =========================================================================
 
     /**
-     * Full add-player wizard: user picks human / smart bot / high bot / low bot.
+     * Adds a player. In COUNT mode only humans are allowed.
+     * In GAME mode the user additionally picks from bot strategies.
      */
     public void addPlayer() {
+        if (mode == SaveMode.COUNT) {
+            addHumanPlayer();
+            return;
+        }
+
+        // GAME mode: human or one of three bot types
         int type = askInt(new AddPlayerIOEvent(), 1, 4);
         switch (type) {
             case 1 -> addHumanPlayer();
@@ -83,10 +81,7 @@ public class GameEditFlow {
         }
     }
 
-    /**
-     * Human-only shortcut. Used by count-mode where bots aren't allowed.
-     */
-    public void addHumanPlayer() {
+    private void addHumanPlayer() {
         String name = askNonBlankString(new AddHumanPlayerIOEvent());
         game.addPlayer(new Player(new HumanStrategy(), name));
     }
@@ -108,12 +103,6 @@ public class GameEditFlow {
     // REMOVE PLAYER
     // =========================================================================
 
-    /**
-     * Removes one player selected by the user, but only if the game still has
-     * more than four players afterwards.
-     *
-     * @return true if a player was removed, false otherwise
-     */
     public boolean removePlayer() {
         if (!game.canRemovePlayer()) return false;
 
@@ -131,11 +120,6 @@ public class GameEditFlow {
     // REMOVE ROUND
     // =========================================================================
 
-    /**
-     * Removes one round selected by the user and recalibrates all scores.
-     *
-     * @return true if a round was removed, false otherwise
-     */
     public boolean removeRound() {
         List<Round> rounds = game.getRounds();
         if (rounds.isEmpty()) return false;
@@ -149,7 +133,7 @@ public class GameEditFlow {
     }
 
     // =========================================================================
-    // Input helpers — same style as MenuFlow
+    // Input helpers
     // =========================================================================
 
     private int askInt(IOEvent event, int min, int max) {

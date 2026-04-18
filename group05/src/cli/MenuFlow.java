@@ -17,27 +17,27 @@ public class MenuFlow {
     private final TerminalManager terminalManager;
     private final GamePersistenceService persistenceService;
     private final WhistGame game;
-
+    private SaveMode savedMode;
     public MenuFlow(TerminalManager terminalManager, GamePersistenceService persistenceService, WhistGame game) {
         this.terminalManager = terminalManager;
         this.persistenceService = persistenceService;
         this.game = game;
     }
 
-    public void run() {
+    public SaveMode run() {
         game.resetPlayers();
         game.resetRounds();
 
         int choice = askInt(new WelcomeMenuIOEvent(), 1, 3);
 
-        if (choice == 1)
-            setupGame();
-        else if (choice == 2)
-            setupCount();
-        else if (choice == 3)
-            setupLoadSave();
-
+        return switch (choice) {
+            case 1 -> { setupGame();     yield SaveMode.GAME; }
+            case 2 -> { setupCount();   yield SaveMode.COUNT; }
+            case 3 -> { setupLoadSave(); yield savedMode; } // see below
+            default -> throw new IllegalStateException("Unexpected menu choice: " + choice);
+        };
     }
+
 
     private void setupGame() {
         int bots = askInt(new AmountOfBotsIOEvent(), 0, 3);
@@ -77,23 +77,26 @@ public class MenuFlow {
     }
 
     private void setupLoadSave() {
-        List<String> availableSaves = persistenceService.listDescriptions();
-        if (availableSaves.isEmpty()) {
+        List<String> saves = persistenceService.listDescriptions();
+        if (saves.isEmpty()) {
             System.out.println("No saved games found. Returning to main menu.");
-            run(); // re-run the menu flow to show the main menu again
+            savedMode = run(); // recurse and propagate the mode back up
+            return;
         }
 
-        int saveFileChoice = askInt(new LoadSaveIOEvent(availableSaves), 1, availableSaves.size());
-        String chosenDescription = availableSaves.get(saveFileChoice - 1); // off by one
-        SaveMode saveMode;
+        int choice = askInt(new LoadSaveIOEvent(saves), 1, saves.size());
+        String description = saves.get(choice - 1);
+
         try {
-            saveMode = persistenceService.loadIntoGame(game, chosenDescription);
-            switch (saveMode) {
-                case GAME -> game.startGame();
+            SaveMode mode = persistenceService.loadIntoGame(game, description);
+            this.savedMode = mode;
+            switch (mode) {
+                case GAME  -> game.startGame();
                 case COUNT -> game.startCount();
             }
         } catch (Exception e) {
-            System.out.println("Error while loading game: " + e);
+            System.out.println("Failed to load save: " + e.getMessage());
+            savedMode = run();
         }
     }
 

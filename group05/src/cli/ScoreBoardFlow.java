@@ -48,7 +48,7 @@ public class ScoreBoardFlow {
                     return true;
                 }
                 case 2 -> { return false; }
-                case 3 -> editFlow.saveGame(SaveMode.GAME);
+                case 3 -> editFlow.saveGame();
                 case 4 -> editFlow.removeRound();
                 case 5 -> editFlow.addPlayer();
                 case 6 -> editFlow.removePlayer();
