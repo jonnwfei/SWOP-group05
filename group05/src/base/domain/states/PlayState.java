@@ -61,7 +61,7 @@ public class PlayState extends State {
         return switch (command) {
             case NumberCommand n when n.choice() == 0 -> {
                 Trick last = currentRound.getLastPlayedTrick();
-                yield (last == null) ? buildNeedCardResult(player) : new TrickHistoryResult(last);
+                yield (last == null) ? buildNeedCardResult(player) : new TrickHistoryResult(last, getGame().getPlayerNamesMap());
             }
             case CardCommand c -> {
                 Card card = c.card();

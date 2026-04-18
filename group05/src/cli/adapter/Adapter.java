@@ -333,8 +333,7 @@ public class Adapter {
                             yield AdapterResponse.uiOnly(new MessageIOEvent("No tricks have been played yet!"));
                         } else {
                             yield AdapterResponse.uiOnly(
-                                    new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick())));
-                        }
+                                    new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick(), p.playerNames())));                        }
                     }
 
                     int max = p.legalCards().size();

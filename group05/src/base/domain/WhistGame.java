@@ -80,7 +80,7 @@ public class WhistGame {
      * Generates a lookup map of PlayerIds to their respective Names.
      */
     public Map<PlayerId, String> getPlayerNamesMap() {
-        return players.stream().collect(Collectors.toMap(Player::getId, Player::getName));
+        return players.stream().collect(Collectors.toUnmodifiableMap(Player::getId, Player::getName));
     }
 
     public void addPlayer(Player player) {
