@@ -203,7 +203,7 @@ public class GamePersistenceService {
             tricksWon = round.getBiddingTeamTricksWon();
         }
 
-        if (highestBid.getType() == BidType.PASS && tricksWon == -1) {
+        if (highestBid.getType() == BidType.PASS && tricksWon != -1) {
             throw new IllegalStateException("Cannot snapshot round: round passed play phase with all pass and should return tricksWon = -1");
         } else if (tricksWon < 0 || tricksWon > 13) {
             throw new IllegalStateException("Cannot snapshot round: invalid trick count");
