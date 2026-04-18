@@ -5,7 +5,6 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
-import base.domain.observer.GameEventPublisher;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
@@ -83,7 +82,8 @@ public class WhistGame {
         if (player == null) throw new IllegalArgumentException("Player cannot be null");
         if (players.contains(player)) throw new IllegalArgumentException("Player already in Game");
         this.players.add(player);
-        player.getDecisionStrategy().onJoinGame(this::addObserver);    }
+        player.getDecisionStrategy().onJoinGame(this::addObserver);
+    }
 
     public void resetPlayers() {
         this.players.clear();
