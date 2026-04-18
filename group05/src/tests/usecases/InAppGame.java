@@ -41,7 +41,7 @@ public class InAppGame {
 
         try (MockedConstruction<Deck> mockedDeck = mockConstruction(Deck.class, (mock, context) -> {
             if (preDefinedHands != null) {
-                when(mock.deal()).thenReturn(preDefinedHands);
+                when(mock.deal(Deck.DEAL_TYPE.WHIST)).thenReturn(preDefinedHands);
             }
         })) {
 
