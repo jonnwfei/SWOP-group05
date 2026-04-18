@@ -2,10 +2,12 @@ package base.domain.results;
 
 import base.domain.card.Card;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public sealed interface PlayResults extends GameResult {
@@ -18,7 +20,8 @@ public sealed interface PlayResults extends GameResult {
             int trickNumber,
             Player player,
             List<Card> legalCards,
-            Trick lastPlayedTrick
+            Trick lastPlayedTrick,
+            Map<PlayerId, String> playerNames
     ) implements PlayResults {
         public PlayCardResult {
             if (turns == null || turns.stream().anyMatch(Objects::isNull))
@@ -37,6 +40,9 @@ public sealed interface PlayResults extends GameResult {
                 throw new IllegalArgumentException("player cannot be null.");
             if (legalCards == null)
                 throw new IllegalArgumentException("legalCards cannot be null.");
+            if (playerNames == null || playerNames.entrySet().stream().anyMatch(e -> e.getKey() == null || e.getValue() == null)) {
+                throw new IllegalArgumentException("playerNames cannot be null or contain null objects");
+            }
             // lastPlayedTrick is intentionally nullable (null = no trick played yet)
             turns = List.copyOf(turns);
             exposedPlayerNames = List.copyOf(exposedPlayerNames);
@@ -44,6 +50,7 @@ public sealed interface PlayResults extends GameResult {
                     .map(List::copyOf)
                     .toList();
             legalCards = List.copyOf(legalCards);
+            playerNames = Map.copyOf(playerNames);
         }
     }
 
@@ -76,10 +83,16 @@ public sealed interface PlayResults extends GameResult {
         }
     }
 
-    record TrickHistoryResult(Trick trick) implements PlayResults {
+    record TrickHistoryResult(Trick trick, Map<PlayerId, String> playerNames) implements PlayResults {
         public TrickHistoryResult {
             if (trick == null)
                 throw new IllegalArgumentException("trick cannot be null.");
+            if (playerNames == null || playerNames.containsKey(null) || playerNames.containsValue(null)) {
+                throw new IllegalArgumentException("playerNames cannot be null or contain null objects");
+            }
+
+            // Defensive copy
+            playerNames = Map.copyOf(playerNames);
         }
     }
 

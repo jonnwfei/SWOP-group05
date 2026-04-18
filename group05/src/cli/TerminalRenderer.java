@@ -119,9 +119,10 @@ public class TerminalRenderer {
         if (data.turns().isEmpty()) {
             System.out.println("  [ Empty ]");
         } else {
-            // Displays cards in a horizontal-ish list for better flow
+            // Use the lookup map to resolve the PlayerId into their Name
             String table = String.join("\n | ", data.turns().stream()
-                    .map(PlayTurn::toString).toList());
+                    .map(turn -> data.playerNames().getOrDefault(turn.playerId(), String.valueOf(turn.playerId())) + " played " + turn.playedCard())
+                    .toList());
             System.out.println(" | " + table);
         }
 
@@ -317,8 +318,25 @@ public class TerminalRenderer {
     }
 
     private void renderTrickHistoryEvent(TrickHistoryIOEvent event) {
+
         System.out.println("-------------- LAST PLAYED TRICK ---------------");
-        event.data().trick().getTurns().forEach(t -> System.out.println("- " + t));
+
+        event.data().trick().getTurns().forEach(t -> {
+            String playerName = event.data().playerNames().getOrDefault(
+                    t.playerId(),
+                    String.valueOf(t.playerId())
+            );
+            System.out.println("- " + playerName + " played " + t.playedCard());
+        });
+
+        if (event.data().trick().isCompleted()) {
+            String winnerName = event.data().playerNames().getOrDefault(
+                    event.data().trick().getWinningPlayerId(),
+                    String.valueOf(event.data().trick().getWinningPlayerId())
+            );
+            System.out.println("  => WINNER: " + winnerName);
+        }
+
         System.out.println("------------------------------------------------");
     }
 
