@@ -3,7 +3,7 @@ package cli.adapter;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
-import base.domain.bid.PassBid;
+import base.domain.bid.SoloBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
@@ -103,7 +103,7 @@ class AdapterTest {
         @Test
         @DisplayName("BidTurnResult for Bot returns Immediate BidCommand")
         void bidTurn_BotPlayer_ReturnsImmediateCommand() {
-            Bid mockBid = mock(PassBid.class);
+            Bid mockBid = mock(SoloBid.class);
             when(mockBid.getType()).thenReturn(BidType.SOLO);
             when(mockBid.determineTrump(any())).thenReturn(Suit.HEARTS);
             when(botPlayer.chooseBid()).thenReturn(mockBid);
