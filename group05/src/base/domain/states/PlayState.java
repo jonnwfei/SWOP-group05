@@ -9,6 +9,7 @@ import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.results.*;
 import base.domain.round.Round;
+import base.domain.strategy.HumanStrategy;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 
@@ -38,12 +39,7 @@ public class PlayState extends State {
             return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
         }
 
-        Player currentPlayer = currentRound.getCurrentPlayer();
-        if (!currentPlayer.getRequiresConfirmation()) {
-            return toStep(handleBotTurn(currentPlayer));
-        }
-
-        return StateStep.stay(buildNeedCardResult(currentPlayer));
+        return StateStep.stay(buildNeedCardResult(currentRound.getCurrentPlayer()));
     }
 
     @Override
@@ -55,8 +51,6 @@ public class PlayState extends State {
         Player currentPlayer = currentRound.getCurrentPlayer();
         GameResult result = handlePlayerMove(currentPlayer, command);
 
-        // CLEANUP: Greatly simplified. If the result is a prompt for a card, rebuild the fresh UI.
-        // Otherwise, just return the meaningful result (EndOfTrick, TrickHistory, etc.)
         if (result instanceof PlayCardResult) {
             return toStep(buildNeedCardResult(currentPlayer));
         }

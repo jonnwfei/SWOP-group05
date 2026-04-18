@@ -3,6 +3,7 @@ package cli.adapter;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
+import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
@@ -10,6 +11,8 @@ import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.*;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.SmartBotStrategy;
 import cli.elements.Response;
 import cli.events.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,11 +54,11 @@ class AdapterTest {
 
         lenient().when(humanPlayer.getId()).thenReturn(humanId);
         lenient().when(humanPlayer.getName()).thenReturn("Alice");
-        lenient().when(humanPlayer.getRequiresConfirmation()).thenReturn(true);
+        lenient().when(humanPlayer.getDecisionStrategy()).thenReturn(new HumanStrategy());
 
         lenient().when(botPlayer.getId()).thenReturn(botId);
         lenient().when(botPlayer.getName()).thenReturn("Bob-Bot");
-        lenient().when(botPlayer.getRequiresConfirmation()).thenReturn(false);
+        lenient().when(botPlayer.getDecisionStrategy()).thenReturn(new SmartBotStrategy(botId));
 
         lenient().when(game.getPlayers()).thenReturn(List.of(humanPlayer, botPlayer));
 
@@ -100,7 +103,7 @@ class AdapterTest {
         @Test
         @DisplayName("BidTurnResult for Bot returns Immediate BidCommand")
         void bidTurn_BotPlayer_ReturnsImmediateCommand() {
-            Bid mockBid = mock(Bid.class);
+            Bid mockBid = mock(PassBid.class);
             when(mockBid.getType()).thenReturn(BidType.SOLO);
             when(mockBid.determineTrump(any())).thenReturn(Suit.HEARTS);
             when(botPlayer.chooseBid()).thenReturn(mockBid);

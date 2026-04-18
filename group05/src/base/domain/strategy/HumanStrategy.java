@@ -43,13 +43,4 @@ public final class HumanStrategy implements Strategy {
     public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
         return null;
     }
-
-    /**
-     * Signals that this strategy requires manual intervention.
-     * @return true, ensuring the UI flow prompts the user before proceeding.
-     */
-    @Override
-    public boolean requiresConfirmation() {
-        return true;
-    }
 }

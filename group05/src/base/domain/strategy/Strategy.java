@@ -34,12 +34,4 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
 
 
     Card chooseCardToPlay(List<Card> currentHand, Suit lead );
-
-    /**
-     * Indicates whether this strategy requires a manual confirmation
-     * before the game engine proceeds to the next turn.
-     * <p>
-     * @return {@code true} if the game loop should pause/wait for confirmation, {@code false} otherwise.
-     */
-    boolean requiresConfirmation();
 }
