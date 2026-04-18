@@ -53,6 +53,7 @@ public class Adapter {
                 Player player = p.player();
 
                 yield switch (player.getDecisionStrategy()) {
+                    case null -> throw new IllegalStateException("Corrupted state: Player has no strategy!");
                     // HUMAN → show UI (+ optional confirmation preamble)
                     case HumanStrategy _ -> new AdapterResult.NeedsIO(
                             List.of(new ConfirmationIOEvent(player.getName())),
@@ -74,6 +75,7 @@ public class Adapter {
                 Player player = b.player();
 
                 yield switch (player.getDecisionStrategy()) {
+                    case null -> throw new IllegalStateException("Corrupted state: Player has no strategy!");
                     // HUMAN → show UI
                     case HumanStrategy _ -> new AdapterResult.NeedsIO(
                             List.of(),
@@ -315,12 +317,13 @@ public class Adapter {
 
                     yield AdapterResponse.toDomain(new PlayerListCommand(playerIds));
                 }
-// --- Play Card
+                // --- Play Card
                 case PlayCardResult p -> {
                     Player player = p.player();
 
                     // If it is NOT a HumanStrategy, resolve immediately.
                     yield switch (player.getDecisionStrategy()) {
+                        case null -> throw new IllegalStateException("Corrupted state: Player has no strategy!");
                         case HumanStrategy _ -> {
                             int choice = parser.parseNumberInput(raw);
 
