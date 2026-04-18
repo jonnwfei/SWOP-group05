@@ -52,14 +52,14 @@ class WhistGameTest {
             game.addPlayer(mockPlayer1);
 
             assertEquals(mockPlayer1, game.getPlayerById(id1));
-            // Verifying negative scenario: illegal input handled defensively 
+            // Verifying negative scenario: illegal input handled defensively
             assertThrows(IllegalStateException.class, () -> game.getPlayerById(new PlayerId()));
         }
 
         @Test
         @DisplayName("getNextPlayer correctly calculates the next person in seating order")
         void getNextPlayer_ModuloRotation() {
-            // Clockwise fashion is the standard for Whist bidding and play 
+            // Clockwise fashion is the standard for Whist bidding and play
             game.addPlayer(mockPlayer1);
             game.addPlayer(mockPlayer2);
 
@@ -100,7 +100,7 @@ class WhistGameTest {
 
             List<Card> hand = List.of(new Card(Suit.SPADES, Rank.ACE));
             // Whist requires distributing a standard deck of 52 cards [cite: 156]
-            when(mockDeck.deal()).thenReturn(List.of(hand, hand, hand, hand));
+            when(mockDeck.deal(Deck.DEAL_TYPE.WHIST)).thenReturn(List.of(hand, hand, hand, hand));
 
             // Act
             game.dealCards();

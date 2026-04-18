@@ -32,6 +32,7 @@ import java.util.Random;
 public class WhistGame {
 
     public static final int REQUIRED_PLAYERS = 4;
+    public static final int MAX_PLAYERS = 67;
 
     private State state;
     private Deck deck;
@@ -227,6 +228,11 @@ public class WhistGame {
         return dealtTrump;
     }
 
+    /**
+     * Initializes a new round with the specified starting player.
+     *
+     * @param startingPlayer The player who will take the first turn in the new round.
+     */
     public void initializeNextRound(Player startingPlayer) {
         List<Player> activePlayers = getPlayers();
         if (activePlayers.size() < REQUIRED_PLAYERS)
@@ -238,7 +244,6 @@ public class WhistGame {
         if (!this.rounds.isEmpty() && getCurrentRound().getHighestBid().getType() == BidType.PASS) {
             multiplier = 2;
         }
-
         addRound(new Round(activePlayers, startingPlayer, multiplier));
     }
 
@@ -312,7 +317,7 @@ public class WhistGame {
     /**
      * Rotates seats by moving the current dealer to the end of the global queue.
      */
-    public void rotateActivePlayers() { //TODO: make use of this
+    public void rotateActivePlayers() {
         if (getTotalPlayerCount() <= REQUIRED_PLAYERS) return;
 
         int dealerIndex = allPlayers.indexOf(dealerPlayer);
@@ -322,6 +327,8 @@ public class WhistGame {
 
         Player leavingPlayer = allPlayers.remove(dealerIndex);
         allPlayers.add(leavingPlayer);
+        // Keep dealer anchored to an active seat so advanceDealer() can safely move to next dealer.
+        this.dealerPlayer = allPlayers.get(dealerIndex);
     }
 
     /**
