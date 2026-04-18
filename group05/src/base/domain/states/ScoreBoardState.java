@@ -228,6 +228,9 @@ public class ScoreBoardState extends State {
             return null;
 
         if (choice == 1) {
+            if (getGame().getTotalPlayerCount() > WhistGame.REQUIRED_PLAYERS) {
+                getGame().rotateActivePlayers();
+            }
             getGame().advanceDealer();
             return new BidState(this.getGame());
         }
