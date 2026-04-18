@@ -322,12 +322,18 @@ public class TerminalRenderer {
         System.out.println("-------------- LAST PLAYED TRICK ---------------");
 
         event.data().trick().getTurns().forEach(t -> {
-            String playerName = event.data().playerNames().get(t.playerId());
+            String playerName = event.data().playerNames().getOrDefault(
+                    t.playerId(),
+                    String.valueOf(t.playerId())
+            );
             System.out.println("- " + playerName + " played " + t.playedCard());
         });
 
         if (event.data().trick().isCompleted()) {
-            String winnerName = event.data().playerNames().get(event.data().trick().getWinningPlayerId());
+            String winnerName = event.data().playerNames().getOrDefault(
+                    event.data().trick().getWinningPlayerId(),
+                    String.valueOf(event.data().trick().getWinningPlayerId())
+            );
             System.out.println("  => WINNER: " + winnerName);
         }
 
