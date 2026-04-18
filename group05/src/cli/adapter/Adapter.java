@@ -326,6 +326,7 @@ public class Adapter {
 
                     yield AdapterResponse.toDomain(new PlayerListCommand(playerIds));
                 }
+
                 // --- Play Card
                 case PlayCardResult p -> {
                     Player player = p.player();
@@ -340,8 +341,8 @@ public class Adapter {
                                 if (p.lastPlayedTrick() == null) {
                                     yield AdapterResponse.uiOnly(new MessageIOEvent("No tricks have been played yet!"));
                                 } else {
-                                    yield AdapterResponse.uiOnly(
-                                            new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick())));
+                                    yield AdapterResponse.uiOnly(new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick(), p.playerNames())));
+
                                 }
                             }
 

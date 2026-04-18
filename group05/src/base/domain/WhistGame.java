@@ -21,7 +21,9 @@ import base.domain.turn.PlayTurn;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 /**
  * Represents a game of Whist.
@@ -99,6 +101,13 @@ public class WhistGame {
 
     public List<PlayerId> getPlayerIds() {
         return allPlayers.stream().map(Player::getId).toList();
+    }
+
+    /**
+     * Generates a lookup map of PlayerIds to their respective Names.
+     */
+    public Map<PlayerId, String> getPlayerNamesMap() {
+        return players.stream().collect(Collectors.toUnmodifiableMap(Player::getId, Player::getName));
     }
 
     public void addPlayer(Player player) {

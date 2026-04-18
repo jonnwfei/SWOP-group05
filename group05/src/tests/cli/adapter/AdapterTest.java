@@ -26,6 +26,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import base.domain.commands.GameCommand;
 import base.domain.commands.GameCommand.*;
 import java.util.List;
+import java.util.Map; // FIXED: Added missing import
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -183,6 +185,19 @@ class AdapterTest {
             assertUiOnlyError(response, "Invalid input: \"" + invalidInput + "\". Please try again.");
         }
 
+        @Test
+        @DisplayName("ParticipatingPlayersResult: Valid indices map to correct Domain PlayerIds")
+        void participatingPlayers_ValidInput_MapsToPlayerIds() {
+            ParticipatingPlayersResult result = new ParticipatingPlayersResult(List.of("Alice", "Bob-Bot"));
+
+            AdapterResponse response = adapter.handleResponse(new Response("1"), result);
+
+            assertInstanceOf(PlayerListCommand.class, response.command());
+            List<PlayerId> ids = ((PlayerListCommand) response.command()).playerIds();
+
+            assertEquals(1, ids.size());
+            assertEquals(humanId, ids.get(0));
+        }
 
         @Test
         @DisplayName("Invalid String format gracefully catches generic Exception and returns UI Error")
@@ -212,7 +227,8 @@ class AdapterTest {
     private PlayCardResult playCardResult(Player player) {
         return new PlayCardResult(
                 List.of(), false, List.of(), List.of(),
-                1, player, List.of(TEST_CARD), null
+                1, player, List.of(TEST_CARD), null,
+                Map.of(player.getId(), player.getName())
         );
     }
 
