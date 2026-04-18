@@ -94,8 +94,9 @@ public class MenuFlow {
             }
         } catch (Exception e) {
             System.out.println("Error while loading game: " + e);
+            throw new IllegalArgumentException("Failed to load game: " + e.getMessage(), e);
         }
-    }
+}
 
     // --- Input Helpers ---
 

@@ -21,7 +21,7 @@ public sealed interface CountResults extends GameResult {
             if (players == null || players.isEmpty())
                 throw new IllegalArgumentException("players cannot be null or empty.");
             availableBids = availableBids.clone();
-            players = new ArrayList<>(players);
+            players = List.copyOf(players);
         }
         @Override
         public BidType[] availableBids() {
