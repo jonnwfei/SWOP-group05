@@ -3,7 +3,6 @@ package base.domain.commands;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
-import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.round.Round;
 
@@ -33,15 +32,14 @@ public sealed interface GameCommand {
     record NumberCommand(int choice) implements GameCommand {
         public NumberCommand {
             if (choice < 0)
-                throw new IllegalArgumentException("choice cannot be negative.");
+                throw new IllegalArgumentException("choice must be positive: " + choice);
         }
     }
 
     record PlaceBidCommand(BidType bid) implements GameCommand {
         public PlaceBidCommand {
             if (bid == null)
-                throw new IllegalArgumentException("bid cannot be null.");
-            // suit is intentionally nullable
+                throw new IllegalArgumentException("bidType cannot be null");
         }
     }
 

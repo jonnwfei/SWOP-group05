@@ -1,7 +1,6 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.bid.BidType;
 import base.domain.commands.GameCommand;
 import base.domain.commands.GameCommand.*;
 import base.domain.player.PlayerId;
