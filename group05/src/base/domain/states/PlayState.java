@@ -129,10 +129,12 @@ public class PlayState extends State {
         List<PlayTurn> turns = currentTrick.getTurns();
         List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
 
+
         return new PlayCardResult(
                 turns, isOpenMiserie, exposedNames, exposedHands,
                 currentRound.getTricks().size() + 1, player, legalCards,
-                currentRound.getLastPlayedTrick()
+                currentRound.getLastPlayedTrick(),
+                getGame().getPlayerNamesMap()
         );
     }
 

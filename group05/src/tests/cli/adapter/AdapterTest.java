@@ -23,6 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
+import java.util.Map; // FIXED: Added missing import
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -223,7 +224,8 @@ class AdapterTest {
     private PlayCardResult playCardResult(Player player) {
         return new PlayCardResult(
                 List.of(), false, List.of(), List.of(),
-                1, player, List.of(TEST_CARD), null
+                1, player, List.of(TEST_CARD), null,
+                Map.of(player.getId(), player.getName()) // FIXED: Provided the required PlayerNames Map!
         );
     }
 

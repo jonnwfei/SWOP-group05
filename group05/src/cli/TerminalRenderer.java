@@ -116,9 +116,10 @@ public class TerminalRenderer {
         if (data.turns().isEmpty()) {
             System.out.println("  [ Empty ]");
         } else {
-            // Displays cards in a horizontal-ish list for better flow
+            // Use the lookup map to resolve the PlayerId into their Name
             String table = String.join("\n | ", data.turns().stream()
-                    .map(PlayTurn::toString).toList());
+                    .map(turn -> data.playerNames().get(turn.playerId()) + " played " + turn.playedCard())
+                    .toList());
             System.out.println(" | " + table);
         }
 
