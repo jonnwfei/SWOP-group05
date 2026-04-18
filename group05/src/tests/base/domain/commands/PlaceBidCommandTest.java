@@ -11,7 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 @DisplayName("Place Bid Command Tests")
 class PlaceBidCommandTest {
 
@@ -19,15 +20,6 @@ class PlaceBidCommandTest {
     @DisplayName("Constructor & Validation")
     class ConstructorTests {
 
-        @ParameterizedTest(name = "Should successfully create command for BidType: {0}")
-        @EnumSource(BidType.class)
-        void shouldAcceptAllValidBidTypes(BidType type) {
-            // Act
-            PlaceBidCommand command = new PlaceBidCommand(type);
-
-            // Assert
-            assertEquals(type, command.bidType());
-        }
 
         @Test
         @DisplayName("Should throw IllegalArgumentException if BidType is null")

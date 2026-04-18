@@ -4,7 +4,8 @@ import base.domain.player.PlayerId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
