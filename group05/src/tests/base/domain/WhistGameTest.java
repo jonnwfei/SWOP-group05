@@ -1,12 +1,14 @@
 package base.domain;
 
 import base.domain.card.*;
+import base.domain.commands.BidCommand;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.round.Round;
+import base.domain.states.BidState;
 import base.domain.states.State;
 import base.domain.turn.PlayTurn;
 import org.junit.jupiter.api.BeforeEach;
@@ -117,9 +119,9 @@ class WhistGameTest {
         @DisplayName("executeState(command) delegates strictly to the current state")
         void executeState_Delegation() {
             // Test verifies delegation to maintain Low Representational Gap [cite: 327]
-            State mockState = mock(State.class);
+            State mockState = mock(BidState.class);
             setInternalState(game, mockState);
-            GameCommand mockCommand = mock(GameCommand.class);
+            GameCommand mockCommand = mock(BidCommand.class);
 
             game.executeState(mockCommand);
 

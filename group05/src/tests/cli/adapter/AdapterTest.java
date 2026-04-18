@@ -3,6 +3,7 @@ package cli.adapter;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
+import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
@@ -28,7 +29,7 @@ import static org.mockito.Mockito.*;
  * Tests for the CLI Adapter.
  * The adapter acts as a bridge between the Domain State Machine and the In-Terminal View.
  */
-@DisplayName("CLI Adapter")
+@DisplayName("CLI Adapter Integration Tests")
 class AdapterTest {
 
     private WhistGame game;
@@ -67,17 +68,20 @@ class AdapterTest {
     class HandleResultTests {
 
         @Test
-        @DisplayName("PlayCardResult for Bot returns Immediate CardCommand")
+        @DisplayName("PlayCardResult for Bot delegates to strategy and returns Immediate CardCommand")
         void playCard_BotPlayer_ReturnsImmediateCommand() {
+            // Arrange
             when(botPlayer.chooseCard(any())).thenReturn(TEST_CARD);
             PlayCardResult result = playCardResult(botPlayer);
 
+            // Act
             AdapterResult adapterResult = adapter.handleResult(result);
 
-            assertTrue(adapterResult instanceof AdapterResult.Immediate);
+            // Assert
+            assertInstanceOf(AdapterResult.Immediate.class, adapterResult);
             GameCommand command = ((AdapterResult.Immediate) adapterResult).command();
 
-            assertTrue(command instanceof CardCommand);
+            assertInstanceOf(CardCommand.class, command);
             assertEquals(TEST_CARD, ((CardCommand) command).card());
             verify(botPlayer).chooseCard(any());
         }
@@ -85,45 +89,60 @@ class AdapterTest {
         @Test
         @DisplayName("PlayCardResult for Human returns NeedsIO with Confirmation preamble")
         void playCard_HumanPlayer_ReturnsNeedsIO() {
+            // Arrange
             PlayCardResult result = playCardResult(humanPlayer);
 
+            // Act
             AdapterResult adapterResult = adapter.handleResult(result);
 
-            assertTrue(adapterResult instanceof AdapterResult.NeedsIO);
+            // Assert
+            assertInstanceOf(AdapterResult.NeedsIO.class, adapterResult);
             AdapterResult.NeedsIO needsIO = (AdapterResult.NeedsIO) adapterResult;
 
             assertEquals(1, needsIO.preamble().size());
-            assertTrue(needsIO.preamble().get(0) instanceof PlayEvents.ConfirmationIOEvent);
-            assertTrue(needsIO.event() instanceof PlayEvents.PlayCardIOEvent);
+            assertInstanceOf(PlayEvents.ConfirmationIOEvent.class, needsIO.preamble().get(0));
+            assertInstanceOf(PlayEvents.PlayCardIOEvent.class, needsIO.event());
         }
 
         @Test
-        @DisplayName("BidTurnResult for Bot returns Immediate BidCommand")
+        @DisplayName("BidTurnResult for Bot resolves trump rules and returns Immediate BidCommand")
         void bidTurn_BotPlayer_ReturnsImmediateCommand() {
-            Bid mockBid = mock(Bid.class);
+            // Arrange
+            Bid mockBid = mock(PassBid.class);
             when(mockBid.getType()).thenReturn(BidType.SOLO);
             when(mockBid.determineTrump(any())).thenReturn(Suit.HEARTS);
             when(botPlayer.chooseBid()).thenReturn(mockBid);
 
             BidTurnResult result = bidTurnResult(botPlayer);
 
+            // Act
             AdapterResult adapterResult = adapter.handleResult(result);
 
-            assertTrue(adapterResult instanceof AdapterResult.Immediate);
+            // Assert
+            assertInstanceOf(AdapterResult.Immediate.class, adapterResult);
             GameCommand command = ((AdapterResult.Immediate) adapterResult).command();
 
-            assertTrue(command instanceof BidCommand);
+            assertInstanceOf(BidCommand.class, command);
             assertEquals(BidType.SOLO, ((BidCommand) command).bid());
             assertEquals(Suit.HEARTS, ((BidCommand) command).suit());
         }
 
         @Test
-        @DisplayName("Flow Events (EndOfTrick, ScoreBoard) translate to NeedsIO")
+        @DisplayName("Flow Events (e.g. ScoreBoard) correctly translate to NeedsIO")
         void flowEvents_ReturnNeedsIO() {
-            AdapterResult result = adapter.handleResult(new ScoreBoardResult(List.of(), List.of(), false));
+            // Arrange: Populate with valid dummy data to pass domain validation constraints
+            ScoreBoardResult resultPayload = new ScoreBoardResult(
+                    List.of("Alice", "Bob-Bot"),
+                    List.of(10, -5),
+                    false
+            );
 
-            assertTrue(result instanceof AdapterResult.NeedsIO);
-            assertTrue(((AdapterResult.NeedsIO) result).event() instanceof CountEvents.ScoreBoardIOEvent);
+            // Act
+            AdapterResult result = adapter.handleResult(resultPayload);
+
+            // Assert
+            assertInstanceOf(AdapterResult.NeedsIO.class, result);
+            assertInstanceOf(CountEvents.ScoreBoardIOEvent.class, ((AdapterResult.NeedsIO) result).event());
         }
     }
 
@@ -132,7 +151,7 @@ class AdapterTest {
     class HandleResponseTests {
 
         @Test
-        @DisplayName("Empty or blank input returns null Domain Command (skip)")
+        @DisplayName("Empty or blank input returns a null Domain Command (skip action)")
         void blankInput_ReturnsNullCommand() {
             AdapterResponse response = adapter.handleResponse(new Response("   "), playCardResult(humanPlayer));
 
@@ -141,17 +160,17 @@ class AdapterTest {
         }
 
         @Test
-        @DisplayName("PlayCardResult: Valid selection maps correctly to CardCommand")
+        @DisplayName("PlayCardResult: Valid integer selection maps correctly to CardCommand")
         void playCard_ValidInput_ReturnsCardCommand() {
             PlayCardResult result = playCardResult(humanPlayer);
             AdapterResponse response = adapter.handleResponse(new Response("1"), result);
 
-            assertTrue(response.command() instanceof CardCommand);
+            assertInstanceOf(CardCommand.class, response.command());
             assertEquals(TEST_CARD, ((CardCommand) response.command()).card());
         }
 
         @Test
-        @DisplayName("PlayCardResult: Input '0' without history returns UI Error")
+        @DisplayName("PlayCardResult: Input '0' without trick history returns UI Error")
         void playCard_ZeroInputNoHistory_ReturnsUIError() {
             PlayCardResult result = playCardResult(humanPlayer);
             AdapterResponse response = adapter.handleResponse(new Response("0"), result);
@@ -159,23 +178,24 @@ class AdapterTest {
             assertUiOnlyError(response, "No tricks have been played yet!");
         }
 
-        @ParameterizedTest(name = "PlayCardResult: Out of bounds input ({0}) returns UI Error")
+        @ParameterizedTest(name = "PlayCardResult: Out of bounds input ({0}) triggers catch block fallback error")
         @ValueSource(strings = {"-1", "99"})
         void playCard_OutOfBoundsInput_ReturnsUIError(String invalidInput) {
             PlayCardResult result = playCardResult(humanPlayer);
             AdapterResponse response = adapter.handleResponse(new Response(invalidInput), result);
 
-            assertUiOnlyError(response, "Invalid selection");
+            // The adapter's Exception catch block replaces the specific exception message with this formatted text
+            assertUiOnlyError(response, "Invalid input: \"" + invalidInput + "\". Please try again.");
         }
 
         @Test
-        @DisplayName("ParticipatingPlayersResult: Valid indices map to PlayerIds successfully")
+        @DisplayName("ParticipatingPlayersResult: Valid indices map to correct Domain PlayerIds")
         void participatingPlayers_ValidInput_MapsToPlayerIds() {
             ParticipatingPlayersResult result = new ParticipatingPlayersResult(List.of("Alice", "Bob-Bot"), true);
 
             AdapterResponse response = adapter.handleResponse(new Response("1"), result);
 
-            assertTrue(response.command() instanceof PlayerListCommand);
+            assertInstanceOf(PlayerListCommand.class, response.command());
             List<PlayerId> ids = ((PlayerListCommand) response.command()).playerIds();
 
             assertEquals(1, ids.size());
@@ -183,7 +203,7 @@ class AdapterTest {
         }
 
         @Test
-        @DisplayName("Invalid String format gracefully catches Exception and returns UI Error")
+        @DisplayName("Invalid String format gracefully catches generic Exception and returns UI Error")
         void unparseableInput_CatchesException_ReturnsUIError() {
             PlayCardResult result = playCardResult(humanPlayer);
 
@@ -194,15 +214,17 @@ class AdapterTest {
     }
 
     // =========================================================================
-    // Factory Helpers
+    // Factory & Assertion Helpers
     // =========================================================================
 
     private void assertUiOnlyError(AdapterResponse response, String expectedMessagePart) {
         assertNull(response.command(), "An error response should not yield a domain command.");
         assertTrue(response.shouldReRenderLastResult(), "UI errors should trigger a re-render of the prompt.");
 
+        assertFalse(response.immediateEvents().isEmpty(), "UI Event list should not be empty.");
         MessageIOEvent message = (MessageIOEvent) response.immediateEvents().get(0);
-        assertTrue(message.text().contains(expectedMessagePart));
+        assertTrue(message.text().contains(expectedMessagePart),
+                "Expected message to contain: '" + expectedMessagePart + "', but got: '" + message.text() + "'");
     }
 
     private PlayCardResult playCardResult(Player player) {
@@ -214,9 +236,12 @@ class AdapterTest {
 
     private BidTurnResult bidTurnResult(Player player) {
         return new BidTurnResult(
-                player.getName(), Suit.HEARTS, null,
+                player.getName(),
+                Suit.HEARTS,
+                null,
                 List.of(BidType.PASS, BidType.SOLO),
-                List.of(), player
+                List.of(TEST_CARD),
+                player
         );
     }
 }

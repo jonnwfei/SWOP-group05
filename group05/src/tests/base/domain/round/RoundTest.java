@@ -155,14 +155,29 @@ class RoundTest {
         }
 
         @Test
-        @DisplayName("registerCompletedTrick() should assign the next turn to the trick winner")
+        @DisplayName("finalizeTrick() should assign the next turn to the trick winner")
         void shouldAssignTurnToWinner() {
+            // 1. Arrange: Properly initialize the play phase
+            when(mockHighestBid.getType()).thenReturn(BidType.SOLO);
+            when(mockHighestBid.getTeam(anyList(), anyList())).thenReturn(List.of(id1));
+
+            // FIX: Mock exactly 52 cards across players to pass validation
+            when(p1.getHand()).thenReturn(createDummyHand(13));
+            when(p2.getHand()).thenReturn(createDummyHand(13));
+            when(p3.getHand()).thenReturn(createDummyHand(13));
+            when(p4.getHand()).thenReturn(createDummyHand(13));
+
+            List<Bid> dummyBids = List.of(mockHighestBid, mock(SoloBid.class), mock(SoloBid.class), mock(SoloBid.class));
+            round.startPlayPhase(dummyBids, mockHighestBid, Suit.HEARTS, p1);
+
             Trick mockTrick = mock(Trick.class);
             when(mockTrick.getTurns()).thenReturn(List.of(mock(), mock(), mock(), mock()));
-            when(mockTrick.getWinningPlayerId()).thenReturn(id3);
+            when(mockTrick.getWinningPlayerId()).thenReturn(id3); // P3 won
 
+            // 2. Act
             round.finalizeTrick(mockTrick);
 
+            // 3. Assert
             assertEquals(1, round.getTricks().size());
             assertEquals(p3, round.getCurrentPlayer());
         }
@@ -170,20 +185,25 @@ class RoundTest {
         @Test
         @DisplayName("isFinished() should return true for early Miserie termination")
         void shouldTerminateMiserieEarly() {
+            // 1. Arrange: Setup a Miserie bid
             when(mockHighestBid.getType()).thenReturn(BidType.MISERIE);
             when(mockHighestBid.getPlayerId()).thenReturn(id1);
-            round.setHighestBid(mockHighestBid);
+            when(mockHighestBid.getTeam(anyList(), anyList())).thenReturn(List.of(id1));
 
-            SoloBid mockP1Bid = mock(SoloBid.class);
-            when(mockP1Bid.getType()).thenReturn(BidType.MISERIE);
-            when(mockP1Bid.getPlayerId()).thenReturn(id1);
+            // FIX: Mock exactly 52 cards across players to pass validation
+            when(p1.getHand()).thenReturn(createDummyHand(13));
+            when(p2.getHand()).thenReturn(createDummyHand(13));
+            when(p3.getHand()).thenReturn(createDummyHand(13));
+            when(p4.getHand()).thenReturn(createDummyHand(13));
 
-            round.abortWithAllPass(List.of(mockP1Bid, mock(SoloBid.class), mock(SoloBid.class), mock(SoloBid.class)));
-            round.setHighestBid(mockP1Bid);
+            List<Bid> finalBids = List.of(mockHighestBid, mock(SoloBid.class), mock(SoloBid.class), mock(SoloBid.class));
+            round.startPlayPhase(finalBids, mockHighestBid, null, p1);
 
+            // 2. Act: P1 wins a trick (Failing their Miserie contract)
             Trick mockTrick = mockCompletedTrick(id1);
             round.finalizeTrick(mockTrick);
 
+            // 3. Assert: Round ends instantly
             assertTrue(round.isFinished());
         }
     }
