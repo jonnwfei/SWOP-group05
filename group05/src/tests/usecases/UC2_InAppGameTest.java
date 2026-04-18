@@ -255,9 +255,9 @@ class UC2_InAppGameTest {
     @DisplayName("Extension 11a: Miserie ends early when bidder wins a trick")
     void testMiserieEarlyEnd() throws Exception {
         List<Card> p1 = new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.ACE)));
-        List<Card> p2 = new ArrayList<>(List.of(new Card(Suit.CLUBS, Rank.ACE)));
-        List<Card> p3 = new ArrayList<>(List.of(new Card(Suit.DIAMONDS, Rank.ACE)));
-        List<Card> p4 = new ArrayList<>(List.of(new Card(Suit.SPADES, Rank.ACE)));
+        List<Card> p2 = new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.ACE)));
+        List<Card> p3 = new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.ACE)));
+        List<Card> p4 = new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.ACE)));
 
         for (int i = 0; i < 12; i++) {
             p1.add(new Card(Suit.HEARTS, Rank.TWO));
@@ -266,7 +266,7 @@ class UC2_InAppGameTest {
             p4.add(new Card(Suit.HEARTS, Rank.TWO));
         }
 
-            WhistGame game = run(List.of(p1, p2, p3, p4),
+        WhistGame game = run(List.of(p1, p2, p3, p4),
                 "1",                                    // Step 1
                 "0",
                 "P1", "P2", "P3", "P4",
