@@ -87,6 +87,7 @@ public class WhistGame {
         if (player == null) throw new IllegalArgumentException("Player cannot be null");
         if (players.contains(player)) throw new IllegalArgumentException("Player already in Game");
         this.players.add(player);
+        player.getDecisionStrategy().onJoinGame(this::addObserver);
     }
 
     public void resetPlayers() {
@@ -241,10 +242,6 @@ public class WhistGame {
 
     public void addObserver(GameObserver observer) {
         if (observer != null) this.observers.add(observer);
-    }
-
-    public List<GameObserver> getObservers() {
-        return Collections.unmodifiableList(observers);
     }
 
     public void notifyRoundStarted() {

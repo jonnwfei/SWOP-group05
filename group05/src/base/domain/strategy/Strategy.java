@@ -3,6 +3,7 @@ package base.domain.strategy;
 import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.observer.GameEventPublisher;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 
@@ -34,4 +35,10 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
 
 
     Card chooseCardToPlay(List<Card> currentHand, Suit lead );
+
+    /**
+     * Lifecycle hook called when the strategy is added to a live game.
+     * @param publisher A restricted interface to subscribe to game events.
+     */
+    default void onJoinGame(GameEventPublisher publisher) {}
 }
