@@ -1,7 +1,6 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
-import base.domain.bid.BidType;
 import base.domain.commands.*;
 import base.domain.player.PlayerId;
 import base.domain.strategy.HighBotStrategy;
@@ -98,8 +97,11 @@ public class ScoreBoardState extends State {
                             yield StateStep.stay(new AddPlayerResult());
                         }
                         case 6 -> {
+                            if (getGame().getTotalPlayerCount() <= WhistGame.REQUIRED_PLAYERS) {
+                                yield buildScoreBoard();
+                            }
                             phase = Phase.REMOVE_PLAYER;
-                            yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
+                            yield StateStep.stay(new PlayerSelectionResult(getGame().getAllPlayers()));
                         }
                         default -> throw new IllegalStateException("Invalid scoreboard input: " + input);
                     };
@@ -182,7 +184,7 @@ public class ScoreBoardState extends State {
             case REMOVE_PLAYER -> switch (command) {
                 case PlayerListCommand p -> {
                     if (p.playerIds().isEmpty()) {
-                        yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers())); // retry
+                        yield StateStep.stay(new PlayerSelectionResult(getGame().getAllPlayers())); // retry
                     }
 
                     Player newPlayer = getGame().getPlayerById(p.playerIds().getFirst());
@@ -191,7 +193,7 @@ public class ScoreBoardState extends State {
                     yield buildScoreBoard();
                 }
 
-                default -> StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
+                default -> StateStep.stay(new PlayerSelectionResult(getGame().getAllPlayers()));
             };
             case REMOVE_ROUND -> switch (command) {
                 case NumberCommand n -> {
@@ -213,9 +215,9 @@ public class ScoreBoardState extends State {
     }
 
     private StateStep buildScoreBoard() {
-        List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
-        List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-        boolean canRemove = getGame().getPlayers().size() > 4;
+        List<String> names = getGame().getAllPlayers().stream().map(Player::getName).toList();
+        List<Integer> scores = getGame().getAllPlayers().stream().map(Player::getScore).toList();
+        boolean canRemove = getGame().getTotalPlayerCount() > WhistGame.REQUIRED_PLAYERS;
 
         return StateStep.stay(new ScoreBoardResult(names, scores, canRemove));
     }

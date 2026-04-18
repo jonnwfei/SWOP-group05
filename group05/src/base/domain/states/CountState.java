@@ -135,8 +135,12 @@ public class CountState extends State {
                 yield StateStep.stay(new AddHumanPlayerResult());
             }
             case 6 -> {
+                if (!canRemovePlayer()) {
+                    currentPhase = CountPhase.PROMPT_NEXT_STATE;
+                    yield StateStep.stay(getScoreBoard());
+                }
                 currentPhase = CountPhase.REMOVE_PLAYER_SELECT;
-                yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
+                yield StateStep.stay(new PlayerSelectionResult(getGame().getAllPlayers()));
             }
             default -> throw new IllegalStateException("Unexpected number input: " + value);
         };
@@ -238,7 +242,7 @@ public class CountState extends State {
     }
 
     private GameResult getScoreBoard() {
-        List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
+        List<Integer> scores = getGame().getAllPlayers().stream().map(Player::getScore).toList();
         boolean canRemove = canRemovePlayer();
         return new ScoreBoardResult(getPlayerNames(), scores, canRemove);
     }
@@ -274,7 +278,7 @@ public class CountState extends State {
             return getScoreBoard();
         }
         if (playerIds.isEmpty()) {
-            return new PlayerSelectionResult(getGame().getPlayers()); // re-prompt
+            return new PlayerSelectionResult(getGame().getAllPlayers()); // re-prompt
         }
         Player newPlayer = getGame().getPlayerById(playerIds.getFirst());
         getGame().removePlayer(newPlayer);
@@ -283,11 +287,11 @@ public class CountState extends State {
     }
 
     private List<String> getPlayerNames() {
-        return getGame().getPlayers().stream().map(Player::getName).toList();
+        return getGame().getAllPlayers().stream().map(Player::getName).toList();
     }
 
     private boolean canRemovePlayer() {
-        return getGame().getPlayers().size() > 4;
+        return getGame().getTotalPlayerCount() > 4;
     }
 
     private GameResult handleRound(Round round) {

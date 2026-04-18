@@ -13,6 +13,10 @@ import java.util.List;
  */
 public class Deck {
 
+    public enum DEAL_TYPE {
+        WHIST,
+    }
+
     private final List<Card> cards;
 
     /**
@@ -37,13 +41,22 @@ public class Deck {
     }
 
     /**
+     * Distributes cards to players based on the specified deal type.
+     */
+    public List<List<Card>> deal(DEAL_TYPE dealType) { // TODO: fix dit zodat het niet hardCoded is
+        return switch (dealType) {
+            case WHIST -> whistDeal();
+        };
+    }
+
+    /**
      * Distributes the entire 52-card deck to 4 players.
      * Adheres to dealing rules: batches of 4,
      * then another batch of 4, and a final batch of 5 cards per player.
      *
      * @return A list containing 4 hands, each represented as a List of 13 cards.
      */
-    public List<List<Card>> deal() {
+    private List<List<Card>> whistDeal() {
         List<List<Card>> hands = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             hands.add(new ArrayList<>());
@@ -62,6 +75,7 @@ public class Deck {
         }
         return hands;
     }
+
     /**
      * @return A shallow copy of the internal cards list.
      */
