@@ -50,11 +50,10 @@ public class PlayState extends State {
         Player currentPlayer = currentRound.getCurrentPlayer();
         GameResult result = handlePlayerMove(currentPlayer, command);
 
-        if (result instanceof PlayCardResult) {
-            return toStep(buildNeedCardResult(currentPlayer));
-        }
-
-        return toStep(result);
+        return switch (result) {
+            case PlayCardResult _ -> toStep(buildNeedCardResult(currentPlayer));
+            default -> toStep(result);
+        };
     }
 
     private GameResult handlePlayerMove(Player player, GameCommand command) {

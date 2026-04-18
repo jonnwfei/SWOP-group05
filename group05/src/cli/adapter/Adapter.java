@@ -52,17 +52,19 @@ public class Adapter {
             case PlayCardResult p -> {
                 Player player = p.player();
 
-                // BOT → immediate domain command
-                if (!(player.getDecisionStrategy() instanceof HumanStrategy)) {
-                    Card chosen = player.chooseCard(
-                            p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
-                    yield new AdapterResult.Immediate(new CardCommand(chosen));
-                }
-
-                // HUMAN → show UI (+ optional confirmation preamble)
-                yield new AdapterResult.NeedsIO(
-                        List.of(new ConfirmationIOEvent(player.getName())),
-                        new PlayCardIOEvent(p));
+                yield switch (player.getDecisionStrategy()) {
+                    // HUMAN → show UI (+ optional confirmation preamble)
+                    case HumanStrategy _ -> new AdapterResult.NeedsIO(
+                            List.of(new ConfirmationIOEvent(player.getName())),
+                            new PlayCardIOEvent(p)
+                    );
+                    // BOT → immediate domain command
+                    default -> {
+                        Card chosen = player.chooseCard(
+                                p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
+                        yield new AdapterResult.Immediate(new CardCommand(chosen));
+                    }
+                };
             }
 
             // =========================
@@ -71,26 +73,30 @@ public class Adapter {
             case BidTurnResult b -> {
                 Player player = b.player();
 
-                if (!(player.getDecisionStrategy() instanceof HumanStrategy)) {
-                    Bid botBid = player.chooseBid();
-                    Suit dealtTrump = b.trumpSuit();
+                yield switch (player.getDecisionStrategy()) {
+                    // HUMAN → show UI
+                    case HumanStrategy _ -> new AdapterResult.NeedsIO(
+                            List.of(),
+                            new BidTurnIOEvent(b)
+                    );
+                    // BOT → immediate domain command
+                    default -> {
+                        Bid botBid = player.chooseBid();
+                        Suit dealtTrump = b.trumpSuit();
 
-                    // In no-trump rounds, avoid asking bids that mirror dealt trump to resolve from null.
-                    // For suit-requiring bids, pass a non-null placeholder so the bid can return its own chosen suit.
-                    Suit chosenTrump = null;
-                    if (botBid.getType().getRequiresSuit()) {
-                        Suit safeDealtTrump = dealtTrump != null ? dealtTrump : Suit.CLUBS;
-                        chosenTrump = botBid.determineTrump(safeDealtTrump);
-                    } else if (dealtTrump != null) {
-                        chosenTrump = botBid.determineTrump(dealtTrump);
+                        // In no-trump rounds, avoid asking bids that mirror dealt trump to resolve from null.
+                        // For suit-requiring bids, pass a non-null placeholder so the bid can return its own chosen suit.
+                        Suit chosenTrump = null;
+                        if (botBid.getType().getRequiresSuit()) {
+                            Suit safeDealtTrump = dealtTrump != null ? dealtTrump : Suit.CLUBS;
+                            chosenTrump = botBid.determineTrump(safeDealtTrump);
+                        } else if (dealtTrump != null) {
+                            chosenTrump = botBid.determineTrump(dealtTrump);
+                        }
+
+                        yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), chosenTrump));
                     }
-
-                    yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), chosenTrump));
-                }
-
-                yield new AdapterResult.NeedsIO(
-                        List.of(),
-                        new BidTurnIOEvent(b));
+                };
             }
 
             case SuitSelectionRequired ignored ->
@@ -309,37 +315,40 @@ public class Adapter {
 
                     yield AdapterResponse.toDomain(new PlayerListCommand(playerIds));
                 }
-
-                // --- Play Card
+// --- Play Card
                 case PlayCardResult p -> {
                     Player player = p.player();
 
-                    if (!(player.getDecisionStrategy() instanceof HumanStrategy)) {
-                        Card chosen = player
-                                .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
+                    // If it is NOT a HumanStrategy, resolve immediately.
+                    yield switch (player.getDecisionStrategy()) {
+                        case HumanStrategy _ -> {
+                            int choice = parser.parseNumberInput(raw);
 
-                        yield AdapterResponse.toDomain(new CardCommand(chosen));
-                    }
+                            if (choice == 0) {
+                                if (p.lastPlayedTrick() == null) {
+                                    yield AdapterResponse.uiOnly(new MessageIOEvent("No tricks have been played yet!"));
+                                } else {
+                                    yield AdapterResponse.uiOnly(
+                                            new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick())));
+                                }
+                            }
 
-                    int choice = parser.parseNumberInput(raw);
+                            int max = p.legalCards().size();
 
-                    if (choice == 0) {
-                        if (p.lastPlayedTrick() == null) {
-                            yield AdapterResponse.uiOnly(new MessageIOEvent("No tricks have been played yet!"));
-                        } else {
-                            yield AdapterResponse.uiOnly(
-                                    new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick())));
+                            if (choice < 1 || choice > max) {
+                                throw new IllegalArgumentException("Invalid card selection");
+                            }
+
+                            Card selected = p.legalCards().get(choice - 1);
+                            yield AdapterResponse.toDomain(new CardCommand(selected));
                         }
-                    }
+                        default -> {
+                            Card chosen = player
+                                    .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
 
-                    int max = p.legalCards().size();
-
-                    if (choice < 1 || choice > max) {
-                        throw new IllegalArgumentException("Invalid card selection");
-                    }
-
-                    Card selected = p.legalCards().get(choice - 1);
-                    yield AdapterResponse.toDomain(new CardCommand(selected));
+                            yield AdapterResponse.toDomain(new CardCommand(chosen));
+                        }
+                    };
                 }
 
             };
