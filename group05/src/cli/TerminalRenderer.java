@@ -59,6 +59,7 @@ public class TerminalRenderer {
         System.out.println("--- Round History ---");
         List<Round> rounds = d.rounds();
 
+        System.out.println("[0] Return To Scoreboard");
         for (int i = 0; i < rounds.size(); i++) {
             Round r = rounds.get(i);
             // Show the round index and the winners (assuming Round has getWinners/getWinningPlayers)
@@ -67,7 +68,7 @@ public class TerminalRenderer {
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("None");
 
-            System.out.printf("(%d) Round %d - Winners: [%s]%n", i + 1, i + 1, winners);
+            System.out.printf("[%d] Round %d - Winners: [%s]%n", i + 1, i + 1, winners);
         }
     }
 
@@ -87,6 +88,7 @@ public class TerminalRenderer {
         List<String> saveDescriptions = l.availableSaves();
         System.out.println("\n========================================");
         System.out.println("SELECT A SAVE TO LOAD:");
+        System.out.println("[ 0] RETURN TO MENU");
         for (int i = 0; i < saveDescriptions.size(); i++) {
             System.out.printf("[%2d] %s%n", (i + 1), saveDescriptions.get(i));
         }
