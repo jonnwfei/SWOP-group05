@@ -253,7 +253,7 @@ class SmartBotStrategyTest {
 
             Card played = strategy.chooseCardToPlay(hand, Suit.HEARTS);
 
-            // two is the lowest card the bot has that is still safely UNDER the Ten.
+            // Two is the lowest card the bot has that is still safely UNDER the Ten.
             // If the bot played the King, the bot would win the trick, letting the opponent off the hook.
             assertEquals(heartTwo, played, "Must play a card under the opponent's card to force them to take the trick.");
         }
