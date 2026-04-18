@@ -1,7 +1,7 @@
 package cli.events;
 
-import base.domain.results.BidTurnResult;
-import base.domain.results.ProposalRejected;
+import base.domain.results.BidResults.*;
+
 
 public sealed interface BidEvents extends IOEvent {
 

@@ -2,7 +2,8 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 
-import base.domain.commands.*;
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 
 import base.domain.player.PlayerId;
 import base.domain.results.*;
@@ -10,11 +11,12 @@ import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
 import base.domain.player.Player;
 import base.domain.strategy.HumanStrategy;
-
+import base.domain.results.CountResults;
 import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.round.Round;
-
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -132,7 +134,7 @@ public class CountState extends State {
             }
             case 5 -> {
                 currentPhase = CountPhase.ADD_PLAYER;
-                yield StateStep.stay(new AddHumanPlayerResult());
+                yield StateStep.stay(new CountResults.AddHumanPlayerResult());
             }
             case 6 -> {
                 currentPhase = CountPhase.REMOVE_PLAYER_SELECT;
@@ -258,7 +260,7 @@ public class CountState extends State {
     private GameResult handleAddPlayer(String name) {
         String cleanName = name == null ? "" : name.trim();
         if (cleanName.isBlank()) {
-            return new AddHumanPlayerResult(); // re-prompt
+            return new CountResults.AddHumanPlayerResult(); // re-prompt
         }
 
         Player newPlayer = new Player(new HumanStrategy(), cleanName);
