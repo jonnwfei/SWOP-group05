@@ -188,7 +188,7 @@ class AdapterTest {
         @Test
         @DisplayName("ParticipatingPlayersResult: Valid indices map to correct Domain PlayerIds")
         void participatingPlayers_ValidInput_MapsToPlayerIds() {
-            ParticipatingPlayersResult result = new ParticipatingPlayersResult(List.of("Alice", "Bob-Bot"), true);
+            ParticipatingPlayersResult result = new ParticipatingPlayersResult(List.of("Alice", "Bob-Bot"));
 
             AdapterResponse response = adapter.handleResponse(new Response("1"), result);
 
