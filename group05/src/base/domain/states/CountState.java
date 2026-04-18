@@ -8,7 +8,6 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.*;
 import base.domain.round.Round;
-import base.domain.strategy.HumanStrategy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,9 +17,9 @@ import static base.domain.bid.BidType.*;
 /**
  * State responsible for manual score calculation (use case 1).
  * <p>
- * IO-agnostic: the adapter owns persistence. When the user picks "save" this
- * state emits a {@link CountSaveDescriptionResult} and, once the follow-up
- * {@link TextCommand} arrives, simply returns to the scoreboard.
+ * Pure domain logic: bid selection → trump → participants → (winners) → score.
+ * Cross-cutting edit actions (save, add/remove player, remove round) are handled
+ * by the IO layer via {@code CountSetupFlow} after each count.
  *
  * @author Stan Kestens
  * @since 01/03/2026
@@ -29,8 +28,7 @@ public class CountState extends State {
 
     private enum CountPhase {
         START, SELECT_BID, SELECT_TRUMP, SELECT_PLAYERS, SELECT_WINNERS,
-        CALCULATE, PROMPT_NEXT_STATE, SAVE_DESCRIPTION,
-        ADD_PLAYER, REMOVE_PLAYER_SELECT, REMOVE_ROUND
+        CALCULATE, PROMPT_NEXT_STATE
     }
 
     private CountPhase currentPhase = CountPhase.START;
@@ -63,25 +61,8 @@ public class CountState extends State {
         return switch (command) {
             case BidCommand b -> StateStep.stay(handleBidType(b.bid()));
             case SuitCommand s -> StateStep.stay(handleSuit(s.suit()));
-            case PlayerListCommand p -> {
-                if (currentPhase == CountPhase.REMOVE_PLAYER_SELECT) {
-                    yield StateStep.stay(handleRemovePlayer(p.playerIds()));
-                }
-                yield StateStep.stay(handlePlayerInput(p.playerIds()));
-            }
+            case PlayerListCommand p -> StateStep.stay(handlePlayerInput(p.playerIds()));
             case NumberCommand n -> handleNumberInput(n.choice());
-            case TextCommand t -> {
-                if (currentPhase == CountPhase.SAVE_DESCRIPTION) {
-                    // Adapter has already persisted; just resume the scoreboard.
-                    currentPhase = CountPhase.PROMPT_NEXT_STATE;
-                    yield StateStep.stay(getScoreBoard());
-                }
-                if (currentPhase == CountPhase.ADD_PLAYER) {
-                    yield StateStep.stay(handleAddPlayer(t.text()));
-                }
-                throw new IllegalStateException("Unexpected text input in phase: " + currentPhase);
-            }
-            case RoundCommand r -> StateStep.stay(handleRound(r.round()));
             default -> throw new IllegalStateException("Unexpected value: " + command);
         };
     }
@@ -91,11 +72,8 @@ public class CountState extends State {
             return StateStep.stay(finalizeCalculation(value, null));
         }
 
-        if (currentPhase == CountPhase.REMOVE_ROUND && value == 0) {
-            currentPhase = CountPhase.PROMPT_NEXT_STATE;
-            return StateStep.stay(getScoreBoard());
-        }
-
+        // PROMPT_NEXT_STATE — user picks continue (1) or quit (2).
+        // All other post-round actions (save, add player, remove round...) live in the IO flow.
         return switch (value) {
             case 1 -> {
                 nextStateDecision = 1;
@@ -104,22 +82,6 @@ public class CountState extends State {
             case 2 -> {
                 nextStateDecision = 2;
                 yield StateStep.transitionWithoutResult();
-            }
-            case 3 -> {
-                currentPhase = CountPhase.SAVE_DESCRIPTION;
-                yield StateStep.stay(new CountSaveDescriptionResult());
-            }
-            case 4 -> {
-                currentPhase = CountPhase.REMOVE_ROUND;
-                yield StateStep.stay(new DeleteRoundResult(getGame().getRounds()));
-            }
-            case 5 -> {
-                currentPhase = CountPhase.ADD_PLAYER;
-                yield StateStep.stay(new AddHumanPlayerResult());
-            }
-            case 6 -> {
-                currentPhase = CountPhase.REMOVE_PLAYER_SELECT;
-                yield StateStep.stay(new PlayerSelectionResult(getGame().getPlayers()));
             }
             default -> throw new IllegalStateException("Unexpected number input: " + value);
         };
@@ -193,47 +155,8 @@ public class CountState extends State {
 
     private GameResult getScoreBoard() {
         List<Integer> scores = getGame().getPlayers().stream().map(Player::getScore).toList();
-        boolean canRemove = canRemovePlayer();
-        return new ScoreBoardResult(getPlayerNames(), scores, canRemove);
-    }
-
-    private GameResult handleAddPlayer(String name) {
-        String cleanName = name == null ? "" : name.trim();
-        if (cleanName.isBlank()) {
-            return new AddHumanPlayerResult();
-        }
-        getGame().addPlayer(new Player(new HumanStrategy(), cleanName));
-        currentPhase = CountPhase.PROMPT_NEXT_STATE;
-        return getScoreBoard();
-    }
-
-    private GameResult handleRemovePlayer(List<PlayerId> playerIds) {
-        if (!canRemovePlayer()) {
-            currentPhase = CountPhase.PROMPT_NEXT_STATE;
-            return getScoreBoard();
-        }
-        if (playerIds.isEmpty()) {
-            return new PlayerSelectionResult(getGame().getPlayers());
-        }
-        Player newPlayer = getGame().getPlayerById(playerIds.getFirst());
-        getGame().removePlayer(newPlayer);
-        currentPhase = CountPhase.PROMPT_NEXT_STATE;
-        return getScoreBoard();
-    }
-
-    private List<String> getPlayerNames() {
-        return getGame().getPlayers().stream().map(Player::getName).toList();
-    }
-
-    private boolean canRemovePlayer() {
-        return getGame().getPlayers().size() > 4;
-    }
-
-    private GameResult handleRound(Round round) {
-        getGame().removeRound(round);
-        getGame().recalibrateScores();
-        currentPhase = CountPhase.PROMPT_NEXT_STATE;
-        return getScoreBoard();
+        List<String> names = getGame().getPlayers().stream().map(Player::getName).toList();
+        return new ScoreBoardResult(names, scores, getGame().canRemovePlayer());
     }
 
     @Override

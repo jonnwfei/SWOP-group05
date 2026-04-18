@@ -253,6 +253,15 @@ public class WhistGame {
         for (GameObserver observer : observers) observer.onBidPlaced(bidTurn);
     }
 
+    /**
+     * Whether the game currently has enough players to allow one to be removed.
+     * Whist requires at least 4 players to be playable.
+     *
+     * @return true if the game has strictly more than 4 players
+     */
+    public boolean canRemovePlayer() {
+        return this.players.size() > 4;
+    }
     public void removePlayer(Player player) {
         this.players.remove(player);
     }
