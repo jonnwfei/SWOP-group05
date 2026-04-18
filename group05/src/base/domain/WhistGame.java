@@ -5,6 +5,7 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
+import base.domain.observer.GameEventPublisher;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
@@ -27,7 +28,7 @@ import java.util.Random;
  * @author Stan Kestens, Tommy Wu
  * @since 28/02/2026
  */
-public class WhistGame {
+public class WhistGame implements GameEventPublisher {
 
     private State state;
     private Deck deck;
@@ -82,6 +83,7 @@ public class WhistGame {
         if (player == null) throw new IllegalArgumentException("Player cannot be null");
         if (players.contains(player)) throw new IllegalArgumentException("Player already in Game");
         this.players.add(player);
+        player.getDecisionStrategy().onJoinGame(this);
     }
 
     public void resetPlayers() {
@@ -236,10 +238,6 @@ public class WhistGame {
 
     public void addObserver(GameObserver observer) {
         if (observer != null) this.observers.add(observer);
-    }
-
-    public List<GameObserver> getObservers() {
-        return Collections.unmodifiableList(observers);
     }
 
     public void notifyRoundStarted() {
