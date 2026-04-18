@@ -171,11 +171,13 @@ public class WhistGame {
         this.deck.shuffle();
         List<List<Card>> hands = this.deck.deal();
 
+        Suit dealtTrump = hands.getLast().getLast().suit();
+
         for (int i = 0; i < this.players.size(); i++) {
             this.players.get(i).setHand(hands.get(i));
         }
 
-        return this.players.getLast().getHand().getLast().suit();
+        return dealtTrump;
     }
 
     public void initializeNextRound(Player startingPlayer) {

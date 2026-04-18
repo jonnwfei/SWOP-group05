@@ -169,15 +169,16 @@ public class GamePersistenceService {
         if (roundPlayers.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
 
         BidType bidType = highestBid.getType();
+
         int bidderIndex = roundPlayers.indexOf(round.getPlayerById(highestBid.getPlayerId()));
         if (bidderIndex < 0) {
             throw new IllegalStateException("Cannot snapshot round: highest bid player is not in round players");
         }
 
-
         List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()
             .map(roundPlayers::indexOf)
             .toList();
+
         if (participantIndices.stream().anyMatch(i -> i < 0)) {
             throw new IllegalStateException("Cannot snapshot round: bidding team contains players outside the round");
         }
@@ -193,10 +194,19 @@ public class GamePersistenceService {
         }
 
         List<Integer> scoreDeltas = round.getScoreDeltas();
+        if (scoreDeltas == null || scoreDeltas.size() != 4) {
+            throw new IllegalStateException("Cannot snapshot round: score deltas must contain exactly 4 values");
+        }
 
         int tricksWon = round.getCountTricksWon();
         if (tricksWon < 0) {
             tricksWon = round.getBiddingTeamTricksWon();
+        }
+
+        if (highestBid.getType() == BidType.PASS && tricksWon != -1) {
+            throw new IllegalStateException("Cannot snapshot round: round passed play phase with all pass and should return tricksWon = -1");
+        } else if (tricksWon < 0 || tricksWon > 13) {
+            throw new IllegalStateException("Cannot snapshot round: invalid trick count");
         }
 
         try {

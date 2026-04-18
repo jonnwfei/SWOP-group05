@@ -239,11 +239,17 @@ class GamePersistenceServiceTest {
             Round mockRound = createValidMockRound();
             when(mockGame.getRounds()).thenReturn(List.of(mockRound));
 
+            // Test Invalid Deltas
             when(mockRound.getScoreDeltas()).thenReturn(List.of(0, 0));
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
 
+            // Test Invalid Tricks
             when(mockRound.getScoreDeltas()).thenReturn(List.of(90, -30, -30, -30));
             when(mockRound.getCountTricksWon()).thenReturn(-5);
+
+            // FIXED: We must mock the fallback check too, otherwise Mockito returns 0 (which is valid!)
+            when(mockRound.getBiddingTeamTricksWon()).thenReturn(-5);
+
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
         }
     }
@@ -284,7 +290,7 @@ class GamePersistenceServiceTest {
         @DisplayName("Successfully loads a COUNT mode save without restoring the deck")
         void shouldLoadCountModeWithoutDeck() {
             List<RoundSnapshot> rounds = List.of(
-                    new RoundSnapshot(BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0))
+                    new RoundSnapshot(BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0), Suit.HEARTS)
             );
             GameSnapshot countSnapshot = new GameSnapshot("Count Save", SaveMode.COUNT, 0, createValidPlayerSnapshots(), rounds);
             when(mockRepository.loadByDescription("Count Save")).thenReturn(countSnapshot);
@@ -317,10 +323,18 @@ class GamePersistenceServiceTest {
         void shouldEnforceFourPlayersDuringRoundRestoration() {
             List<PlayerSnapshot> playerSnapshots = List.of(new PlayerSnapshot(new PlayerId().id().toString(), "P1", StrategySnapshotType.HUMAN, 0));
             List<RoundSnapshot> rounds = List.of(
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30))
+                    // FIXED: Added Suit.HEARTS argument
+                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30), Suit.HEARTS)
             );
             GameSnapshot mockSnapshot = new GameSnapshot("Desc", SaveMode.COUNT, 0, playerSnapshots, rounds);
             when(mockRepository.loadByDescription("bad_restore")).thenReturn(mockSnapshot);
+
+            List<Player> restoredPlayers = new ArrayList<>();
+            when(mockGame.getPlayers()).thenReturn(restoredPlayers);
+            doAnswer(invocation -> {
+                restoredPlayers.add(invocation.getArgument(0));
+                return null;
+            }).when(mockGame).addPlayer(any(Player.class));
 
             assertThrows(IllegalStateException.class, () -> persistenceService.loadIntoGame(mockGame, "bad_restore"));
         }
