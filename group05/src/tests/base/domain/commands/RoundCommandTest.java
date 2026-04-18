@@ -7,7 +7,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
-
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 @DisplayName("Round Command Validation & State")
 class RoundCommandTest {
 

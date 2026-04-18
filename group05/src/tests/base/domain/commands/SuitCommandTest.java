@@ -11,7 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 @DisplayName("Suit Command Tests")
 class SuitCommandTest {
 

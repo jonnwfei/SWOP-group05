@@ -2,7 +2,8 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.bid.BidType;
-import base.domain.commands.*;
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 import base.domain.player.PlayerId;
 import base.domain.strategy.HighBotStrategy;
 import base.domain.strategy.HumanStrategy;
@@ -12,10 +13,11 @@ import base.domain.results.*;
 import base.domain.strategy.SmartBotStrategy;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 
 import java.util.List;
 
-import base.domain.commands.*;
 import base.domain.results.*;
 
 /**
