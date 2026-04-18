@@ -18,7 +18,7 @@ class BidTest {
      * to execute the actual real code for the default compareTo() method.
      */
     private Bid createMockBid(BidType type) {
-        Bid mockBid = mock(Bid.class);
+        Bid mockBid = mock(PassBid.class);
         when(mockBid.getType()).thenReturn(type);
         when(mockBid.compareTo(any())).thenCallRealMethod();
         return mockBid;

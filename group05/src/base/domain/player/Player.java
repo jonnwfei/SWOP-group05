@@ -157,15 +157,6 @@ public class Player {
         return this.decisionStrategy;
     }
 
-    /**
-     * Retrieves boolean whether player needs confirmation or not.
-     *
-     * @return true if Player is a player, false if it's a bot
-     */
-    public boolean getRequiresConfirmation() {
-        return this.decisionStrategy.requiresConfirmation();
-    }
-
     /** Checks if the player holds a specific card */
     public boolean hasCard(Card card) {
         if (card == null) throw new IllegalArgumentException("card can't be null.");

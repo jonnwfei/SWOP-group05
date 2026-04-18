@@ -58,13 +58,4 @@ public final class LowBotStrategy implements Strategy {
         }
         return legalCards;
     }
-
-    /**
-     * Indicates that this is an automated strategy.
-     * @return false, as bots do not require manual confirmation.
-     */
-    @Override
-    public boolean requiresConfirmation() {
-        return false;
-    }
 }

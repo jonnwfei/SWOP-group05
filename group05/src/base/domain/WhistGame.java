@@ -218,11 +218,13 @@ public class WhistGame {
         this.deck.shuffle();
         List<List<Card>> hands = this.deck.deal(DEAL_TYPE.WHIST);
 
+        Suit dealtTrump = hands.getLast().getLast().suit();
+
         for (int i = 0; i < activePlayers.size(); i++) {
             activePlayers.get(i).setHand(hands.get(i));
         }
 
-        return activePlayers.getLast().getHand().getLast().suit();
+        return dealtTrump;
     }
 
     public void initializeNextRound(Player startingPlayer) {

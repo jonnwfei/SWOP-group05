@@ -38,12 +38,7 @@ public class PlayState extends State {
             return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
         }
 
-        Player currentPlayer = currentRound.getCurrentPlayer();
-        if (!currentPlayer.getRequiresConfirmation()) {
-            return toStep(handleBotTurn(currentPlayer));
-        }
-
-        return StateStep.stay(buildNeedCardResult(currentPlayer));
+        return StateStep.stay(buildNeedCardResult(currentRound.getCurrentPlayer()));
     }
 
     @Override
@@ -55,8 +50,6 @@ public class PlayState extends State {
         Player currentPlayer = currentRound.getCurrentPlayer();
         GameResult result = handlePlayerMove(currentPlayer, command);
 
-        // CLEANUP: Greatly simplified. If the result is a prompt for a card, rebuild the fresh UI.
-        // Otherwise, just return the meaningful result (EndOfTrick, TrickHistory, etc.)
         if (result instanceof PlayCardResult) {
             return toStep(buildNeedCardResult(currentPlayer));
         }
@@ -83,11 +76,6 @@ public class PlayState extends State {
             }
             default -> buildNeedCardResult(player);
         };
-    }
-
-    private GameResult handleBotTurn(Player player) {
-        Card card = player.chooseCard(currentTrick.getLeadingSuit());
-        return executeCardPlay(player, card);
     }
 
     /**

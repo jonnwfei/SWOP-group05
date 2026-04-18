@@ -96,15 +96,4 @@ class LowBotStrategyTest {
             assertEquals(spadeThree, played, "When leading the trick, should open with the weakest card.");
         }
     }
-
-    @Nested
-    @DisplayName("System Configuration")
-    class ConfigTests {
-
-        @Test
-        @DisplayName("requiresConfirmation() is always false for bots")
-        void doesNotRequireConfirmation() {
-            assertFalse(strategy.requiresConfirmation(), "Bots must run automatically without UI confirmation.");
-        }
-    }
 }
