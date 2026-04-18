@@ -10,7 +10,9 @@ import base.domain.card.Suit;
 import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
-import base.domain.results.*;
+import base.domain.results.BidResults.*;
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 import base.domain.strategy.HumanStrategy;
 import base.domain.strategy.SmartBotStrategy;
 import cli.elements.Response;
@@ -21,7 +23,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 import java.util.List;
 import java.util.Map; // FIXED: Added missing import
 
@@ -225,7 +228,7 @@ class AdapterTest {
         return new PlayCardResult(
                 List.of(), false, List.of(), List.of(),
                 1, player, List.of(TEST_CARD), null,
-                Map.of(player.getId(), player.getName()) // FIXED: Provided the required PlayerNames Map!
+                Map.of(player.getId(), player.getName())
         );
     }
 
