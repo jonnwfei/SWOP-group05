@@ -117,7 +117,7 @@ public class GameEditFlow {
     public boolean removePlayer() {
         if (!game.canRemovePlayer()) return false;
 
-        List<Integer> indices = askIntList(new PlayerSelectionIOEvent(game.getPlayers()));
+        List<Integer> indices = askIntList(new PlayerSelectionIOEvent(game.getPlayers(), false, null));
         if (indices.isEmpty()) return false;
 
         int idx = indices.getFirst();
