@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-
+import base.domain.results.BidResults.*;
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 @DisplayName("Amount Of Trick Won Result Tests")
 class AmountOfTrickWonResultTest {
 

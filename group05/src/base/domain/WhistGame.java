@@ -106,6 +106,7 @@ public class WhistGame {
         if (allPlayers.contains(player))
             throw new IllegalArgumentException("Player already in Game");
         this.allPlayers.add(player);
+        player.getDecisionStrategy().onJoinGame(this::addObserver);
     }
 
     /**
@@ -291,10 +292,6 @@ public class WhistGame {
 
     public void addObserver(GameObserver observer) {
         if (observer != null) this.observers.add(observer);
-    }
-
-    public List<GameObserver> getObservers() {
-        return Collections.unmodifiableList(observers);
     }
 
     public void notifyRoundStarted() {

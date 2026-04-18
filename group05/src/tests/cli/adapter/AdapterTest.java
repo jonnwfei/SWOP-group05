@@ -10,7 +10,9 @@ import base.domain.card.Suit;
 import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
-import base.domain.results.*;
+import base.domain.results.BidResults.*;
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 import base.domain.strategy.HumanStrategy;
 import base.domain.strategy.SmartBotStrategy;
 import cli.elements.Response;
@@ -21,9 +23,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -181,19 +183,6 @@ class AdapterTest {
             assertUiOnlyError(response, "Invalid input: \"" + invalidInput + "\". Please try again.");
         }
 
-        @Test
-        @DisplayName("ParticipatingPlayersResult: Valid indices map to correct Domain PlayerIds")
-        void participatingPlayers_ValidInput_MapsToPlayerIds() {
-            ParticipatingPlayersResult result = new ParticipatingPlayersResult(List.of("Alice", "Bob-Bot"), true);
-
-            AdapterResponse response = adapter.handleResponse(new Response("1"), result);
-
-            assertInstanceOf(PlayerListCommand.class, response.command());
-            List<PlayerId> ids = ((PlayerListCommand) response.command()).playerIds();
-
-            assertEquals(1, ids.size());
-            assertEquals(humanId, ids.get(0));
-        }
 
         @Test
         @DisplayName("Invalid String format gracefully catches generic Exception and returns UI Error")

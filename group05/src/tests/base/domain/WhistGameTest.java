@@ -1,20 +1,25 @@
 package base.domain;
 
 import base.domain.card.*;
-import base.domain.commands.BidCommand;
 import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 import base.domain.deck.Deck;
+import base.domain.observer.GameEventPublisher;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.round.Round;
 import base.domain.states.BidState;
 import base.domain.states.State;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.SmartBotStrategy;
+import base.domain.strategy.Strategy;
 import base.domain.turn.PlayTurn;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 
@@ -27,6 +32,8 @@ class WhistGameTest {
     private WhistGame game;
     private Player mockPlayer1;
     private Player mockPlayer2;
+    private Player mockPlayer3;
+    private Player mockPlayer4;
     private PlayerId id1;
     private PlayerId id2;
 
@@ -36,8 +43,18 @@ class WhistGameTest {
 
         mockPlayer1 = mock(Player.class);
         mockPlayer2 = mock(Player.class);
+        mockPlayer3 = mock(Player.class);
+        mockPlayer4 = mock(Player.class);
+
         id1 = new PlayerId();
         id2 = new PlayerId();
+
+        Strategy dummyStrategy = mock(HumanStrategy.class);
+
+        lenient().when(mockPlayer1.getDecisionStrategy()).thenReturn(dummyStrategy);
+        lenient().when(mockPlayer2.getDecisionStrategy()).thenReturn(dummyStrategy);
+        lenient().when(mockPlayer3.getDecisionStrategy()).thenReturn(dummyStrategy);
+        lenient().when(mockPlayer4.getDecisionStrategy()).thenReturn(dummyStrategy);
 
         lenient().when(mockPlayer1.getId()).thenReturn(id1);
         lenient().when(mockPlayer2.getId()).thenReturn(id2);
@@ -80,7 +97,7 @@ class WhistGameTest {
 
             game.advanceDealer();
 
-            assertEquals(mockPlayer2, game.getDealerPlayer(), "Dealer must rotate clockwise[cite: 156].");
+            assertEquals(mockPlayer2, game.getDealerPlayer(), "Dealer must rotate clockwise.");
         }
     }
 
@@ -88,14 +105,14 @@ class WhistGameTest {
     @DisplayName("Card Dealing & Deck Interaction")
     class DeckTests {
         @Test
-        @DisplayName("dealCards shuffles and distributes cards to all 4 players")
+        @DisplayName("dealCards shuffles, distributes cards to all 4 players, and returns correct trump suit")
         void dealCards_DistributesToAll() {
             // Arrange
             Deck mockDeck = mock(Deck.class);
-            Player p3 = mock(Player.class);
-            Player p4 = mock(Player.class);
-            game.addPlayer(mockPlayer1); game.addPlayer(mockPlayer2);
-            game.addPlayer(p3); game.addPlayer(p4);
+            game.addPlayer(mockPlayer1);
+            game.addPlayer(mockPlayer2);
+            game.addPlayer(mockPlayer3); // FIXED: Using the properly stubbed class-level mock
+            game.addPlayer(mockPlayer4); // FIXED: Using the properly stubbed class-level mock
             game.setDeck(mockDeck);
 
             List<Card> hand = List.of(new Card(Suit.SPADES, Rank.ACE));
@@ -103,12 +120,13 @@ class WhistGameTest {
             when(mockDeck.deal(Deck.DEAL_TYPE.WHIST)).thenReturn(List.of(hand, hand, hand, hand));
 
             // Act
-            game.dealCards();
+            Suit resultingTrump = game.dealCards();
 
             // Assert
             verify(mockDeck).shuffle();
-            verify(mockPlayer1).setHand(any());
-            verify(p4).setHand(any());
+            verify(mockPlayer1).setHand(hand);
+            verify(mockPlayer4).setHand(hand);
+            assertEquals(Suit.SPADES, resultingTrump, "Should grab trump suit from the last card dealt.");
         }
     }
 
@@ -118,7 +136,7 @@ class WhistGameTest {
         @Test
         @DisplayName("executeState(command) delegates strictly to the current state")
         void executeState_Delegation() {
-            // Test verifies delegation to maintain Low Representational Gap [cite: 327]
+            // Test verifies delegation to maintain Low Representational Gap
             State mockState = mock(BidState.class);
             setInternalState(game, mockState);
             GameCommand mockCommand = mock(BidCommand.class);
@@ -146,6 +164,36 @@ class WhistGameTest {
     @Nested
     @DisplayName("Observer Pattern (Events)")
     class ObserverTests {
+
+        @Test
+        @DisplayName("addPlayer invokes Strategy lifecycle hook and correctly wires the GameEventPublisher")
+        void addPlayer_WiresObserverProperly() {
+            // 1. Arrange: Create a fresh player and strategy
+            Player newPlayer = mock(Player.class);
+            Strategy mockStrategy = mock(SmartBotStrategy.class);
+            when(newPlayer.getDecisionStrategy()).thenReturn(mockStrategy);
+
+            // 2. Act: Add the player
+            game.addPlayer(newPlayer);
+
+            // 3. Assert Hook Invocation: Capture the publisher passed to the strategy
+            ArgumentCaptor<GameEventPublisher> publisherCaptor = ArgumentCaptor.forClass(GameEventPublisher.class);
+            verify(mockStrategy).onJoinGame(publisherCaptor.capture());
+
+            // 4. Assert Publisher Functionality: Prove the lambda proxy actually works!
+            GameEventPublisher capturedPublisher = publisherCaptor.getValue();
+            GameObserver testObserver = mock(GameObserver.class);
+
+            // The strategy (or its memory) calls addObserver...
+            capturedPublisher.addObserver(testObserver);
+
+            // If the proxy works, triggering a game event should now reach our testObserver
+            PlayTurn dummyTurn = new PlayTurn(id1, new Card(Suit.HEARTS, Rank.ACE));
+            game.notifyTurnPlayed(dummyTurn);
+
+            verify(testObserver).onTurnPlayed(dummyTurn);
+        }
+
         @Test
         @DisplayName("notifyTurnPlayed broadcasts event to all registered observers")
         void notifyTurnPlayed_Broadcasting() {
