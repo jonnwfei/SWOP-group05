@@ -277,7 +277,7 @@ public class TerminalRenderer {
     }
 
     private void renderAmountOfBotsEvent() {
-        System.out.println("How many bots will be playing? (0-3):");
+        System.out.println("How many bots will be playing? (0-4):");
         System.out.print("Your choice: ");
     }
 
