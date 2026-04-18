@@ -277,7 +277,6 @@ public class Adapter {
                 case ScoreBoardResult g -> {
                     int choice = parser.parseNumberInput(raw);
 
-                    if g.
                     if (choice < 1) {
                         throw new IllegalArgumentException("Invalid scoreboard selection");
                     }
