@@ -5,7 +5,7 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
-import static base.domain.deck.Deck.DEAL_TYPE;
+import static base.domain.deck.Deck.DealType;
 
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
@@ -229,7 +229,7 @@ public class WhistGame {
         if (activePlayers.size() != REQUIRED_PLAYERS) throw new IllegalStateException("Cannot deal cards: Table must have exactly 4 players.");
 
         this.deck.shuffle();
-        List<List<Card>> hands = this.deck.deal(DEAL_TYPE.WHIST);
+        List<List<Card>> hands = this.deck.deal(DealType.WHIST);
 
         Suit dealtTrump = hands.getLast().getLast().suit();
 

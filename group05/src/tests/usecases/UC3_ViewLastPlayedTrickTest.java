@@ -46,7 +46,7 @@ class UC3_ViewLastPlayedTrickTest {
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
         try (MockedConstruction<Deck> mockedDeck = mockConstruction(Deck.class, (mock, ctx) -> {
-            if (hands != null) when(mock.deal(Deck.DEAL_TYPE.WHIST)).thenReturn(hands);
+            if (hands != null) when(mock.deal(Deck.DealType.WHIST)).thenReturn(hands);
         })) {
             GameController controller = new GameController();
             Field gameField = GameController.class.getDeclaredField("game");

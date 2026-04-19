@@ -14,7 +14,7 @@ import java.util.List;
  */
 public class Deck {
 
-    public enum DEAL_TYPE {
+    public enum DealType {
         WHIST,
     }
 
@@ -44,7 +44,7 @@ public class Deck {
     /**
      * Distributes cards to players based on the specified deal type.
      */
-    public List<List<Card>> deal(DEAL_TYPE dealType) { // TODO: fix dit zodat het niet hardCoded is
+    public List<List<Card>> deal(DealType dealType) { // TODO: fix dit zodat het niet hardCoded is
         return switch (dealType) {
             case WHIST -> whistDeal();
         };

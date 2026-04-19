@@ -117,7 +117,7 @@ class WhistGameTest {
 
             List<Card> hand = List.of(new Card(Suit.SPADES, Rank.ACE));
             // Whist requires distributing a standard deck of 52 cards [cite: 156]
-            when(mockDeck.deal(Deck.DEAL_TYPE.WHIST)).thenReturn(List.of(hand, hand, hand, hand));
+            when(mockDeck.deal(Deck.DealType.WHIST)).thenReturn(List.of(hand, hand, hand, hand));
 
             // Act
             Suit resultingTrump = game.dealCards();

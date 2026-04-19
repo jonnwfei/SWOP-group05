@@ -2,6 +2,7 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 
+import base.domain.WhistRules;
 import base.domain.commands.GameCommand;
 import base.domain.commands.GameCommand.*;
 
@@ -293,7 +294,7 @@ public class CountState extends State {
     }
 
     private boolean canRemovePlayer() {
-        return getGame().getTotalPlayerCount() > 4;
+        return getGame().getTotalPlayerCount() > WhistRules.REQUIRED_PLAYERS;
     }
 
     private GameResult handleRound(Round round) {

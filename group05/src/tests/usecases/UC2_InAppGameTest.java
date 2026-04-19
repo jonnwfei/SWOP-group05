@@ -41,7 +41,7 @@ class UC2_InAppGameTest {
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
         try (MockedConstruction<Deck> _ = mockConstruction(Deck.class, (mock, _) -> {
-            if (hands != null) when(mock.deal(Deck.DEAL_TYPE.WHIST)).thenReturn(hands);
+            if (hands != null) when(mock.deal(Deck.DealType.WHIST)).thenReturn(hands);
         })) {
             GameController controller = new GameController();
 
