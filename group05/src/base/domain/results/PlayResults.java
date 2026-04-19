@@ -87,8 +87,7 @@ public sealed interface PlayResults extends GameResult {
         public TrickHistoryResult {
             if (trick == null)
                 throw new IllegalArgumentException("trick cannot be null.");
-            if (playerNames == null || playerNames.containsKey(null) || playerNames.containsValue(null)) {
-                throw new IllegalArgumentException("playerNames cannot be null or contain null objects");
+            if (playerNames == null || playerNames.entrySet().stream().anyMatch(e -> e.getKey() == null || e.getValue() == null)) {                throw new IllegalArgumentException("playerNames cannot be null or contain null objects");
             }
 
             // Defensive copy
