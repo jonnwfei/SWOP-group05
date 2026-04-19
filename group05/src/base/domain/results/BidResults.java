@@ -1,5 +1,6 @@
 package base.domain.results;
 
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
@@ -11,7 +12,8 @@ public sealed interface BidResults extends GameResult {
     record BidTurnResult(
             String playerName,
             Suit trumpSuit,
-            BidType currentHighestBid,
+            Bid currentHighestBid,
+            String highestBidderName,
             List<BidType> availableBids,
             List<Card> hand,
             Player player

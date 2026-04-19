@@ -4,11 +4,8 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
-import base.domain.results.BidResults.*;
-import base.domain.results.CountResults.*;
 import base.domain.results.PlayResults.*;
 import base.domain.round.Round;
-import base.domain.turn.PlayTurn;
 import cli.events.IOEvent;
 import cli.events.MessageIOEvent;
 
@@ -167,7 +164,8 @@ public class TerminalRenderer {
         if (event.data().currentHighestBid() == null) {
             System.out.println("You are the first to bid!");
         } else {
-            System.out.println("Current Highest: " + event.data().currentHighestBid());
+            String highestBidderName = event.data().highestBidderName();
+            System.out.printf("Current Highest: %s (%s)\n",event.data().currentHighestBid().getType(), highestBidderName);
         }
 
         System.out.println("Available Options:");
