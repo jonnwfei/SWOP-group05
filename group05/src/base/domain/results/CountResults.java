@@ -73,7 +73,5 @@ public sealed interface CountResults extends GameResult {
         }
     }
 
-
-    record SaveDescriptionResult() implements CountResults {}
     record DeleteRoundResult (List<Round> rounds) implements CountResults{}
 }

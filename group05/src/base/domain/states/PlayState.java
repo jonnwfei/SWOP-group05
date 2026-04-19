@@ -161,7 +161,7 @@ public class PlayState extends State {
     @Override
     public State nextState() {
         if (currentRound.isFinished()) {
-            return new ScoreBoardState(this.getGame());
+            return null;
         }
         return this;
     }

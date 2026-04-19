@@ -213,19 +213,23 @@ public class TerminalRenderer {
 
     private void renderPlayerSelectionEvent(PlayerSelectionIOEvent event) {
         String prompt;
+        if (!event.multi()){
+            prompt = "Select a single player";
+        }
+        else{
+            switch (event.type()) {
+                case MISERIE, OPEN_MISERIE ->
+                        prompt = "Select one or more players (comma-separated, 0 for none):";
 
-        switch (event.type()) {
-            case MISERIE, OPEN_MISERIE ->
-                    prompt = "Select one or more players (comma-separated, 0 for none):";
+                case PROPOSAL ->
+                        prompt = "Select exactly TWO players (comma-separated):";
 
-            case PROPOSAL ->
-                    prompt = "Select exactly TWO players (comma-separated):";
+                case TROEL, TROELA ->
+                        prompt = "Select exactly TWO players:";
 
-            case TROEL, TROELA ->
-                    prompt = "Select exactly TWO players:";
-
-            default ->
-                    prompt = "Select the main bidder:";
+                default ->
+                        prompt = "Select the main bidder:";
+            }
         }
 
         System.out.println(prompt);
