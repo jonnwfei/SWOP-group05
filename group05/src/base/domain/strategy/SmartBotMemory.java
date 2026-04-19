@@ -61,12 +61,12 @@ public class SmartBotMemory implements GameObserver {
 
     @Override
     public void onTurnPlayed(PlayTurn playTurn) {
-        this.unplayedCards.remove(playTurn.playedCard());
-        this.currentTrickPlayTurns.add(playTurn);
-
         if (this.currentTrickPlayTurns.size() == Trick.MAX_TURNS) {
             this.currentTrickPlayTurns.clear();
         }
+
+        this.unplayedCards.remove(playTurn.playedCard());
+        this.currentTrickPlayTurns.add(playTurn);
     }
 
     // --- Getters ---
@@ -156,6 +156,7 @@ public class SmartBotMemory implements GameObserver {
      * @throws IllegalArgumentException if playerId is null.
      */
     public Card getCardPlayedBy(PlayerId playerId) {
+        if (playerId == null) throw new IllegalArgumentException("playerId cannot be null");
         return this.currentTrickPlayTurns.stream()
                 .filter(turn -> turn.playerId().equals(playerId))
                 .map(PlayTurn::playedCard)
