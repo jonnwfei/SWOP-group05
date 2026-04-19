@@ -27,12 +27,12 @@ class PlayerSnapshotTest {
     }
 
     @Test
-    @DisplayName("Constructor should succesfully create PlayerSnapshot with valid inputs")
+    @DisplayName("Constructor should successfully create PlayerSnapshot with boundary scores")
     void testConstructor() {
         String validId = UUID.randomUUID().toString();
         String validName = "testName";
-        StrategySnapshotType validType = StrategySnapshotType.LOW_BOT;
-        int validScore = 15;
+        StrategySnapshotType validType = StrategySnapshotType.HUMAN;
+        int validScore = 0;
 
         PlayerSnapshot snapshot = new PlayerSnapshot(validId, validName, validType, validScore);
         assertEquals(validId, snapshot.id(), "ID should match the constructor input.");

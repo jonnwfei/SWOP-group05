@@ -107,20 +107,28 @@ class GamePersistenceServiceTest {
         }
 
         @Test
-        @DisplayName("Initializes successfully with the default repository and verifies directory creation")
+        @DisplayName("Initializes successfully with the default repository and safely verifies directory creation")
         void shouldInitializeWithDefaultRepository() throws Exception {
+            Path defaultPath = Paths.get("saves");
+
+            // 1. RECORD: Did the folder already exist before this test started?
+            boolean existedBefore = Files.exists(defaultPath);
+
             // Act: Using the actual default constructor
             GamePersistenceService service = new GamePersistenceService();
 
             assertNotNull(service);
 
             // Assert: Default saves path must exist
-            Path defaultPath = Paths.get("saves");
-            assertTrue(Files.exists(defaultPath), "The 'saves' directory should have been created.");
-            assertTrue(Files.isDirectory(defaultPath), "The created path should be a directory, not a file.");
+            assertTrue(Files.exists(defaultPath), "The 'saves' directory should exist.");
+            assertTrue(Files.isDirectory(defaultPath), "The path should be a directory, not a file.");
 
-            // Cleanup
-//            Files.deleteIfExists(defaultPath);
+            // 2. CLEANUP: Only delete the folder if THIS test was the one that created it!
+            if (!existedBefore) {
+                // Since this specific test doesn't save any actual games,
+                // the folder will be empty and safe to delete.
+                Files.deleteIfExists(defaultPath);
+            }
         }
     }
 

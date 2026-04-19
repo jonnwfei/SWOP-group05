@@ -40,13 +40,13 @@ class UC5_ResumeGameCountTest {
         String script = String.join("\n", lines) + "\n";
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
-        // INTERCEPT: Whenever new SaveRepository() is called, divert it to our TempDir!
-        try (MockedConstruction<SaveRepository> mockedRepo = mockConstruction(SaveRepository.class, (mock, context) -> {
+        // 1. Create the real repo OUTSIDE the mock context to prevent infinite recursion!
+        SaveRepository isolatedRepo = new SaveRepository(testSavesDir);
 
-            // Create a REAL repository pointing to the isolated test folder
-            SaveRepository isolatedRepo = new SaveRepository(testSavesDir);
+        // 2. HIJACK the SaveRepository inside GameController
+        try (MockedConstruction<SaveRepository> _ = mockConstruction(SaveRepository.class, (mock, _) -> {
 
-            // Delegate the mock's method calls to our isolated real repository
+            // Delegate the mock's method calls to our safely created real repository
             doAnswer(inv -> {
                 isolatedRepo.save(inv.getArgument(0, GameSnapshot.class));
                 return null;

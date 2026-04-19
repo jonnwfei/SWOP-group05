@@ -103,7 +103,7 @@ public class GamePersistenceService {
         Player dealer = game.getDealerPlayer();
         if (dealer == null) throw new IllegalStateException("Cannot create snapshot of a game with a null dealer player");
         int dealerIndex = allPlayers.indexOf(dealer);
-        if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list: " + dealerIndex);
+        if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list");
 
         return new GameSnapshot(normalizedDescription, mode, dealerIndex, snapshots, roundSnapshots);
     }

@@ -37,16 +37,21 @@ class UC4_SaveGameCountTest {
         String script = String.join("\n", lines) + "\n";
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
+        // 1. Create the real repo OUTSIDE the mock context to prevent infinite recursion!
+        SaveRepository isolatedRepo = new SaveRepository(testSavesDir);
+
         // 2. HIJACK the SaveRepository inside GameController
         try (MockedConstruction<SaveRepository> mockedRepo = mockConstruction(SaveRepository.class, (mock, context) -> {
-            // Force it to use our temporary directory
-            SaveRepository isolatedRepo = new SaveRepository(testSavesDir);
 
             // Forward the save call to the isolated repo
             doAnswer(inv -> {
                 isolatedRepo.save(inv.getArgument(0, GameSnapshot.class));
                 return null;
             }).when(mock).save(any(GameSnapshot.class));
+
+            // Also forward read methods just in case the controller needs them
+            lenient().when(mock.listDescriptions()).thenAnswer(inv -> isolatedRepo.listDescriptions());
+            lenient().when(mock.loadByDescription(anyString())).thenAnswer(inv -> isolatedRepo.loadByDescription(inv.getArgument(0)));
 
         })) {
             GameController controller = new GameController();
