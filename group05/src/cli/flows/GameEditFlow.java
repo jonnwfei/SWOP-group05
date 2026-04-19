@@ -1,4 +1,4 @@
-package cli;
+package cli.flows;
 
 import base.domain.WhistGame;
 import base.domain.player.Player;
@@ -7,6 +7,7 @@ import base.domain.round.Round;
 import base.domain.strategy.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
+import cli.TerminalManager;
 import cli.events.IOEvent;
 
 import static cli.events.CountEvents.*;

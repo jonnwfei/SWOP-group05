@@ -1,8 +1,9 @@
-package cli;
+package cli.flows;
 
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.storage.snapshots.SaveMode;
+import cli.TerminalManager;
 import cli.events.IOEvent;
 
 import static cli.events.CountEvents.ScoreBoardIOEvent;
@@ -54,7 +55,7 @@ public class ScoreBoardFlow {
                     if (mode == SaveMode.COUNT){
                         game.startCount();
                     }
-                    else{
+                    else {
                         game.startGame();
                     }
                     if (game.getAllPlayers().size() > 4) {
@@ -62,10 +63,11 @@ public class ScoreBoardFlow {
                     }
                     return true; }   // another round
                 case 2 -> { return false; }  // main menu
-                case 3 -> { editFlow.saveGame(); } // save then re-show
-                case 4 -> { editFlow.removeRound();}
-                case 5 -> { editFlow.addPlayer();  }
-                case 6 -> { editFlow.removePlayer(); }
+                case 3 ->  editFlow.saveGame();  // save then re-show
+                case 4 ->  editFlow.removeRound();
+                case 5 ->  editFlow.addPlayer();
+                case 6 ->  editFlow.removePlayer();
+                default -> throw new IllegalStateException("Unexpected value: " + choice);
             }
         }
     }
