@@ -1,6 +1,7 @@
 package cli;
 
 import base.domain.WhistGame;
+import base.domain.WhistRules;
 import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.storage.GamePersistenceService;
@@ -40,9 +41,9 @@ public class MenuFlow {
     }
 
     private void setupGame() {
-        int bots = askInt(new AmountOfBotsIOEvent(), 0, WhistGame.REQUIRED_PLAYERS );
-        int minHumans = WhistGame.REQUIRED_PLAYERS - bots;
-        int humans = askInt(new AmountOfHumansIOEvent(minHumans, WhistGame.MAX_PLAYERS), minHumans, WhistGame.MAX_PLAYERS );
+        int bots = askInt(new AmountOfBotsIOEvent(), 0, WhistRules.REQUIRED_PLAYERS );
+        int minHumans = WhistRules.REQUIRED_PLAYERS - bots;
+        int humans = askInt(new AmountOfHumansIOEvent(minHumans, WhistRules.MAX_PLAYERS), minHumans, WhistRules.MAX_PLAYERS );
 
         addHumanPlayers(1, humans);
         addBotPlayers(humans + 1, bots);
@@ -55,7 +56,7 @@ public class MenuFlow {
     }
 
     private void setupCount() {
-        addHumanPlayers(1, WhistGame.REQUIRED_PLAYERS);
+        addHumanPlayers(1, WhistRules.REQUIRED_PLAYERS);
         game.setDealerPlayer(game.getAllPlayers().getFirst()); // default to first player as dealer for counting mode
 
         printPlayerNames();

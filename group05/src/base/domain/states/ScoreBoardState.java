@@ -1,6 +1,7 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.WhistRules;
 import base.domain.commands.*;
 import base.domain.commands.GameCommand;
 import base.domain.commands.GameCommand.*;
@@ -100,7 +101,7 @@ public class ScoreBoardState extends State {
                             yield StateStep.stay(new AddPlayerResult());
                         }
                         case 6 -> {
-                            if (getGame().getTotalPlayerCount() <= WhistGame.REQUIRED_PLAYERS) {
+                            if (getGame().getTotalPlayerCount() <= WhistRules.REQUIRED_PLAYERS) {
                                 yield buildScoreBoard();
                             }
                             phase = Phase.REMOVE_PLAYER;
@@ -220,7 +221,7 @@ public class ScoreBoardState extends State {
     private StateStep buildScoreBoard() {
         List<String> names = getGame().getAllPlayers().stream().map(Player::getName).toList();
         List<Integer> scores = getGame().getAllPlayers().stream().map(Player::getScore).toList();
-        boolean canRemove = getGame().getTotalPlayerCount() > WhistGame.REQUIRED_PLAYERS;
+        boolean canRemove = getGame().getTotalPlayerCount() > WhistRules.REQUIRED_PLAYERS;
 
         return StateStep.stay(new ScoreBoardResult(names, scores, canRemove));
     }
@@ -231,7 +232,7 @@ public class ScoreBoardState extends State {
             return null;
 
         if (choice == 1) {
-            if (getGame().getTotalPlayerCount() > WhistGame.REQUIRED_PLAYERS) {
+            if (getGame().getTotalPlayerCount() > WhistRules.REQUIRED_PLAYERS) {
                 getGame().rotateActivePlayers();
             }
             getGame().advanceDealer();

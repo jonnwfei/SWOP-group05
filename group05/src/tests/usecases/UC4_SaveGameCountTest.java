@@ -3,17 +3,20 @@ package usecases;
 import base.GameController;
 import base.domain.WhistGame;
 import base.domain.card.Card;
-import base.domain.card.Rank;
-import base.domain.card.Suit;
 import base.domain.deck.Deck;
+import base.storage.GamePersistenceService;
+import base.storage.SaveRepository;
+import base.storage.snapshots.GameSnapshot;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.nio.file.Paths;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,9 +24,9 @@ import static org.mockito.Mockito.*;
 
 /**
  * Scenario tests for UC 4.4 — Save game/count.
- *
+ * <br>
  * Precondition: The current round has finished.
- *
+ * <br>
  * UC Steps:
  *  1. User requests to save after a round ends (input "3").
  *  2. System asks for a description.
@@ -33,6 +36,15 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UC 4.4 — Save game/count")
 class UC4_SaveGameCountTest {
+    SaveRepository testRepo;
+    GamePersistenceService testPersistenceService;
+
+    @BeforeEach
+    void setUp() {
+        testRepo = new SaveRepository(Paths.get("testSaves"));
+        testPersistenceService = new GamePersistenceService(testRepo);
+    }
+
 
     private final InputStream sysInBackup = System.in;
 
@@ -46,7 +58,7 @@ class UC4_SaveGameCountTest {
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
         try (MockedConstruction<Deck> mockedDeck = mockConstruction(Deck.class, (mock, ctx) -> {
-            if (hands != null) when(mock.deal()).thenReturn(hands);
+            if (hands != null) when(mock.deal(Deck.DEAL_TYPE.WHIST)).thenReturn(hands);
         })) {
             GameController controller = new GameController();
             Field gameField = GameController.class.getDeclaredField("game");
@@ -92,7 +104,7 @@ class UC4_SaveGameCountTest {
                 "2",                              // Step 1 UC1: count mode
                 "P1", "P2", "P3", "P4",          // Step 2 UC1: names
 
-                "3",                              // Step 5 UC1: Abondance 9 // TODO: verify index
+                "3",                              // Step 5 UC1: Abondance 9
                 "2",
                 "1",
                 "10",                             // Step 7 UC1: tricks won
@@ -105,9 +117,12 @@ class UC4_SaveGameCountTest {
 
         assertNotNull(game);
         // Step 3: a save file with this description should exist on disk
-        // TODO: adapt path to actual save directory used by GamePersistenceService
-        // File saveFile = new File("saves/My test save.json");
-        // assertTrue(saveFile.exists(), "Save file should be created on disk");
+        File saveFile = new File("testSaves/my-test-save.properties"); // TODO: this should be fixed, error in SapeRepository
+        assertTrue(saveFile.exists(), "Save file should be created on disk");
+        assertTrue(testPersistenceService.listDescriptions().contains("My test save"), "Save description should be listed in persistence service");
+        GameSnapshot gameSnapshot = testRepo.loadByDescription("My test save");
+        assertNotNull(gameSnapshot, "Game snapshot should not be null");
+        assertEquals(4, gameSnapshot.players().size(), "Snapshot should contain 4 players");
     }
 
     @Test
@@ -133,13 +148,12 @@ class UC4_SaveGameCountTest {
         WhistGame game = runCount(
                 "2",
                 "P1", "P2", "P3", "P4",
-                "3",                              // TODO: verify index
+                "3",
                 "2",
                 "1",
                 "10",
                 "3",                              // Step 1 UC4: save
-                "round1save",                     // Step 2 UC4: description
-                "2"                               // Step 4 UC4 → UC1 step 9: quit
+                "round1save"                     // Step 2 UC4: description
         );
 
         assertNotNull(game);
@@ -156,6 +170,7 @@ class UC4_SaveGameCountTest {
         WhistGame game = run(null,
                 "1",                              // UC2 Step 1: in-app game
                 "3",                              // Step 2a: 3 bots
+                "1",                              // Step 2b: 1 human
                 "Human",
                 "1", "1", "1",                   // bot strategies
 

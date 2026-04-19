@@ -24,29 +24,6 @@ import static org.mockito.Mockito.*;
 
 /**
  * Scenario tests for UC 4.2 — In-app game.
- *
- * UC Steps:
- *  1.  User selects in-app game.
- *  2.  System asks to register names.
- *  3.  System starts new game, scores = 0.
- *  4.  System chooses four players.
- *  5.  System deals cards; last card is trump.
- *  6.  Players bid in order.
- *  7.  Starting player plays first card.
- *  8.  System asks confirmation before next player's cards shown.
- *  9.  Next player plays a card; illegal cards are prevented.
- *  10. Repeat for all four players; trick awarded.
- *  11. Repeat until all 13 cards played.
- *  12. System calculates points.
- *  13. User quits or starts new round (13a).
- *
- * Extensions tested:
- *  2a.  Bots replacing human players.
- *  6a.  All players pass → re-deal.
- *  8a.  Bots play automatically, no confirmation needed.
- *  9a.  Open Miserie cards always revealed.
- *  11a. Miserie ends early when bidder wins a trick.
- *  13a. New round, scores kept, dealer advances.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UC 4.2 — In-app game")
@@ -63,8 +40,8 @@ class UC2_InAppGameTest {
         String script = String.join("\n", lines) + "\n";
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
-        try (MockedConstruction<Deck> mockedDeck = mockConstruction(Deck.class, (mock, ctx) -> {
-            if (hands != null) when(mock.deal()).thenReturn(hands);
+        try (MockedConstruction<Deck> _ = mockConstruction(Deck.class, (mock, _) -> {
+            if (hands != null) when(mock.deal(Deck.DEAL_TYPE.WHIST)).thenReturn(hands);
         })) {
             GameController controller = new GameController();
 
@@ -72,22 +49,9 @@ class UC2_InAppGameTest {
             gameField.setAccessible(true);
             WhistGame game = (WhistGame) gameField.get(controller);
 
-
             try { controller.run(); } catch (Exception ignored) {}
             return game;
         }
-    }
-
-    /** Full 13-trick hand: p1=all aces+kings, others=low cards. */
-    private List<List<Card>> dominantP2Hands() {
-        List<Card> p1 = filledWith(Suit.CLUBS, Rank.TWO, 13);
-        List<Card> p2 = new ArrayList<>();
-        p2.add(new Card(Suit.HEARTS, Rank.ACE));
-        p2.add(new Card(Suit.HEARTS, Rank.KING));
-        p2.add(new Card(Suit.HEARTS, Rank.QUEEN));
-        while (p2.size() < 13) p2.add(new Card(Suit.SPADES, Rank.TWO));
-        List<Card> other = filledWith(Suit.DIAMONDS, Rank.THREE, 13);
-        return List.of(p1, p2, other, other);
     }
 
     private List<Card> filledWith(Suit suit, Rank rank, int count) {
@@ -106,10 +70,10 @@ class UC2_InAppGameTest {
         WhistGame game = run(null,
                 "1",                                    // Step 1: in-app game
                 "0",                                    // Step 2a: 0 bots
+                "4",                                    // Step 2b: 4 humans
                 "Alice", "Bob", "Carol", "Dave"         // Step 2: register names
         );
 
-        // Step 3: all start at zero
         assertEquals(4, game.getPlayers().size());
         game.getPlayers().forEach(p ->
                 assertEquals(0, p.getScore(), p.getName() + " should start at 0"));
@@ -120,13 +84,14 @@ class UC2_InAppGameTest {
     // =========================================================================
 
     @Test
-    @DisplayName("Extension 2a: Game with 4 bots runs without human input")
+    @DisplayName("Extension 2a: Game with bots runs without human input")
     void testFourBotsRunAutomatically() throws Exception {
         WhistGame game = run(null,
                 "1",                                    // Step 1: in-app game
                 "3",                                    // Step 2a: 3 bots
+                "1",                                    // Step 2b: 1 human
                 "Alice",                                // Step 2: 1 human name
-                "1",                                    // Step 2a: bot 1 strategy = HighBot
+                "1",                                    // Step 2a: bot 1 strategy
                 "1",                                    // Step 2a: bot 2 strategy
                 "1"                                     // Step 2a: bot 3 strategy
         );
@@ -140,6 +105,7 @@ class UC2_InAppGameTest {
         WhistGame game = run(null,
                 "1",                                    // Step 1
                 "2",                                    // Step 2a: 2 bots
+                "2",                                    // Step 2b: 2 humans
                 "P1", "P2",                             // Step 2: 2 human names
                 "1",                                    // Step 2a: bot 1 = HighBot
                 "2"                                     // Step 2a: bot 2 = LowBot
@@ -161,7 +127,8 @@ class UC2_InAppGameTest {
         WhistGame game = run(hands,
                 "1",                                    // Step 1
                 "0",                                    // Step 2a: 0 bots
-                "P1", "P2", "P3", "P4",                // Step 2
+                "4",                                    // Step 2b: 4 humans
+                "P1", "P2", "P3", "P4",                 // Step 2
 
                 // Step 6: all pass — 6a triggers re-deal
                 "1", "1", "1", "1",                    // bid round 1: all pass
@@ -184,15 +151,13 @@ class UC2_InAppGameTest {
 
         WhistGame game = run(List.of(p1, dummy, dummy, dummy),
                 "1",                                    // Step 1
-                "0",
+                "0",                                    // 0 bots
+                "4",                                    // 4 humans
                 "P1", "P2", "P3", "P4",
-                "1","1","1","1"// Step 2
-                // Step 6: Troela is forced — no bidding input needed
+                "1", "1", "1", "1"                      // Bidding input for forced sequence
         );
 
-        // Step 6: TROELA auto-applied
-        assertEquals(BidType.TROELA,
-                game.getCurrentRound().getHighestBid().getType());
+        assertEquals(BidType.TROELA, game.getCurrentRound().getHighestBid().getType());
     }
 
     // =========================================================================
@@ -208,7 +173,8 @@ class UC2_InAppGameTest {
 
         WhistGame game = run(List.of(p1, other, other, other),
                 "1",                                    // Step 1
-                "0",
+                "0",                                    // 0 bots
+                "4",                                    // 4 humans
                 "P1", "P2", "P3", "P4",
                 "1", "1", "1", "1",                    // Step 6: all pass → 6a re-deal
                 "1", "1", "1", "1",                    // another round of bidding
@@ -236,8 +202,9 @@ class UC2_InAppGameTest {
         WhistGame game = run(null,
                 "1",                                    // Step 1
                 "3",                                    // Step 2a: 3 bots
-                "HumanPlayer",                          // Step 2: 1 human
-                "1", "1", "1",                         // Step 2a: bot strategies
+                "1",                                    // Step 2b: 1 human
+                "HumanPlayer",                          // Step 2: 1 human name
+                "1", "1", "1",                          // Step 2a: bot strategies
 
                 // Human bids
                 "1"                                     // Step 6: human passes
@@ -268,15 +235,15 @@ class UC2_InAppGameTest {
 
         WhistGame game = run(List.of(p1, p2, p3, p4),
                 "1",                                    // Step 1
-                "0",
+                "0",                                    // 0 bots
+                "4",                                    // 4 humans
                 "P1", "P2", "P3", "P4",
 
                 // Step 6: P1 bids Miserie (index 7 = Miserie)
-                "7", "1", "1", "1","", "1", "", "1", "", "1", "", "1"
-
+                "7", "1", "1", "1",
+                "", "1", "", "1", "", "1", "", "1"      // Play the trick
         );
 
-        // Step 12: Miserie failed — at least one player (the bidder) score negative
         assertTrue(game.getPlayers().stream().anyMatch(p -> p.getScore() < 0),
                 "Miserie bidder who won a trick should have a negative score");
     }
@@ -296,12 +263,13 @@ class UC2_InAppGameTest {
         WhistGame game = run(List.of(p1, p2, p3, p4),
                 "1",
                 "0",
+                "4",
                 "P1", "P2", "P3", "P4",
 
                 // Step 6: P1 bids Open Miserie
                 "8", "1", "1", "1",
 
-                // Steps 8+9: play first trick (hand is visible)
+                // Steps 8+9: play first trick
                 "", "1",
                 "", "1",
                 "", "1",
@@ -318,12 +286,12 @@ class UC2_InAppGameTest {
     @Test
     @DisplayName("Steps 12-13: Scores calculated after round, zero-sum holds")
     void testScoresZeroSumAfterRound() throws Exception {
-        // Use all-bot game to let it complete naturally
         WhistGame game = run(null,
                 "1",
-                "3",                                    // Step 2a: 3 bots
+                "3",                                    // 3 bots
+                "1",                                    // 1 human
                 "Human",
-                "1", "1", "1"                          // bot strategies
+                "1", "1", "1"                           // bot strategies
         );
 
         int total = game.getPlayers().stream().mapToInt(Player::getScore).sum();
@@ -340,14 +308,14 @@ class UC2_InAppGameTest {
         WhistGame game = run(null,
                 "1",
                 "3",
+                "1",
                 "Human",
                 "1", "1", "1",
 
-                "1"
+                "1" // Input to trigger new round after scores
         );
 
         assertNotNull(game);
-        // After new round, scores from round 1 should still be present
         int total = game.getPlayers().stream().mapToInt(Player::getScore).sum();
         assertEquals(0, total);
     }
@@ -366,6 +334,7 @@ class UC2_InAppGameTest {
         WhistGame game = run(List.of(p1, other, other, other),
                 "1",
                 "0",
+                "4",
                 "P1", "P2", "P3", "P4",
                 "1", "1", "1", "1",                    // Step 6: all pass
                 "1", "1", "1", "1",
@@ -390,6 +359,7 @@ class UC2_InAppGameTest {
         WhistGame game = run(List.of(p1, other, other, other),
                 "1",
                 "0",
+                "4",
                 "P1", "P2", "P3", "P4",
                 "1", "1", "1", "1",
                 "1", "1", "1", "1",
@@ -410,6 +380,7 @@ class UC2_InAppGameTest {
         WhistGame game = run(null,
                 "1",
                 "0",
+                "4",
                 "P1", "P2", "P3", "P4",
                 "0"                                     // Step 13: quit immediately
         );

@@ -33,7 +33,9 @@ import java.util.stream.Collectors;
  */
 public class WhistGame {
 
+    @Deprecated
     public static final int REQUIRED_PLAYERS = 4;
+    @Deprecated
     public static final int MAX_PLAYERS = 67;
 
     private State state;
@@ -107,7 +109,7 @@ public class WhistGame {
      * Generates a lookup map of PlayerIds to their respective Names.
      */
     public Map<PlayerId, String> getPlayerNamesMap() {
-        return players.stream().collect(Collectors.toUnmodifiableMap(Player::getId, Player::getName));
+        return allPlayers.stream().collect(Collectors.toUnmodifiableMap(Player::getId, Player::getName));
     }
 
     public void addPlayer(Player player) {

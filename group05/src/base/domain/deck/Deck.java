@@ -1,5 +1,6 @@
 package base.domain.deck;
 
+import base.domain.WhistRules;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
@@ -58,7 +59,7 @@ public class Deck {
      */
     private List<List<Card>> whistDeal() {
         List<List<Card>> hands = new ArrayList<>();
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < WhistRules.REQUIRED_PLAYERS; i++) {
             hands.add(new ArrayList<>());
         }
 
@@ -67,7 +68,7 @@ public class Deck {
 
         // Deel in rondes van 4, dan weer 4, dan 5 kaarten per speler
         for (int cardsToGive : dealRounds) {
-            for (int playerIndex = 0; playerIndex < 4; playerIndex++) {
+            for (int playerIndex = 0; playerIndex < WhistRules.REQUIRED_PLAYERS; playerIndex++) {
                 for (int i = 0; i < cardsToGive; i++) {
                     hands.get(playerIndex).add(cards.get(currentCardIndex++));
                 }
