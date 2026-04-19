@@ -5,13 +5,16 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
-import base.domain.commands.*;
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 import base.domain.player.Player;
 import base.domain.results.*;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,12 +41,7 @@ public class PlayState extends State {
             return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
         }
 
-        Player currentPlayer = currentRound.getCurrentPlayer();
-        if (!currentPlayer.getRequiresConfirmation()) {
-            return toStep(handleBotTurn(currentPlayer));
-        }
-
-        return StateStep.stay(buildNeedCardResult(currentPlayer));
+        return StateStep.stay(buildNeedCardResult(currentRound.getCurrentPlayer()));
     }
 
     @Override
@@ -55,20 +53,17 @@ public class PlayState extends State {
         Player currentPlayer = currentRound.getCurrentPlayer();
         GameResult result = handlePlayerMove(currentPlayer, command);
 
-        // CLEANUP: Greatly simplified. If the result is a prompt for a card, rebuild the fresh UI.
-        // Otherwise, just return the meaningful result (EndOfTrick, TrickHistory, etc.)
-        if (result instanceof PlayCardResult) {
-            return toStep(buildNeedCardResult(currentPlayer));
-        }
-
-        return toStep(result);
+        return switch (result) {
+            case PlayCardResult _ -> toStep(buildNeedCardResult(currentPlayer));
+            default -> toStep(result);
+        };
     }
 
     private GameResult handlePlayerMove(Player player, GameCommand command) {
         return switch (command) {
             case NumberCommand n when n.choice() == 0 -> {
                 Trick last = currentRound.getLastPlayedTrick();
-                yield (last == null) ? buildNeedCardResult(player) : new TrickHistoryResult(last);
+                yield (last == null) ? buildNeedCardResult(player) : new TrickHistoryResult(last, getGame().getPlayerNamesMap());
             }
             case CardCommand c -> {
                 Card card = c.card();
@@ -83,11 +78,6 @@ public class PlayState extends State {
             }
             default -> buildNeedCardResult(player);
         };
-    }
-
-    private GameResult handleBotTurn(Player player) {
-        Card card = player.chooseCard(currentTrick.getLeadingSuit());
-        return executeCardPlay(player, card);
     }
 
     /**
@@ -141,10 +131,12 @@ public class PlayState extends State {
         List<PlayTurn> turns = currentTrick.getTurns();
         List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
 
+
         return new PlayCardResult(
                 turns, isOpenMiserie, exposedNames, exposedHands,
                 currentRound.getTricks().size() + 1, player, legalCards,
-                currentRound.getLastPlayedTrick()
+                currentRound.getLastPlayedTrick(),
+                getGame().getPlayerNamesMap()
         );
     }
 

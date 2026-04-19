@@ -9,6 +9,14 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.commands.*;
 import base.domain.results.*;
+
+import base.domain.commands.GameCommand.*;
+import base.domain.results.BidResults.*;
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
+import base.domain.results.GameResult;
+import base.domain.round.Round;
+import base.domain.strategy.HumanStrategy;
 import cli.TerminalParser;
 import cli.elements.Response;
 import cli.events.MessageIOEvent;
@@ -25,41 +33,71 @@ public class Adapter {
     private final TerminalParser parser;
     private final WhistGame game;
 
+    /**
+     * Initializes the Adapter with a reference to the WhistGame.
+     * @param game The current gameInstance, needed to map user input to actual Player objects and access game state for context when parsing responses.
+     */
     public Adapter(WhistGame game) {
         this.parser = new TerminalParser();
         this.game = game;
     }
 
+    /**
+     * Converts a GameResult from the domain into an AdapterResult, which indicates either an immediate domain
+     * command to execute (for bot actions) or a UI event that requires user input (for human actions).
+     * @param result The GameResult coming from the domain after executing a state step, determines how the adapter should respond.
+     * @return An AdapterResult indicating either an immediate domain command or a UI event to be rendered for user input.
+     */
     public AdapterResult handleResult(GameResult result) {
         return switch (result) {
 
             case PlayCardResult p -> {
                 Player player = p.player();
-                if (!player.getRequiresConfirmation()) {
-                    Card chosen = player.chooseCard(
-                            p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
-                    yield new AdapterResult.Immediate(new CardCommand(chosen));
-                }
-                yield new AdapterResult.NeedsIO(
-                        List.of(new ConfirmationIOEvent(player.getName())),
-                        new PlayCardIOEvent(p));
+
+                yield switch (player.getDecisionStrategy()) {
+                    case null -> throw new IllegalStateException("Corrupted state: Player has no strategy!");
+                    // HUMAN → show UI (+ optional confirmation preamble)
+                    case HumanStrategy _ -> new AdapterResult.NeedsIO(
+                            List.of(new ConfirmationIOEvent(player.getName())),
+                            new PlayCardIOEvent(p)
+                    );
+                    // BOT → immediate domain command
+                    default -> {
+                        Card chosen = player.chooseCard(
+                                p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
+                        yield new AdapterResult.Immediate(new CardCommand(chosen));
+                    }
+                };
             }
 
             case BidTurnResult b -> {
                 Player player = b.player();
-                if (!player.getRequiresConfirmation()) {
-                    Bid botBid = player.chooseBid();
-                    Suit dealtTrump = b.trumpSuit();
-                    Suit chosenTrump = null;
-                    if (botBid.getType().getRequiresSuit()) {
-                        Suit safeDealtTrump = dealtTrump != null ? dealtTrump : Suit.CLUBS;
-                        chosenTrump = botBid.determineTrump(safeDealtTrump);
-                    } else if (dealtTrump != null) {
-                        chosenTrump = botBid.determineTrump(dealtTrump);
+
+                yield switch (player.getDecisionStrategy()) {
+                    case null -> throw new IllegalStateException("Corrupted state: Player has no strategy!");
+                    // HUMAN → show UI
+                    case HumanStrategy _ -> new AdapterResult.NeedsIO(
+                            List.of(),
+                            new BidTurnIOEvent(b)
+                    );
+                    // BOT → immediate domain command
+                    default -> {
+                        Bid botBid = player.chooseBid();
+                        Suit dealtTrump = b.trumpSuit();
+
+                        // In no-trump rounds, avoid asking bids that mirror dealt trump to resolve from null.
+                        // For suit-requiring bids, pass a non-null placeholder so the bid can return its own chosen suit.
+                        Suit chosenTrump = null;
+                        if (botBid.getType().getRequiresSuit()) {
+                            Suit safeDealtTrump = dealtTrump != null ? dealtTrump : Suit.CLUBS;
+                            chosenTrump = botBid.determineTrump(safeDealtTrump);
+                        } else if (dealtTrump != null) {
+                            chosenTrump = botBid.determineTrump(dealtTrump);
+                        }
+
+                        yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), chosenTrump));
                     }
-                    yield new AdapterResult.Immediate(new BidCommand(botBid.getType(), chosenTrump));
-                }
-                yield new AdapterResult.NeedsIO(List.of(), new BidTurnIOEvent(b));
+                };
             }
 
             case SuitSelectionRequired ignored ->
@@ -113,6 +151,31 @@ public class Adapter {
 
         try {
             return switch (result) {
+                case DeleteRoundResult dr -> {
+                    int choice = parser.parseNumberInput(raw);
+                    if (choice == 0) {
+                        // Return a Command that signals a cancel or just a Continue
+                        yield AdapterResponse.toDomain(new NumberCommand(0));
+                    }
+                    // Get the actual round from the list provided in the result
+                    Round selectedRound = dr.rounds().get(choice - 1);
+                    yield AdapterResponse.toDomain(new RoundCommand(selectedRound));
+                }
+                case AddPlayerResult ignored -> {
+                    int choice = parser.parseNumberInput(raw);
+                    if (choice < 1 || choice > 4){
+                        throw new IllegalArgumentException("No valid answer");
+                    }
+                    yield AdapterResponse.toDomain(new NumberCommand(choice));
+                }
+                case AddHumanPlayerResult ignored -> {
+                    String name = parser.parseString(raw);
+                    if (raw.equals("")){
+                        throw new IllegalArgumentException("Name cannot be \"\"");
+                    }
+                    yield AdapterResponse.toDomain(new TextCommand(name));
+                }
+                // --- Bidding State ---
                 case BidTurnResult b -> {
                     int choice = parser.parseNumberInput(raw);
                     if (choice < 1 || choice > b.availableBids().size()) {
@@ -157,7 +220,7 @@ public class Adapter {
                     }
                     List<Integer> indices = parser.parseNumbersInput(raw);
                     List<PlayerId> players = indices.stream()
-                            .map(i -> game.getPlayers().get(i - 1).getId())
+                            .map(i -> p.players().get(i - 1).getId())
                             .toList();
                     validatePlayerSelection(p.type(), players.size());
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
@@ -169,8 +232,10 @@ public class Adapter {
                     }
                     yield AdapterResponse.toDomain(new NumberCommand(tricks));
                 }
-                case ScoreBoardResult ignored -> {
+
+                case ScoreBoardResult g -> {
                     int choice = parser.parseNumberInput(raw);
+
                     if (choice < 1) {
                         throw new IllegalArgumentException("Invalid scoreboard selection");
                     }
@@ -190,7 +255,7 @@ public class Adapter {
                     }
                     List<PlayerId> playerIds = indices.stream()
                             .map(i -> p.playerNames().get(i - 1))
-                            .map(name -> game.getPlayers().stream()
+                            .map(name -> game.getAllPlayers().stream()
                                     .filter(player -> player.getName().equals(name))
                                     .findFirst()
                                     .map(Player::getId)
@@ -201,26 +266,38 @@ public class Adapter {
 
                 case PlayCardResult p -> {
                     Player player = p.player();
-                    if (!player.getRequiresConfirmation()) {
-                        Card chosen = player.chooseCard(
-                                p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
-                        yield AdapterResponse.toDomain(new CardCommand(chosen));
-                    }
-                    int choice = parser.parseNumberInput(raw);
-                    if (choice == 0) {
-                        if (p.lastPlayedTrick() == null) {
-                            yield AdapterResponse.uiOnly(new MessageIOEvent("No tricks have been played yet!"));
-                        } else {
-                            yield AdapterResponse.uiOnly(
-                                    new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick())));
+
+                    // If it is NOT a HumanStrategy, resolve immediately.
+                    yield switch (player.getDecisionStrategy()) {
+                        case null -> throw new IllegalStateException("Corrupted state: Player has no strategy!");
+                        case HumanStrategy _ -> {
+                            int choice = parser.parseNumberInput(raw);
+
+                            if (choice == 0) {
+                                if (p.lastPlayedTrick() == null) {
+                                    yield AdapterResponse.uiOnly(new MessageIOEvent("No tricks have been played yet!"));
+                                } else {
+                                    yield AdapterResponse.uiOnly(new TrickHistoryIOEvent(new TrickHistoryResult(p.lastPlayedTrick(), p.playerNames())));
+
+                                }
+                            }
+
+                            int max = p.legalCards().size();
+
+                            if (choice < 1 || choice > max) {
+                                throw new IllegalArgumentException("Invalid card selection");
+                            }
+
+                            Card selected = p.legalCards().get(choice - 1);
+                            yield AdapterResponse.toDomain(new CardCommand(selected));
                         }
-                    }
-                    int max = p.legalCards().size();
-                    if (choice < 1 || choice > max) {
-                        throw new IllegalArgumentException("Invalid card selection");
-                    }
-                    Card selected = p.legalCards().get(choice - 1);
-                    yield AdapterResponse.toDomain(new CardCommand(selected));
+                        default -> {
+                            Card chosen = player
+                                    .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
+
+                            yield AdapterResponse.toDomain(new CardCommand(chosen));
+                        }
+                    };
                 }
             };
         } catch (Exception e) {

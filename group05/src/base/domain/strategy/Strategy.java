@@ -3,6 +3,7 @@ package base.domain.strategy;
 import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.observer.GameEventPublisher;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 
@@ -36,10 +37,8 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
     Card chooseCardToPlay(List<Card> currentHand, Suit lead );
 
     /**
-     * Indicates whether this strategy requires a manual confirmation
-     * before the game engine proceeds to the next turn.
-     * <p>
-     * @return {@code true} if the game loop should pause/wait for confirmation, {@code false} otherwise.
+     * Lifecycle hook called when the strategy is added to a live game.
+     * @param publisher A restricted interface to subscribe to game events.
      */
-    boolean requiresConfirmation();
+    default void onJoinGame(GameEventPublisher publisher) {}
 }

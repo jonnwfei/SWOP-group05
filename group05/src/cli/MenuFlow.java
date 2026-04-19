@@ -1,6 +1,7 @@
 package cli;
 
 import base.domain.WhistGame;
+import base.domain.WhistRules;
 import base.domain.deck.Deck;
 import base.domain.player.*;
 import base.storage.GamePersistenceService;
@@ -40,64 +41,85 @@ public class MenuFlow {
 
 
     private void setupGame() {
-        int bots = askInt(new AmountOfBotsIOEvent(), 0, 3);
-        int humans = 4 - bots;
+        int bots = askInt(new AmountOfBotsIOEvent(), 0, WhistRules.REQUIRED_PLAYERS );
+        int minHumans = WhistRules.REQUIRED_PLAYERS - bots;
+        int humans = askInt(new AmountOfHumansIOEvent(minHumans, WhistRules.MAX_PLAYERS), minHumans, WhistRules.MAX_PLAYERS );
 
-        for (int i = 1; i <= humans; i++) {
-            String name = askString(new PlayerNameIOEvent(i));
-            game.addPlayer(new Player(new HumanStrategy(), name, new PlayerId()));
-        }
-
-        for (int i = 1; i <= bots; i++) {
-            int strategy = askInt(new BotStrategyIOEvent(i), 1, 2);
-            Player bot = strategy == 1
-                    ? new Player(new HighBotStrategy(), "Bot" + i, new PlayerId())
-                    : new Player(new LowBotStrategy(), "Bot" + i, new PlayerId());
-            game.addPlayer(bot);
-        }
+        addHumanPlayers(1, humans);
+        addBotPlayers(humans + 1, bots);
 
         game.setDeck(new Deck());
         game.setRandomDealer();
 
-        terminalManager.handle(new PrintNamesIOEvent(
-                game.getPlayers().stream().map(Player::getName).toList()));
+        printPlayerNames();
         game.startGame();
     }
 
     private void setupCount() {
-        for (int i = 1; i <= 4; i++) {
-            String name = askString(new PlayerNameIOEvent(i));
-            game.addPlayer(new Player(new HumanStrategy(), name,  new PlayerId()));
-        }
+        addHumanPlayers(1, WhistRules.REQUIRED_PLAYERS);
+        game.setDealerPlayer(game.getAllPlayers().getFirst()); // default to first player as dealer for counting mode
 
-        terminalManager.handle(new PrintNamesIOEvent(
-                game.getPlayers().stream().map(Player::getName).toList()));
-
+        printPlayerNames();
         game.startCount();
     }
 
     private void setupLoadSave() {
-        List<String> saves = persistenceService.listDescriptions();
-        if (saves.isEmpty()) {
+        List<String> availableSaves = persistenceService.listDescriptions();
+        if (availableSaves.isEmpty()) {
             System.out.println("No saved games found. Returning to main menu.");
-            savedMode = run(); // recurse and propagate the mode back up
             return;
         }
 
-        int choice = askInt(new LoadSaveIOEvent(saves), 1, saves.size());
-        String description = saves.get(choice - 1);
+        int saveFileChoice = askInt(new LoadSaveIOEvent(availableSaves), 0, availableSaves.size());
+        if (saveFileChoice == 0) return;
 
+        String chosenDescription = availableSaves.get(saveFileChoice - 1); // off by one
+        SaveMode saveMode;
         try {
-            SaveMode mode = persistenceService.loadIntoGame(game, description);
+            SaveMode mode = persistenceService.loadIntoGame(game, chosenDescription);
             this.savedMode = mode;
             switch (mode) {
                 case GAME  -> game.startGame();
                 case COUNT -> game.startCount();
             }
         } catch (Exception e) {
-            System.out.println("Failed to load save: " + e.getMessage());
-            savedMode = run();
+            System.out.println("Error while loading game: " + e);
+            throw new IllegalArgumentException("Failed to load game with description: " + chosenDescription, e);
         }
+    }
+
+    // --- Setup Helpers ---
+
+    private void addHumanPlayers(int startIndex, int amount) {
+        for (int i = 0; i < amount; i++) {
+            int playerNumber = startIndex + i;
+            String name = askString(new PlayerNameIOEvent(playerNumber));
+            // Using the convenience constructor that auto-generates the PlayerId
+            game.addPlayer(new Player(new HumanStrategy(), name));
+        }
+    }
+
+    private void addBotPlayers(int startIndex, int amount) {
+        for (int i = 0; i < amount; i++) {
+            int botNumber = startIndex + i;
+            int strategy = askInt(new BotStrategyIOEvent(botNumber), 1, 3);
+
+            Player bot = switch (strategy) {
+                case 1 -> new Player(new HighBotStrategy(), "Bot " + botNumber);
+                case 2 -> new Player(new LowBotStrategy(), "Bot " + botNumber);
+                default -> {
+                        PlayerId smartId = new PlayerId();
+                        yield new Player(new SmartBotStrategy(smartId), "Bot " + botNumber, smartId);
+                    }
+                };
+            game.addPlayer(bot);
+        }
+    }
+
+    private void printPlayerNames() {
+        terminalManager.handle(new PrintNamesIOEvent(
+                game.getAllPlayers().stream().map(Player::getName).toList()
+        ));
     }
 
     // --- Input Helpers ---

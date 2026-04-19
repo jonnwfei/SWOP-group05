@@ -1,7 +1,9 @@
 package cli.events;
 
 import base.domain.card.Card;
-import base.domain.results.*;
+import base.domain.results.BidResults.*;
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

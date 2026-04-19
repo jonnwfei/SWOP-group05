@@ -69,11 +69,11 @@ class AcceptedBidTest {
         PlayerId proposerId = new PlayerId();
 
         // Mocking the bid history to isolate this test from other Bid implementations
-        Bid mockProposal = mock(Bid.class);
+        Bid mockProposal = mock(ProposalBid.class);
         when(mockProposal.getType()).thenReturn(BidType.PROPOSAL);
         when(mockProposal.getPlayerId()).thenReturn(proposerId);
 
-        Bid mockPass = mock(Bid.class);
+        Bid mockPass = mock(PassBid.class);
         when(mockPass.getType()).thenReturn(BidType.PASS);
 
         List<Bid> bidHistory = List.of(mockPass, mockProposal, bid);
@@ -92,7 +92,7 @@ class AcceptedBidTest {
     @DisplayName("getTeam() throws an exception if no Proposal bid exists in history")
     void getTeam_NoProposalExists_ThrowsIllegalArgumentException() {
         // Arrange: A bid history with only PASS bids
-        Bid mockPass = mock(Bid.class);
+        Bid mockPass = mock(PassBid.class);
         when(mockPass.getType()).thenReturn(BidType.PASS);
 
         List<Bid> bidHistory = List.of(mockPass, mockPass, bid);

@@ -1,5 +1,6 @@
 package base.domain.deck;
 
+import base.domain.WhistRules;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
@@ -12,6 +13,10 @@ import java.util.List;
  * Represents a standard 52-card playing deck.
  */
 public class Deck {
+
+    public enum DealType {
+        WHIST,
+    }
 
     private final List<Card> cards;
 
@@ -37,15 +42,24 @@ public class Deck {
     }
 
     /**
+     * Distributes cards to players based on the specified deal type.
+     */
+    public List<List<Card>> deal(DealType dealType) { // TODO: fix dit zodat het niet hardCoded is
+        return switch (dealType) {
+            case WHIST -> whistDeal();
+        };
+    }
+
+    /**
      * Distributes the entire 52-card deck to 4 players.
      * Adheres to dealing rules: batches of 4,
      * then another batch of 4, and a final batch of 5 cards per player.
      *
      * @return A list containing 4 hands, each represented as a List of 13 cards.
      */
-    public List<List<Card>> deal() {
+    private List<List<Card>> whistDeal() {
         List<List<Card>> hands = new ArrayList<>();
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < WhistRules.REQUIRED_PLAYERS; i++) {
             hands.add(new ArrayList<>());
         }
 
@@ -54,7 +68,7 @@ public class Deck {
 
         // Deel in rondes van 4, dan weer 4, dan 5 kaarten per speler
         for (int cardsToGive : dealRounds) {
-            for (int playerIndex = 0; playerIndex < 4; playerIndex++) {
+            for (int playerIndex = 0; playerIndex < WhistRules.REQUIRED_PLAYERS; playerIndex++) {
                 for (int i = 0; i < cardsToGive; i++) {
                     hands.get(playerIndex).add(cards.get(currentCardIndex++));
                 }
@@ -62,6 +76,7 @@ public class Deck {
         }
         return hands;
     }
+
     /**
      * @return A shallow copy of the internal cards list.
      */

@@ -4,7 +4,9 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
-import base.domain.results.PlayCardResult;
+import base.domain.results.BidResults.*;
+import base.domain.results.CountResults.*;
+import base.domain.results.PlayResults.*;
 import base.domain.round.Round;
 import base.domain.turn.PlayTurn;
 import cli.events.IOEvent;
@@ -42,6 +44,7 @@ public class TerminalRenderer {
             // --- menu ---
             case WelcomeMenuIOEvent ignored -> renderWelcomeMenuEvent();
             case AmountOfBotsIOEvent ignored -> renderAmountOfBotsEvent();
+            case AmountOfHumansIOEvent e -> renderAmountOfHumansEvent(e.minHumans(), e.maxHumans());
             case PlayerNameIOEvent e -> renderPlayerNameEvent(e);
             case BotStrategyIOEvent e -> renderBotStrategyEvent(e);
             case PrintNamesIOEvent e -> renderPrintNamesEvent(e);
@@ -59,6 +62,7 @@ public class TerminalRenderer {
         System.out.println("--- Round History ---");
         List<Round> rounds = d.rounds();
 
+        System.out.println("[0] Return To Scoreboard");
         for (int i = 0; i < rounds.size(); i++) {
             Round r = rounds.get(i);
             // Show the round index and the winners (assuming Round has getWinners/getWinningPlayers)
@@ -67,7 +71,7 @@ public class TerminalRenderer {
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("None");
 
-            System.out.printf("(%d) Round %d - Winners: [%s]%n", i + 1, i + 1, winners);
+            System.out.printf("[%d] Round %d - Winners: [%s]%n", i + 1, i + 1, winners);
         }
     }
 
@@ -87,6 +91,7 @@ public class TerminalRenderer {
         List<String> saveDescriptions = l.availableSaves();
         System.out.println("\n========================================");
         System.out.println("SELECT A SAVE TO LOAD:");
+        System.out.println("[ 0] RETURN TO MENU");
         for (int i = 0; i < saveDescriptions.size(); i++) {
             System.out.printf("[%2d] %s%n", (i + 1), saveDescriptions.get(i));
         }
@@ -104,6 +109,7 @@ public class TerminalRenderer {
         System.out.println(t.text());
     }
 
+
     private void renderPlayCardEvent(PlayCardIOEvent event) {
         PlayCardResult data = event.data();
 
@@ -116,9 +122,10 @@ public class TerminalRenderer {
         if (data.turns().isEmpty()) {
             System.out.println("  [ Empty ]");
         } else {
-            // Displays cards in a horizontal-ish list for better flow
+            // Use the lookup map to resolve the PlayerId into their Name
             String table = String.join("\n | ", data.turns().stream()
-                    .map(PlayTurn::toString).toList());
+                    .map(turn -> data.playerNames().getOrDefault(turn.playerId(), String.valueOf(turn.playerId())) + " played " + turn.playedCard())
+                    .toList());
             System.out.println(" | " + table);
         }
 
@@ -127,7 +134,7 @@ public class TerminalRenderer {
             System.out.println("\nEXPOSED HANDS (OPEN MISERIE)");
             for (int i = 0; i < data.exposedPlayerNames().size(); i++) {
                 String name = data.exposedPlayerNames().get(i);
-                List<Card> exposedHand = data.formattedExposedHands().get(i);
+                List<Card> exposedHand = data.formattedExposedHand().get(i);
 
                 System.out.printf("%-12s : ", name); // Aligns names
                 System.out.println(exposedHand);
@@ -152,7 +159,8 @@ public class TerminalRenderer {
 
     private void renderBidTurnEvent(BidTurnIOEvent event) {
         System.out.println("\n=== BIDDING TURN: " + event.data().playerName().toUpperCase() + " ===");
-        System.out.println("Dealt Trump: " + event.data().trumpSuit());
+        String dealTrump = event.data().trumpSuit() == null ? "[None]" : event.data().trumpSuit().toString();
+        System.out.println("Dealt Trump: " + dealTrump);
         System.out.println("Your hand: ");
         System.out.println(event.data().hand());
 
@@ -278,14 +286,19 @@ public class TerminalRenderer {
         System.out.print("Your choice: ");
     }
 
+    private void renderAmountOfHumansEvent(int minHumans, int maxHumans) {
+        System.out.printf("How many humans will be playing? (%d-%d):\n", minHumans, maxHumans);
+        System.out.print("Your choice: ");
+    }
+
     private void renderAmountOfBotsEvent() {
-        System.out.println("How many bots will be playing? (0-3):");
+        System.out.println("How many bots will be playing? (0-4):");
         System.out.print("Your choice: ");
     }
 
     private void renderBotStrategyEvent(BotStrategyIOEvent event) {
         System.out.println("Which strategy should bot " + event.botIndex() + " use?");
-        System.out.println("(1) High Bot\n(2) Low Bot");
+        System.out.println("(1) High Bot\n(2) Low Bot\n(3) SmartBot");
         System.out.print("Your choice: ");
     }
 
@@ -318,8 +331,25 @@ public class TerminalRenderer {
     }
 
     private void renderTrickHistoryEvent(TrickHistoryIOEvent event) {
+
         System.out.println("-------------- LAST PLAYED TRICK ---------------");
-        event.data().trick().getTurns().forEach(t -> System.out.println("- " + t));
+
+        event.data().trick().getTurns().forEach(t -> {
+            String playerName = event.data().playerNames().getOrDefault(
+                    t.playerId(),
+                    String.valueOf(t.playerId())
+            );
+            System.out.println("- " + playerName + " played " + t.playedCard());
+        });
+
+        if (event.data().trick().isCompleted()) {
+            String winnerName = event.data().playerNames().getOrDefault(
+                    event.data().trick().getWinningPlayerId(),
+                    String.valueOf(event.data().trick().getWinningPlayerId())
+            );
+            System.out.println("  => WINNER: " + winnerName);
+        }
+
         System.out.println("------------------------------------------------");
     }
 

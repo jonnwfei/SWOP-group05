@@ -7,6 +7,7 @@ import base.domain.card.Card;
 import base.domain.card.CardMath;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
+import base.domain.observer.GameEventPublisher;
 import base.domain.observer.GameObserver;
 import base.domain.player.PlayerId;
 import base.domain.turn.BidTurn;
@@ -140,8 +141,8 @@ public final class SmartBotStrategy implements Strategy {
     }
 
     @Override
-    public boolean requiresConfirmation() {
-        return false;
+    public void onJoinGame(GameEventPublisher publisher) {
+        publisher.addObserver(memory);
     }
 
     // --- State Routing Helper ---

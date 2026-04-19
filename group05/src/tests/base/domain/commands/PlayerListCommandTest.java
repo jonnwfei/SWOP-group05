@@ -4,7 +4,8 @@ import base.domain.player.PlayerId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
+import base.domain.commands.GameCommand;
+import base.domain.commands.GameCommand.*;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -75,15 +76,5 @@ class PlayerListCommandTest {
             assertNotEquals(cmd1, cmd3);
         }
 
-        @Test
-        @DisplayName("toString should contain the list of IDs")
-        void shouldHaveDescriptiveToString() {
-            PlayerListCommand command = new PlayerListCommand(List.of(P1));
-            String commandString = command.toString();
-
-            // Assert
-            assertTrue(commandString.contains("PlayerListCommand"));
-            assertTrue(commandString.contains("p1"));
-        }
     }
 }

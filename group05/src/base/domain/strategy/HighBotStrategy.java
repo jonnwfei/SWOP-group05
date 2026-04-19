@@ -59,13 +59,4 @@ public final class HighBotStrategy implements Strategy {
         }
         return legalCards;
     }
-
-    /**
-     * Indicates that this is an automated strategy.
-     * @return false, as this bot plays autonomously without UI intervention.
-     */
-    @Override
-    public boolean requiresConfirmation() {
-        return false;
-    }
 }
