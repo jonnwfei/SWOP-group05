@@ -6,25 +6,23 @@ import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.strategy.HumanStrategy;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 @DisplayName("Player Entity Rules & State")
 class PlayerTest {
 
@@ -34,24 +32,13 @@ class PlayerTest {
     @Mock
     private SoloBid mockBid;
 
-    private AutoCloseable mocks;
     private Player player;
     private PlayerId defaultPlayerId;
 
     @BeforeEach
     void setUp() {
-        mocks = MockitoAnnotations.openMocks(this);
         defaultPlayerId = new PlayerId();
-
-        // Using the updated constructor signature: (Strategy, String, PlayerId)
         player = new Player(mockStrategy, "Alice", defaultPlayerId);
-    }
-
-    @AfterEach
-    void tearDown() throws Exception {
-        if (mocks != null) {
-            mocks.close();
-        }
     }
 
     @Nested
@@ -59,10 +46,10 @@ class PlayerTest {
     class ConstructorTests {
 
         @Test
-        @DisplayName("Should initialize player with an explicit ID and empty state")
+        @DisplayName("Should initialize player using the 3-argument constructor")
         void createsPlayerSuccessfully() {
             assertNotNull(player.getId());
-            assertNotNull(player.getId().id()); // Ensure the internal UUID exists
+            assertNotNull(player.getId().id());
             assertEquals(defaultPlayerId, player.getId());
             assertEquals("Alice", player.getName());
             assertEquals(0, player.getScore());
@@ -71,11 +58,21 @@ class PlayerTest {
         }
 
         @Test
-        @DisplayName("Should reject null strategy, name, or explicit ID")
-        void throwsOnNullInputs() {
+        @DisplayName("Should initialize player correctly using the 2-argument constructor")
+        void createsPlayerWithTwoArgs() {
+            Player twoArgPlayer = new Player(mockStrategy, "Bob");
+
+            assertEquals("Bob", twoArgPlayer.getName());
+            assertNotNull(twoArgPlayer.getId(), "A unique ID should be auto-generated.");
+            assertEquals(mockStrategy, twoArgPlayer.getDecisionStrategy());
+            assertEquals(0, twoArgPlayer.getScore());
+        }
+
+        @Test
+        @DisplayName("Should reject null strategy, name, or explicit ID in 3-arg constructor")
+        void throwsOnNullInputsThreeArg() {
             PlayerId validId = new PlayerId();
 
-            // Testing the single primary constructor constraints
             assertThrows(IllegalArgumentException.class, () -> new Player(null, "Alice", validId));
             assertThrows(IllegalArgumentException.class, () -> new Player(mockStrategy, null, validId));
             assertThrows(IllegalArgumentException.class, () -> new Player(mockStrategy, "Alice", null));
@@ -83,12 +80,20 @@ class PlayerTest {
     }
 
     @Nested
-    @DisplayName("Hand Management")
+    @DisplayName("Hand Management & Querying")
     class HandManagementTests {
 
         @Test
-        @DisplayName("setHand() should clear old cards and apply new sorted list")
+        @DisplayName("setHand() should throw exception on null input")
+        void setHandThrowsOnNull() {
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> player.setHand(null));
+            assertTrue(ex.getMessage().contains("can't be null"));
+        }
+
+        @Test
+        @DisplayName("setHand() should clear old cards, apply new list, and sort by Suit then Rank (high-to-low)")
         void setsAndSortsHand() {
+            // Unordered cards
             Card lowHeart = new Card(Suit.HEARTS, Rank.TWO);
             Card highHeart = new Card(Suit.HEARTS, Rank.ACE);
             Card club = new Card(Suit.CLUBS, Rank.KING);
@@ -97,9 +102,19 @@ class PlayerTest {
             player.setHand(List.of(spade, lowHeart, club, highHeart));
             List<Card> hand = player.getHand();
 
-            // Verifying Whist Sorting: Clubs -> Hearts (Ace then 2) -> Spades
+            // Expected Whist Sorting: Clubs -> Hearts (Ace then 2) -> Spades
             List<Card> expectedOrder = List.of(club, highHeart, lowHeart, spade);
             assertEquals(expectedOrder, hand);
+        }
+
+        @Test
+        @DisplayName("flushHand() should completely empty the player's hand")
+        void flushHandEmptiesHand() {
+            player.setHand(List.of(new Card(Suit.HEARTS, Rank.TEN)));
+            assertFalse(player.getHand().isEmpty());
+
+            player.flushHand();
+            assertTrue(player.getHand().isEmpty());
         }
 
         @Test
@@ -108,23 +123,49 @@ class PlayerTest {
             player.setHand(List.of(new Card(Suit.HEARTS, Rank.TEN)));
 
             List<Card> externalHand = player.getHand();
-            externalHand.clear();
+            externalHand.clear(); // Attempt to tamper
 
-            assertFalse(player.getHand().isEmpty());
+            assertFalse(player.getHand().isEmpty(), "Internal hand should remain intact.");
         }
 
         @Test
-        @DisplayName("removeCard() should update hand or throw if card is missing")
-        void removesCard() {
+        @DisplayName("removeCard() should successfully remove a valid card")
+        void removesValidCard() {
             Card heartTen = new Card(Suit.HEARTS, Rank.TEN);
             player.setHand(List.of(heartTen));
 
             player.removeCard(heartTen);
             assertTrue(player.getHand().isEmpty());
+        }
 
-            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                    () -> player.removeCard(heartTen));
+        @Test
+        @DisplayName("removeCard() should throw an exception if card is missing or null")
+        void removeCardValidation() {
+            Card heartTen = new Card(Suit.HEARTS, Rank.TEN);
+            player.setHand(List.of(new Card(Suit.SPADES, Rank.TWO)));
+
+            assertThrows(IllegalArgumentException.class, () -> player.removeCard(null));
+
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> player.removeCard(heartTen));
             assertTrue(exception.getMessage().contains("not in player hand"));
+        }
+
+        @Test
+        @DisplayName("hasCard() correctly identifies if a card is held")
+        void hasCardLogic() {
+            Card heldCard = new Card(Suit.HEARTS, Rank.TEN);
+            Card missingCard = new Card(Suit.SPADES, Rank.ACE);
+
+            player.setHand(List.of(heldCard));
+
+            assertTrue(player.hasCard(heldCard));
+            assertFalse(player.hasCard(missingCard));
+        }
+
+        @Test
+        @DisplayName("hasCard() throws exception on null input")
+        void hasCardThrowsOnNull() {
+            assertThrows(IllegalArgumentException.class, () -> player.hasCard(null));
         }
     }
 
@@ -163,9 +204,12 @@ class PlayerTest {
         @Test
         @DisplayName("updateScore() should accumulate both positive and negative deltas")
         void updatesScore() {
-            player.updateScore(15);
-            player.updateScore(-5);
+            assertEquals(0, player.getScore()); // Initial state
 
+            player.updateScore(15);
+            assertEquals(15, player.getScore());
+
+            player.updateScore(-5);
             assertEquals(10, player.getScore());
         }
     }

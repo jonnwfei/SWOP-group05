@@ -92,6 +92,26 @@ class TrickTest {
 
             assertTrue(exception.getMessage().contains("already full"));
         }
+
+        @Test
+        @DisplayName("Should throw IllegalArgumentException if playerId or card is null")
+        void shouldThrowWhenPlayerIdOrCardIsNull() {
+            Card validCard = new Card(Suit.HEARTS, Rank.ACE);
+            PlayerId validId = P1;
+
+            // Branch 1: playerId is null
+            IllegalArgumentException ex1 = assertThrows(IllegalArgumentException.class,
+                    () -> trick.addTurn(null, validCard));
+
+            // Branch 2: playedCard is null
+            IllegalArgumentException ex2 = assertThrows(IllegalArgumentException.class,
+                    () -> trick.addTurn(validId, null));
+
+            // Verify message consistency
+            String expectedMessage = "Trick: PlayerId and Card must exist.";
+            assertEquals(expectedMessage, ex1.getMessage());
+            assertEquals(expectedMessage, ex2.getMessage());
+        }
     }
 
     @Nested
