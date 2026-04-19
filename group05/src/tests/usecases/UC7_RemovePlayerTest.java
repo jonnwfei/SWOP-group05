@@ -79,7 +79,7 @@ class UC7_RemovePlayerTest {
                 "5"                               // Step 2
         ));
 
-        assertFalse(game.getPlayers().stream().anyMatch(p -> p.getName().equals("ToRemove")));
+        assertFalse(game.getAllPlayers().stream().anyMatch(p -> p.getName().equals("ToRemove")));
     }
 
     // =========================================================================

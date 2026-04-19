@@ -52,15 +52,18 @@ public class ScoreBoardFlow {
             int choice = showMenu();
             switch (choice) {
                 case 1 -> {
+                    if (game.getAllPlayers().size() > 4) {
+                        game.rotateActivePlayers();
+                    }
                     if (mode == SaveMode.COUNT){
                         game.startCount();
                     }
                     else {
+
                         game.startGame();
+                        game.advanceDealer();
                     }
-                    if (game.getAllPlayers().size() > 4) {
-                        game.rotateActivePlayers();
-                    }
+
                     return true; }   // another round
                 case 2 -> { return false; }  // main menu
                 case 3 ->  editFlow.saveGame();  // save then re-show
