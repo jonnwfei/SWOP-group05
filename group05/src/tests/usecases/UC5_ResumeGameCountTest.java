@@ -2,33 +2,34 @@ package usecases;
 
 import base.GameController;
 import base.domain.WhistGame;
+import base.storage.SaveRepository;
+import base.storage.snapshots.GameSnapshot;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Scenario tests for UC 4.5 — Resume game/count.
- *
- * Precondition: None (can resume from the main menu).
- *
- * UC Steps:
- *  1. User selects to resume a saved game/count (input "3" at main menu).
- *  2. System shows a list of saves by their description.
- *  3. User selects a saved state.
- *  4. System loads the saved state from disk.
- *  5. Usage resumes from UC 4.1 step 4 (count) or UC 4.2 step 4 (game).
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UC 4.5 — Resume game/count")
 class UC5_ResumeGameCountTest {
 
     private final InputStream sysInBackup = System.in;
+
+    // JUnit automatically creates this folder before a test and deletes it afterward!
+    @TempDir
+    Path testSavesDir;
 
     @AfterEach
     void tearDown() {
@@ -39,13 +40,30 @@ class UC5_ResumeGameCountTest {
         String script = String.join("\n", lines) + "\n";
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
-        GameController controller = new GameController();
-        Field gameField = GameController.class.getDeclaredField("game");
-        gameField.setAccessible(true);
-        WhistGame game = (WhistGame) gameField.get(controller);
+        // INTERCEPT: Whenever new SaveRepository() is called, divert it to our TempDir!
+        try (MockedConstruction<SaveRepository> mockedRepo = mockConstruction(SaveRepository.class, (mock, context) -> {
 
-        try { controller.run(); } catch (Exception ignored) {}
-        return game;
+            // Create a REAL repository pointing to the isolated test folder
+            SaveRepository isolatedRepo = new SaveRepository(testSavesDir);
+
+            // Delegate the mock's method calls to our isolated real repository
+            doAnswer(inv -> {
+                isolatedRepo.save(inv.getArgument(0, GameSnapshot.class));
+                return null;
+            }).when(mock).save(any(GameSnapshot.class));
+
+            lenient().when(mock.listDescriptions()).thenAnswer(inv -> isolatedRepo.listDescriptions());
+            lenient().when(mock.loadByDescription(anyString())).thenAnswer(inv -> isolatedRepo.loadByDescription(inv.getArgument(0)));
+
+        })) {
+            GameController controller = new GameController();
+            Field gameField = GameController.class.getDeclaredField("game");
+            gameField.setAccessible(true);
+            WhistGame game = (WhistGame) gameField.get(controller);
+
+            try { controller.run(); } catch (Exception ignored) {}
+            return game;
+        }
     }
 
     // =========================================================================
@@ -56,7 +74,7 @@ class UC5_ResumeGameCountTest {
         run(
                 "2",
                 "P1", "P2", "P3", "P4",
-                "3",                              // TODO: verify bid index
+                "3",                              // Access menu / save option
                 "2",
                 "1",
                 "10",
@@ -72,25 +90,26 @@ class UC5_ResumeGameCountTest {
     @Test
     @DisplayName("Steps 1-5: Resume saved count — players and scores are restored")
     void testResumeCount() throws Exception {
-        // Pre-condition: save exists
+        // Because testSavesDir persists for the life of this test,
+        // the save file written here will successfully be found in the next run()!
         saveCount("resumeTestCount");
 
         WhistGame game = run(
                 "3",                              // Step 1: resume
-                "1",                              // Step 3: select first save // TODO: verify index
+                "1",                              // Step 3: select first save (1-based index usually)
                 "2"                               // Step 5: quit (UC1 step 9)
         );
 
-        // Step 5: game loaded — players present with restored scores
         assertNotNull(game);
         assertFalse(game.getPlayers().isEmpty(), "Resumed game must have players");
     }
 
     @Test
-    @DisplayName("Steps 1-5: Resume saved game — resumes from UC 4.2 step 4")
+    @DisplayName("Steps 1-5: Resume saved game — menu path doesn't crash")
     void testResumeGame() throws Exception {
-        // TODO: first save an in-app game (requires completing a round)
-        // For now, verify the menu path doesn't crash
+        // Just verifying the menu path handles the request without crashing
+        saveCount("mockGameSave");
+
         WhistGame game = run(
                 "3",                              // Step 1: resume
                 "1"                               // Step 3: select save
@@ -107,10 +126,9 @@ class UC5_ResumeGameCountTest {
         WhistGame resumed = run(
                 "3",                              // Step 1: resume
                 "1",                              // Step 3: select save
-                "2"                              // Step 5: quit
+                "2"                               // Step 5: quit
         );
 
-        // Step 4: Scores must have been loaded (not all zero after a round)
         assertNotNull(resumed);
         int total = resumed.getPlayers().stream()
                 .mapToInt(base.domain.player.Player::getScore)
@@ -125,12 +143,11 @@ class UC5_ResumeGameCountTest {
     @Test
     @DisplayName("Step 2: No saves available — system handles gracefully")
     void testNoSavesAvailable() throws Exception {
-        // TODO: ensure no saves exist on disk before this test (may need a clean dir)
+        // Because of @TempDir, we are GUARANTEED that the folder is completely empty here!
         WhistGame game = run(
                 "3"                               // Step 1: resume — but no saves exist
         );
 
-        // System must not crash when no saves exist
         assertNotNull(game);
     }
 

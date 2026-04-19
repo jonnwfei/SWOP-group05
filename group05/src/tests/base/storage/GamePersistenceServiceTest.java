@@ -303,7 +303,7 @@ class GamePersistenceServiceTest {
         }
 
         @Test
-        @DisplayName("")
+        @DisplayName("Rejects rounds with invalid score deltas (null, or wrong size)")
         void shouldThrowOnInvalidDeltas() {
             Round mockRound = createValidMockRound();
             when(mockRound.getScoreDeltas()).thenReturn(List.of(90, -30, -30));

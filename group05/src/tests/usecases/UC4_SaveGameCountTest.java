@@ -2,53 +2,60 @@ package usecases;
 
 import base.GameController;
 import base.domain.WhistGame;
-import base.storage.GamePersistenceService;
 import base.storage.SaveRepository;
 import base.storage.snapshots.GameSnapshot;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-/**
- * UC 4.4 — Save game/count.
- *
- * Count menu: "2" / names
- * Game menu:  "1" / bots / humans(NEW) / names / strategies
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UC 4.4 — Save game/count")
 class UC4_SaveGameCountTest {
 
-    SaveRepository testRepo;
-    GamePersistenceService testPersistenceService;
-
-    @BeforeEach
-    void setUp() {
-        testRepo = new SaveRepository(Paths.get("testSaves"));
-        testPersistenceService = new GamePersistenceService(testRepo);
-    }
-
     private final InputStream sysInBackup = System.in;
 
+    // 1. Let JUnit handle the folder creation and automatic deletion!
+    @TempDir
+    Path testSavesDir;
+
     @AfterEach
-    void tearDown() { System.setIn(sysInBackup); }
+    void tearDown() {
+        System.setIn(sysInBackup);
+    }
 
     private WhistGame runCount(String... lines) throws Exception {
         String script = String.join("\n", lines) + "\n";
         System.setIn(new ByteArrayInputStream(script.getBytes()));
-        GameController controller = new GameController();
-        Field f = GameController.class.getDeclaredField("game");
-        f.setAccessible(true);
-        WhistGame game = (WhistGame) f.get(controller);
-        try { controller.run(); } catch (Exception ignored) {}
-        return game;
+
+        // 2. HIJACK the SaveRepository inside GameController
+        try (MockedConstruction<SaveRepository> mockedRepo = mockConstruction(SaveRepository.class, (mock, context) -> {
+            // Force it to use our temporary directory
+            SaveRepository isolatedRepo = new SaveRepository(testSavesDir);
+
+            // Forward the save call to the isolated repo
+            doAnswer(inv -> {
+                isolatedRepo.save(inv.getArgument(0, GameSnapshot.class));
+                return null;
+            }).when(mock).save(any(GameSnapshot.class));
+
+        })) {
+            GameController controller = new GameController();
+            Field f = GameController.class.getDeclaredField("game");
+            f.setAccessible(true);
+            WhistGame game = (WhistGame) f.get(controller);
+            try { controller.run(); } catch (Exception ignored) {}
+            return game;
+        }
     }
 
     // =========================================================================
@@ -60,8 +67,8 @@ class UC4_SaveGameCountTest {
     void testSaveCount() throws Exception {
         WhistGame game = runCount(
                 "2",                              // Step 1 UC1: count mode
-                "P1", "P2", "P3", "P4",          // Step 2 UC1: names
-                "3",                              // Step 5: Abondance 9 // TODO: verify index
+                "P1", "P2", "P3", "P4",           // Step 2 UC1: names
+                "3",                              // Step 5: Abondance 9
                 "2",
                 "1",
                 "10",                             // Step 7: tricks won
@@ -70,9 +77,14 @@ class UC4_SaveGameCountTest {
         );
 
         assertNotNull(game);
-        assertTrue(testPersistenceService.listDescriptions().contains("My test save"),
+
+        // 3. To verify the save, just create a verifier repo pointing to the same Temp folder!
+        SaveRepository verifierRepo = new SaveRepository(testSavesDir);
+
+        assertTrue(verifierRepo.listDescriptions().contains("My test save"),
                 "Description should appear in persistence service");
-        GameSnapshot snap = testRepo.loadByDescription("My test save");
+
+        GameSnapshot snap = verifierRepo.loadByDescription("My test save");
         assertNotNull(snap);
         assertEquals(4, snap.players().size());
     }
@@ -83,13 +95,17 @@ class UC4_SaveGameCountTest {
         WhistGame game = runCount(
                 "2",
                 "P1", "P2", "P3", "P4",
-                "3",                              // TODO: verify index
+                "3",
                 "1", "2", "9",
                 "3",                              // Step 1 UC4: save
                 "My Save With Spaces"             // Step 2 UC4: description
         );
 
         assertNotNull(game);
+
+        // Verify it was saved correctly
+        SaveRepository verifierRepo = new SaveRepository(testSavesDir);
+        assertTrue(verifierRepo.listDescriptions().contains("My Save With Spaces"));
     }
 
     @Test
@@ -98,7 +114,7 @@ class UC4_SaveGameCountTest {
         WhistGame game = runCount(
                 "2",
                 "P1", "P2", "P3", "P4",
-                "3",                              // TODO: verify
+                "3",
                 "2", "1", "10",
                 "3",                              // Step 1 UC4: save
                 "round1save"                      // Step 2 UC4: description
@@ -117,7 +133,7 @@ class UC4_SaveGameCountTest {
         WhistGame game = runCount(
                 "2",
                 "P1", "P2", "P3", "P4",
-                "3",                              // TODO: verify
+                "3",
                 "1", "1", "9",
                 "3",                              // Step 1 UC4: save
                 "",                               // Step 2: blank — re-prompt
@@ -125,5 +141,9 @@ class UC4_SaveGameCountTest {
         );
 
         assertNotNull(game);
+
+        SaveRepository verifierRepo = new SaveRepository(testSavesDir);
+        assertTrue(verifierRepo.listDescriptions().contains("validDescription"));
+        assertFalse(verifierRepo.listDescriptions().contains(""));
     }
 }
