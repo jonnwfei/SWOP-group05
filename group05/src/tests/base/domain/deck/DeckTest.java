@@ -51,7 +51,7 @@ class DeckTest {
         @Test
         @DisplayName("Should distribute 52 cards into four hands of 13 cards each")
         void deal_DistributesCardsCorrectlyToFourPlayers() {
-            List<List<Card>> hands = deck.deal();
+            List<List<Card>> hands = deck.deal(Deck.DealType.WHIST);
 
             assertEquals(4, hands.size());
 

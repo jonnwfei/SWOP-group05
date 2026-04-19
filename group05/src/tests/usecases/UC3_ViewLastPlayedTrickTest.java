@@ -22,9 +22,9 @@ import static org.mockito.Mockito.*;
 
 /**
  * Scenario tests for UC 4.3 — View last-played trick.
- *
+ * <br>
  * Precondition: An in-app game is in progress and at least one trick has been played.
- *
+ * <br>
  * UC Steps:
  *  1. User can request to view the cards played in the last trick (input "0").
  *  2. System shows each card played and which player played it.
@@ -46,7 +46,7 @@ class UC3_ViewLastPlayedTrickTest {
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
         try (MockedConstruction<Deck> mockedDeck = mockConstruction(Deck.class, (mock, ctx) -> {
-            if (hands != null) when(mock.deal()).thenReturn(hands);
+            if (hands != null) when(mock.deal(Deck.DealType.WHIST)).thenReturn(hands);
         })) {
             GameController controller = new GameController();
             Field gameField = GameController.class.getDeclaredField("game");
@@ -88,6 +88,7 @@ class UC3_ViewLastPlayedTrickTest {
         WhistGame game = run(List.of(p1, other, other, other),
                 "1",                                    // Step 1 UC2: in-app game
                 "0",
+                "4",
                 "P1", "P2", "P3", "P4",
 
                 // Step 6 UC2: bidding
@@ -119,6 +120,7 @@ class UC3_ViewLastPlayedTrickTest {
         WhistGame game = run(List.of(p1Hand, other, other, other),
                 "1",                                    // UC2 Step 1
                 "0",
+                "4",
                 "P1", "P2", "P3", "P4",
 
                 // UC2 Step 6: bidding — all pass twice (re-deal)
@@ -154,6 +156,7 @@ class UC3_ViewLastPlayedTrickTest {
         WhistGame game = run(List.of(p1Hand, other, other, other),
                 "1",
                 "0",
+                "4",
                 "P1", "P2", "P3", "P4",
                 "1", "1", "1", "1",
                 "1", "1", "1", "1",
@@ -185,6 +188,7 @@ class UC3_ViewLastPlayedTrickTest {
         WhistGame game = run(List.of(p1Hand, other, other, other),
                 "1",
                 "0",
+                "4",
                 "P1", "P2", "P3", "P4",
                 "1", "1", "1", "1",
                 "1", "1", "1", "1",

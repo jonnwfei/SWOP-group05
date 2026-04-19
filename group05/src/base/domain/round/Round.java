@@ -67,6 +67,9 @@ public class Round {
     /** Winners used in count-mode miserie snapshots. */
     private List<Player> countMiserieWinners;
 
+    /** Explicit terminal flag used for restored/count rounds without full trick history. */
+    private boolean finished;
+
     /**
      * Constructs a new Round of Whist
      *
@@ -94,6 +97,7 @@ public class Round {
         this.scoreDeltas = new ArrayList<>(List.of(0, 0, 0, 0));
         this.countTricksWon = -1;
         this.countMiserieWinners = new ArrayList<>();
+        this.finished = false;
     }
 
     /**
@@ -159,6 +163,7 @@ public class Round {
         this.bids.addAll(finalBids);
         this.highestBid = finalBids.getFirst();
         this.players.forEach(Player::flushHand);
+        this.finished = true;
     }
 
     /**
@@ -192,7 +197,8 @@ public class Round {
         PlayerId winnerId = trick.getWinningPlayerId();
         this.currentPlayer = getPlayerById(winnerId);
 
-        if (isFinished()) {
+        if (shouldAutoFinishRound()) {
+            this.finished = true;
             // Delegate scoring calculation to our Pure Fabrication math engine!
             calculateAndDistributeScores();
         }
@@ -251,6 +257,8 @@ public class Round {
             int points = calculatedBid.calculateBasePoints(tricksWon);
             distributeScores(points, participants);
         }
+
+        this.finished = true;
     }
 
     /**
@@ -315,6 +323,10 @@ public class Round {
 
         // --- CASE 1: MISERIE ---
         if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
+            if (playedTricks.isEmpty()) {
+                return List.copyOf(countMiserieWinners);
+            }
+
             List<Player> successfulMiseriePlayers = new ArrayList<>();
             for (Player p : bidders) {
                 // In Miserie, you only win if you took exactly 0 tricks
@@ -326,7 +338,7 @@ public class Round {
         }
 
         // --- CASE 2: NORMAL BIDS (Solo, Partners) ---
-        int tricksWon = getTricksWonBy(bidders);
+        int tricksWon = countTricksWon >= 0 ? countTricksWon : getTricksWonBy(bidders);
         int points = highestBid.calculateBasePoints(tricksWon);
 
         // If points are positive, the Bidding team made their contract!
@@ -542,17 +554,39 @@ public class Round {
      * @return true if the round is finished based on trick count, passing, or Miserie early termination; false otherwise.
      */
     public boolean isFinished() {
+        if (finished) return true;
+
+        if (isAllPassFinished() || shouldAutoFinishRound()) {
+            this.finished = true;
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isAllPassFinished() {
+        return highestBid != null && highestBid.getType() == BidType.PASS && bids.size() == players.size();
+    }
+
+    private boolean shouldAutoFinishRound() {
         if (playedTricks.size() >= MAX_TRICKS) return true;
-        if (highestBid.getType() == BidType.PASS && bids.size() == players.size()) return true;
-        if (this.highestBid.getType().getCategory() == BidCategory.MISERIE) return isMiserieEarlyTermination();
+        if (highestBid == null) return false;
+        if (highestBid.getType().getCategory() == BidCategory.MISERIE) return isMiserieEarlyTermination();
         return false;
     }
 
     private boolean isMiserieEarlyTermination() {
+        if (highestBid == null || highestBid.getType().getCategory() != BidCategory.MISERIE) {
+            return false;
+        }
+
         List<PlayerId> miserieBidders = bids.stream()
                     .filter(b -> b.getType() == highestBid.getType())
                     .map(Bid::getPlayerId)
                     .toList();
+
+        if (miserieBidders.isEmpty()) {
+            return false;
+        }
 
         // Check if EVERY single one of them has won at least one trick
         for (PlayerId bidderId : miserieBidders) {
@@ -618,5 +652,6 @@ public class Round {
         this.countMiserieWinners = miserieWinners == null ? new ArrayList<>() : new ArrayList<>(miserieWinners);
         this.scoreDeltas.clear();
         this.scoreDeltas.addAll(restoredScoreDeltas);
+        this.finished = true;
     }
 }

@@ -17,11 +17,8 @@ import base.domain.results.PlayResults.*;
 import base.domain.results.GameResult;
 import base.domain.turn.BidTurn;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
 /**
  * Manages the Bidding phase of the Whist game.
  * Acts as the active controller, validating bids, applying forced contracts (Troel/Troela),
@@ -49,7 +46,7 @@ public class BidState extends State {
      */
     public BidState(WhistGame game) {
         super(game);
-        if (game.getPlayers() == null || game.getPlayers().size() != 4 || game.getPlayers().contains(null)) {
+        if (game.getPlayers() == null || game.getPlayers().size() != 4 || game.getPlayers().stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("Cannot start BidState: Game must have exactly 4 valid players.");
         }
 

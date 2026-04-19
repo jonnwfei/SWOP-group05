@@ -48,6 +48,7 @@ public class SaveRepository {
         if (saveDirectory == null)
             throw new IllegalArgumentException("saveDirectory cannot be null");
         this.savesDirectory = saveDirectory;
+        ensureDirectory();
     }
 
     /**

@@ -239,6 +239,43 @@ class RoundTest {
             verify(p3).updateScore(-30); // Pairs pay equal amounts [cite: 211]
             verify(p4).updateScore(-30);
         }
+
+        @Test
+        @DisplayName("restoreFromSnapshot() should mark a non-miserie round as finished and resolve winners")
+        void shouldRestoreFinishedRoundAndResolveWinnersFromCountData() {
+            when(mockHighestBid.getType()).thenReturn(BidType.SOLO);
+            when(mockHighestBid.calculateBasePoints(9)).thenReturn(30);
+
+            round.restoreFromSnapshot(
+                    mockHighestBid,
+                    Suit.HEARTS,
+                    List.of(p1),
+                    9,
+                    List.of(),
+                    List.of(30, -10, -10, -10)
+            );
+
+            assertTrue(round.isFinished());
+            assertEquals(List.of(p1), round.getWinningPlayers());
+        }
+
+        @Test
+        @DisplayName("restoreFromSnapshot() should use persisted miserie winners when trick history is absent")
+        void shouldRestoreMiserieWinnersWithoutTricks() {
+            when(mockHighestBid.getType()).thenReturn(BidType.MISERIE);
+
+            round.restoreFromSnapshot(
+                    mockHighestBid,
+                    null,
+                    List.of(p1, p2),
+                    -1,
+                    List.of(p2),
+                    List.of(-15, 15, 0, 0)
+            );
+
+            assertTrue(round.isFinished());
+            assertEquals(List.of(p2), round.getWinningPlayers());
+        }
     }
 
     private Trick mockCompletedTrick(PlayerId winnerId) {

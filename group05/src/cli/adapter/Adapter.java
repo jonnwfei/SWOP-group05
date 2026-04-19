@@ -269,7 +269,7 @@ public class Adapter {
                     List<Integer> indices = parser.parseNumbersInput(raw);
 
                     List<PlayerId> players = indices.stream()
-                            .map(i -> game.getPlayers().get(i - 1).getId())
+                            .map(i -> p.players().get(i - 1).getId())
                             .toList();
 
                     validatePlayerSelection(p.type(), players.size());
@@ -317,7 +317,7 @@ public class Adapter {
 
                     List<PlayerId> playerIds = indices.stream()
                             .map(i -> p.playerNames().get(i - 1))
-                            .map(name -> game.getPlayers().stream()
+                            .map(name -> game.getAllPlayers().stream()
                                     .filter(player -> player.getName().equals(name))
                                     .findFirst()
                                     .map(Player::getId)

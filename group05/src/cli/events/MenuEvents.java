@@ -12,6 +12,12 @@ public sealed interface MenuEvents extends IOEvent {
         }
     }
 
+    record AmountOfHumansIOEvent(int minHumans, int maxHumans) implements MenuEvents {
+        public boolean needsInput() {
+            return true;
+        }
+    }
+
     record BotStrategyIOEvent(int botIndex) implements MenuEvents {
         public boolean needsInput() {
             return true;
