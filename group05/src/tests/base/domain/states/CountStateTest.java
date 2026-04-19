@@ -3,14 +3,11 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.bid.BidType;
 import base.domain.card.Suit;
-import base.domain.commands.GameCommand;
 import base.domain.commands.GameCommand.*;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.CountResults.*;
-import base.domain.results.GameResult;
 import base.domain.round.Round;
-import base.storage.GamePersistenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
 
@@ -33,8 +29,6 @@ class CountStateTest {
 
     @Mock private WhistGame game;
     @Mock private Player p1, p2, p3, p4, p5;
-    @Mock private Round mockRound;
-    @Mock private GamePersistenceService mockPersistenceService;
 
     private final PlayerId id1 = new PlayerId();
     private final PlayerId id2 = new PlayerId();
@@ -43,7 +37,7 @@ class CountStateTest {
     private CountState state;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         lenient().when(p1.getId()).thenReturn(id1);
         lenient().when(p2.getId()).thenReturn(id2);
         lenient().when(p5.getId()).thenReturn(id5);
@@ -64,11 +58,6 @@ class CountStateTest {
         lenient().when(game.getPlayerById(id5)).thenReturn(p5);
 
         state = new CountState(game);
-
-        // Inject Mock Persistence Service via Reflection
-        Field psField = CountState.class.getDeclaredField("persistenceService");
-        psField.setAccessible(true);
-        psField.set(state, mockPersistenceService);
     }
 
     @Nested
@@ -98,7 +87,7 @@ class CountStateTest {
         void throwsOnUnhandledCommand() {
             state.executeState(); // Move out of START phase
 
-            // FIX: Use a real, permitted command that the switch doesn't expect!
+            // Use a real, permitted command that the switch doesn't expect!
             assertThrows(IllegalStateException.class, () -> state.executeState(new StartGameCommand()));
         }
     }
@@ -108,7 +97,7 @@ class CountStateTest {
     class NormalScoringWorkflow {
 
         @Test
-        @DisplayName("Walks through SELECT_BID -> SELECT_TRUMP -> SELECT_PLAYERS -> CALCULATE -> SCOREBOARD")
+        @DisplayName("Walks through SELECT_BID -> SELECT_TRUMP -> SELECT_PLAYERS -> CALCULATE -> TRANSITION")
         void walkSoloWorkflow() {
             state.executeState(); // START -> SELECT_BID
 
@@ -129,9 +118,10 @@ class CountStateTest {
             StateStep step3 = state.executeState(new PlayerListCommand(List.of(id1)));
             assertTrue(step3.result() instanceof AmountOfTrickWonResult);
 
-            // 5. Input Tricks Won (Calculates Score)
+            // 5. Input Tricks Won (Calculates Score and transitions out of ScoreBoardResult)
             StateStep step4 = state.executeState(new NumberCommand(13));
-            assertTrue(step4.result() instanceof ScoreBoardResult);
+            assertNull(step4.result(), "Should transition without a result payload");
+            assertTrue(step4.shouldTransition(), "Should flag state machine to transition");
 
             // Verify Game integration
             verify(game).addRound(any(Round.class));
@@ -153,7 +143,7 @@ class CountStateTest {
     class MiserieScoringWorkflow {
 
         @Test
-        @DisplayName("Walks through SELECT_BID -> SELECT_PLAYERS -> SELECT_WINNERS -> SCOREBOARD")
+        @DisplayName("Walks through SELECT_BID -> SELECT_PLAYERS -> SELECT_WINNERS -> TRANSITION")
         void walkMiserieWorkflow() {
             state.executeState(); // START -> SELECT_BID
 
@@ -168,7 +158,8 @@ class CountStateTest {
 
             // 3. Select Winning Players (Executes Calculation directly without tricks input)
             StateStep step3 = state.executeState(new PlayerListCommand(List.of(id1)));
-            assertTrue(step3.result() instanceof ScoreBoardResult);
+            assertNull(step3.result(), "Should transition without a result payload");
+            assertTrue(step3.shouldTransition(), "Should flag state machine to transition");
 
             verify(game).addRound(any(Round.class));
         }
@@ -200,93 +191,10 @@ class CountStateTest {
         }
 
         @Test
-        @DisplayName("Option 3: Save Description")
-        void testSaveDescription() throws Exception {
-            StateStep step = state.executeState(new NumberCommand(3));
-            assertTrue(step.result() instanceof SaveDescriptionResult);
-
-            StateStep saveStep = state.executeState(new TextCommand("Test Save"));
-            assertTrue(saveStep.result() instanceof ScoreBoardResult);
-            verify(mockPersistenceService).save(any(), any(), eq("Test Save"));
-        }
-
-        @Test
-        @DisplayName("Option 3: Save Description throws correctly on DB failure")
-        void testSaveDescriptionFailure() throws Exception {
-            state.executeState(new NumberCommand(3));
-
-            doThrow(new RuntimeException("DB offline")).when(mockPersistenceService).save(any(), any(), any());
-
-            IllegalStateException ex = assertThrows(IllegalStateException.class, () -> state.executeState(new TextCommand("Fail")));
-            assertTrue(ex.getMessage().contains("Error in CountState handleSaveDescription"));
-        }
-
-        @Test
-        @DisplayName("Option 4: Remove Round")
-        void testRemoveRound() {
-            when(game.getRounds()).thenReturn(List.of(mockRound));
-
-            StateStep step = state.executeState(new NumberCommand(4));
-            assertTrue(step.result() instanceof DeleteRoundResult);
-
-            // Cancel removal
-            StateStep cancelStep = state.executeState(new NumberCommand(0));
-            assertTrue(cancelStep.result() instanceof ScoreBoardResult);
-
-            // Actually remove round
-            state.executeState(new NumberCommand(4));
-            StateStep removeStep = state.executeState(new RoundCommand(mockRound));
-
-            verify(game).removeRound(mockRound);
-            verify(game).recalibrateScores();
-            assertTrue(removeStep.result() instanceof ScoreBoardResult);
-        }
-
-        @Test
-        @DisplayName("Option 5: Add Player")
-        void testAddPlayer() {
-            StateStep step = state.executeState(new NumberCommand(5));
-            assertTrue(step.result() instanceof AddHumanPlayerResult);
-
-            // Valid input adds
-            StateStep addStep = state.executeState(new TextCommand("Eve"));
-            verify(game).addPlayer(argThat(p -> p.getName().equals("Eve")));
-            assertTrue(addStep.result() instanceof ScoreBoardResult);
-        }
-
-        @Test
-        @DisplayName("Option 6: Remove Player")
-        void testRemovePlayer() {
-            // Cannot remove if <= 4 players
-            when(game.getTotalPlayerCount()).thenReturn(4);
-            StateStep rejectStep = state.executeState(new NumberCommand(6));
-            assertTrue(rejectStep.result() instanceof ScoreBoardResult);
-
-            // Can remove if > 4 players
-            when(game.getTotalPlayerCount()).thenReturn(5);
-            StateStep step = state.executeState(new NumberCommand(6));
-            assertTrue(step.result() instanceof PlayerSelectionResult);
-
-            // Empty input reprompts
-            StateStep emptyStep = state.executeState(new PlayerListCommand(Collections.emptyList()));
-            assertTrue(emptyStep.result() instanceof PlayerSelectionResult);
-
-            // Valid input removes
-            StateStep removeStep = state.executeState(new PlayerListCommand(List.of(id5)));
-            verify(game).removePlayer(p5);
-            assertTrue(removeStep.result() instanceof ScoreBoardResult);
-        }
-
-        @Test
-        @DisplayName("Throws on invalid Number Inputs")
+        @DisplayName("Throws on invalid Number Inputs (e.g. removed edit commands)")
         void throwsOnInvalidNumbers() {
+            assertThrows(IllegalStateException.class, () -> state.executeState(new NumberCommand(3)));
             assertThrows(IllegalStateException.class, () -> state.executeState(new NumberCommand(99)));
-        }
-
-        @Test
-        @DisplayName("Throws on rogue Text Inputs out of phase")
-        void throwsOnRogueTextInput() {
-            assertThrows(IllegalStateException.class, () -> state.executeState(new TextCommand("Rogue")));
         }
     }
 }

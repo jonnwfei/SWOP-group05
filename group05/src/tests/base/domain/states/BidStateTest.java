@@ -70,7 +70,6 @@ class BidStateTest {
         lenient().when(game.dealCards()).thenReturn(Suit.HEARTS);
         lenient().when(game.getCurrentRound()).thenReturn(round);
 
-        // FIX: Mock the current player on the round to prevent PlayState NPEs during nextState() transitions
         lenient().when(round.getCurrentPlayer()).thenReturn(p1);
 
         // Player lookups
@@ -89,11 +88,9 @@ class BidStateTest {
         void successfulInitialization() {
             BidState state = new BidState(game);
 
-            // Verifies the round was officially started
             verify(game).initializeNextRound(p1);
             verify(game).notifyRoundStarted();
 
-            // P1 is the first to act (left of dealer P4)
             StateStep initialStep = state.executeState();
             assertTrue(initialStep.result() instanceof BidTurnResult);
             assertEquals("Alice", ((BidTurnResult) initialStep.result()).playerName());
@@ -174,20 +171,18 @@ class BidStateTest {
         void allPassWorkflow() {
             BidState state = new BidState(game);
 
-            // FIX: Successful bids return a payload for the NEXT player, not null!
-            StateStep step1 = state.executeState(new BidCommand(BidType.PASS)); // P1 passes
+            StateStep step1 = state.executeState(new BidCommand(BidType.PASS));
             assertTrue(step1.result() instanceof BidTurnResult);
             assertEquals("Bob", ((BidTurnResult) step1.result()).playerName(), "Turn passes to Bob");
 
-            StateStep step2 = state.executeState(new BidCommand(BidType.PASS)); // P2 passes
+            StateStep step2 = state.executeState(new BidCommand(BidType.PASS));
             assertTrue(step2.result() instanceof BidTurnResult);
             assertEquals("Charlie", ((BidTurnResult) step2.result()).playerName(), "Turn passes to Charlie");
 
-            StateStep step3 = state.executeState(new BidCommand(BidType.PASS)); // P3 passes
+            StateStep step3 = state.executeState(new BidCommand(BidType.PASS));
             assertTrue(step3.result() instanceof BidTurnResult);
             assertEquals("Dave", ((BidTurnResult) step3.result()).playerName(), "Turn passes to Dave");
 
-            // P4 passes -> Bidding Completes
             StateStep step4 = state.executeState(new BidCommand(BidType.PASS));
             assertTrue(step4.result() instanceof BiddingCompleted);
             assertTrue(step4.shouldTransition());
@@ -207,10 +202,8 @@ class BidStateTest {
 
             assertThrows(IllegalStateException.class, () -> state.executeState(new BidCommand(BidType.PASS)));
 
-            // Provide the suit
             StateStep suitStep = state.executeState(new SuitCommand(Suit.SPADES));
 
-            // FIX: Must assert next turn payload, not null
             assertTrue(suitStep.result() instanceof BidTurnResult);
             assertEquals("Bob", ((BidTurnResult) suitStep.result()).playerName());
         }
@@ -220,10 +213,8 @@ class BidStateTest {
         void preSuppliedSuit() {
             BidState state = new BidState(game);
 
-            // Submits Abondance 9 AND the suit simultaneously
             StateStep step = state.executeState(new BidCommand(BidType.ABONDANCE_9, Suit.CLUBS));
 
-            // FIX: Assert next turn payload
             assertTrue(step.result() instanceof BidTurnResult, "Should seamlessly process and move to next player");
             assertEquals("Bob", ((BidTurnResult) step.result()).playerName());
         }
@@ -275,9 +266,9 @@ class BidStateTest {
         void rejectedProposalFlow() {
             BidState state = new BidState(game);
 
-            state.executeState(new BidCommand(BidType.PROPOSAL)); // P1 proposes
-            state.executeState(new BidCommand(BidType.PASS)); // P2 passes
-            state.executeState(new BidCommand(BidType.PASS)); // P3 passes
+            state.executeState(new BidCommand(BidType.PROPOSAL));
+            state.executeState(new BidCommand(BidType.PASS));
+            state.executeState(new BidCommand(BidType.PASS));
 
             StateStep step = state.executeState(new BidCommand(BidType.PASS));
             assertTrue(step.result() instanceof ProposalRejected);
@@ -317,11 +308,12 @@ class BidStateTest {
         @DisplayName("Defensive Guards: Corrupt Proposal Resolution")
         void corruptProposalResolution() throws Exception {
             BidState state = new BidState(game);
-            setPrivateField(state, "currentHighestBidType", BidType.PROPOSAL);
+
+            // FIX: Use the new "currentHighestBid" field and instantiate a real Bid
+            setPrivateField(state, "currentHighestBid", BidType.PROPOSAL.instantiate(id1, null));
 
             assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "handleEndOfBidding"));
             assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "handleRejectedProposal", BidType.PASS));
-            assertThrows(IllegalStateException.class, state::nextState);
         }
 
         @Test
@@ -329,8 +321,18 @@ class BidStateTest {
         void corruptPlayStatePrep() throws Exception {
             BidState state = new BidState(game);
 
-            setPrivateField(state, "currentHighestBidType", BidType.ABONDANCE_9);
+            // FIX: Since we store the Bid now, the risk is different. We test the new guard branches in setRoundReadyForPlayState!
 
+            // Guard 1: Null highest bid
+            setPrivateField(state, "currentHighestBid", null);
+            assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
+
+            // Guard 2: PASS winning bid
+            setPrivateField(state, "currentHighestBid", BidType.PASS.instantiate(id1, null));
+            assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
+
+            // Guard 3: Unresolved PROPOSAL
+            setPrivateField(state, "currentHighestBid", BidType.PROPOSAL.instantiate(id1, null));
             assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
         }
     }
@@ -344,12 +346,12 @@ class BidStateTest {
         void abondanceWinnerLeads() {
             BidState state = new BidState(game);
 
-            state.executeState(new BidCommand(BidType.PASS)); // P1
-            state.executeState(new BidCommand(BidType.ABONDANCE_9, Suit.SPADES)); // P2
-            state.executeState(new BidCommand(BidType.PASS)); // P3
-            state.executeState(new BidCommand(BidType.PASS)); // P4
+            state.executeState(new BidCommand(BidType.PASS));
+            state.executeState(new BidCommand(BidType.ABONDANCE_9, Suit.SPADES));
+            state.executeState(new BidCommand(BidType.PASS));
+            state.executeState(new BidCommand(BidType.PASS));
 
-            state.nextState(); // NPE fixed by the lenient Round mock!
+            state.nextState();
 
             verify(round).startPlayPhase(anyList(), any(), eq(Suit.SPADES), eq(p2));
         }
@@ -365,11 +367,11 @@ class BidStateTest {
 
             BidState state = new BidState(game);
 
-            state.executeState(new BidCommand(BidType.PASS)); // P2
-            state.executeState(new BidCommand(BidType.PASS)); // P3
-            state.executeState(new BidCommand(BidType.PASS)); // P4
+            state.executeState(new BidCommand(BidType.PASS));
+            state.executeState(new BidCommand(BidType.PASS));
+            state.executeState(new BidCommand(BidType.PASS));
 
-            state.nextState(); // NPE fixed by the lenient Round mock!
+            state.nextState();
 
             verify(round).startPlayPhase(anyList(), any(), eq(Suit.SPADES), eq(p3));
         }

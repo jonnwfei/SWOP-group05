@@ -1,10 +1,12 @@
 package base.domain.results;
 
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,11 +25,15 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("BidResults Data Transfer Objects & Validation")
 class BidResultsTest {
 
-    // Complex entity can still be mocked safely
     @Mock private Player mockPlayer;
 
+    // Use real instances for records and sealed classes to prevent Mockito crashes
+    private final PlayerId testPlayerId = new PlayerId();
     private final Card testCard = new Card(Suit.HEARTS, Rank.ACE);
     private final BidType testBidType = BidType.SOLO;
+
+    // Instantiate a real Bid object using the BidType factory method
+    private final Bid testBid = BidType.SOLO.instantiate(testPlayerId, Suit.HEARTS);
 
     @Nested
     @DisplayName("Architectural Integrity")
@@ -58,12 +64,13 @@ class BidResultsTest {
             List<Card> hand = List.of(testCard);
 
             BidResults.BidTurnResult result = new BidResults.BidTurnResult(
-                    "Alice", Suit.HEARTS, testBidType, bids, hand, mockPlayer
+                    "Alice", Suit.HEARTS, testBid, "Charlie", bids, hand, mockPlayer
             );
 
             assertEquals("Alice", result.playerName());
             assertEquals(Suit.HEARTS, result.trumpSuit());
-            assertEquals(testBidType, result.currentHighestBid());
+            assertEquals(testBid, result.currentHighestBid());
+            assertEquals("Charlie", result.highestBidderName());
             assertEquals(bids, result.availableBids());
             assertEquals(hand, result.hand());
             assertEquals(mockPlayer, result.player());
@@ -76,7 +83,7 @@ class BidResultsTest {
             List<Card> mutableHand = new ArrayList<>(List.of(testCard));
 
             BidResults.BidTurnResult result = new BidResults.BidTurnResult(
-                    "Alice", Suit.HEARTS, testBidType, mutableBids, mutableHand, mockPlayer
+                    "Alice", Suit.HEARTS, testBid, "Charlie", mutableBids, mutableHand, mockPlayer
             );
 
             // Mutate the original lists
@@ -99,18 +106,18 @@ class BidResultsTest {
             List<Card> validHand = List.of(testCard);
 
             // playerName
-            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult(null, Suit.HEARTS, testBidType, validBids, validHand, mockPlayer));
-            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("   ", Suit.HEARTS, testBidType, validBids, validHand, mockPlayer));
+            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult(null, Suit.HEARTS, testBid, "Charlie", validBids, validHand, mockPlayer));
+            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("   ", Suit.HEARTS, testBid, "Charlie", validBids, validHand, mockPlayer));
 
             // availableBids
-            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBidType, null, validHand, mockPlayer));
-            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBidType, Collections.emptyList(), validHand, mockPlayer));
+            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBid, "Charlie", null, validHand, mockPlayer));
+            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBid, "Charlie", Collections.emptyList(), validHand, mockPlayer));
 
             // hand
-            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBidType, validBids, null, mockPlayer));
+            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBid, "Charlie", validBids, null, mockPlayer));
 
             // player
-            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBidType, validBids, validHand, null));
+            assertThrows(IllegalArgumentException.class, () -> new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBid, "Charlie", validBids, validHand, null));
         }
 
         @Test
@@ -119,9 +126,9 @@ class BidResultsTest {
             List<BidType> bids = List.of(testBidType);
             List<Card> hand = List.of(testCard);
 
-            BidResults.BidTurnResult r1 = new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBidType, bids, hand, mockPlayer);
-            BidResults.BidTurnResult r2 = new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBidType, bids, hand, mockPlayer);
-            BidResults.BidTurnResult r3 = new BidResults.BidTurnResult("Bob", Suit.HEARTS, testBidType, bids, hand, mockPlayer);
+            BidResults.BidTurnResult r1 = new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBid, "Charlie", bids, hand, mockPlayer);
+            BidResults.BidTurnResult r2 = new BidResults.BidTurnResult("Alice", Suit.HEARTS, testBid, "Charlie", bids, hand, mockPlayer);
+            BidResults.BidTurnResult r3 = new BidResults.BidTurnResult("Bob", Suit.HEARTS, testBid, "Charlie", bids, hand, mockPlayer);
 
             assertEquals(r1, r2);
             assertEquals(r1.hashCode(), r2.hashCode());

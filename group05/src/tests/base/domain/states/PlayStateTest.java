@@ -314,16 +314,6 @@ class PlayStateTest {
     class NextStateTests {
 
         @Test
-        @DisplayName("Transitions to ScoreBoardState if the round is finished")
-        void transitionsToScoreBoard() {
-            PlayState state = new PlayState(game);
-            when(round.isFinished()).thenReturn(true);
-
-            State next = state.nextState();
-            assertTrue(next instanceof ScoreBoardState);
-        }
-
-        @Test
         @DisplayName("Returns itself (stays in PlayState) if round is ongoing")
         void staysInPlayState() {
             PlayState state = new PlayState(game);

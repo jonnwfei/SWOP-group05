@@ -36,7 +36,7 @@ class CountResultsTest {
             assertTrue(CountResults.class.isSealed(), "CountResults must be sealed.");
 
             List<Class<?>> permitted = Arrays.asList(CountResults.class.getPermittedSubclasses());
-            assertEquals(9, permitted.size(), "Should have exactly 9 permitted subclasses.");
+            assertEquals(8, permitted.size(), "Should have exactly 9 permitted subclasses.");
             assertTrue(permitted.contains(CountResults.AddPlayerResult.class));
             assertTrue(permitted.contains(CountResults.AddHumanPlayerResult.class));
             assertTrue(permitted.contains(CountResults.BidSelectionResult.class));
@@ -44,7 +44,6 @@ class CountResultsTest {
             assertTrue(permitted.contains(CountResults.PlayerSelectionResult.class));
             assertTrue(permitted.contains(CountResults.AmountOfTrickWonResult.class));
             assertTrue(permitted.contains(CountResults.ScoreBoardResult.class));
-            assertTrue(permitted.contains(CountResults.SaveDescriptionResult.class));
             assertTrue(permitted.contains(CountResults.DeleteRoundResult.class));
         }
     }
@@ -92,16 +91,6 @@ class CountResultsTest {
             assertEquals(r1, r2);
             assertEquals(r1.hashCode(), r2.hashCode());
             assertTrue(r1.toString().contains("AmountOfTrickWonResult"));
-        }
-
-        @Test
-        @DisplayName("Validates SaveDescriptionResult")
-        void saveDescriptionResult() {
-            CountResults.SaveDescriptionResult r1 = new CountResults.SaveDescriptionResult();
-            CountResults.SaveDescriptionResult r2 = new CountResults.SaveDescriptionResult();
-            assertEquals(r1, r2);
-            assertEquals(r1.hashCode(), r2.hashCode());
-            assertTrue(r1.toString().contains("SaveDescriptionResult"));
         }
     }
 
