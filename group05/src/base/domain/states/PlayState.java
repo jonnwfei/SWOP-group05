@@ -40,7 +40,7 @@ public class PlayState extends State {
     @Override
     public StateStep executeState() {
         if (currentRound.isFinished()) {
-            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), getFallbackCard()));
+            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
         }
 
         return StateStep.stay(buildNeedCardResult(currentRound.getCurrentPlayer()));
@@ -49,7 +49,7 @@ public class PlayState extends State {
     @Override
     public StateStep executeState(GameCommand command) {
         if (currentRound.isFinished()) {
-            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), getFallbackCard()));
+            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
         }
 
         Player currentPlayer = currentRound.getCurrentPlayer();
@@ -59,14 +59,6 @@ public class PlayState extends State {
             case PlayCardResult _ -> toStep(buildNeedCardResult(currentPlayer));
             default -> toStep(result);
         };
-    }
-
-    private Card getFallbackCard() {
-        Trick lastTrick = currentRound.getLastPlayedTrick();
-        if (lastTrick != null && !lastTrick.getTurns().isEmpty()) {
-            return lastTrick.getTurns().getLast().playedCard();
-        }
-        return new Card(Suit.HEARTS, Rank.TWO);
     }
 
     private GameResult handlePlayerMove(Player player, GameCommand command) {
