@@ -5,6 +5,8 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
+import base.domain.card.Rank;
+import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.commands.GameCommand.*;
 import base.domain.player.Player;
@@ -38,7 +40,7 @@ public class PlayState extends State {
     @Override
     public StateStep executeState() {
         if (currentRound.isFinished()) {
-            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
+            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), getFallbackCard()));
         }
 
         return StateStep.stay(buildNeedCardResult(currentRound.getCurrentPlayer()));
@@ -47,7 +49,7 @@ public class PlayState extends State {
     @Override
     public StateStep executeState(GameCommand command) {
         if (currentRound.isFinished()) {
-            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), null));
+            return StateStep.transition(new EndOfRoundResult(currentRound.getCurrentPlayer().getName(), getFallbackCard()));
         }
 
         Player currentPlayer = currentRound.getCurrentPlayer();
@@ -57,6 +59,14 @@ public class PlayState extends State {
             case PlayCardResult _ -> toStep(buildNeedCardResult(currentPlayer));
             default -> toStep(result);
         };
+    }
+
+    private Card getFallbackCard() {
+        Trick lastTrick = currentRound.getLastPlayedTrick();
+        if (lastTrick != null && !lastTrick.getTurns().isEmpty()) {
+            return lastTrick.getTurns().getLast().playedCard();
+        }
+        return new Card(Suit.HEARTS, Rank.TWO);
     }
 
     private GameResult handlePlayerMove(Player player, GameCommand command) {
