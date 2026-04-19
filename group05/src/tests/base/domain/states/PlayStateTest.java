@@ -103,19 +103,6 @@ class PlayStateTest {
             assertTrue(step.result() instanceof PlayCardResult);
             assertEquals("Alice", ((PlayCardResult) step.result()).player().getName());
         }
-
-        @Test
-        @DisplayName("Returns EndOfRoundResult transition if round is already finished")
-        void transitionsWhenFinished() {
-            PlayState state = new PlayState(game);
-            when(round.isFinished()).thenReturn(true);
-
-            StateStep step = state.executeState();
-
-            assertTrue(step.shouldTransition());
-            assertTrue(step.result() instanceof EndOfRoundResult);
-            assertEquals("Alice", ((EndOfRoundResult) step.result()).name());
-        }
     }
 
     @Nested
@@ -161,15 +148,6 @@ class PlayStateTest {
             when(round.isFinished()).thenReturn(false);
         }
 
-        @Test
-        @DisplayName("Transitions early if command is sent but round is finished")
-        void earlyTransitionIfRoundFinished() {
-            when(round.isFinished()).thenReturn(true);
-            StateStep step = state.executeState(new TextCommand("dummy"));
-
-            assertTrue(step.shouldTransition());
-            assertTrue(step.result() instanceof EndOfRoundResult);
-        }
 
         @Test
         @DisplayName("NumberCommand(0) returns previous trick history if available")

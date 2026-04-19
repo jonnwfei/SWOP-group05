@@ -5,8 +5,6 @@ import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
-import base.domain.card.Rank;
-import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.commands.GameCommand.*;
 import base.domain.player.Player;
