@@ -1,8 +1,9 @@
-package cli;
+package cli.flows;
 
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.storage.snapshots.SaveMode;
+import cli.TerminalManager;
 import cli.events.IOEvent;
 
 import static cli.events.CountEvents.ScoreBoardIOEvent;
@@ -21,7 +22,13 @@ public class ScoreBoardFlow {
     private final TerminalManager terminalManager;
     private final WhistGame game;
     private final GameEditFlow editFlow;
-
+    /**
+     * Creates a new ScoreBoardFlow.
+     *
+     * @param terminalManager handles user interaction
+     * @param game the current game instance
+     * @param editFlow shared edit functionality
+     */
     public ScoreBoardFlow(TerminalManager terminalManager, WhistGame game, GameEditFlow editFlow) {
         if (terminalManager == null)
             throw new IllegalArgumentException("terminalManager cannot be null");
@@ -35,27 +42,43 @@ public class ScoreBoardFlow {
     }
 
     /**
-     * Runs the scoreboard loop until the user chooses to continue or quit.
+     * Runs the scoreboard loop until the user exits or continues.
      *
-     * @return true to play another round, false to exit to the main menu
+     * @param mode current game mode
+     * @return true to continue playing, false to return to menu
      */
-    public boolean run() {
+    public boolean run(SaveMode mode) {
         while (true) {
             int choice = showMenu();
             switch (choice) {
                 case 1 -> {
-                    game.advanceDealer();
-                    return true;
-                }
-                case 2 -> { return false; }
-                case 3 -> editFlow.saveGame();
-                case 4 -> editFlow.removeRound();
-                case 5 -> editFlow.addPlayer();
-                case 6 -> editFlow.removePlayer();
+                    if (game.getAllPlayers().size() > 4) {
+                        game.rotateActivePlayers();
+                    }
+                    if (mode == SaveMode.COUNT){
+                        game.startCount();
+                    }
+                    else {
+
+                        game.startGame();
+                        game.advanceDealer();
+                    }
+
+                    return true; }   // another round
+                case 2 -> { return false; }  // main menu
+                case 3 ->  editFlow.saveGame();  // save then re-show
+                case 4 ->  editFlow.removeRound();
+                case 5 ->  editFlow.addPlayer();
+                case 6 ->  editFlow.removePlayer();
+                default -> throw new IllegalStateException("Unexpected value: " + choice);
             }
         }
     }
-
+    /**
+     * Displays the scoreboard and menu options.
+     *
+     * @return selected menu option
+     */
     private int showMenu() {
         List<String> names = game.getAllPlayers().stream().map(Player::getName).toList();
         List<Integer> scores = game.getAllPlayers().stream().map(Player::getScore).toList();
@@ -63,7 +86,14 @@ public class ScoreBoardFlow {
         int max = canRemove ? 6 : 5;
         return askInt(new ScoreBoardIOEvent(names, scores, canRemove), 1, max);
     }
-
+    /**
+     * Reads an integer within a range.
+     *
+     * @param event IO event to display
+     * @param min minimum value
+     * @param max maximum value
+     * @return validated integer
+     */
     private int askInt(IOEvent event, int min, int max) {
         while (true) {
             try {

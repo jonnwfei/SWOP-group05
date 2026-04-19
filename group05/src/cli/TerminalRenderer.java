@@ -214,7 +214,7 @@ public class TerminalRenderer {
     private void renderPlayerSelectionEvent(PlayerSelectionIOEvent event) {
         String prompt;
         if (!event.multi()){
-            prompt = "Select the main bidder:";
+            prompt = "Select a single player";
         }
         else{
             switch (event.type()) {

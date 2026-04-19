@@ -1,4 +1,4 @@
-package cli;
+package cli.flows;
 
 import base.domain.WhistGame;
 import base.domain.player.Player;
@@ -7,6 +7,7 @@ import base.domain.round.Round;
 import base.domain.strategy.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
+import cli.TerminalManager;
 import cli.events.IOEvent;
 
 import static cli.events.CountEvents.*;
@@ -28,8 +29,15 @@ public class GameEditFlow {
     private final TerminalManager terminalManager;
     private final WhistGame game;
     private final GamePersistenceService persistenceService;
-    private final SaveMode mode;   // COUNT or GAME — governs what actions are available
-
+    private     SaveMode mode;   // COUNT or GAME — governs what actions are available
+    /**
+     * Creates a new GameEditFlow.
+     *
+     * @param terminalManager handles input/output with the user
+     * @param game the current game instance
+     * @param persistenceService service used for saving/loading
+     * @param mode determines which actions are allowed
+     */
     public GameEditFlow(TerminalManager terminalManager,
                         WhistGame game,
                         GamePersistenceService persistenceService,
@@ -44,10 +52,9 @@ public class GameEditFlow {
         this.mode              = mode;
     }
 
-    // =========================================================================
-    // SAVE
-    // =========================================================================
-
+    /**
+     * Saves the current game with a user-provided description.
+     */
     public void saveGame() {
         String description = askNonBlankString(new SaveDescriptionIOEvent());
         try {
@@ -57,9 +64,6 @@ public class GameEditFlow {
         }
     }
 
-    // =========================================================================
-    // ADD PLAYER
-    // =========================================================================
 
     /**
      * Adds a player. In COUNT mode only humans are allowed.
@@ -99,10 +103,11 @@ public class GameEditFlow {
         game.addPlayer(new Player(new LowBotStrategy(), "Low bot"));
     }
 
-    // =========================================================================
-    // REMOVE PLAYER
-    // =========================================================================
-
+    /**
+     * Removes a player selected by the user.
+     *
+     * @return true if a player was removed, false otherwise
+     */
     public boolean removePlayer() {
         if (!game.canRemovePlayer()) return false;
 
@@ -116,10 +121,11 @@ public class GameEditFlow {
         return true;
     }
 
-    // =========================================================================
-    // REMOVE ROUND
-    // =========================================================================
-
+    /**
+     * Removes a round selected by the user and recalculates scores.
+     *
+     * @return true if a round was removed, false otherwise
+     */
     public boolean removeRound() {
         List<Round> rounds = game.getRounds();
         if (rounds.isEmpty()) return false;
@@ -127,15 +133,19 @@ public class GameEditFlow {
         int choice = askInt(new DeleteRoundIOEvent(rounds), 0, rounds.size());
         if (choice == 0) return false;
 
-        game.removeRound(rounds.get(choice - 1));
+        game.removeRound(rounds.get(choice -1));
         game.recalibrateScores();
         return true;
     }
 
-    // =========================================================================
-    // Input helpers
-    // =========================================================================
-
+    /**
+     * Reads an integer within a given range.
+     *
+     * @param event IO event to display
+     * @param min minimum allowed value
+     * @param max maximum allowed value
+     * @return validated integer input
+     */
     private int askInt(IOEvent event, int min, int max) {
         while (true) {
             try {
@@ -148,7 +158,12 @@ public class GameEditFlow {
             }
         }
     }
-
+    /**
+     * Reads a non-empty string from the user.
+     *
+     * @param event IO event to display
+     * @return non-blank string
+     */
     private String askNonBlankString(IOEvent event) {
         while (true) {
             String raw = terminalManager.handle(event).rawInput();
@@ -157,7 +172,12 @@ public class GameEditFlow {
             System.out.println("Input cannot be empty.");
         }
     }
-
+    /**
+     * Reads a list of integers (comma separated).
+     *
+     * @param event IO event to display
+     * @return list of integers (empty if none)
+     */
     private List<Integer> askIntList(IOEvent event) {
         while (true) {
             try {
@@ -172,5 +192,15 @@ public class GameEditFlow {
                 System.out.println("Invalid input. Please enter comma-separated numbers.");
             }
         }
+    }
+
+    /**
+     *
+     * Sets the mode of the game
+     * @param mode the new mode
+     */
+    public void setMode(SaveMode mode) {
+        if (mode == null) throw new IllegalArgumentException("mode cannot be null");
+        this.mode = mode;
     }
 }

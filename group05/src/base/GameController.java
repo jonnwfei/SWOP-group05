@@ -6,16 +6,19 @@ import base.domain.results.GameResult;
 import base.domain.states.StateStep;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
-import cli.GameEditFlow;
-import cli.MenuFlow;
-import cli.ScoreBoardFlow;
+import cli.flows.GameEditFlow;
+import cli.flows.MenuFlow;
+import cli.flows.ScoreBoardFlow;
 import cli.TerminalManager;
 import cli.adapter.Adapter;
 import cli.adapter.AdapterResponse;
 import cli.adapter.AdapterResult;
 import cli.elements.Response;
 import cli.events.IOEvent;
-
+/**
+ * Main controller of the application.
+ * Coordinates menu flow, game state machine, and user interaction.
+ */
 public class GameController {
 
     private final WhistGame game;
@@ -23,7 +26,9 @@ public class GameController {
     private final Adapter adapter;
     private final MenuFlow menuFlow;
     private final GamePersistenceService persistenceService;
-
+    /**
+     * Creates a new GameController with all required components.
+     */
     public GameController() {
         this.game = new WhistGame();
         this.terminalManager = new TerminalManager();
@@ -31,19 +36,28 @@ public class GameController {
         this.persistenceService = new GamePersistenceService();
         this.menuFlow = new MenuFlow(terminalManager, persistenceService, game);
     }
-
+    /**
+     * Main application loop.
+     * Handles menu navigation and repeated game sessions.
+     */
     public void run() {
         while (true) {
-            SaveMode mode = menuFlow.run(); // returns COUNT or GAME
-
+            game.resetPlayers();
+            game.resetRounds();
+            SaveMode mode = menuFlow.run();
             GameEditFlow editFlow = new GameEditFlow(terminalManager, game, persistenceService, mode);
             ScoreBoardFlow scoreBoardFlow = new ScoreBoardFlow(terminalManager, game, editFlow);
-
-            runStateMachine();
-            scoreBoardFlow.run();
+            boolean continueSession = true;
+            while (continueSession) {
+                runStateMachine();
+                continueSession = scoreBoardFlow.run(mode); // true = another round, false = main menu
+            }
+            // false → falls through to menuFlow.run() which resets and restarts
         }
     }
-
+    /**
+     * Executes the game state machine until the game ends.
+     */
     private void runStateMachine() {
         GameCommand command = null;
         boolean stateRunning = true;
@@ -73,7 +87,13 @@ public class GameController {
             command = null;
         }
     }
-
+    /**
+     * Handles user interaction for a given state.
+     *
+     * @param needsIO IO instructions
+     * @param result current game result
+     * @return next command to execute
+     */
     private GameCommand handleIO(AdapterResult.NeedsIO needsIO, GameResult result) {
         for (IOEvent pre : needsIO.preamble()) {
             terminalManager.handle(pre);
