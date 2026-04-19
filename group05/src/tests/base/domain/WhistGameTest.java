@@ -30,12 +30,8 @@ import static org.mockito.Mockito.*;
 class WhistGameTest {
 
     private WhistGame game;
-    private Player mockPlayer1;
-    private Player mockPlayer2;
-    private Player mockPlayer3;
-    private Player mockPlayer4;
-    private PlayerId id1;
-    private PlayerId id2;
+    private Player mockPlayer1, mockPlayer2, mockPlayer3, mockPlayer4;
+    private PlayerId id1, id2, id3, id4;
 
     @BeforeEach
     void setUp() {
@@ -48,6 +44,8 @@ class WhistGameTest {
 
         id1 = new PlayerId();
         id2 = new PlayerId();
+        id3 = new PlayerId(); // FIXED: Added IDs for 3 and 4
+        id4 = new PlayerId();
 
         Strategy dummyStrategy = mock(HumanStrategy.class);
 
@@ -58,6 +56,8 @@ class WhistGameTest {
 
         lenient().when(mockPlayer1.getId()).thenReturn(id1);
         lenient().when(mockPlayer2.getId()).thenReturn(id2);
+        lenient().when(mockPlayer3.getId()).thenReturn(id3);
+        lenient().when(mockPlayer4.getId()).thenReturn(id4);
     }
 
     @Nested
@@ -79,9 +79,13 @@ class WhistGameTest {
             // Clockwise fashion is the standard for Whist bidding and play
             game.addPlayer(mockPlayer1);
             game.addPlayer(mockPlayer2);
+            game.addPlayer(mockPlayer3);
+            game.addPlayer(mockPlayer4);
 
+            assertEquals(mockPlayer1, game.getNextPlayer(mockPlayer4)); // Loop back (Modulo logic)
             assertEquals(mockPlayer2, game.getNextPlayer(mockPlayer1));
-            assertEquals(mockPlayer1, game.getNextPlayer(mockPlayer2)); // Loop back (Modulo logic)
+            assertEquals(mockPlayer3, game.getNextPlayer(mockPlayer2));
+            assertEquals(mockPlayer4, game.getNextPlayer(mockPlayer3));
         }
     }
 
@@ -93,6 +97,8 @@ class WhistGameTest {
         void advanceDealer_CyclesToken() {
             game.addPlayer(mockPlayer1);
             game.addPlayer(mockPlayer2);
+            game.addPlayer(mockPlayer3);
+            game.addPlayer(mockPlayer4);
             game.setDealerPlayer(mockPlayer1);
 
             game.advanceDealer();

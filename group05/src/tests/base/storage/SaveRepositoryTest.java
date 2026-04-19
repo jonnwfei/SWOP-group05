@@ -248,10 +248,7 @@ class SaveRepositoryTest {
             Path conflictingFile = tempDir.resolve("sabotaged_saves");
             Files.createFile(conflictingFile);
 
-            SaveRepository badRepo = new SaveRepository(conflictingFile);
-
-            assertThrows(IllegalStateException.class, badRepo::listDescriptions,
-                    "Should throw IllegalStateException wrapping the IOException.");
+            assertThrows(IllegalStateException.class, () -> new SaveRepository(conflictingFile));
         }
 
         @Test

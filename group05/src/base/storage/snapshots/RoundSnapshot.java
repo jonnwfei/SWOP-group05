@@ -3,6 +3,7 @@ package base.storage.snapshots;
 import base.domain.bid.BidType;
 import base.domain.card.Suit;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -56,9 +57,9 @@ public record RoundSnapshot(
      */
     public RoundSnapshot {
         if (bidType == null) throw new IllegalArgumentException("bidType of RoundSnapshot cannot be null");
-        if (bidderIndex < 0 || bidderIndex > 3) throw new IllegalArgumentException("bidderIdx can't be negative or greater than 3");
-        if (multiplier < 1) throw new IllegalArgumentException("multiplier must be at least 1");
-        if (tricksWon < -1 || tricksWon > 13) throw new IllegalArgumentException("tricksWon must be -1 or between 0 and 13");
+        if (bidderIndex < 0 || bidderIndex > 3) throw new IllegalArgumentException("bidderIdx can't be negative or greater than 3: " + bidderIndex);
+        if (multiplier < 1) throw new IllegalArgumentException("multiplier must be at least 1: " + multiplier);
+        if (tricksWon < -1 || tricksWon > 13) throw new IllegalArgumentException("tricksWon must be -1 or between 0 and 13: " +  tricksWon);
         if (participantIndices == null) throw new IllegalArgumentException("Participant indices cannot be null");
 
         if (miserieWinnerIndices == null) miserieWinnerIndices = List.of();
@@ -67,12 +68,12 @@ public record RoundSnapshot(
             throw new IllegalArgumentException("Score deltas must contain exactly 4 entries");
 
         if (participantIndices.stream().anyMatch(i -> i == null || i < 0 || i > 3))
-            throw new IllegalArgumentException("Participant index out of range");
+            throw new IllegalArgumentException("Participant index out of range: " +  participantIndices);
 
         if (miserieWinnerIndices.stream().anyMatch(i -> i == null || i < 0 || i > 3))
-            throw new IllegalArgumentException("Miserie winner index out of range");
+            throw new IllegalArgumentException("Miserie winner index out of range: " + miserieWinnerIndices);
 
-        if (!participantIndices.containsAll(miserieWinnerIndices))
+        if (!new HashSet<>(participantIndices).containsAll(miserieWinnerIndices))
             throw new IllegalArgumentException("Miserie winners must be participants");
 
         if (scoreDeltas.stream().anyMatch(Objects::isNull))
