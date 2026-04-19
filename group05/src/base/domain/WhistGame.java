@@ -372,4 +372,12 @@ public class WhistGame {
     public void notifyTurnPlayed(PlayTurn playTurn) {
         for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
     }
+
+    /**
+     *
+     * @return true if possible to remove player
+     */
+    public boolean canRemovePlayer() {
+        return (this.allPlayers.size() > WhistRules.REQUIRED_PLAYERS);
+    }
 }

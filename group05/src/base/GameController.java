@@ -3,99 +3,114 @@ package base;
 import base.domain.WhistGame;
 import base.domain.commands.GameCommand;
 import base.domain.results.GameResult;
-import base.storage.GamePersistenceService;
 import base.domain.states.StateStep;
 import base.storage.GamePersistenceService;
+import base.storage.snapshots.SaveMode;
+import cli.flows.GameEditFlow;
+import cli.flows.MenuFlow;
+import cli.flows.ScoreBoardFlow;
+import cli.TerminalManager;
+import cli.adapter.Adapter;
 import cli.adapter.AdapterResponse;
 import cli.adapter.AdapterResult;
-import cli.events.IOEvent;
-import cli.TerminalManager;
 import cli.elements.Response;
-import cli.adapter.Adapter;
-import cli.MenuFlow;
-
+import cli.events.IOEvent;
 /**
- * The main execution engine of the Whist application.
- *
- * @author Stan Kestens
- * @since 01/03/2026
+ * Main controller of the application.
+ * Coordinates menu flow, game state machine, and user interaction.
  */
 public class GameController {
+
     private final WhistGame game;
     private final TerminalManager terminalManager;
     private final Adapter adapter;
     private final MenuFlow menuFlow;
-
+    private final GamePersistenceService persistenceService;
+    /**
+     * Creates a new GameController with all required components.
+     */
     public GameController() {
         this.game = new WhistGame();
         this.terminalManager = new TerminalManager();
         this.adapter = new Adapter(this.game);
-        GamePersistenceService persistenceService = new GamePersistenceService();
+        this.persistenceService = new GamePersistenceService();
         this.menuFlow = new MenuFlow(terminalManager, persistenceService, game);
     }
-
+    /**
+     * Main application loop.
+     * Handles menu navigation and repeated game sessions.
+     */
     public void run() {
-        boolean playAgain = true;
-
-        while (playAgain) {
-            menuFlow.run();
-
-            GameCommand command = null;
-            boolean stateRunning = true;
-
-            while (!game.isOver()) {
-                while (stateRunning) {
-                    StateStep step;
-                    if (command == null) {
-                        step = game.executeState();
-                    } else {
-                        step = game.executeState(command);
-                    }
-
-                    stateRunning = !step.shouldTransition();
-
-                    if (!step.hasResult()) {
-                        command = null;
-                        continue;
-                    }
-
-                    GameResult result = step.result();
-                    // Adapter Conversion
-                    AdapterResult adapterResult = adapter.handleResult(result);
-                    // IO and resolution of Command
-                    switch (adapterResult) {
-                        // Bot turn: no IO needed, command is ready immediately
-                        case AdapterResult.Immediate immediate -> command = immediate.command();
-                        case AdapterResult.NeedsIO needsIO -> {
-                            // Render and await all preamble events first
-                            for (IOEvent pre : needsIO.preamble()) {
-                                terminalManager.handle(pre);
-                            }
-
-                            IOEvent event = needsIO.event();
-
-                            Response response = terminalManager.handle(event);
-                            AdapterResponse adapterResponse = adapter.handleResponse(response, result);
-
-                            while (adapterResponse.shouldReRenderLastResult()) {
-                                for (IOEvent immediate : adapterResponse.immediateEvents()) {
-                                    terminalManager.handle(immediate);
-                                }
-                                Response retryResponse = terminalManager.handle(event);
-                                adapterResponse = adapter.handleResponse(retryResponse, result);
-                            }
-
-                            command = adapterResponse.command();
-                        }
-                        default -> throw new IllegalStateException("Unexpected value: " + adapterResult);
-                    }
-                }
-                // State Transition
-                game.nextState();
-                stateRunning = true;
-                command = null; // reset command for next state
+        while (true) {
+            game.resetPlayers();
+            game.resetRounds();
+            SaveMode mode = menuFlow.run();
+            GameEditFlow editFlow = new GameEditFlow(terminalManager, game, persistenceService, mode);
+            ScoreBoardFlow scoreBoardFlow = new ScoreBoardFlow(terminalManager, game, editFlow);
+            boolean continueSession = true;
+            while (continueSession) {
+                runStateMachine();
+                continueSession = scoreBoardFlow.run(mode); // true = another round, false = main menu
             }
-
+            // false → falls through to menuFlow.run() which resets and restarts
         }
+    }
+    /**
+     * Executes the game state machine until the game ends.
+     */
+    private void runStateMachine() {
+        GameCommand command = null;
+        boolean stateRunning = true;
+
+        while (!game.isOver()) {
+            while (stateRunning) {
+                    StateStep step = (command == null)
+                        ? game.executeState()
+                        : game.executeState(command);
+
+                stateRunning = !step.shouldTransition();
+
+                if (!step.hasResult()) {
+                    command = null;
+                    continue;
+                }
+                GameResult result = step.result();
+                AdapterResult adapterResult = adapter.handleResult(result);
+
+                command = switch (adapterResult) {
+                    case AdapterResult.Immediate immediate -> immediate.command();
+                    case AdapterResult.NeedsIO needsIO    -> handleIO(needsIO, result);
+                };
+            }
+            game.nextState();
+            stateRunning = true;
+            command = null;
+        }
+    }
+    /**
+     * Handles user interaction for a given state.
+     *
+     * @param needsIO IO instructions
+     * @param result current game result
+     * @return next command to execute
+     */
+    private GameCommand handleIO(AdapterResult.NeedsIO needsIO, GameResult result) {
+        for (IOEvent pre : needsIO.preamble()) {
+            terminalManager.handle(pre);
+        }
+
+        IOEvent event = needsIO.event();
+        Response response = terminalManager.handle(event);
+        AdapterResponse adapterResponse = adapter.handleResponse(response, result);
+
+        while (adapterResponse.shouldReRenderLastResult()) {
+            for (IOEvent immediate : adapterResponse.immediateEvents()) {
+                terminalManager.handle(immediate);
+            }
+            response = terminalManager.handle(event);
+            adapterResponse = adapter.handleResponse(response, result);
+        }
+
+        return adapterResponse.command();
     }
 }

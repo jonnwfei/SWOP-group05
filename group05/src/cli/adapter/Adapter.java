@@ -7,7 +7,9 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
-import base.domain.commands.GameCommand;
+import base.domain.commands.*;
+import base.domain.results.*;
+
 import base.domain.commands.GameCommand.*;
 import base.domain.results.BidResults.*;
 import base.domain.results.CountResults.*;
@@ -17,7 +19,6 @@ import base.domain.round.Round;
 import base.domain.strategy.HumanStrategy;
 import cli.TerminalParser;
 import cli.elements.Response;
-
 import cli.events.MessageIOEvent;
 
 import static cli.events.BidEvents.*;
@@ -26,7 +27,12 @@ import static cli.events.MenuEvents.*;
 import static cli.events.PlayEvents.*;
 
 import java.util.List;
-
+/**
+ * Translates between domain results and user interaction.
+ * Converts GameResult objects into UI events or immediate commands,
+ * and converts user input back into domain commands.
+ * @author stankestens
+ */
 public class Adapter {
 
     private final TerminalParser parser;
@@ -50,9 +56,6 @@ public class Adapter {
     public AdapterResult handleResult(GameResult result) {
         return switch (result) {
 
-            // =========================
-            // PLAY CARD
-            // =========================
             case PlayCardResult p -> {
                 Player player = p.player();
 
@@ -72,9 +75,6 @@ public class Adapter {
                 };
             }
 
-            // =========================
-            // BIDDING
-            // =========================
             case BidTurnResult b -> {
                 Player player = b.player();
 
@@ -106,80 +106,59 @@ public class Adapter {
             }
 
             case SuitSelectionRequired ignored ->
-                new AdapterResult.NeedsIO(List.of(), new SuitSelectionIOEvent());
+                    new AdapterResult.NeedsIO(List.of(), new SuitSelectionIOEvent());
 
             case ProposalRejected p ->
-                new AdapterResult.NeedsIO(List.of(), new ProposalRejectedIOEvent(p));
+                    new AdapterResult.NeedsIO(List.of(), new ProposalRejectedIOEvent(p));
 
             case BiddingCompleted ignored ->
-                new AdapterResult.NeedsIO(List.of(), new BiddingCompletedIOEvent());
+                    new AdapterResult.NeedsIO(List.of(), new BiddingCompletedIOEvent());
 
             case BidSelectionResult b ->
-                new AdapterResult.NeedsIO(List.of(), new BidSelectionIOEvent(b.availableBids()));
+                    new AdapterResult.NeedsIO(List.of(), new BidSelectionIOEvent(b.availableBids()));
 
             case SuitSelectionResult ignored ->
-                new AdapterResult.NeedsIO(List.of(), new SuitSelectionIOEvent());
+                    new AdapterResult.NeedsIO(List.of(), new SuitSelectionIOEvent());
 
-            // =========================
-            // PLAYER SELECTION / COUNT
-            // =========================
             case PlayerSelectionResult p ->
-                new AdapterResult.NeedsIO(
-                        List.of(),
-                        new PlayerSelectionIOEvent(p.players(), p.multiSelect(), p.type()));
+                    new AdapterResult.NeedsIO(List.of(),
+                            new PlayerSelectionIOEvent(p.players(), p.multiSelect(), p.type()));
 
             case AmountOfTrickWonResult ignored ->
-                new AdapterResult.NeedsIO(List.of(), new TrickInputIOEvent());
-
-            case SaveDescriptionResult ignored ->
-                new AdapterResult.NeedsIO(List.of(), new SaveDescriptionIOEvent());
+                    new AdapterResult.NeedsIO(List.of(), new TrickInputIOEvent());
 
             case ScoreBoardResult s ->
-                new AdapterResult.NeedsIO(List.of(), new ScoreBoardIOEvent(s.names(), s.scores(), s.canRemovePlayer()));
+                    new AdapterResult.NeedsIO(List.of(),
+                            new ScoreBoardIOEvent(s.names(), s.scores(), s.canRemovePlayer()));
 
-            // =========================
-            // FLOW EVENTS (ENTER TO CONTINUE)
-            // =========================
             case EndOfTurnResult e ->
-                new AdapterResult.NeedsIO(List.of(), new EndOfTurnIOEvent(e));
+                    new AdapterResult.NeedsIO(List.of(), new EndOfTurnIOEvent(e));
 
             case EndOfTrickResult e ->
-                new AdapterResult.NeedsIO(List.of(), new EndOfTrickIOEvent(e));
+                    new AdapterResult.NeedsIO(List.of(), new EndOfTrickIOEvent(e));
 
             case EndOfRoundResult e ->
-                new AdapterResult.NeedsIO(List.of(), new EndOfRoundIOEvent(e));
+                    new AdapterResult.NeedsIO(List.of(), new EndOfRoundIOEvent(e));
 
             case TrickHistoryResult t ->
-                new AdapterResult.NeedsIO(List.of(), new TrickHistoryIOEvent(t));
+                    new AdapterResult.NeedsIO(List.of(), new TrickHistoryIOEvent(t));
 
             case ParticipatingPlayersResult p ->
-                new AdapterResult.NeedsIO(
-                        List.of(),
-                        new ParticipatingPlayersIOEvent(p));
-
-            case AddHumanPlayerResult ignored ->
-                new AdapterResult.NeedsIO(List.of(), new AddHumanPlayerIOEvent());
-
-            case AddPlayerResult ignored ->
-                new AdapterResult.NeedsIO(List.of(), new AddPlayerIOEvent());
-
-            case DeleteRoundResult g ->
-                new AdapterResult.NeedsIO(List.of(), new DeleteRoundIOEvent(g.rounds()));
+                    new AdapterResult.NeedsIO(List.of(), new ParticipatingPlayersIOEvent(p));
+            default -> throw new IllegalStateException("Unexpected value: " + result);
         };
     }
-
     /**
-     * Transforms the raw user input into a domain command based on the current GameResult context.
+     * Converts user input into a domain command.
      *
-     * @param response The raw user input from the terminal.
-     * @param result The current GameResult that the user is responding to, which determines how the input should be parsed.
-     * @return AdapterResponse containing either a domain command to be executed or a UI-only event (e.g. error message, if the input was invalid.)
+     * @param response raw user input
+     * @param result current domain result
+     * @return adapter response containing command or UI feedback
      */
     public AdapterResponse handleResponse(Response response, GameResult result) {
         if (response.rawInput() == null || response.rawInput().isBlank()) {
             return AdapterResponse.toDomain(null);
         }
-
         String raw = response.rawInput().trim();
 
         try {
@@ -211,53 +190,39 @@ public class Adapter {
                 // --- Bidding State ---
                 case BidTurnResult b -> {
                     int choice = parser.parseNumberInput(raw);
-
                     if (choice < 1 || choice > b.availableBids().size()) {
                         throw new IllegalArgumentException("Invalid bid selection");
                     }
-
-                    yield AdapterResponse.toDomain(
-                            new BidCommand(b.availableBids().get(choice - 1)));
+                    yield AdapterResponse.toDomain(new BidCommand(b.availableBids().get(choice - 1)));
                 }
                 case SuitSelectionRequired ignored -> {
                     int choice = parser.parseNumberInput(raw);
-
                     if (choice < 1 || choice > Suit.values().length) {
                         throw new IllegalArgumentException("Invalid suit selection");
                     }
-
                     yield AdapterResponse.toDomain(new SuitCommand(Suit.values()[choice - 1]));
                 }
-
                 case ProposalRejected ignored -> {
                     int choice = parser.parseNumberInput(raw);
-
                     if (choice != 1 && choice != 2) {
                         throw new IllegalArgumentException("Invalid choice");
                     }
-
                     yield AdapterResponse.toDomain(
                             new BidCommand(choice == 1 ? BidType.PASS : BidType.SOLO_PROPOSAL));
                 }
-
                 case BiddingCompleted ignored -> AdapterResponse.toDomain(null);
 
-                // --- Count/Setup State ---
                 case BidSelectionResult b -> {
                     int choice = parser.parseNumberInput(raw);
                     yield AdapterResponse.toDomain(new BidCommand(b.availableBids()[choice - 1]));
                 }
-
                 case SuitSelectionResult ignored -> {
                     int choice = parser.parseNumberInput(raw);
-
                     if (choice < 1 || choice > Suit.values().length) {
                         throw new IllegalArgumentException("Invalid suit selection");
                     }
-
                     yield AdapterResponse.toDomain(new SuitCommand(Suit.values()[choice - 1]));
                 }
-
                 case PlayerSelectionResult p -> {
                     if (raw.equals("0")) {
                         if (requiresAtLeastOne(p.type())) {
@@ -265,21 +230,15 @@ public class Adapter {
                         }
                         yield AdapterResponse.toDomain(new PlayerListCommand(List.of()));
                     }
-
                     List<Integer> indices = parser.parseNumbersInput(raw);
-
                     List<PlayerId> players = indices.stream()
                             .map(i -> p.players().get(i - 1).getId())
                             .toList();
-
                     validatePlayerSelection(p.type(), players.size());
-
                     yield AdapterResponse.toDomain(new PlayerListCommand(players));
                 }
-
                 case AmountOfTrickWonResult ignored -> {
                     int tricks = parser.parseNumberInput(raw);
-
                     if (tricks < 0 || tricks > 13) {
                         throw new IllegalArgumentException("Tricks cannot be negative");
                     }
@@ -292,29 +251,20 @@ public class Adapter {
                     if (choice < 1) {
                         throw new IllegalArgumentException("Invalid scoreboard selection");
                     }
-
                     yield AdapterResponse.toDomain(new NumberCommand(choice));
                 }
 
-                case SaveDescriptionResult ignored -> {
-                    String text = parser.parseString(raw);
-                    yield AdapterResponse.toDomain(new TextCommand(text));
-                }
-
-                // --- Gameplay Results (Usually just "Press Enter") ---
-                case EndOfTurnResult _,EndOfTrickResult _,EndOfRoundResult _,TrickHistoryResult _ ->
-                    AdapterResponse.toDomain(null);
+                case EndOfTurnResult _, EndOfTrickResult _, EndOfRoundResult _, TrickHistoryResult _ ->
+                        AdapterResponse.toDomain(null);
 
                 case ParticipatingPlayersResult p -> {
                     List<Integer> indices = parser.parseNumbersInput(raw);
-
                     int max = p.playerNames().size();
                     for (int i : indices) {
                         if (i < 1 || i > max) {
                             throw new IllegalArgumentException("Player index out of range");
                         }
                     }
-
                     List<PlayerId> playerIds = indices.stream()
                             .map(i -> p.playerNames().get(i - 1))
                             .map(name -> game.getAllPlayers().stream()
@@ -323,11 +273,9 @@ public class Adapter {
                                     .map(Player::getId)
                                     .orElseThrow(() -> new IllegalArgumentException("Player not found: " + name)))
                             .toList();
-
                     yield AdapterResponse.toDomain(new PlayerListCommand(playerIds));
                 }
 
-                // --- Play Card
                 case PlayCardResult p -> {
                     Player player = p.player();
 
@@ -355,40 +303,46 @@ public class Adapter {
                             Card selected = p.legalCards().get(choice - 1);
                             yield AdapterResponse.toDomain(new CardCommand(selected));
                         }
+
                         default -> {
                             Card chosen = player
                                     .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
 
                             yield AdapterResponse.toDomain(new CardCommand(chosen));
                         }
+
                     };
                 }
-
             };
         } catch (Exception e) {
             return AdapterResponse.uiOnly(new MessageIOEvent("Invalid input: \"" + raw + "\". Please try again."));
         }
     }
+    /**
+     * Validates player selection based on bid type.
+     *
+     * @param type bid type
+     * @param count number of selected players
+     */
     private void validatePlayerSelection(BidType type, int count) {
         switch (type) {
             case MISERIE, OPEN_MISERIE -> {
-                if (count < 1) {
-                    throw new IllegalArgumentException("At least one player required");
-                }
+                if (count < 1) throw new IllegalArgumentException("At least one player required");
             }
             case PROPOSAL, TROEL, TROELA -> {
-                if (count != 2) {
-                    throw new IllegalArgumentException("Exactly two players required");
-                }
+                if (count != 2) throw new IllegalArgumentException("Exactly two players required");
             }
             default -> {
-                if (count != 1) {
-                    throw new IllegalArgumentException("Exactly one player required");
-                }
+                if (count != 1) throw new IllegalArgumentException("Exactly one player required");
             }
         }
     }
-
+    /**
+     * Determines if at least one player must be selected.
+     *
+     * @param type bid type
+     * @return true if at least one player is required
+     */
     private boolean requiresAtLeastOne(BidType type) {
         return switch (type) {
             case MISERIE, OPEN_MISERIE -> false;

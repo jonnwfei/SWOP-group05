@@ -248,9 +248,7 @@ class SaveRepositoryTest {
             Path conflictingFile = tempDir.resolve("sabotaged_saves");
             Files.createFile(conflictingFile);
 
-            assertThrows(IllegalStateException.class, () -> {
-                new SaveRepository(conflictingFile);
-            }, "Should throw IllegalStateException when the directory cannot be created.");
+            assertThrows(IllegalStateException.class, () -> new SaveRepository(conflictingFile));
         }
 
         @Test

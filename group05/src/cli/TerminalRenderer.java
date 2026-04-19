@@ -4,11 +4,8 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
-import base.domain.results.BidResults.*;
-import base.domain.results.CountResults.*;
 import base.domain.results.PlayResults.*;
 import base.domain.round.Round;
-import base.domain.turn.PlayTurn;
 import cli.events.IOEvent;
 import cli.events.MessageIOEvent;
 
@@ -167,8 +164,12 @@ public class TerminalRenderer {
         if (event.data().currentHighestBid() == null) {
             System.out.println("You are the first to bid!");
         } else {
-            System.out.println("Current Highest: " + event.data().currentHighestBid());
-        }
+            String highestBidderName = event.data().highestBidderName();
+            if (highestBidderName == null || highestBidderName.isBlank()) {
+                System.out.printf("Current Highest: %s%n", event.data().currentHighestBid().getType());
+            } else {
+                System.out.printf("Current Highest: %s (%s)%n", event.data().currentHighestBid().getType(), highestBidderName);
+            }        }
 
         System.out.println("Available Options:");
 
@@ -213,19 +214,23 @@ public class TerminalRenderer {
 
     private void renderPlayerSelectionEvent(PlayerSelectionIOEvent event) {
         String prompt;
+        if (!event.multi()){
+            prompt = "Select a single player";
+        }
+        else{
+            switch (event.type()) {
+                case MISERIE, OPEN_MISERIE ->
+                        prompt = "Select one or more players (comma-separated, 0 for none):";
 
-        switch (event.type()) {
-            case MISERIE, OPEN_MISERIE ->
-                    prompt = "Select one or more players (comma-separated, 0 for none):";
+                case PROPOSAL ->
+                        prompt = "Select exactly TWO players (comma-separated):";
 
-            case PROPOSAL ->
-                    prompt = "Select exactly TWO players (comma-separated):";
+                case TROEL, TROELA ->
+                        prompt = "Select exactly TWO players:";
 
-            case TROEL, TROELA ->
-                    prompt = "Select exactly TWO players:";
-
-            default ->
-                    prompt = "Select the main bidder:";
+                default ->
+                        prompt = "Select the main bidder:";
+            }
         }
 
         System.out.println(prompt);

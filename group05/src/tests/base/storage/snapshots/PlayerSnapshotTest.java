@@ -27,13 +27,26 @@ class PlayerSnapshotTest {
     }
 
     @Test
-    @DisplayName("Defensive constructor should reject nulls or blank strings")
+    @DisplayName("Constructor should successfully create PlayerSnapshot with boundary scores")
+    void testConstructor() {
+        String validId = UUID.randomUUID().toString();
+        String validName = "testName";
+        StrategySnapshotType validType = StrategySnapshotType.HUMAN;
+        int validScore = 0;
+
+        PlayerSnapshot snapshot = new PlayerSnapshot(validId, validName, validType, validScore);
+        assertEquals(validId, snapshot.id(), "ID should match the constructor input.");
+        assertEquals(validName, snapshot.name(), "Name should match the constructor input.");
+        assertEquals(validType, snapshot.strategyType(), "Strategy type should match the constructor input.");
+        assertEquals(validScore, snapshot.score(), "Score should match the constructor input.");
+    }
+
+    @Test
+    @DisplayName("Defensive constructor test")
     void testDefensiveConstructor() {
-        // FIXED: Using a real UUID so the other defensive checks can actually run!
         String validId = UUID.randomUUID().toString();
         String validName = "testName";
 
-        // Test invalid ID
         assertThrows(IllegalArgumentException.class, () ->
                 new PlayerSnapshot(null, validName, StrategySnapshotType.HUMAN, 0)
         );
@@ -53,6 +66,9 @@ class PlayerSnapshotTest {
         assertThrows(IllegalArgumentException.class, () ->
                 new PlayerSnapshot(validId, validName, null, 0)
         );
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new PlayerSnapshot(".", validName, StrategySnapshotType.HUMAN, -1));
     }
 
     @Test
