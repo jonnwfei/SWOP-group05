@@ -165,8 +165,11 @@ public class TerminalRenderer {
             System.out.println("You are the first to bid!");
         } else {
             String highestBidderName = event.data().highestBidderName();
-            System.out.printf("Current Highest: %s (%s)\n",event.data().currentHighestBid().getType(), highestBidderName);
-        }
+            if (highestBidderName == null || highestBidderName.isBlank()) {
+                System.out.printf("Current Highest: %s%n", event.data().currentHighestBid().getType());
+            } else {
+                System.out.printf("Current Highest: %s (%s)%n", event.data().currentHighestBid().getType(), highestBidderName);
+            }        }
 
         System.out.println("Available Options:");
 
