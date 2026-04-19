@@ -50,7 +50,7 @@ public class GameController {
 
         while (!game.isOver()) {
             while (stateRunning) {
-                StateStep step = (command == null)
+                    StateStep step = (command == null)
                         ? game.executeState()
                         : game.executeState(command);
 
@@ -60,7 +60,6 @@ public class GameController {
                     command = null;
                     continue;
                 }
-
                 GameResult result = step.result();
                 AdapterResult adapterResult = adapter.handleResult(result);
 
@@ -69,7 +68,6 @@ public class GameController {
                     case AdapterResult.NeedsIO needsIO    -> handleIO(needsIO, result);
                 };
             }
-
             game.nextState();
             stateRunning = true;
             command = null;

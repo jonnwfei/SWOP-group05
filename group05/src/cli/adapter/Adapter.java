@@ -140,6 +140,7 @@ public class Adapter {
 
             case ParticipatingPlayersResult p ->
                     new AdapterResult.NeedsIO(List.of(), new ParticipatingPlayersIOEvent(p));
+            default -> throw new IllegalStateException("Unexpected value: " + result);
         };
     }
 
@@ -291,12 +292,14 @@ public class Adapter {
                             Card selected = p.legalCards().get(choice - 1);
                             yield AdapterResponse.toDomain(new CardCommand(selected));
                         }
+
                         default -> {
                             Card chosen = player
                                     .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
 
                             yield AdapterResponse.toDomain(new CardCommand(chosen));
                         }
+
                     };
                 }
             };

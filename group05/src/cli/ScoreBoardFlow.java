@@ -57,8 +57,8 @@ public class ScoreBoardFlow {
     }
 
     private int showMenu() {
-        List<String> names = game.getPlayers().stream().map(Player::getName).toList();
-        List<Integer> scores = game.getPlayers().stream().map(Player::getScore).toList();
+        List<String> names = game.getAllPlayers().stream().map(Player::getName).toList();
+        List<Integer> scores = game.getAllPlayers().stream().map(Player::getScore).toList();
         boolean canRemove = game.canRemovePlayer();
         int max = canRemove ? 6 : 5;
         return askInt(new ScoreBoardIOEvent(names, scores, canRemove), 1, max);

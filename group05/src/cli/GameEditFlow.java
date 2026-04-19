@@ -106,13 +106,13 @@ public class GameEditFlow {
     public boolean removePlayer() {
         if (!game.canRemovePlayer()) return false;
 
-        List<Integer> indices = askIntList(new PlayerSelectionIOEvent(game.getPlayers(), false, null));
+        List<Integer> indices = askIntList(new PlayerSelectionIOEvent(game.getAllPlayers(), false, null));
         if (indices.isEmpty()) return false;
 
         int idx = indices.getFirst();
-        if (idx < 1 || idx > game.getPlayers().size()) return false;
+        if (idx < 1 || idx > game.getAllPlayers().size()) return false;
 
-        game.removePlayer(game.getPlayers().get(idx - 1));
+        game.removePlayer(game.getAllPlayers().get(idx - 1));
         return true;
     }
 
