@@ -79,9 +79,11 @@ class WhistGameTest {
             // Clockwise fashion is the standard for Whist bidding and play
             game.addPlayer(mockPlayer1);
             game.addPlayer(mockPlayer2);
+            game.addPlayer(mockPlayer3);
+            game.addPlayer(mockPlayer4);
 
             assertEquals(mockPlayer2, game.getNextPlayer(mockPlayer1));
-            assertEquals(mockPlayer1, game.getNextPlayer(mockPlayer2)); // Loop back (Modulo logic)
+            assertEquals(mockPlayer3, game.getNextPlayer(mockPlayer2)); // Loop back (Modulo logic)
         }
     }
 
@@ -93,6 +95,8 @@ class WhistGameTest {
         void advanceDealer_CyclesToken() {
             game.addPlayer(mockPlayer1);
             game.addPlayer(mockPlayer2);
+            game.addPlayer(mockPlayer3);
+            game.addPlayer(mockPlayer4);
             game.setDealerPlayer(mockPlayer1);
 
             game.advanceDealer();
