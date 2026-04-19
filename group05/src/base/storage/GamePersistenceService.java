@@ -94,16 +94,16 @@ public class GamePersistenceService {
             throw new IllegalArgumentException("Save description cannot be empty");
         }
 
-        List<Player> players = game.getAllPlayers();
-        List<PlayerSnapshot> snapshots = players.stream().map(this::toSnapshot).toList();
+        List<Player> allPlayers = game.getAllPlayers();
+        List<PlayerSnapshot> snapshots = allPlayers.stream().map(this::toSnapshot).toList();
 
         List<Round> rounds = game.getRounds();
         List<RoundSnapshot> roundSnapshots = rounds.stream().map(this::toSnapshot).toList();
 
         Player dealer = game.getDealerPlayer();
         if (dealer == null) throw new IllegalStateException("Cannot create snapshot of a game with a null dealer player");
-        int dealerIndex = players.indexOf(dealer);
-        if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list");
+        int dealerIndex = allPlayers.indexOf(dealer);
+        if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list: " + dealerIndex);
 
         return new GameSnapshot(normalizedDescription, mode, dealerIndex, snapshots, roundSnapshots);
     }
@@ -170,14 +170,38 @@ public class GamePersistenceService {
 
         BidType bidType = highestBid.getType();
 
-        int bidderIndex = roundPlayers.indexOf(round.getPlayerById(highestBid.getPlayerId()));
-        if (bidderIndex < 0) {
-            throw new IllegalStateException("Cannot snapshot round: highest bid player is not in round players");
+        int bidderIndex = resolveBidderIndex(round, highestBid, roundPlayers);
+        List<Integer> participantIndices = resolveParticipantIndices(round, roundPlayers, bidType);
+        List<Integer> miserieWinnerIndices = resolveMiserieWinnerIndices(round, roundPlayers, bidType);
+        int tricksWon = resolveTricksWon(round, bidType);
+
+        List<Integer> scoreDeltas = round.getScoreDeltas();
+        if (scoreDeltas == null || scoreDeltas.size() != 4) {
+            throw new IllegalStateException("Cannot snapshot round: score deltas must contain exactly 4 values");
         }
 
+        try {
+            return new RoundSnapshot(
+                    bidType, bidderIndex, participantIndices, tricksWon,
+                    miserieWinnerIndices, round.getMultiplier(), scoreDeltas, round.getTrumpSuit());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
+        }
+    }
+
+    // =================================================================================
+    // Extraction Helpers
+    // =================================================================================
+
+    private int resolveBidderIndex(Round round, Bid highestBid, List<Player> roundPlayers) {
+        int bidderIndex = roundPlayers.indexOf(round.getPlayerById(highestBid.getPlayerId()));
+        if (bidderIndex < 0) throw new IllegalStateException("Cannot snapshot round: highest bid player is not in round players");
+        return bidderIndex;
+    }
+
+    private List<Integer> resolveParticipantIndices(Round round, List<Player> roundPlayers, BidType bidType) {
         List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()
-            .map(roundPlayers::indexOf)
-            .toList();
+                .map(roundPlayers::indexOf).toList();
 
         if (participantIndices.stream().anyMatch(i -> i < 0)) {
             throw new IllegalStateException("Cannot snapshot round: bidding team contains players outside the round");
@@ -185,49 +209,34 @@ public class GamePersistenceService {
         if (participantIndices.isEmpty() && bidType != BidType.PASS) {
             throw new IllegalStateException("Cannot snapshot round without bidding team participants");
         }
+        return participantIndices;
+    }
 
+    private List<Integer> resolveMiserieWinnerIndices(Round round, List<Player> roundPlayers, BidType bidType) {
         List<Player> miserieWinners = round.getCountMiserieWinners();
         if (bidType.getCategory() == BidCategory.MISERIE && miserieWinners.isEmpty() && round.isFinished()) {
-            // Play-mode miserie rounds do not necessarily populate count metadata.
             miserieWinners = round.getWinningPlayers();
         }
 
-        List<Integer> miserieWinnerIndices = miserieWinners.stream()
-            .map(roundPlayers::indexOf)
-            .toList();
+        List<Integer> miserieWinnerIndices = miserieWinners.stream().map(roundPlayers::indexOf).toList();
         if (miserieWinnerIndices.stream().anyMatch(i -> i < 0)) {
             throw new IllegalStateException("Cannot snapshot round: miserie winners contain players outside the round");
         }
+        return miserieWinnerIndices;
+    }
 
-        List<Integer> scoreDeltas = round.getScoreDeltas();
-        if (scoreDeltas == null || scoreDeltas.size() != 4) {
-            throw new IllegalStateException("Cannot snapshot round: score deltas must contain exactly 4 values");
-        }
-
+    private int resolveTricksWon(Round round, BidType bidType) {
         int tricksWon = round.getCountTricksWon();
         if (tricksWon < 0) {
             tricksWon = round.getBiddingTeamTricksWon();
         }
 
-        if (highestBid.getType() == BidType.PASS && tricksWon != -1) {
+        if (bidType == BidType.PASS && tricksWon != -1) {
             throw new IllegalStateException("Cannot snapshot round: round passed play phase with all pass and should return tricksWon = -1");
         } else if (tricksWon < 0 || tricksWon > 13) {
-            throw new IllegalStateException("Cannot snapshot round: invalid trick count" + tricksWon);
+            throw new IllegalStateException("Cannot snapshot round: invalid trick count " + tricksWon);
         }
-
-        try {
-            return new RoundSnapshot(
-                    bidType,
-                    bidderIndex,
-                    participantIndices,
-                    tricksWon,
-                    miserieWinnerIndices,
-                    round.getMultiplier(),
-                    scoreDeltas,
-                    round.getTrumpSuit());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
-        }
+        return tricksWon;
     }
 
     /**
@@ -244,32 +253,18 @@ public class GamePersistenceService {
         List<Player> players = game.getPlayers();
         if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
 
-
         for (RoundSnapshot snapshot : roundSnapshots) {
-            int bidderIndex = snapshot.bidderIndex();
-            if (bidderIndex < 0 || bidderIndex >= players.size()) {
-                throw new IllegalStateException("Cannot restore round: bidder index out of range");
-            }
-
-            Player mainBidder = players.get(bidderIndex);
+            // No bounds checking needed! RoundSnapshot guarantees indices are 0-3.
+            Player mainBidder = players.get(snapshot.bidderIndex());
             Bid highestBid = snapshot.bidType().instantiate(mainBidder.getId(), snapshot.trumpSuit());
 
+            // Beautiful, clean mapping
             List<Player> participants = snapshot.participantIndices().stream()
-                    .map(index -> {
-                        if (index < 0 || index >= players.size()) {
-                            throw new IllegalStateException("Cannot restore round: participant index out of range");
-                        }
-                        return players.get(index);
-                    })
+                    .map(players::get)
                     .toList();
 
             List<Player> miserieWinners = snapshot.miserieWinnerIndices().stream()
-                    .map(index -> {
-                        if (index < 0 || index >= players.size()) {
-                            throw new IllegalStateException("Cannot restore round: miserie winner index out of range");
-                        }
-                        return players.get(index);
-                    })
+                    .map(players::get)
                     .toList();
 
             Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
@@ -280,6 +275,7 @@ public class GamePersistenceService {
                     snapshot.tricksWon(),
                     miserieWinners,
                     snapshot.scoreDeltas());
+
             game.addRound(restoredRound);
         }
     }
@@ -302,7 +298,7 @@ public class GamePersistenceService {
             case LowBotStrategy _ -> {
                 return StrategySnapshotType.LOW_BOT;
             }
-            case SmartBotStrategy _  -> {
+            case SmartBotStrategy _ -> {
                 return StrategySnapshotType.SMART_BOT;
             }
         }

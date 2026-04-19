@@ -1,6 +1,5 @@
 package base.storage.snapshots;
 
-import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -157,13 +156,15 @@ class RoundSnapshotTest {
                     new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, listWithNull, 1, getValidDeltas())
             );
 
-            // Contains out of bounds indices
+            // Contains out of bounds index (too low)
             assertThrows(IllegalArgumentException.class, () ->
                     new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(-1), 1, getValidDeltas())
             );
 
+            // Contains out of bounds index (too high) - THIS WAS THE MISSING BRANCH!
             assertThrows(IllegalArgumentException.class, () ->
-                new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, listWithNull, 1, getValidDeltas()));
+                    new RoundSnapshot(BidType.SOLO, 0, List.of(0, 1, 2, 3), 5, List.of(4), 1, getValidDeltas())
+            );
         }
 
         @Test
