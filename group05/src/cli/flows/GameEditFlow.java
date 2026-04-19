@@ -133,7 +133,7 @@ public class GameEditFlow {
         int choice = askInt(new DeleteRoundIOEvent(rounds), 0, rounds.size());
         if (choice == 0) return false;
 
-        game.removeRound(rounds.get(choice));
+        game.removeRound(rounds.get(choice -1));
         game.recalibrateScores();
         return true;
     }
