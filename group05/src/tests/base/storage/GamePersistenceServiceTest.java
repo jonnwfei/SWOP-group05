@@ -35,7 +35,6 @@ import static org.mockito.Mockito.*;
 /**
  * Validates the serialization and restoration logic of the GamePersistenceService.
  * This service acts as a Data Mapper/Memento handler between the Domain and Storage layers.
- * *
  */
 @DisplayName("Game Persistence Service Tests")
 class GamePersistenceServiceTest {
@@ -60,9 +59,11 @@ class GamePersistenceServiceTest {
         p4 = new Player(new HumanStrategy(), "P4", new PlayerId());
         fourPlayers = List.of(p1, p2, p3, p4);
 
-        when(mockGame.getPlayers()).thenReturn(fourPlayers);
-        when(mockGame.getDealerPlayer()).thenReturn(p1);
-        when(mockGame.getRounds()).thenReturn(List.of());
+        // FIXED: We must mock BOTH getPlayers (active table) and getAllPlayers (roster)
+        lenient().when(mockGame.getPlayers()).thenReturn(fourPlayers);
+        lenient().when(mockGame.getAllPlayers()).thenReturn(fourPlayers);
+        lenient().when(mockGame.getDealerPlayer()).thenReturn(p1);
+        lenient().when(mockGame.getRounds()).thenReturn(List.of());
     }
 
     @AfterEach
@@ -80,14 +81,14 @@ class GamePersistenceServiceTest {
         Round mockRound = mock(Round.class);
         Bid realBid = new SoloBid(p1.getId(), BidType.SOLO, Suit.HEARTS);
 
-        when(mockRound.getHighestBid()).thenReturn(realBid);
-        when(mockRound.getPlayers()).thenReturn(fourPlayers);
-        when(mockRound.getPlayerById(p1.getId())).thenReturn(p1);
-        when(mockRound.getBiddingTeamPlayers()).thenReturn(List.of(p1));
-        when(mockRound.getCountMiserieWinners()).thenReturn(List.of());
-        when(mockRound.getScoreDeltas()).thenReturn(List.of(90, -30, -30, -30));
-        when(mockRound.getCountTricksWon()).thenReturn(13);
-        when(mockRound.getMultiplier()).thenReturn(1);
+        lenient().when(mockRound.getHighestBid()).thenReturn(realBid);
+        lenient().when(mockRound.getPlayers()).thenReturn(fourPlayers);
+        lenient().when(mockRound.getPlayerById(p1.getId())).thenReturn(p1);
+        lenient().when(mockRound.getBiddingTeamPlayers()).thenReturn(List.of(p1));
+        lenient().when(mockRound.getCountMiserieWinners()).thenReturn(List.of());
+        lenient().when(mockRound.getScoreDeltas()).thenReturn(List.of(90, -30, -30, -30));
+        lenient().when(mockRound.getCountTricksWon()).thenReturn(13);
+        lenient().when(mockRound.getMultiplier()).thenReturn(1);
 
         return mockRound;
     }
@@ -156,8 +157,12 @@ class GamePersistenceServiceTest {
         void shouldMapStrategyTypesCorrectly() {
             Player highBot = new Player(new HighBotStrategy(), "HighBot", new PlayerId());
             Player lowBot = new Player(new LowBotStrategy(), "LowBot", new PlayerId());
-            when(mockGame.getPlayers()).thenReturn(List.of(highBot, lowBot, p3, p4));
-            when(mockGame.getDealerPlayer()).thenReturn(highBot);
+            List<Player> mockRoster = List.of(highBot, lowBot, p3, p4);
+
+            // FIXED: Mock both lists to simulate the active game roster
+            lenient().when(mockGame.getPlayers()).thenReturn(mockRoster);
+            lenient().when(mockGame.getAllPlayers()).thenReturn(mockRoster);
+            lenient().when(mockGame.getDealerPlayer()).thenReturn(highBot);
 
             persistenceService.save(mockGame, SaveMode.GAME, "Bot Save");
 
@@ -196,7 +201,10 @@ class GamePersistenceServiceTest {
             List<Player> invalidPlayers = new ArrayList<>();
             invalidPlayers.add(p1);
             invalidPlayers.add(null);
-            when(mockGame.getPlayers()).thenReturn(invalidPlayers);
+
+            // FIXED: Apply corrupted list to both domain methods
+            lenient().when(mockGame.getPlayers()).thenReturn(invalidPlayers);
+            lenient().when(mockGame.getAllPlayers()).thenReturn(invalidPlayers);
 
             assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
         }
@@ -246,8 +254,6 @@ class GamePersistenceServiceTest {
             // Test Invalid Tricks
             when(mockRound.getScoreDeltas()).thenReturn(List.of(90, -30, -30, -30));
             when(mockRound.getCountTricksWon()).thenReturn(-5);
-
-            // FIXED: We must mock the fallback check too, otherwise Mockito returns 0 (which is valid!)
             when(mockRound.getBiddingTeamTricksWon()).thenReturn(-5);
 
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
@@ -270,7 +276,10 @@ class GamePersistenceServiceTest {
             when(mockRepository.loadByDescription(description)).thenReturn(mockSnapshot);
 
             List<Player> restoredPlayers = new ArrayList<>();
-            when(mockGame.getPlayers()).thenReturn(restoredPlayers);
+            // FIXED: Ensure the mock game returns the updated roster as addPlayer is called
+            lenient().when(mockGame.getPlayers()).thenReturn(restoredPlayers);
+            lenient().when(mockGame.getAllPlayers()).thenReturn(restoredPlayers);
+
             doAnswer(invocation -> {
                 restoredPlayers.add(invocation.getArgument(0));
                 return null;
@@ -283,7 +292,6 @@ class GamePersistenceServiceTest {
             verify(mockGame).resetRounds();
             verify(mockGame, times(4)).addPlayer(any(Player.class));
             verify(mockGame).setDeck(any());
-            assertEquals(restoredPlayers.get(0), restoredPlayers.get(0)); // Visual parity
         }
 
         @Test
@@ -296,7 +304,9 @@ class GamePersistenceServiceTest {
             when(mockRepository.loadByDescription("Count Save")).thenReturn(countSnapshot);
 
             List<Player> restoredPlayers = new ArrayList<>();
-            when(mockGame.getPlayers()).thenReturn(restoredPlayers);
+            lenient().when(mockGame.getPlayers()).thenReturn(restoredPlayers);
+            lenient().when(mockGame.getAllPlayers()).thenReturn(restoredPlayers);
+
             doAnswer(invocation -> {
                 restoredPlayers.add(invocation.getArgument(0));
                 return null;
@@ -323,14 +333,15 @@ class GamePersistenceServiceTest {
         void shouldEnforceFourPlayersDuringRoundRestoration() {
             List<PlayerSnapshot> playerSnapshots = List.of(new PlayerSnapshot(new PlayerId().id().toString(), "P1", StrategySnapshotType.HUMAN, 0));
             List<RoundSnapshot> rounds = List.of(
-                    // FIXED: Added Suit.HEARTS argument
                     new RoundSnapshot(BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30), Suit.HEARTS)
             );
             GameSnapshot mockSnapshot = new GameSnapshot("Desc", SaveMode.COUNT, 0, playerSnapshots, rounds);
             when(mockRepository.loadByDescription("bad_restore")).thenReturn(mockSnapshot);
 
             List<Player> restoredPlayers = new ArrayList<>();
-            when(mockGame.getPlayers()).thenReturn(restoredPlayers);
+            lenient().when(mockGame.getPlayers()).thenReturn(restoredPlayers);
+            lenient().when(mockGame.getAllPlayers()).thenReturn(restoredPlayers);
+
             doAnswer(invocation -> {
                 restoredPlayers.add(invocation.getArgument(0));
                 return null;
