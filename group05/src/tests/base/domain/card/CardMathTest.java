@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.lang.reflect.Constructor;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,8 +15,28 @@ import static org.junit.jupiter.api.Assertions.*;
 class CardMathTest {
 
     @Nested
+    @DisplayName("Architecture & Initialization")
+    class InitializationTests {
+
+        @Test
+        @DisplayName("Private constructor invocation for 100% method coverage")
+        void privateConstructor() throws Exception {
+            // Utility classes have private constructors. Reflection is used to achieve 100% coverage.
+            Constructor<CardMath> constructor = CardMath.class.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            assertNotNull(constructor.newInstance(), "Should successfully instantiate via reflection");
+        }
+    }
+
+    @Nested
     @DisplayName("getLegalCards()")
     class GetLegalCardsTests {
+
+        @Test
+        @DisplayName("Should throw NullPointerException if hand is null")
+        void throwsOnNullHand() {
+            assertThrows(NullPointerException.class, () -> CardMath.getLegalCards(null, Suit.HEARTS));
+        }
 
         @Test
         @DisplayName("Should return the entire hand when lead suit is null")
@@ -86,7 +107,8 @@ class CardMathTest {
             List<Card> result = CardMath.findHighestCards(List.of(highHeart, highSpade, lowClub));
 
             assertEquals(2, result.size());
-            assertTrue(result.contains(highHeart) && result.contains(highSpade));
+            assertTrue(result.contains(highHeart));
+            assertTrue(result.contains(highSpade));
         }
 
         @Test
@@ -99,13 +121,21 @@ class CardMathTest {
             List<Card> result = CardMath.findLowestCards(List.of(lowHeart, lowSpade, highClub));
 
             assertEquals(2, result.size());
-            assertTrue(result.contains(lowHeart) && result.contains(lowSpade));
+            assertTrue(result.contains(lowHeart));
+            assertTrue(result.contains(lowSpade));
         }
     }
 
     @Nested
     @DisplayName("doesCardBeat()")
     class DoesCardBeatTests {
+
+        @Test
+        @DisplayName("Should throw NullPointerException if challenger is null but currentBest exists")
+        void throwsOnNullChallenger() {
+            Card currentBest = new Card(Suit.HEARTS, Rank.TWO);
+            assertThrows(NullPointerException.class, () -> CardMath.doesCardBeat(null, currentBest, Suit.HEARTS, Suit.HEARTS));
+        }
 
         @Test
         @DisplayName("Should return true automatically if there is no current winning card")
@@ -134,13 +164,25 @@ class CardMathTest {
                 "TEN, JACK, false",  // Lower rank loses to higher rank
                 "EIGHT, EIGHT, false" // Equal rank loses (must strictly beat)
         })
-        @DisplayName("Comparing two cards of the same matching suit (Trump vs Trump, or Lead vs Lead)")
+        @DisplayName("Comparing two cards of the same matching suit")
         void matchingSuitContests(Rank challengerRank, Rank bestRank, boolean expected) {
             Card challenger = new Card(Suit.HEARTS, challengerRank);
             Card currentBest = new Card(Suit.HEARTS, bestRank);
 
-            // Works the same whether they are both trumps or both leads!
             assertEquals(expected, CardMath.doesCardBeat(challenger, currentBest, Suit.HEARTS, Suit.HEARTS));
+        }
+
+        @Test
+        @DisplayName("Should properly evaluate Miserie (No-Trump) game logic")
+        void miserieModeEvaluation() {
+            Card leadHigh = new Card(Suit.SPADES, Rank.ACE);
+            Card leadLow = new Card(Suit.SPADES, Rank.TWO);
+            Card offSuit = new Card(Suit.HEARTS, Rank.ACE);
+
+            // Lead is SPADES, Trump is NULL (Miserie)
+            assertTrue(CardMath.doesCardBeat(leadHigh, leadLow, Suit.SPADES, null));
+            assertFalse(CardMath.doesCardBeat(leadLow, leadHigh, Suit.SPADES, null));
+            assertFalse(CardMath.doesCardBeat(offSuit, leadHigh, Suit.SPADES, null), "Offsuit always loses to Lead");
         }
 
         @Test
