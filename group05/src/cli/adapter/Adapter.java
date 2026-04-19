@@ -27,7 +27,12 @@ import static cli.events.MenuEvents.*;
 import static cli.events.PlayEvents.*;
 
 import java.util.List;
-
+/**
+ * Translates between domain results and user interaction.
+ * Converts GameResult objects into UI events or immediate commands,
+ * and converts user input back into domain commands.
+ * @author stankestens
+ */
 public class Adapter {
 
     private final TerminalParser parser;
@@ -143,7 +148,13 @@ public class Adapter {
             default -> throw new IllegalStateException("Unexpected value: " + result);
         };
     }
-
+    /**
+     * Converts user input into a domain command.
+     *
+     * @param response raw user input
+     * @param result current domain result
+     * @return adapter response containing command or UI feedback
+     */
     public AdapterResponse handleResponse(Response response, GameResult result) {
         if (response.rawInput() == null || response.rawInput().isBlank()) {
             return AdapterResponse.toDomain(null);
@@ -307,7 +318,12 @@ public class Adapter {
             return AdapterResponse.uiOnly(new MessageIOEvent("Invalid input: \"" + raw + "\". Please try again."));
         }
     }
-
+    /**
+     * Validates player selection based on bid type.
+     *
+     * @param type bid type
+     * @param count number of selected players
+     */
     private void validatePlayerSelection(BidType type, int count) {
         switch (type) {
             case MISERIE, OPEN_MISERIE -> {
@@ -321,7 +337,12 @@ public class Adapter {
             }
         }
     }
-
+    /**
+     * Determines if at least one player must be selected.
+     *
+     * @param type bid type
+     * @return true if at least one player is required
+     */
     private boolean requiresAtLeastOne(BidType type) {
         return switch (type) {
             case MISERIE, OPEN_MISERIE -> false;
