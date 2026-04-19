@@ -238,7 +238,7 @@ public class Round {
 
         // --- CASE 1: MISERIE (Normal or Open), NO TRICKS WON ---
         if (calculatedBid.getType().getCategory() == BidCategory.MISERIE) {
-            if (winningMiseriePlayers != null && winningMiseriePlayers.contains(null)) {
+            if (winningMiseriePlayers != null && winningMiseriePlayers.stream().anyMatch(Objects::isNull)) {
                 throw new IllegalArgumentException("Winning Miserie players list cannot contain null elements.");
             }
             for (Player p : participants) {
