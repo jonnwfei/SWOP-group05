@@ -238,6 +238,7 @@ class AdapterTest {
                 player.getName(),
                 Suit.HEARTS,
                 null,
+                "",
                 List.of(BidType.PASS, BidType.SOLO),
                 List.of(TEST_CARD),
                 player
