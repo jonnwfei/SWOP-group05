@@ -115,11 +115,11 @@ public class SmartBotMemory implements GameObserver {
 // --- Strategy Helpers ---
 
     /**
-     * @return true if someone has bid PROPOSAL in the current round.
+     * @return true if the CURRENT HIGHEST bid is a PROPOSAL.
      */
     public boolean hasActiveProposal() {
-        return this.bidsMemory.stream()
-                .anyMatch(bid -> bid.bidType() == BidType.PROPOSAL);
+        BidTurn highest = getHighestBid();
+        return highest != null && highest.bidType() == BidType.PROPOSAL;
     }
 
     /**
