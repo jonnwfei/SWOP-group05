@@ -26,7 +26,7 @@ import java.util.Objects;
  */
 public class Round {
     /** The maximum number of tricks played in a single round. */
-    public static final int MAX_TRICKS = 13;
+    public static final int MAX_TRICKS = 13; // TODO: set back to 13 for final version, reduced for testing purposes
 
     /** The 4 players participating in this round. */
     private final List<Player> players;
