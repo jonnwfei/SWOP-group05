@@ -91,7 +91,7 @@ public final class SmartBotStrategy implements Strategy {
         }
 
         BidType miserieBidType = evaluateMiserieEligibility(hand);
-        if (miserieBidType != null) {
+        if (miserieBidType != null && isLegalBid(miserieBidType)) {
             return miserieBidType.instantiate(playerId, null);
         }
 
@@ -99,16 +99,46 @@ public final class SmartBotStrategy implements Strategy {
         TrumpEvaluation bestEvaluation = findBestTrumpSuit(hand, tricksWithCurrentTrump);
 
         if (bestEvaluation.expectedTricks() >= MIN_TRICKS_FOR_ABONDANCE) {
-            return mapToHighBid(playerId, bestEvaluation.expectedTricks(), bestEvaluation.suit());
+            Bid highBid = mapToHighBid(playerId, bestEvaluation.expectedTricks(), bestEvaluation.suit());
+            if (isLegalBid(highBid.getType())) {
+                return highBid;
+            }
         }
 
         if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_ACCEPTANCE && memory.hasActiveProposal()) {
             return BidType.ACCEPTANCE.instantiate(playerId, null);
-        } else if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_PROPOSAL) {
-            return BidType.PROPOSAL.instantiate(playerId, null);
+        }
+
+        if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_PROPOSAL) {
+            if (isLegalBid(BidType.PROPOSAL)) {
+                return BidType.PROPOSAL.instantiate(playerId, null);
+            }
         }
 
         return BidType.PASS.instantiate(playerId, null);
+    }
+
+    /**
+     * Checks if a desired bid is legally allowed to be placed over the current highest bid.
+     */
+    private boolean isLegalBid(BidType intendedBid) {
+        if (intendedBid == BidType.PASS) return true;
+
+        BidTurn highestTurn = memory.getHighestBid();
+        if (highestTurn == null || highestTurn.bidType() == BidType.PASS) {
+            return true;
+        }
+
+        BidType highestType = highestTurn.bidType();
+
+        int comparison = intendedBid.compareTo(highestType);
+        if (comparison < 0) return false;
+
+        if (intendedBid.getCategory() != BidCategory.MISERIE) {
+            return comparison > 0;
+        }
+
+        return true;
     }
 
     /**
