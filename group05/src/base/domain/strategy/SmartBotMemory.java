@@ -14,6 +14,8 @@ import base.domain.turn.PlayTurn;
 import java.util.ArrayList;
 import java.util.List;
 
+import static base.domain.WhistRules.MAX_TURNS;
+
 /**
  * Acts as the internal memory for a Smart Bot.
  * It listens to the game's event's via the {@link GameObserver} interface and
@@ -61,7 +63,7 @@ public class SmartBotMemory implements GameObserver {
 
     @Override
     public void onTurnPlayed(PlayTurn playTurn) {
-        if (this.currentTrickPlayTurns.size() == Trick.MAX_TURNS) {
+        if (this.currentTrickPlayTurns.size() == MAX_TURNS) {
             this.currentTrickPlayTurns.clear();
         }
 

@@ -177,12 +177,12 @@ class PlayerTest {
         @DisplayName("chooseCard() should delegate decision to strategy")
         void delegatesChooseCard() {
             Card expected = new Card(Suit.HEARTS, Rank.TEN);
-            when(mockStrategy.chooseCardToPlay(anyList(), eq(Suit.HEARTS))).thenReturn(expected);
+            when(mockStrategy.chooseCardToPlay(, anyList(), eq(Suit.HEARTS))).thenReturn(expected);
 
             Card result = player.chooseCard(Suit.HEARTS);
 
             assertEquals(expected, result);
-            verify(mockStrategy).chooseCardToPlay(anyList(), eq(Suit.HEARTS));
+            verify(mockStrategy).chooseCardToPlay(, anyList(), eq(Suit.HEARTS));
         }
 
         @Test

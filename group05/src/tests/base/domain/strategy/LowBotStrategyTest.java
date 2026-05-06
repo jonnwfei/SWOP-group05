@@ -52,8 +52,8 @@ class LowBotStrategyTest {
         @Test
         @DisplayName("Should throw exception if hand is null or empty")
         void throwsOnInvalidHand() {
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(null, Suit.HEARTS));
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(List.of(), Suit.HEARTS));
+            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(, null, Suit.HEARTS));
+            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(, List.of(), Suit.HEARTS));
         }
 
         @Test
@@ -65,7 +65,7 @@ class LowBotStrategyTest {
 
             List<Card> hand = List.of(heartTwo, heartQueen, spadeThree);
 
-            Card played = strategy.chooseCardToPlay(hand, Suit.HEARTS);
+            Card played = strategy.chooseCardToPlay(, hand, Suit.HEARTS);
 
             assertEquals(heartTwo, played, "Must follow suit and pick the lowest Heart, ignoring the Spade.");
         }
@@ -78,7 +78,7 @@ class LowBotStrategyTest {
 
             List<Card> hand = List.of(clubKing, diamondTen);
 
-            Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
+            Card played = strategy.chooseCardToPlay(, hand, Suit.SPADES);
 
             assertEquals(diamondTen, played, "Cannot follow Spades, so must play the lowest card available (Diamond Ten).");
         }
@@ -91,7 +91,7 @@ class LowBotStrategyTest {
 
             List<Card> hand = List.of(heartQueen, spadeThree);
 
-            Card played = strategy.chooseCardToPlay(hand, null);
+            Card played = strategy.chooseCardToPlay(, hand, null);
 
             assertEquals(spadeThree, played, "When leading the trick, should open with the weakest card.");
         }

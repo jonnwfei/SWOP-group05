@@ -120,7 +120,7 @@ public class GamePersistenceService {
 
         for (PlayerSnapshot playerSnapshot : snapshot.players()) {
             PlayerId restoredId = PlayerId.fromString(playerSnapshot.id());
-            Strategy playerStrategy = toStrategy(playerSnapshot.strategyType(), restoredId);
+            Strategy playerStrategy = toStrategy(playerSnapshot.strategyType());
 
             Player player = new Player(playerStrategy, playerSnapshot.name(), restoredId);
             player.updateScore(playerSnapshot.score());
@@ -310,12 +310,12 @@ private void restoreRoundHistory(WhistGame game, List<RoundSnapshot> roundSnapsh
      * @param strategyType strategyType instance to convert into a Strategy instance
      * @return Strategy instance
      */
-    private Strategy toStrategy(StrategySnapshotType strategyType, PlayerId restoredId) {
+    private Strategy toStrategy(StrategySnapshotType strategyType) {
         return switch (strategyType) {
             case HUMAN -> new HumanStrategy();
             case HIGH_BOT -> new HighBotStrategy();
             case LOW_BOT -> new LowBotStrategy();
-            case SMART_BOT -> new SmartBotStrategy(restoredId);
+            case SMART_BOT -> new SmartBotStrategy();
         };
     }
 }

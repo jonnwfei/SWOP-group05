@@ -47,7 +47,7 @@ class HumanStrategyTest {
         @Test
         @DisplayName("chooseCardToPlay() should return null as UI handles human input")
         void chooseCardToPlayReturnsNull() {
-            assertNull(strategy.chooseCardToPlay(dummyHand, Suit.HEARTS),
+            assertNull(strategy.chooseCardToPlay(, dummyHand, Suit.HEARTS),
                     "Human strategy should return null. The UI/State machine handles actual card selection.");
         }
     }

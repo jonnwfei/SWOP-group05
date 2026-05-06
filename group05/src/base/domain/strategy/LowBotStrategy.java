@@ -30,12 +30,14 @@ public final class LowBotStrategy implements Strategy {
 
     /**
      * Selects the card with the lowest rank from the set of legal moves.
+     *
+     * @param playerId
      * @param currentHand The list of cards currently held by the player.
-     * @param lead The suit led in the current trick (maybe null if the bot leads).
+     * @param lead        The suit led in the current trick (maybe null if the bot leads).
      * @return The card with the minimum rank among legal choices.
      */
     @Override
-    public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
+    public Card chooseCardToPlay(PlayerId playerId, List<Card> currentHand, Suit lead) {
         List<Card> legalCards = determineLegalCards(currentHand, lead);
         return Collections.min(legalCards, Comparator.comparing(Card::rank));
     }

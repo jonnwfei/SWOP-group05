@@ -140,7 +140,7 @@ public class MenuFlow {
                 case 2 -> new Player(new LowBotStrategy(), "Bot " + botNumber);
                 default -> {
                         PlayerId smartId = new PlayerId();
-                        yield new Player(new SmartBotStrategy(smartId), "Bot " + botNumber, smartId);
+                        yield new Player(new SmartBotStrategy(), "Bot " + botNumber, smartId);
                     }
                 };
             game.addPlayer(bot);

@@ -46,24 +46,16 @@ public final class SmartBotStrategy implements Strategy {
     }
 
     // --- Internal Memory & State ---
-    private PlayTactic currentPlayTactic;
+    private BidType placedBidType;
     private final SmartBotMemory memory;
-    private final PlayerId myself;
     private final Random random;
 
     /**
-     * Initializes a new Smart Bot.
-     *
-     * @param myself The unique identifier of the player this strategy is controlling.
-     * @throws IllegalArgumentException if the provided PlayerId is null.
+     * Initializes a new Smart Bot
      */
-    public SmartBotStrategy(PlayerId myself) {
-        if (myself == null) {
-            throw new IllegalArgumentException("PlayerId can't be null");
-        }
-        this.myself = myself;
+    public SmartBotStrategy() {
+        this.placedBidType = null;
         this.memory = new SmartBotMemory();
-        this.currentPlayTactic = PlayTactic.NORMAL;
         this.random = new Random();
     }
 
@@ -92,6 +84,7 @@ public final class SmartBotStrategy implements Strategy {
 
         BidType miserieBidType = evaluateMiserieEligibility(hand);
         if (miserieBidType != null && isLegalBid(miserieBidType)) {
+            this.placedBidType = miserieBidType;
             return miserieBidType.instantiate(playerId, null);
         }
 
@@ -101,20 +94,24 @@ public final class SmartBotStrategy implements Strategy {
         if (bestEvaluation.expectedTricks() >= MIN_TRICKS_FOR_ABONDANCE) {
             Bid highBid = mapToHighBid(playerId, bestEvaluation.expectedTricks(), bestEvaluation.suit());
             if (isLegalBid(highBid.getType())) {
+                this.placedBidType = highBid.getType();
                 return highBid;
             }
         }
 
         if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_ACCEPTANCE && memory.hasActiveProposal()) {
+            this.placedBidType = BidType.ACCEPTANCE;
             return BidType.ACCEPTANCE.instantiate(playerId, null);
         }
 
         if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_PROPOSAL) {
             if (isLegalBid(BidType.PROPOSAL)) {
+                this.placedBidType = BidType.PROPOSAL;
                 return BidType.PROPOSAL.instantiate(playerId, null);
             }
         }
 
+        this.placedBidType = BidType.PASS;
         return BidType.PASS.instantiate(playerId, null);
     }
 
@@ -150,21 +147,20 @@ public final class SmartBotStrategy implements Strategy {
      * @throws IllegalArgumentException if currentHand is null or empty.
      */
     @Override
-    public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
+    public Card chooseCardToPlay(PlayerId playerId, List<Card> currentHand, Suit lead) {
         if (currentHand == null || currentHand.isEmpty()) {
             throw new IllegalArgumentException("Cannot choose a card from an empty or null hand.");
         }
 
-        updateCurrentTactic();
+        PlayTactic playTactic = determineCurrentTactic();
         List<Card> legalCards = CardMath.getLegalCards(currentHand, lead);
 
         if (legalCards.isEmpty()) {
             throw new IllegalStateException("Critical Error: Legal cards filtered to empty list.");
         }
 
-        // Centralized dispatch to highly cohesive tactical methods
-        return switch (currentPlayTactic) {
-            case NORMAL        -> playToWinTrick(legalCards, lead);
+        return switch (playTactic) {
+            case NORMAL        -> playToWinTrick(playerId, legalCards, lead);
             case MISERIE       -> playToLoseTrick(legalCards, lead);
             case ANTI_MISERIE  -> playToForceMiserieLoss(legalCards, lead);
         };
@@ -178,20 +174,17 @@ public final class SmartBotStrategy implements Strategy {
     // --- State Routing Helper ---
 
     /**
-     * Updates the bot's internal tactical posture based on the outcome of the bidding phase.
+     * determines the bot's internal tactical posture based on the outcome of the bidding phase.
      */
-    private void updateCurrentTactic() {
+    private PlayTactic determineCurrentTactic() {
+        if (this.placedBidType == null) throw new IllegalStateException("Cannot determine current tactic. SmartBot hasn't placed a bid yet");
         BidTurn highestBidTurn = memory.getHighestBid();
 
-        if (highestBidTurn != null && highestBidTurn.bidType().getCategory() == BidCategory.MISERIE) {
-            if (highestBidTurn.playerId().equals(myself)) {
-                this.currentPlayTactic = PlayTactic.MISERIE;
-            } else {
-                this.currentPlayTactic = PlayTactic.ANTI_MISERIE;
-            }
-        } else {
-            this.currentPlayTactic = PlayTactic.NORMAL;
-        }
+        if (this.placedBidType == BidType.MISERIE) return PlayTactic.MISERIE;
+
+        if (highestBidTurn.bidType() == BidType.MISERIE) return PlayTactic.ANTI_MISERIE;
+
+        return PlayTactic.NORMAL;
     }
 
     // --- Tactical Playing Helpers ---
@@ -199,14 +192,14 @@ public final class SmartBotStrategy implements Strategy {
     /**
      * Heuristic for standard Whist play. Attempts to win tricks for the team while conserving high cards.
      */
-    private Card playToWinTrick(List<Card> legalCards, Suit lead) {
+    private Card playToWinTrick(PlayerId playerId, List<Card> legalCards, Suit lead) {
         if (memory.isLeadPlayer()) {
             Card guaranteedWinner = findGuaranteedWinningLead(legalCards);
             if (guaranteedWinner != null) return guaranteedWinner;
             return getRandomCard(findLowestCards(legalCards));
         }
 
-        if (memory.isTeamWinning(myself)) {
+        if (memory.isTeamWinning(playerId)) {
             // Conserve high cards if partner is already winning
             return getRandomCard(findLowestCards(legalCards));
         } else {
