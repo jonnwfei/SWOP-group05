@@ -5,6 +5,8 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
+
+import static base.domain.WhistRules.*;
 import static base.domain.deck.Deck.DealType;
 
 import base.domain.observer.GameObserver;
@@ -25,6 +27,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+
 /**
  * Represents a game of Whist.
  * Acts as the Aggregate Root, managing the global player roster, round history, and state transitions.
@@ -32,12 +35,6 @@ import java.util.stream.Collectors;
  * @since 28/02/2026
  */
 public class WhistGame {
-
-    @Deprecated
-    public static final int REQUIRED_PLAYERS = 4;
-    @Deprecated
-    public static final int MAX_PLAYERS = 67;
-
     private State state;
     private Deck deck;
     private Player dealerPlayer;
@@ -378,6 +375,6 @@ public class WhistGame {
      * @return true if possible to remove player
      */
     public boolean canRemovePlayer() {
-        return (this.allPlayers.size() > WhistRules.REQUIRED_PLAYERS);
+        return (this.allPlayers.size() > REQUIRED_PLAYERS);
     }
 }
