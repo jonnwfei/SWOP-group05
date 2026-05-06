@@ -3,6 +3,7 @@ package base.domain.strategy;
 import base.domain.bid.Bid;
 import base.domain.bid.PassBid;
 import base.domain.card.Card;
+import base.domain.card.CardMath;
 import base.domain.card.Suit;
 import base.domain.player.PlayerId;
 
@@ -39,26 +40,7 @@ public final class HighBotStrategy implements Strategy {
      */
     @Override
     public Card chooseCardToPlay(PlayerId playerId, List<Card> currentHand, Suit lead) {
-        List<Card> legalCards = determineLegalCards(currentHand, lead);
+        List<Card> legalCards = CardMath.getLegalCards(currentHand, lead);
         return Collections.max(legalCards, Comparator.comparing(Card::rank));
-    }
-
-    /**
-     * Filters the hand for cards that follow the lead suit.
-     * If no such cards exist, the entire hand is considered legal.
-     * @param currentHand The player's current hand.
-     * @param lead The leading suit of the trick.
-     * @return A list of valid cards according to Whist rules.
-     * @throws IllegalArgumentException if the hand is null or empty.
-     */
-    private List<Card> determineLegalCards(List<Card> currentHand, Suit lead) {
-        if (currentHand == null) throw new IllegalArgumentException("currentHand can't be null");
-        if (currentHand.isEmpty()) throw new IllegalArgumentException("currentHand can't be empty");
-
-        List<Card> legalCards = currentHand.stream().filter(card -> card.suit() == lead).toList();
-        if (legalCards.isEmpty()) {
-            legalCards = currentHand;
-        }
-        return legalCards;
     }
 }
