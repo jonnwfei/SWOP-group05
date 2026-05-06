@@ -34,7 +34,7 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
     Bid determineBid(PlayerId playerId, List<Card> hand);
 
 
-    Card chooseCardToPlay(List<Card> currentHand, Suit lead );
+    Card chooseCardToPlay(PlayerId playerId, List<Card> currentHand, Suit lead );
 
     /**
      * Lifecycle hook called when the strategy is added to a live game.

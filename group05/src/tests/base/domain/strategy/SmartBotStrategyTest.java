@@ -1,7 +1,6 @@
 package base.domain.strategy;
 
 import base.domain.bid.Bid;
-import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
@@ -47,7 +46,7 @@ class SmartBotStrategyTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        strategy = new SmartBotStrategy(botId);
+        strategy = new SmartBotStrategy();
 
         // INJECTION REFLECTION: Swap the internal Memory and Random objects with our Mocks
         Field memoryField = SmartBotStrategy.class.getDeclaredField("memory");
@@ -75,7 +74,7 @@ class SmartBotStrategyTest {
         @Test
         @DisplayName("Constructor throws on null PlayerId")
         void constructorNullCheck() {
-            assertThrows(IllegalArgumentException.class, () -> new SmartBotStrategy(null));
+            assertThrows(IllegalArgumentException.class, () -> new SmartBotStrategy());
         }
 
         @Test
@@ -103,8 +102,8 @@ class SmartBotStrategyTest {
         @Test
         @DisplayName("chooseCardToPlay throws on null or empty hand")
         void playValidation() {
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(null, Suit.HEARTS));
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(Collections.emptyList(), Suit.HEARTS));
+            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(botId, null, Suit.HEARTS));
+            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(botId, Collections.emptyList(), Suit.HEARTS));
         }
 
         @Test
@@ -115,7 +114,7 @@ class SmartBotStrategyTest {
             mockedCardMath.when(() -> CardMath.getLegalCards(anyList(), any())).thenReturn(Collections.emptyList());
 
             List<Card> hand = List.of(new Card(Suit.HEARTS, Rank.TWO));
-            assertThrows(IllegalStateException.class, () -> strategy.chooseCardToPlay(hand, Suit.HEARTS));
+            assertThrows(IllegalStateException.class, () -> strategy.chooseCardToPlay(botId, hand, Suit.HEARTS));
         }
     }
 
@@ -269,7 +268,7 @@ class SmartBotStrategyTest {
 
             when(mockMemory.isHighestUnplayedCardInSuit(ace)).thenReturn(true);
 
-            assertEquals(ace, strategy.chooseCardToPlay(List.of(two, ace), null));
+            assertEquals(ace, strategy.chooseCardToPlay(botId, List.of(two, ace), null));
         }
 
         @Test
@@ -280,7 +279,7 @@ class SmartBotStrategyTest {
             when(mockMemory.isLeadPlayer()).thenReturn(true);
             when(mockMemory.isHighestUnplayedCardInSuit(any())).thenReturn(false);
 
-            assertEquals(low, strategy.chooseCardToPlay(List.of(low, med), null));
+            assertEquals(low, strategy.chooseCardToPlay(botId, List.of(low, med), null));
         }
 
         @Test
@@ -290,7 +289,7 @@ class SmartBotStrategyTest {
             when(mockMemory.isLeadPlayer()).thenReturn(false);
             when(mockMemory.isTeamWinning(botId)).thenReturn(true);
 
-            assertEquals(low, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.ACE), low), Suit.HEARTS));
+            assertEquals(low, strategy.chooseCardToPlay(botId, List.of(new Card(Suit.HEARTS, Rank.ACE), low), Suit.HEARTS));
         }
 
         @Test
@@ -304,7 +303,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.HEARTS);
 
             // Lead is SPADES. Hand has Diamonds & Hearts (Trump). It is void in Lead.
-            assertEquals(lowTrump, strategy.chooseCardToPlay(List.of(discard, lowTrump), Suit.SPADES));
+            assertEquals(lowTrump, strategy.chooseCardToPlay(botId, List.of(discard, lowTrump), Suit.SPADES));
         }
 
         @Test
@@ -316,7 +315,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.HEARTS);
 
             // Lead is SPADES. Hand has Diamonds & Clubs. Void in lead, void in trump.
-            assertEquals(lowDiscard, strategy.chooseCardToPlay(List.of(new Card(Suit.CLUBS, Rank.NINE), lowDiscard), Suit.SPADES));
+            assertEquals(lowDiscard, strategy.chooseCardToPlay(botId, List.of(new Card(Suit.CLUBS, Rank.NINE), lowDiscard), Suit.SPADES));
         }
 
         @Test
@@ -330,7 +329,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.HEARTS);
 
             // Must follow SPADES
-            assertEquals(highLead, strategy.chooseCardToPlay(List.of(highLead, lowLead), Suit.SPADES));
+            assertEquals(highLead, strategy.chooseCardToPlay(botId, List.of(highLead, lowLead), Suit.SPADES));
         }
     }
 
@@ -350,7 +349,7 @@ class SmartBotStrategyTest {
             Card low = new Card(Suit.HEARTS, Rank.TWO);
             when(mockMemory.isLeadPlayer()).thenReturn(true);
 
-            assertEquals(low, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.KING), low), null));
+            assertEquals(low, strategy.chooseCardToPlay(botId, List.of(new Card(Suit.HEARTS, Rank.KING), low), null));
         }
 
         @Test
@@ -363,7 +362,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentWinningTurn()).thenReturn(new PlayTurn(new PlayerId(), new Card(Suit.HEARTS, Rank.TEN)));
 
             // Plays 9 to stay under the 10, instead of dumping the 2.
-            assertEquals(safeHigh, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.TWO), safeHigh, unsafeHigh), Suit.HEARTS));
+            assertEquals(safeHigh, strategy.chooseCardToPlay(botId, List.of(new Card(Suit.HEARTS, Rank.TWO), safeHigh, unsafeHigh), Suit.HEARTS));
         }
 
         @Test
@@ -376,7 +375,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentWinningTurn()).thenReturn(new PlayTurn(new PlayerId(), new Card(Suit.HEARTS, Rank.TWO)));
 
             // Everything beats a 2, so it must dump the absolute highest card to minimize future risk
-            assertEquals(absoluteHighest, strategy.chooseCardToPlay(List.of(otherHigh, absoluteHighest), Suit.HEARTS));
+            assertEquals(absoluteHighest, strategy.chooseCardToPlay(botId, List.of(otherHigh, absoluteHighest), Suit.HEARTS));
         }
     }
 
@@ -398,7 +397,7 @@ class SmartBotStrategyTest {
             Card low = new Card(Suit.HEARTS, Rank.TWO);
             when(mockMemory.hasPlayerActedInCurrentTrick(opponentId)).thenReturn(false);
 
-            assertEquals(low, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.ACE), low), Suit.HEARTS));
+            assertEquals(low, strategy.chooseCardToPlay(botId, List.of(new Card(Suit.HEARTS, Rank.ACE), low), Suit.HEARTS));
         }
 
         @Test
@@ -412,7 +411,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCardPlayedBy(opponentId)).thenReturn(winningCard);
 
             // 3 is under 10. Ace beats 10. Play the 3 to force opponent to keep the trick.
-            assertEquals(safeLow, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.ACE), safeLow), Suit.HEARTS));
+            assertEquals(safeLow, strategy.chooseCardToPlay(botId, List.of(new Card(Suit.HEARTS, Rank.ACE), safeLow), Suit.HEARTS));
         }
 
         @Test
@@ -426,7 +425,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCardPlayedBy(opponentId)).thenReturn(winningCard);
 
             // No cards are under 2. Bot MUST win. Dump the highest possible card.
-            assertEquals(absoluteHighest, strategy.chooseCardToPlay(List.of(absoluteHighest, new Card(Suit.HEARTS, Rank.THREE)), Suit.HEARTS));
+            assertEquals(absoluteHighest, strategy.chooseCardToPlay(botId, List.of(absoluteHighest, new Card(Suit.HEARTS, Rank.THREE)), Suit.HEARTS));
         }
 
         @Test
@@ -438,7 +437,7 @@ class SmartBotStrategyTest {
             when(mockMemory.calculateCurrentWinnerId()).thenReturn(new PlayerId()); // Someone ELSE is winning
 
             // Opponent is currently safe. Bot plays aggressively to take control.
-            assertEquals(highest, strategy.chooseCardToPlay(List.of(highest, new Card(Suit.HEARTS, Rank.TWO)), Suit.HEARTS));
+            assertEquals(highest, strategy.chooseCardToPlay(botId, List.of(highest, new Card(Suit.HEARTS, Rank.TWO)), Suit.HEARTS));
         }
     }
 }

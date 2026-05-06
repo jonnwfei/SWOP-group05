@@ -92,7 +92,7 @@ public class GameEditFlow {
 
     private void addSmartBot() {
         PlayerId id = new PlayerId();
-        game.addPlayer(new Player(new SmartBotStrategy(id), "Smart bot", id));
+        game.addPlayer(new Player(new SmartBotStrategy(), "Smart bot", id));
     }
 
     private void addHighBot() {

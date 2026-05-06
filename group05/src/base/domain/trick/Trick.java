@@ -8,6 +8,8 @@ import base.domain.turn.PlayTurn;
 import java.util.ArrayList;
 import java.util.List;
 
+import static base.domain.WhistRules.MAX_TURNS;
+
 /**
  * Represents a single trick in a Whist round.
  * Acts as a passive ledger that records turns and calculates the current winning card.
@@ -18,7 +20,6 @@ public class Trick {
     /**
      * The maximum number of players/cards in a single trick.
      */
-    public static final int MAX_TURNS = 4;
 
     private final Suit trumpSuit;
     private final PlayerId startingPlayerId;

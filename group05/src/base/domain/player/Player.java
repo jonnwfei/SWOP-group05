@@ -93,7 +93,7 @@ public class Player {
      * @return the {@link Card} chosen by the player's strategy.
      */
     public Card chooseCard(Suit lead) {
-        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead);
+        return this.decisionStrategy.chooseCardToPlay(this.playerId, this.getHand(), lead);
     }
 
     /**

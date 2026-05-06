@@ -161,7 +161,7 @@ class GamePersistenceServiceTest {
         void shouldMapStrategyTypesCorrectly() {
             Player highBot = new Player(new HighBotStrategy(), "HighBot", new PlayerId());
             Player lowBot = new Player(new LowBotStrategy(), "LowBot", new PlayerId());
-            Player smartBot = new Player(new SmartBotStrategy(new PlayerId()), "SmartBot", new PlayerId());
+            Player smartBot = new Player(new SmartBotStrategy(), "SmartBot", new PlayerId());
 
             when(mockGame.getAllPlayers()).thenReturn(List.of(highBot, lowBot, smartBot, p4));
             when(mockGame.getDealerPlayer()).thenReturn(highBot);
