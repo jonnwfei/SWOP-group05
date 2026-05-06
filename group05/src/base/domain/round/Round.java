@@ -162,6 +162,7 @@ public class Round {
         this.bids.addAll(finalBids);
         this.highestBid = finalBids.getFirst();
         this.players.forEach(Player::flushHand);
+        this.biddingTeam.addAll(this.players);
         this.finished = true;
     }
 
