@@ -245,7 +245,7 @@ public class GamePersistenceService {
      * @param roundSnapshots persisted round snapshots
      * @throws IllegalStateException if trying to restore rounds to a game without exactly 4 players
      */
-    private void restoreRoundHistory(WhistGame game, List<RoundSnapshot> roundSnapshots) {
+private void restoreRoundHistory(WhistGame game, List<RoundSnapshot> roundSnapshots) {
         if (roundSnapshots.isEmpty()) {
             return;
         }

@@ -133,6 +133,17 @@ class TrickEvaluatorTest {
             // Neither is lead, neither is trump. Challenger cannot "beat" the current best.
             assertFalse(evaluator.doesBeat(challenger, currentBest));
         }
+
+        @Test
+        @DisplayName("Off-suit challenger (non-lead, non-trump) loses to a trump card")
+        void offSuitLosesToTrump() {
+            // Lead is SPADES, Trump is HEARTS (from setUp)
+            Card currentBest = new Card(Suit.HEARTS, Rank.TWO);      // Trump suit
+            Card challenger = new Card(Suit.DIAMONDS, Rank.ACE);    // Off-suit (non-lead, non-trump)
+
+            assertFalse(evaluator.doesBeat(challenger, currentBest),
+                    "An off-suit card should never beat a trump card.");
+        }
     }
 
     @Nested

@@ -62,6 +62,7 @@ public class MenuFlow {
         List<String> availableSaves = persistenceService.listDescriptions();
         if (availableSaves.isEmpty()) {
             System.out.println("No saved games found. Returning to main menu.");
+//            run();
             return;
         }
         int choice = input.askInt(new LoadSaveIOEvent(availableSaves), 0, availableSaves.size());
