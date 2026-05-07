@@ -19,8 +19,6 @@ public sealed interface BidResults extends GameResult {
         public BidTurnResult {
             if (playerName == null || playerName.isBlank())
                 throw new IllegalArgumentException("playerName cannot be null or blank.");
-            if (trumpSuit == null)
-                throw new IllegalArgumentException("trumpSuit cannot be null.");
             if (availableBids == null || availableBids.isEmpty())
                 throw new IllegalArgumentException("availableBids cannot be null or empty.");
             if (hand == null)
@@ -44,6 +42,7 @@ public sealed interface BidResults extends GameResult {
                 throw new IllegalArgumentException("pendingBid cannot be null.");
             if (availableSuits == null || availableSuits.length == 0)
                 throw new IllegalArgumentException("availableSuits cannot be null or empty.");
+            availableSuits = availableSuits.clone();
         }
     }
 

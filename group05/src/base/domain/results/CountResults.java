@@ -3,9 +3,10 @@ package base.domain.results;
 import base.domain.bid.BidType;
 import base.domain.player.Player;
 import base.domain.round.Round;
-import cli.events.CountEvents;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public sealed interface CountResults extends GameResult {
 
@@ -19,18 +20,24 @@ public sealed interface CountResults extends GameResult {
                 throw new IllegalArgumentException("availableBids cannot be null or empty.");
             if (players == null || players.isEmpty())
                 throw new IllegalArgumentException("players cannot be null or empty.");
+            availableBids = availableBids.clone();
+            players = new ArrayList<>(players);
+        }
+        @Override
+        public BidType[] availableBids() {
+            return availableBids.clone();
         }
     }
 
     record SuitSelectionResult() implements CountResults {}
 
-     record PlayerSelectionResult(
+    record PlayerSelectionResult(
             List<Player> players,
             boolean multiSelect,
             BidType type
     ) implements CountResults {
         public PlayerSelectionResult(List<Player> players) {
-            this(players, false, null);
+            this(players, false, BidType.PASS); // TODO: defaulted to PASS, instead of null
         }
 
 
@@ -38,8 +45,8 @@ public sealed interface CountResults extends GameResult {
             if (players == null || players.isEmpty()) {
                 throw new IllegalArgumentException("players cannot be null or empty");
             }
-            if (type == null){
-                throw new IllegalArgumentException("bidtype cannot be null");
+            if (type == null) {
+                throw new IllegalArgumentException("type cannot be null");
             }
             players = List.copyOf(players);
         }
@@ -55,6 +62,8 @@ public sealed interface CountResults extends GameResult {
         public ScoreBoardResult {
             if (names == null || names.isEmpty())
                 throw new IllegalArgumentException("names cannot be null or empty.");
+            if (names.stream().anyMatch(name -> name == null || name.isBlank()))
+                throw new IllegalArgumentException("names cannot contain null or blank entries.");
             if (scores == null || scores.isEmpty())
                 throw new IllegalArgumentException("scores cannot be null or empty.");
             if (names.size() != scores.size())

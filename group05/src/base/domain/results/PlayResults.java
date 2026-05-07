@@ -6,6 +6,7 @@ import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 
 import java.util.List;
+import java.util.Objects;
 
 public sealed interface PlayResults extends GameResult {
 
@@ -20,12 +21,14 @@ public sealed interface PlayResults extends GameResult {
             Trick lastPlayedTrick
     ) implements PlayResults {
         public PlayCardResult {
-            if (turns == null)
-                throw new IllegalArgumentException("tableCards cannot be null.");
-            if (exposedPlayerNames == null)
-                throw new IllegalArgumentException("exposedPlayerNames cannot be null.");
-            if (formattedExposedHand == null)
-                throw new IllegalArgumentException("formattedExposedHand cannot be null.");
+            if (turns == null || turns.stream().anyMatch(Objects::isNull))
+                throw new IllegalArgumentException("turns cannot be nor contain null.");
+            if (exposedPlayerNames == null || exposedPlayerNames.stream().anyMatch(Objects::isNull))
+                throw new IllegalArgumentException("exposedPlayerNames cannot be nor contain null.");
+            if (formattedExposedHand == null ||  formattedExposedHand.stream().anyMatch(Objects::isNull))
+                throw new IllegalArgumentException("formattedExposedHand cannot be nor contain null Hands.");
+            if (formattedExposedHand.stream().anyMatch(hand -> hand.stream().anyMatch(Objects::isNull)))
+                throw new IllegalArgumentException("formattedExposedHand cannot contain null cards.");
             if (exposedPlayerNames.size() != formattedExposedHand.size())
                 throw new IllegalArgumentException("exposedPlayerNames and formattedExposedHand must have the same size.");
             if (trickNumber < 1)
@@ -35,10 +38,12 @@ public sealed interface PlayResults extends GameResult {
             if (legalCards == null)
                 throw new IllegalArgumentException("legalCards cannot be null.");
             // lastPlayedTrick is intentionally nullable (null = no trick played yet)
-            turns        = List.copyOf(turns);
+            turns = List.copyOf(turns);
             exposedPlayerNames = List.copyOf(exposedPlayerNames);
-            formattedExposedHand = List.copyOf(formattedExposedHand);
-            legalCards        = List.copyOf(legalCards);
+            formattedExposedHand = formattedExposedHand.stream()
+                    .map(List::copyOf)
+                    .toList();
+            legalCards = List.copyOf(legalCards);
         }
     }
 
