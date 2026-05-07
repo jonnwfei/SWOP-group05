@@ -40,7 +40,13 @@ public final class HighBotStrategy implements Strategy {
      */
     @Override
     public Card chooseCardToPlay(PlayerId playerId, List<Card> currentHand, Suit lead) {
+        if (currentHand == null || currentHand.isEmpty()) {
+            throw new IllegalArgumentException("Cannot choose a card from an empty or null hand.");
+        }
         List<Card> legalCards = CardMath.getLegalCards(currentHand, lead);
+        if (legalCards.isEmpty()) {
+            throw new IllegalStateException("Critical Error: Legal cards filtered to empty list.");
+        }
         return Collections.max(legalCards, Comparator.comparing(Card::rank));
     }
 }

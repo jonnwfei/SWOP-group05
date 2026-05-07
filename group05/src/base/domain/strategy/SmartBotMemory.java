@@ -6,7 +6,6 @@ import base.domain.card.Suit;
 import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.PlayerId;
-import base.domain.trick.Trick;
 import base.domain.trick.TrickEvaluator;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;

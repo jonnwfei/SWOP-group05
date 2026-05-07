@@ -9,6 +9,7 @@ public final class CardMath {
     private CardMath() {}
 
     public static List<Card> getLegalCards(List<Card> hand, Suit lead) {
+        if (hand == null || hand.contains(null)) throw new IllegalArgumentException("hand is null or contains null");
         if (lead == null) return hand;
 
         List<Card> followingCards = hand.stream()

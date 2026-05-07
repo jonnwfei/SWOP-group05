@@ -71,11 +71,6 @@ class SmartBotStrategyTest {
     @Nested
     @DisplayName("Lifecycle & Core Mechanics")
     class LifecycleTests {
-        @Test
-        @DisplayName("Constructor throws on null PlayerId")
-        void constructorNullCheck() {
-            assertThrows(IllegalArgumentException.class, () -> new SmartBotStrategy());
-        }
 
         @Test
         @DisplayName("getGameObserver returns the internal memory")
