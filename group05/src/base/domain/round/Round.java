@@ -27,25 +27,18 @@ import java.util.Objects;
 public class Round {
     /** The maximum number of tricks played in a single round. */
     public static final int MAX_TRICKS = 13;
-
     /** The 4 players participating in this round. */
     private final List<Player> players;
-
     /** The players who must fulfill the active bid contract. */
     private final List<Player> biddingTeam;
-
     /** The player whose turn it currently is to bid or play a card. */
     private Player currentPlayer;
-
     /** The record of all completed tricks in this round. */
     private final List<Trick> playedTricks;
-
     /** The record of all bids made during the Bidding Phase. */
     private final List<Bid> bids;
-
     /** The final, highest bid that dictates the scoring and rules of the round. */
     private Bid highestBid;
-
     /**
      * The active trump suit, determined by the dealer's last card or the winning
      * bid.
@@ -130,6 +123,7 @@ public class Round {
 
     /**
      * Calculates the bidding team based on the highest bid.
+     *
      * MUST be called at the end of the Bidding Phase, before any cards are played!
      */
     private void resolveTeams() {
@@ -307,7 +301,6 @@ public class Round {
      * <li>For Miserie: Returns only the specific Miserie players who successfully
      * took 0 tricks.</li>
      * </ul>
-     *
      * @return A list of the winning players, or an empty list if the round is not
      *         yet finished.
      * @throws IllegalStateException when highestBid is null
@@ -498,7 +491,6 @@ public class Round {
     public int getCountTricksWon() {
         return countTricksWon;
     }
-
     /**
      * Retrieves tricks won by the bidding team for play-mode rounds.
      *
@@ -510,7 +502,6 @@ public class Round {
         }
         return getTricksWonBy(biddingTeam);
     }
-
     /**
      * Retrieves winners recorded during count-mode miserie scoring.
      *

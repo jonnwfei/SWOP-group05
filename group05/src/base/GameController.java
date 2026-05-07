@@ -1,116 +1,148 @@
 package base;
-
 import base.domain.WhistGame;
 import base.domain.commands.GameCommand;
+import base.domain.deck.Deck;
+import base.domain.observer.GameObserver;
+import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
-import base.domain.states.StateStep;
-import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
-import cli.flows.GameEditFlow;
-import cli.flows.MenuFlow;
-import cli.flows.ScoreBoardFlow;
-import cli.TerminalManager;
-import cli.adapter.Adapter;
-import cli.adapter.AdapterResponse;
-import cli.adapter.AdapterResult;
-import cli.elements.Response;
-import cli.events.IOEvent;
-/**
- * Main controller of the application.
- * Coordinates menu flow, game state machine, and user interaction.
- */
+import base.domain.round.Round;
+import base.domain.strategy.HighBotStrategy;
+import base.domain.strategy.HumanStrategy;
+import base.domain.strategy.LowBotStrategy;
+import base.domain.strategy.SmartBotStrategy;
+
+import java.util.Collection;
+import java.util.List;
+
 public class GameController {
-
     private final WhistGame game;
-    private final TerminalManager terminalManager;
-    private final Adapter adapter;
-    private final MenuFlow menuFlow;
-    private final GamePersistenceService persistenceService;
-    /**
-     * Creates a new GameController with all required components.
-     */
-    public GameController() {
-        this.game = new WhistGame();
-        this.terminalManager = new TerminalManager();
-        this.adapter = new Adapter(this.game);
-        this.persistenceService = new GamePersistenceService();
-        this.menuFlow = new MenuFlow(terminalManager, persistenceService, game);
+
+    public GameController(WhistGame game) {
+        this.game = game;
     }
-    /**
-     * Main application loop.
-     * Handles menu navigation and repeated game sessions.
-     */
-    public void run() {
-        while (true) {
-            game.resetPlayers();
-            game.resetRounds();
-            SaveMode mode = menuFlow.run();
-            GameEditFlow editFlow = new GameEditFlow(terminalManager, game, persistenceService, mode);
-            ScoreBoardFlow scoreBoardFlow = new ScoreBoardFlow(terminalManager, game, editFlow);
-            boolean continueSession = true;
-            while (continueSession) {
-                runStateMachine();
-                continueSession = scoreBoardFlow.run(mode); // true = another round, false = main menu
-            }
-            // false → falls through to menuFlow.run() which resets and restarts
-        }
+
+    public GameResult advance(GameCommand command) {
+        return game.advance(command);
     }
-    /**
-     * Executes the game state machine until the game ends.
-     */
-    private void runStateMachine() {
-        GameCommand command = null;
-        boolean stateRunning = true;
 
-        while (!game.isOver()) {
-            while (stateRunning) {
-                    StateStep step = (command == null)
-                        ? game.executeState()
-                        : game.executeState(command);
-
-                stateRunning = !step.shouldTransition();
-
-                if (!step.hasResult()) {
-                    command = null;
-                    continue;
-                }
-                GameResult result = step.result();
-                AdapterResult adapterResult = adapter.handleResult(result);
-
-                command = switch (adapterResult) {
-                    case AdapterResult.Immediate immediate -> immediate.command();
-                    case AdapterResult.NeedsIO needsIO    -> handleIO(needsIO, result);
-                };
-            }
-            game.nextState();
-            stateRunning = true;
-            command = null;
-        }
+    public void reset() {
+        game.resetPlayers();
+        game.resetRounds();
     }
-    /**
-     * Handles user interaction for a given state.
-     *
-     * @param needsIO IO instructions
-     * @param result current game result
-     * @return next command to execute
-     */
-    private GameCommand handleIO(AdapterResult.NeedsIO needsIO, GameResult result) {
-        for (IOEvent pre : needsIO.preamble()) {
-            terminalManager.handle(pre);
-        }
 
-        IOEvent event = needsIO.event();
-        Response response = terminalManager.handle(event);
-        AdapterResponse adapterResponse = adapter.handleResponse(response, result);
-
-        while (adapterResponse.shouldReRenderLastResult()) {
-            for (IOEvent immediate : adapterResponse.immediateEvents()) {
-                terminalManager.handle(immediate);
-            }
-            response = terminalManager.handle(event);
-            adapterResponse = adapter.handleResponse(response, result);
-        }
-
-        return adapterResponse.command();
+    public boolean isGameOver() {
+        return game.isOver();
     }
+
+    public void addPlayer(Player player) {
+        game.addPlayer(player);
+    }
+
+    public void removePlayer(Player player) {
+        game.removePlayer(player);
+    }
+
+    public List<Player> getPlayers() {
+        return game.getAllPlayers();
+    }
+
+    public boolean canRemovePlayer() {
+        return game.canRemovePlayer();
+    }
+
+    public void setDeck(Deck deck) {
+        game.setDeck(deck);
+    }
+
+    public void setRandomDealer() {
+        game.setRandomDealer();
+    }
+
+    public void advanceDealer() {
+        game.advanceDealer();
+    }
+
+    public void rotateActivePlayers() {
+        game.rotateActivePlayers();
+    }
+
+    public List<Round> getRounds() {
+        return game.getRounds();
+    }
+
+    public void removeRound(Round round) {
+        game.removeRound(round);
+    }
+
+    public void recalibrateScores() {
+        game.recalibrateScores();
+    }
+
+    public void startGame() {
+        game.startGame();
+    }
+
+    public void startCount() {
+        game.startCount();
+    }
+
+    public void addObserver(GameObserver observer) {
+        game.addObserver(observer);
+    }
+
+    public List<Player> getAllPlayers() {
+        return game.getAllPlayers();
+    }
+
+    /**
+     * TODO : delete this -> need to fix the uses for the game persistence
+     * @return whistgame
+     */
+    public WhistGame getGame() {
+        return this.game;
+    }
+
+    public void setDealerPlayer(Player first) {
+        game.setDealerPlayer(first);
+    }
+
+    // Player factories — flows pass intent, controller constructs
+    public void addHumanPlayer(String name) {
+        game.addPlayer(new Player(new HumanStrategy(), name));
+    }
+
+    public void addSmartBot(String name) {
+        PlayerId id = new PlayerId();
+        game.addPlayer(new Player(new SmartBotStrategy(id), name, id));
+    }
+
+    public void addHighBot(String name) {
+        game.addPlayer(new Player(new HighBotStrategy(), name));
+    }
+
+    public void addLowBot(String name) {
+        game.addPlayer(new Player(new LowBotStrategy(), name));
+    }
+
+    public void setFirstPlayerAsDealer() {
+        game.setFirstPlayerAsDealer();
+    }
+    public void removePlayerAtIndex(int index) {
+        game.removePlayerAtIndex(index);
+    }
+
+    // Projections — flows never need to import Player
+    public List<String> getPlayerNames() {
+        return game.getAllPlayers().stream().map(Player::getName).toList();
+    }
+
+    public List<Integer> getPlayerScores() {
+        return game.getAllPlayers().stream().map(Player::getScore).toList();
+    }
+
+    public int getPlayerCount() {
+        return game.getAllPlayers().size();
+    }
+
 }
