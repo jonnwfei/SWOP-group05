@@ -251,7 +251,7 @@ public class BidState extends State {
         if (currentHighestBid.getType() != BidType.PROPOSAL) {
             throw new IllegalStateException("State violation: Not in a rejected proposal context.");
         }
-
+        //TODO: use highest bid
         Bid proposalBid = findBid(BidType.PROPOSAL);
         if (proposalBid == null) {
             throw new IllegalStateException("Critical error: PROPOSAL bid not found in memory.");

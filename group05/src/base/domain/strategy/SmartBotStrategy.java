@@ -18,7 +18,7 @@ import java.util.Random;
 
 import static base.domain.card.CardMath.findHighestCards;
 import static base.domain.card.CardMath.findLowestCards;
-
+//TODO: weten wie welke kaarten heeft gespeeld, om playerId,
 /**
  * Encapsulates the AI decision-making algorithms for a simulated Whist player.
  * <p>
@@ -75,6 +75,7 @@ public final class SmartBotStrategy implements Strategy {
      * @throws IllegalArgumentException if the provided player is null.
      */
     @Override
+    //playerId weghalen door Player de bid te laten maken
     public Bid determineBid(PlayerId playerId, List<Card> hand) {
         if (playerId == null) {
             throw new IllegalArgumentException("Player cannot be null.");
