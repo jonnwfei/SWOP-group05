@@ -19,3 +19,7 @@
 /saves/
 /testSaves/
 /doc/
+.DS_Store
+lib/
+*.iml
+doc.zip
