@@ -2,11 +2,11 @@ package base.storage;
 
 import base.domain.bid.BidType;
 import base.domain.card.Suit;
-import base.storage.snapshots.GameSnapshot;
-import base.storage.snapshots.PlayerSnapshot;
-import base.storage.snapshots.RoundSnapshot;
-import base.storage.snapshots.SaveMode;
-import base.storage.snapshots.StrategySnapshotType;
+import base.domain.snapshots.GameSnapshot;
+import base.domain.snapshots.PlayerSnapshot;
+import base.domain.snapshots.RoundSnapshot;
+import base.domain.snapshots.SaveMode;
+import base.domain.snapshots.StrategySnapshotType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

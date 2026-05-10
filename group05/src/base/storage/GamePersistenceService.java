@@ -4,8 +4,8 @@ import base.domain.WhistGame;
 import base.domain.bid.*;
 import base.domain.deck.Deck;
 import base.domain.round.Round;
+import base.domain.snapshots.*;
 import base.domain.strategy.*;
-import base.storage.snapshots.*;
 import base.domain.player.*;
 
 import java.util.List;
@@ -50,7 +50,7 @@ public class GamePersistenceService {
         if (mode == null) throw new IllegalArgumentException("Cannot save without a save mode ");
         if (description == null) throw new IllegalArgumentException("Cannot save without a description");
 
-        GameSnapshot snapshot = createSnapshot(game, mode, description);
+        GameSnapshot snapshot = game.toSnapshot(mode, description);
         repository.save(snapshot);
     }
 
@@ -77,35 +77,6 @@ public class GamePersistenceService {
         GameSnapshot snapshot = repository.loadByDescription(description);
         restoreGame(game, snapshot);
         return snapshot.mode();
-    }
-
-    /**
-     * Constructs a GameSnapshot from the current state of the provided game instance, using the specified save mode and description.
-     * @param game the game instance to save
-     * @param mode the game mode to save (full game or count session)
-     * @param description description/alias or name for the save, used for choosing between saves when loading
-     * @return GameSnapshot representing the current state of the game
-     * @throws IllegalArgumentException if the description is blank
-     * @throws IllegalStateException if the dealer is null or not in the players list
-     */
-    private GameSnapshot createSnapshot(WhistGame game, SaveMode mode, String description) {
-        String normalizedDescription = description.trim();
-        if (normalizedDescription.isEmpty()) {
-            throw new IllegalArgumentException("Save description cannot be empty");
-        }
-
-        List<Player> allPlayers = game.getAllPlayers();
-        List<PlayerSnapshot> snapshots = allPlayers.stream().map(this::toSnapshot).toList();
-
-        List<Round> rounds = game.getRounds();
-        List<RoundSnapshot> roundSnapshots = rounds.stream().map(this::toSnapshot).toList();
-
-        Player dealer = game.getDealerPlayer();
-        if (dealer == null) throw new IllegalStateException("Cannot create snapshot of a game with a null dealer player");
-        int dealerIndex = allPlayers.indexOf(dealer);
-        if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list");
-
-        return new GameSnapshot(normalizedDescription, mode, dealerIndex, snapshots, roundSnapshots);
     }
 
     /**
@@ -136,108 +107,10 @@ public class GamePersistenceService {
         game.setDealerPlayer(game.getAllPlayers().get(snapshot.dealerIndex()));
     }
 
-    /**
-     * Constructs a snapshot of a player, containing their name, strategy type, and score from their current state in the game.
-     * @param player the player instance to create a snapshot from
-     * @return PlayerSnapshot of the provided player
-     * @throws IllegalArgumentException if the player is null
-     */
-    private PlayerSnapshot toSnapshot(Player player) {
-        if (player == null) throw new IllegalArgumentException("Cannot create a snapshot of a null player");
-        return new PlayerSnapshot(
-                player.getId().id().toString(),
-                player.getName(),
-                toStrategyType(player.getDecisionStrategy()),
-                player.getScore());
-    }
-
-    /**
-     * Constructs a snapshot of a round for persistence.
-     * This currently captures stable metadata and round count compatibility fields.
-     * @param round the round instance to create a snapshot from
-     * @return RoundSnapshot of the provided round
-     * @throws IllegalArgumentException if the round is null
-     * @throws IllegalStateException if the round's internal state is corrupted or missing essential data
-     */
-    private RoundSnapshot toSnapshot(Round round) {
-        if (round == null) throw new IllegalArgumentException("Cannot create a snapshot of a null round");
-
-        Bid highestBid = round.getHighestBid();
-        if (highestBid == null) throw new IllegalStateException("Cannot snapshot a round without a highest bid");
-
-        List<Player> roundPlayers = round.getPlayers();
-        if (roundPlayers.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
-
-        BidType bidType = highestBid.getType();
-
-        int bidderIndex = resolveBidderIndex(round, highestBid, roundPlayers);
-        List<Integer> participantIndices = resolveParticipantIndices(round, roundPlayers, bidType);
-        List<Integer> miserieWinnerIndices = resolveMiserieWinnerIndices(round, roundPlayers, bidType);
-        int tricksWon = resolveTricksWon(round, bidType);
-
-        List<Integer> scoreDeltas = round.getScoreDeltas();
-        if (scoreDeltas == null || scoreDeltas.size() != 4) {
-            throw new IllegalStateException("Cannot snapshot round: score deltas must contain exactly 4 values");
-        }
-
-        try {
-            return new RoundSnapshot(
-                    bidType, bidderIndex, participantIndices, tricksWon,
-                    miserieWinnerIndices, round.getMultiplier(), scoreDeltas, round.getTrumpSuit());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
-        }
-    }
-
     // =================================================================================
     // Extraction Helpers
     // =================================================================================
 
-    private int resolveBidderIndex(Round round, Bid highestBid, List<Player> roundPlayers) {
-        int bidderIndex = roundPlayers.indexOf(round.getPlayerById(highestBid.getPlayerId()));
-        if (bidderIndex < 0) throw new IllegalStateException("Cannot snapshot round: highest bid player is not in round players");
-        return bidderIndex;
-    }
-
-    private List<Integer> resolveParticipantIndices(Round round, List<Player> roundPlayers, BidType bidType) {
-        List<Integer> participantIndices = round.getBiddingTeamPlayers().stream()
-                .map(roundPlayers::indexOf).toList();
-
-        if (participantIndices.stream().anyMatch(i -> i < 0)) {
-            throw new IllegalStateException("Cannot snapshot round: bidding team contains players outside the round");
-        }
-        if (participantIndices.isEmpty() && bidType != BidType.PASS) {
-            throw new IllegalStateException("Cannot snapshot round without bidding team participants");
-        }
-        return participantIndices;
-    }
-
-    private List<Integer> resolveMiserieWinnerIndices(Round round, List<Player> roundPlayers, BidType bidType) {
-        List<Player> miserieWinners = round.getCountMiserieWinners();
-        if (bidType.getCategory() == BidCategory.MISERIE && miserieWinners.isEmpty() && round.isFinished()) {
-            miserieWinners = round.getWinningPlayers();
-        }
-
-        List<Integer> miserieWinnerIndices = miserieWinners.stream().map(roundPlayers::indexOf).toList();
-        if (miserieWinnerIndices.stream().anyMatch(i -> i < 0)) {
-            throw new IllegalStateException("Cannot snapshot round: miserie winners contain players outside the round");
-        }
-        return miserieWinnerIndices;
-    }
-
-    private int resolveTricksWon(Round round, BidType bidType) {
-        int tricksWon = round.getCountTricksWon();
-        if (tricksWon < 0) {
-            tricksWon = round.getBiddingTeamTricksWon();
-        }
-
-        if (bidType == BidType.PASS && tricksWon != -1) {
-            throw new IllegalStateException("Cannot snapshot round: round passed play phase with all pass and should return tricksWon = -1");
-        } else if (tricksWon < 0 || tricksWon > 13) {
-            throw new IllegalStateException("Cannot snapshot round: invalid trick count " + tricksWon);
-        }
-        return tricksWon;
-    }
 
     /**
      * Rebuilds round history placeholders so round-based workflows keep functioning after load.
@@ -245,65 +118,40 @@ public class GamePersistenceService {
      * @param roundSnapshots persisted round snapshots
      * @throws IllegalStateException if trying to restore rounds to a game without exactly 4 players
      */
-private void restoreRoundHistory(WhistGame game, List<RoundSnapshot> roundSnapshots) {
-        if (roundSnapshots.isEmpty()) {
-            return;
-        }
-
-        List<Player> players = game.getPlayers();
-        if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
-
-        for (RoundSnapshot snapshot : roundSnapshots) {
-            // No bounds checking needed! RoundSnapshot guarantees indices are 0-3.
-            Player mainBidder = players.get(snapshot.bidderIndex());
-            Bid highestBid = snapshot.bidType().instantiate(mainBidder.getId(), snapshot.trumpSuit());
-
-            // Beautiful, clean mapping
-            List<Player> participants = snapshot.participantIndices().stream()
-                    .map(players::get)
-                    .toList();
-
-            List<Player> miserieWinners = snapshot.miserieWinnerIndices().stream()
-                    .map(players::get)
-                    .toList();
-
-            Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
-            restoredRound.restoreFromSnapshot(
-                    highestBid,
-                    snapshot.trumpSuit(),
-                    participants,
-                    snapshot.tricksWon(),
-                    miserieWinners,
-                    snapshot.scoreDeltas());
-
-            game.addRound(restoredRound);
-        }
-    }
-
-    /**
-     * Converts a player's strategy instance into its corresponding StrategySnapshotType for mapping.
-     * @param strategy strategy instance to convert into a snapshot type
-     * @return StrategySnapshotType corresponding to the provided strategy instance
-     * @throws IllegalArgumentException when trying to convert a null strategy
-     */
-    private StrategySnapshotType toStrategyType(Strategy strategy) {
-        switch (strategy) {
-            case null -> throw new IllegalArgumentException("Cannot convert a null strategy");
-            case HumanStrategy _ -> {
-                return StrategySnapshotType.HUMAN;
+    private void restoreRoundHistory(WhistGame game, List<RoundSnapshot> roundSnapshots) {
+            if (roundSnapshots.isEmpty()) {
+                return;
             }
-            case HighBotStrategy _ -> {
-                return StrategySnapshotType.HIGH_BOT;
-            }
-            case LowBotStrategy _ -> {
-                return StrategySnapshotType.LOW_BOT;
-            }
-            case SmartBotStrategy _ -> {
-                return StrategySnapshotType.SMART_BOT;
+
+            List<Player> players = game.getPlayers();
+            if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
+
+            for (RoundSnapshot snapshot : roundSnapshots) {
+                // No bounds checking needed! RoundSnapshot guarantees indices are 0-3.
+                Player mainBidder = players.get(snapshot.bidderIndex());
+                Bid highestBid = snapshot.bidType().instantiate(mainBidder.getId(), snapshot.trumpSuit());
+
+                // Beautiful, clean mapping
+                List<Player> participants = snapshot.participantIndices().stream()
+                        .map(players::get)
+                        .toList();
+
+                List<Player> miserieWinners = snapshot.miserieWinnerIndices().stream()
+                        .map(players::get)
+                        .toList();
+
+                Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
+                restoredRound.restoreFromSnapshot(
+                        highestBid,
+                        snapshot.trumpSuit(),
+                        participants,
+                        snapshot.tricksWon(),
+                        miserieWinners,
+                        snapshot.scoreDeltas());
+
+                game.addRound(restoredRound);
             }
         }
-    }
-
 
     /**
      * Converts a StrategySnapshotType into its corresponding Strategy instance.

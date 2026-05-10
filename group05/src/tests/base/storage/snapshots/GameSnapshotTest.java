@@ -1,6 +1,7 @@
 package base.storage.snapshots;
 
 import base.domain.player.PlayerId;
+import base.domain.snapshots.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;

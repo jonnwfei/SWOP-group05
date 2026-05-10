@@ -3,7 +3,7 @@ package usecases;
 import base.GameController;
 import base.domain.WhistGame;
 import base.storage.SaveRepository;
-import base.storage.snapshots.GameSnapshot;
+import base.domain.snapshots.GameSnapshot;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;

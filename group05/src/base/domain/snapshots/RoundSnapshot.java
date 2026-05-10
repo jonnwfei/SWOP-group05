@@ -1,4 +1,4 @@
-package base.storage.snapshots;
+package base.domain.snapshots;
 
 import base.domain.bid.BidType;
 import base.domain.card.Suit;

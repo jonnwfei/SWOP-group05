@@ -6,6 +6,7 @@ import base.domain.bid.BidType;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.snapshots.RoundSnapshot;
 import base.domain.trick.Trick;
 
 import java.util.ArrayList;
@@ -596,6 +597,36 @@ public class Round {
         this.highestBid = bid;
     }
 
+
+    /**
+     * Constructs a snapshot of a round for persistence.
+     * This currently captures stable metadata and round count compatibility fields.
+     * @return RoundSnapshot of the provided round
+     * @throws IllegalArgumentException if the round is null
+     * @throws IllegalStateException if the round's internal state is corrupted or missing essential data
+     */
+    public RoundSnapshot toSnapshot( ) {
+
+        if (highestBid == null) throw new IllegalStateException("Cannot snapshot a round without a highest bid");
+
+        if (players.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
+
+        BidType bidType = highestBid.getType();
+
+        int bidderIndex = players.indexOf(this.getPlayerById(highestBid.getPlayerId()));
+        List<Integer> participantIndices = biddingTeam.stream()
+                .map(players::indexOf).toList();
+        List<Integer> miserieWinnerIndices = countMiserieWinners.stream().map(players::indexOf).toList();
+
+        try {
+            return new RoundSnapshot(
+                    bidType, bidderIndex, participantIndices, countTricksWon,
+                    miserieWinnerIndices, multiplier, scoreDeltas, trumpSuit);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
+        }
+    }
+
     /**
      * Rehydrates a historical round from a persisted snapshot without re-running scoring logic.
      *
@@ -645,4 +676,5 @@ public class Round {
         this.scoreDeltas.addAll(restoredScoreDeltas);
         this.finished = true;
     }
+
 }

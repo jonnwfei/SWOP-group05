@@ -6,6 +6,7 @@ import base.domain.card.Suit;
 import base.domain.observer.GameEventPublisher;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.snapshots.StrategySnapshotType;
 
 import java.util.List;
 
@@ -35,6 +36,17 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
 
 
     Card chooseCardToPlay(List<Card> currentHand, Suit lead );
+
+    StrategySnapshotType toSnapshotType() ;
+
+    static Strategy toStrategy(StrategySnapshotType snapshotType, PlayerId restoredId) {
+        return switch (snapshotType) {
+            case HIGH_BOT -> new HighBotStrategy();
+            case LOW_BOT -> new LowBotStrategy();
+            case SMART_BOT -> new SmartBotStrategy(restoredId);
+            case HUMAN -> new HumanStrategy();
+        };
+    }
 
     /**
      * Lifecycle hook called when the strategy is added to a live game.

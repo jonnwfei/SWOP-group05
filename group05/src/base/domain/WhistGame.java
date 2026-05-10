@@ -12,10 +12,15 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
+import base.domain.snapshots.GameSnapshot;
+import base.domain.snapshots.PlayerSnapshot;
+import base.domain.snapshots.RoundSnapshot;
+import base.domain.snapshots.SaveMode;
 import base.domain.states.BidState;
 import base.domain.states.CountState;
 import base.domain.states.State;
 import base.domain.states.StateStep;
+import base.domain.strategy.Strategy;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
 
@@ -410,5 +415,60 @@ public class WhistGame {
 
     public void removePlayerAtIndex(int index) {
         removePlayer(allPlayers.get(index));
+    }
+
+    /**
+     * Constructs a GameSnapshot from the current state of the provided game instance, using the specified save mode and description.
+     * @param mode the game mode to save (full game or count session)
+     * @param description description/alias or name for the save, used for choosing between saves when loading
+     * @return GameSnapshot representing the current state of the game
+     * @throws IllegalArgumentException if the description is blank
+     * @throws IllegalStateException if the dealer is null or not in the players list
+     */
+    public GameSnapshot toSnapshot(SaveMode mode, String description) {
+        String normalizedDescription = description.trim();
+        if (normalizedDescription.isEmpty()) {
+            throw new IllegalArgumentException("Save description cannot be empty");
+        }
+
+        List<Player> allPlayers = this.getAllPlayers();
+        List<PlayerSnapshot> snapshots = allPlayers.stream().map(Player::toSnapshot).toList();
+
+        List<Round> rounds = this.getRounds();
+        List<RoundSnapshot> roundSnapshots = rounds.stream().map(Round::toSnapshot).toList();
+
+        Player dealer = this.getDealerPlayer();
+        if (dealer == null) throw new IllegalStateException("Cannot create snapshot of a game with a null dealer player");
+        int dealerIndex = allPlayers.indexOf(dealer);
+        if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list");
+
+        return new GameSnapshot(normalizedDescription, mode, dealerIndex, snapshots, roundSnapshots);
+    }
+
+    /**
+     * Restores the state of the provided game instance based on the data contained in the given GameSnapshot.
+     * This includes resetting the game's players and rounds, then re-adding the players with their respective strategies, names, and scores as specified in the snapshot.
+     * @param snapshot the snapshot containing the saved state to restore
+     */
+    public void restoreGame(GameSnapshot snapshot) {
+        this.resetPlayers();
+        this.resetRounds();
+
+        for (PlayerSnapshot playerSnapshot : snapshot.players()) {
+            PlayerId restoredId = PlayerId.fromString(playerSnapshot.id());
+            Strategy playerStrategy = Strategy.toStrategy(playerSnapshot.strategyType(), restoredId);
+
+            Player player = new Player(playerStrategy, playerSnapshot.name(), restoredId);
+            player.updateScore(playerSnapshot.score());
+            this.addPlayer(player);
+        }
+
+        restoreRoundHistory(this, snapshot.rounds());
+
+        if (snapshot.mode() == SaveMode.GAME) {
+            this.setDeck(new Deck());
+        }
+
+        this.setDealerPlayer(allPlayers.get(snapshot.dealerIndex()));
     }
 }

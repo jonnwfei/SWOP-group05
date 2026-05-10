@@ -1,9 +1,8 @@
 package cli.flows;
 
 import base.GameController;
-import base.domain.WhistGame;
 import base.domain.player.Player;
-import base.storage.snapshots.SaveMode;
+import base.domain.snapshots.SaveMode;
 import cli.TerminalManager;
 import cli.events.IOEvent;
 

@@ -6,7 +6,7 @@ import base.domain.results.CountResults;
 import base.domain.results.GameResult;
 import base.domain.states.StateStep;
 import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
+import base.domain.snapshots.SaveMode;
 import cli.TerminalManager;
 import cli.adapter.Adapter;
 import cli.adapter.AdapterResponse;
