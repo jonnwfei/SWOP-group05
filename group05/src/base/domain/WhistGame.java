@@ -1,21 +1,18 @@
 package base.domain;
 
+import base.domain.bid.Bid;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
-import static base.domain.deck.Deck.DealType;
 
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
-import base.domain.snapshots.GameSnapshot;
-import base.domain.snapshots.PlayerSnapshot;
-import base.domain.snapshots.RoundSnapshot;
-import base.domain.snapshots.SaveMode;
+import base.domain.snapshots.*;
 import base.domain.states.BidState;
 import base.domain.states.CountState;
 import base.domain.states.State;
@@ -235,7 +232,7 @@ public class WhistGame {
         if (activePlayers.size() != REQUIRED_PLAYERS) throw new IllegalStateException("Cannot deal cards: Table must have exactly 4 players.");
 
         this.deck.shuffle();
-        List<List<Card>> hands = this.deck.deal(DealType.WHIST);
+        List<List<Card>> hands = this.deck.deal();
 
         Suit dealtTrump = hands.getLast().getLast().suit();
 
@@ -417,6 +414,10 @@ public class WhistGame {
         removePlayer(allPlayers.get(index));
     }
 
+    // =================================================================================
+    // Game Snapshot Extraction & Restoration
+    // =================================================================================
+
     /**
      * Constructs a GameSnapshot from the current state of the provided game instance, using the specified save mode and description.
      * @param mode the game mode to save (full game or count session)
@@ -463,12 +464,50 @@ public class WhistGame {
             this.addPlayer(player);
         }
 
-        restoreRoundHistory(this, snapshot.rounds());
+        restoreRoundHistory(snapshot.rounds());
 
         if (snapshot.mode() == SaveMode.GAME) {
             this.setDeck(new Deck());
         }
 
         this.setDealerPlayer(allPlayers.get(snapshot.dealerIndex()));
+    }
+
+    /**
+     * Rebuilds round history placeholders so round-based workflows keep functioning after load.
+     * @param roundSnapshots persisted round snapshots
+     * @throws IllegalStateException if trying to restore rounds to a game without exactly 4 players
+     */
+    private void restoreRoundHistory(List<RoundSnapshot> roundSnapshots) {
+        if (roundSnapshots == null ||roundSnapshots.isEmpty()) {
+            return;
+        }
+
+        List<Player> players = this.getPlayers();
+        if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
+
+        for (RoundSnapshot snapshot : roundSnapshots) {
+            Player mainBidder = players.get(snapshot.bidderIndex());
+            Bid highestBid = snapshot.bidType().instantiate(mainBidder.getId(), snapshot.trumpSuit());
+
+            List<Player> participants = snapshot.participantIndices().stream()
+                    .map(players::get)
+                    .toList();
+
+            List<Player> miserieWinners = snapshot.miserieWinnerIndices().stream()
+                    .map(players::get)
+                    .toList();
+
+            Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
+            restoredRound.restoreFromSnapshot(
+                    highestBid,
+                    snapshot.trumpSuit(),
+                    participants,
+                    snapshot.tricksWon(),
+                    miserieWinners,
+                    snapshot.scoreDeltas());
+
+            this.addRound(restoredRound);
+        }
     }
 }

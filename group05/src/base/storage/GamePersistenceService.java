@@ -2,8 +2,6 @@ package base.storage;
 
 import base.domain.WhistGame;
 import base.domain.bid.*;
-import base.domain.deck.Deck;
-import base.domain.round.Round;
 import base.domain.snapshots.*;
 import base.domain.strategy.*;
 import base.domain.player.*;
@@ -75,96 +73,8 @@ public class GamePersistenceService {
         if (description == null) throw new IllegalArgumentException("Cannot load from a null description");
 
         GameSnapshot snapshot = repository.loadByDescription(description);
-        restoreGame(game, snapshot);
+        game.restoreGame(snapshot);
         return snapshot.mode();
-    }
-
-    /**
-     * Restores the state of the provided game instance based on the data contained in the given GameSnapshot.
-     * This includes resetting the game's players and rounds, then re-adding the players with their respective strategies, names, and scores as specified in the snapshot.
-     * @param game the game instance to restore the snapshot into
-     * @param snapshot the snapshot containing the saved state to restore
-     */
-    private void restoreGame(WhistGame game, GameSnapshot snapshot) {
-        game.resetPlayers();
-        game.resetRounds();
-
-        for (PlayerSnapshot playerSnapshot : snapshot.players()) {
-            PlayerId restoredId = PlayerId.fromString(playerSnapshot.id());
-            Strategy playerStrategy = toStrategy(playerSnapshot.strategyType(), restoredId);
-
-            Player player = new Player(playerStrategy, playerSnapshot.name(), restoredId);
-            player.updateScore(playerSnapshot.score());
-            game.addPlayer(player);
-        }
-
-        restoreRoundHistory(game, snapshot.rounds());
-
-        if (snapshot.mode() == SaveMode.GAME) {
-            game.setDeck(new Deck());
-        }
-
-        game.setDealerPlayer(game.getAllPlayers().get(snapshot.dealerIndex()));
-    }
-
-    // =================================================================================
-    // Extraction Helpers
-    // =================================================================================
-
-
-    /**
-     * Rebuilds round history placeholders so round-based workflows keep functioning after load.
-     * @param game restored game
-     * @param roundSnapshots persisted round snapshots
-     * @throws IllegalStateException if trying to restore rounds to a game without exactly 4 players
-     */
-    private void restoreRoundHistory(WhistGame game, List<RoundSnapshot> roundSnapshots) {
-            if (roundSnapshots.isEmpty()) {
-                return;
-            }
-
-            List<Player> players = game.getPlayers();
-            if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
-
-            for (RoundSnapshot snapshot : roundSnapshots) {
-                // No bounds checking needed! RoundSnapshot guarantees indices are 0-3.
-                Player mainBidder = players.get(snapshot.bidderIndex());
-                Bid highestBid = snapshot.bidType().instantiate(mainBidder.getId(), snapshot.trumpSuit());
-
-                // Beautiful, clean mapping
-                List<Player> participants = snapshot.participantIndices().stream()
-                        .map(players::get)
-                        .toList();
-
-                List<Player> miserieWinners = snapshot.miserieWinnerIndices().stream()
-                        .map(players::get)
-                        .toList();
-
-                Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
-                restoredRound.restoreFromSnapshot(
-                        highestBid,
-                        snapshot.trumpSuit(),
-                        participants,
-                        snapshot.tricksWon(),
-                        miserieWinners,
-                        snapshot.scoreDeltas());
-
-                game.addRound(restoredRound);
-            }
-        }
-
-    /**
-     * Converts a StrategySnapshotType into its corresponding Strategy instance.
-     * @param strategyType strategyType instance to convert into a Strategy instance
-     * @return Strategy instance
-     */
-    private Strategy toStrategy(StrategySnapshotType strategyType, PlayerId restoredId) {
-        return switch (strategyType) {
-            case HUMAN -> new HumanStrategy();
-            case HIGH_BOT -> new HighBotStrategy();
-            case LOW_BOT -> new LowBotStrategy();
-            case SMART_BOT -> new SmartBotStrategy(restoredId);
-        };
     }
 }
 
