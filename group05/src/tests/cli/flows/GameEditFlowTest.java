@@ -44,7 +44,7 @@ class GameEditFlowTest {
     @BeforeEach
     void setUp() {
         System.setOut(new PrintStream(outContent));
-        flow = new GameEditFlow(terminalManager, game, persistenceService, SaveMode.GAME);
+        flow = new GameEditFlow(terminalManager,game, persistenceService, SaveMode.GAME);
     }
 
     @AfterEach

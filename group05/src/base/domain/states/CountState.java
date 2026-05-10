@@ -138,20 +138,23 @@ public class CountState extends State {
     private StateStep finalizeCalculation(int tricks, List<PlayerId> winnersId) {
         Player primaryBidder = getGame().getPlayerById(participatingPlayerIds.getFirst());
         Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
-        round.setHighestBid(bid);
         getGame().addRound(round);
 
         List<Player> participatingPlayers = participatingPlayerIds.stream()
                 .map(getGame()::getPlayerById)
                 .toList();
-
         List<Player> winners = winnersId == null ? List.of()
                 : winnersId.stream().map(getGame()::getPlayerById).toList();
 
-        round.calculateScoresForCount(bid, tricks, participatingPlayers, winners);
+        // CountState sets the fields, Round just executes
+        round.setHighestBid(bid);
+        round.setBiddingTeam(participatingPlayers);
+        round.setCountTricksWon(tricks);
+        round.setMiserieWinners(winners);
+        round.calculateScores();
 
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
-        return StateStep.transitionWithoutResult(); // ScoreBoardFlow owns the scoreboard display
+        return StateStep.transitionWithoutResult();
     }
 
 

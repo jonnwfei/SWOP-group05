@@ -54,7 +54,7 @@ class UC4_SaveGameCountTest {
             lenient().when(mock.loadByDescription(anyString())).thenAnswer(inv -> isolatedRepo.loadByDescription(inv.getArgument(0)));
 
         })) {
-            GameController controller = new GameController();
+            GameController controller = new Ga();
             Field f = GameController.class.getDeclaredField("game");
             f.setAccessible(true);
             WhistGame game = (WhistGame) f.get(controller);
