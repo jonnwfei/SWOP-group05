@@ -43,7 +43,7 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
         return switch (snapshotType) {
             case HIGH_BOT -> new HighBotStrategy();
             case LOW_BOT -> new LowBotStrategy();
-            case SMART_BOT -> new SmartBotStrategy(restoredId);
+            case SMART_BOT -> new SmartBotStrategy(restoredId); //TODO: still code smell, wait for refactor of tommy
             case HUMAN -> new HumanStrategy();
         };
     }
