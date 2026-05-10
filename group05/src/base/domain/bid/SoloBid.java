@@ -8,34 +8,20 @@ import java.util.List;
 
 /**
  * Represents a contract where a player bids to play alone to win all tricks.
- * @param playerId The player attempting the contract.
  * @param bidType The specific SOLO rank (e.g., SOLO, SOLO_SLIM).
  * @param trump The trump suit for this contract.
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public record SoloBid(PlayerId playerId, BidType bidType, Suit trump) implements Bid {
+public record SoloBid(BidType bidType, Suit trump) implements Bid {
 
     public SoloBid {
-        if (playerId == null) {throw new IllegalArgumentException("Player cannot be null.");}
         if (bidType == null) {throw new IllegalArgumentException("BidType cannot be null.");}
         if (bidType.getCategory() != BidCategory.SOLO) {throw new IllegalArgumentException("SoloBid requires a SOLO category!");}
     }
 
     @Override
-    public PlayerId getPlayerId() {return playerId;}
-
-    /**
-     * Determines the bidding team. In a Solo contract, the bidder always plays alone.
-     *
-     * @param allBids    All bids placed during the round.
-     * @param allPlayers All players in the game.
-     * @return A list containing only the solo bidder.
-     */
-    @Override
-    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        return List.of(playerId);
-    }
+    public int teamSize() {return 1;}
 
     @Override
     public BidType getType() {return bidType;}
