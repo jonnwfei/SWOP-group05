@@ -107,6 +107,7 @@ public class CountState extends State {
 
     private GameResult handleSuit(Suit suit) {
         this.trumpSuit = suit;
+
         currentPhase = CountPhase.SELECT_PLAYERS;
         if (selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA) {
             return new PlayerSelectionResult(getGame().getPlayers(), true, selectedBidType);
@@ -147,6 +148,7 @@ public class CountState extends State {
                 : winnersId.stream().map(getGame()::getPlayerById).toList();
 
         // CountState sets the fields, Round just executes
+        round.setTrumpSuit(this.trumpSuit);
         round.setHighestBid(bid);
         round.setBiddingTeam(participatingPlayers);
         round.setCountTricksWon(tricks);

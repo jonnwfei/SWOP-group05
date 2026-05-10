@@ -51,8 +51,86 @@ public class TerminalRenderer {
 
             case MessageIOEvent t -> renderMessageEvent(t);
             case LoadSaveIOEvent l -> renderLoadSaveEvent(l);
+            case ScoreTableIOEvent l -> renderScoreTableEvent(l);
             default -> throw new IllegalStateException("Unhandled IOEvent: " + event);
         }
+    }
+
+    private void renderScoreTableEvent(ScoreTableIOEvent event) {
+        List<String> names  = event.playerNames();
+        List<Round>  rounds = event.rounds();
+
+        if (rounds.isEmpty()) {
+            System.out.println("No rounds played yet.");
+            return;
+        }
+
+        // ── column widths ────────────────────────────────────────────────
+        int roundCol  = 6;
+        int trumpCol  = 8;
+        int bidCol    = 10;
+        int playerCol = Math.max(12, names.stream().mapToInt(String::length).max().orElse(12) + 4);
+
+        // ── header ───────────────────────────────────────────────────────
+        StringBuilder header = new StringBuilder();
+        header.append(pad("Round", roundCol));
+        header.append(pad("Trump",  trumpCol));
+        header.append(pad("Bid",    bidCol));
+        for (String name : names) {
+            header.append(pad(name, playerCol));
+        }
+
+        String divider = "─".repeat(header.length());
+        System.out.println(divider);
+        System.out.println(header);
+        System.out.println(divider);
+
+        // ── data rows ────────────────────────────────────────────────────
+        int[] totals = new int[names.size()];
+
+        for (int i = 0; i < rounds.size(); i++) {
+            Round        round        = rounds.get(i);
+            List<Player> roundPlayers = round.getPlayers();
+            List<Integer> deltas      = round.getScoreDeltas();
+
+            String trump = round.getTrumpSuit() != null ? round.getTrumpSuit().name() : "—";
+            String bid   = round.getHighestBid() != null ? round.getHighestBid().getType().name() : "—";
+
+            StringBuilder row = new StringBuilder();
+            row.append(pad("R" + (i + 1), roundCol));
+            row.append(pad(trump,          trumpCol));
+            row.append(pad(bid,            bidCol));
+
+            for (int pi = 0; pi < names.size(); pi++) {
+                // match by position: names list and allPlayers share the same order via controller
+                int delta = (pi < roundPlayers.size() && pi < deltas.size()) ? deltas.get(pi) : 0;
+                totals[pi] += delta;
+                row.append(pad(formatDelta(delta) + " / " + totals[pi], playerCol));
+            }
+            System.out.println(row);
+        }
+
+        // ── totals row ───────────────────────────────────────────────────
+        System.out.println(divider);
+        StringBuilder totalsRow = new StringBuilder();
+        totalsRow.append(pad("TOTAL", roundCol));
+        totalsRow.append(pad("",      trumpCol));
+        totalsRow.append(pad("",      bidCol));
+        for (int total : totals) {
+            totalsRow.append(pad(String.valueOf(total), playerCol));
+        }
+        System.out.println(totalsRow);
+        System.out.println(divider);
+    }
+
+    private String pad(String text, int width) {
+        if (text == null) text = "";
+        if (text.length() >= width) return text.substring(0, width);
+        return text + " ".repeat(width - text.length());
+    }
+
+    private String formatDelta(int delta) {
+        return delta > 0 ? "+" + delta : String.valueOf(delta);
     }
 
     private void renderDeleteRoundIOEvent(DeleteRoundIOEvent d) {
@@ -254,13 +332,12 @@ public class TerminalRenderer {
 
     private void renderScoreBoardEvent(ScoreBoardIOEvent event) {
         System.out.println("============== SCORES ==============");
-        List<String> names = event.playerNames();
+        List<String>  names  = event.playerNames();
         List<Integer> scores = event.scores();
         for (int i = 0; i < names.size(); i++) {
             System.out.println(names.get(i) + ": " + scores.get(i) + " points");
         }
         System.out.println("====================================");
-        // ... existing score display ...
         System.out.println("(1) Simulate another round");
         System.out.println("(2) Go back to the main menu");
         System.out.println("(3) Save this session");
@@ -268,9 +345,11 @@ public class TerminalRenderer {
         System.out.println("(5) Add a player");
         if (event.canRemovePlayer()) {
             System.out.println("(6) Remove a player");
+            System.out.println("(7) Show score table");
+        } else {
+            System.out.println("(6) Show score table");
         }
         System.out.print("Your choice: ");
-
     }
 
     private void renderSaveDescriptionEvent() {

@@ -368,7 +368,9 @@ public class Round {
     public void setHighestBid(Bid bid) {
         this.highestBid = bid;
     }
-
+    public void setTrumpSuit(Suit suit){
+        this.trumpSuit = suit;
+    }
     /**
      * Rehydrates a historical round from a persisted snapshot without
      * re‑running scoring logic.

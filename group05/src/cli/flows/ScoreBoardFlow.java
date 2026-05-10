@@ -1,13 +1,12 @@
 package cli.flows;
 
 import base.GameController;
-import base.domain.WhistGame;
-import base.domain.player.Player;
+import base.domain.round.Round;
 import base.storage.snapshots.SaveMode;
 import cli.TerminalManager;
-import cli.events.IOEvent;
-
-import static cli.events.CountEvents.ScoreBoardIOEvent;
+import cli.events.MenuEvents.*;
+import cli.util.TerminalInputHelper;
+import cli.events.CountEvents.*;
 
 import java.util.List;
 
@@ -23,88 +22,57 @@ public class ScoreBoardFlow {
     private final TerminalManager terminalManager;
     private final GameController controller;
     private final GameEditFlow editFlow;
-    /**
-     * Creates a new ScoreBoardFlow.
-     *
-     * @param terminalManager handles user interaction
-     * @param controller the current game instance
-     * @param editFlow shared edit functionality
-     */
+    private final TerminalInputHelper terminalInputHelper;
+
     public ScoreBoardFlow(TerminalManager terminalManager, GameController controller, GameEditFlow editFlow) {
-        if (terminalManager == null)
-            throw new IllegalArgumentException("terminalManager cannot be null");
-        if (controller == null)
-            throw new IllegalArgumentException("game cannot be null");
-        if (editFlow == null)
-            throw new IllegalArgumentException("editFlow cannot be null");
-        this.terminalManager = terminalManager;
-        this.controller = controller;
-        this.editFlow = editFlow;
+        if (terminalManager == null) throw new IllegalArgumentException("terminalManager cannot be null");
+        if (controller == null)      throw new IllegalArgumentException("game cannot be null");
+        if (editFlow == null)        throw new IllegalArgumentException("editFlow cannot be null");
+        this.terminalManager     = terminalManager;
+        this.controller          = controller;
+        this.editFlow            = editFlow;
+        this.terminalInputHelper = new TerminalInputHelper(this.terminalManager);
     }
 
-    /**
-     * Runs the scoreboard loop until the user exits or continues.
-     *
-     * @param mode current game mode
-     * @return true to continue playing, false to return to menu
-     */
     public boolean run(SaveMode mode) {
         while (true) {
             int choice = showMenu();
             switch (choice) {
                 case 1 -> {
-                    if (controller.getAllPlayers().size() > 4) {
-                        controller.rotateActivePlayers();
-                    }
-                    if (mode == SaveMode.COUNT){
+                    if (controller.getAllPlayers().size() > 4) controller.rotateActivePlayers();
+                    if (mode == SaveMode.COUNT) {
                         controller.startCount();
-                    }
-                    else {
-
+                    } else {
                         controller.startGame();
                         controller.advanceDealer();
                     }
-
-                    return true; }   // another round
-                case 2 -> { return false; }  // main menu
-                case 3 ->  editFlow.saveGame();  // save then re-show
-                case 4 ->  editFlow.removeRound();
-                case 5 ->  editFlow.addPlayer();
-                case 6 ->  editFlow.removePlayer();
+                    return true;
+                }
+                case 2 -> { return false; }
+                case 3 -> editFlow.saveGame();
+                case 4 -> editFlow.removeRound();
+                case 5 -> editFlow.addPlayer();
+                case 6 -> {
+                    if (controller.canRemovePlayer()) editFlow.removePlayer();
+                    else showScoreTable();
+                }
+                case 7 -> showScoreTable(); // only reachable when canRemove is true
                 default -> throw new IllegalStateException("Unexpected value: " + choice);
             }
         }
     }
-    /**
-     * Displays the scoreboard and menu options.
-     *
-     * @return selected menu option
-     */
-    private int showMenu() {
-        List<String> names = controller.getAllPlayers().stream().map(Player::getName).toList();
-        List<Integer> scores = controller.getAllPlayers().stream().map(Player::getScore).toList();
-        boolean canRemove = controller.canRemovePlayer();
-        int max = canRemove ? 6 : 5;
-        return askInt(new ScoreBoardIOEvent(names, scores, canRemove), 1, max);
+
+    private void showScoreTable() {
+        List<String> playerNames = controller.getPlayerNames();
+        List<Round>  rounds      = controller.getRounds();
+        terminalManager.handle(new ScoreTableIOEvent(playerNames, rounds));
     }
-    /**
-     * Reads an integer within a range.
-     *
-     * @param event IO event to display
-     * @param min minimum value
-     * @param max maximum value
-     * @return validated integer
-     */
-    private int askInt(IOEvent event, int min, int max) {
-        while (true) {
-            try {
-                String raw = terminalManager.handle(event).rawInput();
-                int value = Integer.parseInt(raw.trim());
-                if (value >= min && value <= max) return value;
-                System.out.println("Please enter a number between " + min + " and " + max + ".");
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid input. Please enter a number.");
-            }
-        }
+
+    private int showMenu() {
+        List<String>  names     = controller.getPlayerNames();
+        List<Integer> scores    = controller.getPlayerScores();
+        boolean       canRemove = controller.canRemovePlayer();
+        int max = canRemove ? 7 : 6;
+        return terminalInputHelper.askInt(new ScoreBoardIOEvent(names, scores, canRemove), 1, max);
     }
 }

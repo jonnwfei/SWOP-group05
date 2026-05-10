@@ -63,4 +63,7 @@ public sealed interface MenuEvents extends IOEvent {
     record LoadSaveIOEvent(List<String> availableSaves) implements MenuEvents {
         public boolean needsInput() { return true; }
     }
+    record ScoreTableIOEvent(List<String> playerNames, List<Round> rounds) implements MenuEvents{
+        public boolean needsInput(){return false;}
+    }
 }
