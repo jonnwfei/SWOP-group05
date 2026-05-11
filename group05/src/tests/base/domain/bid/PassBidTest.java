@@ -16,21 +16,19 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Pass Bid Rules & Calculations")
 class PassBidTest {
 
-    private PlayerId testPlayerId;
     private PassBid bid;
 
     @BeforeEach
     void setUp() {
         // Arrange
-        testPlayerId = new PlayerId();
-        bid = new PassBid(testPlayerId);
+        bid = new PassBid();
     }
 
     @Test
     @DisplayName("Constructor enforces non-null parameters")
     void constructor_NullPlayerId_ThrowsIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                new PassBid(null)
+                new PassBid()
         );
         assertTrue(exception.getMessage().toLowerCase().contains("player"),
                 "Exception message should mention the null player.");
@@ -39,21 +37,7 @@ class PassBidTest {
     @Test
     @DisplayName("Basic Accessors return correctly assigned values")
     void basicAccessors_ReturnExpectedValues() {
-        assertEquals(testPlayerId, bid.getPlayerId(), "getPlayerId() should return the passing player's ID");
-        assertEquals(testPlayerId, bid.playerId(), "Record accessor should return the passing player's ID");
         assertEquals(BidType.PASS, bid.getType(), "getType() should always return PASS");
-    }
-
-    @Test
-    @DisplayName("getTeam() returns only the passing player")
-    void getTeam_AlwaysReturnsOnlyThePasser() {
-        // Act
-        // Pass bids ignore the history and player lists, so empty collections are safe to pass.
-        List<PlayerId> team = bid.getTeam(Collections.emptyList(), Collections.emptyList());
-
-        // Assert
-        assertEquals(1, team.size(), "Team should consist of exactly 1 player");
-        assertTrue(team.contains(testPlayerId), "Team must contain the passing player");
     }
 
     @Test
@@ -89,8 +73,8 @@ class PassBidTest {
     @Test
     @DisplayName("Records handle equality by value rather than memory reference")
     void testRecordEquality() {
-        PassBid bid1 = new PassBid(testPlayerId);
-        PassBid bid2 = new PassBid(testPlayerId);
+        PassBid bid1 = new PassBid();
+        PassBid bid2 = new PassBid();
 
         assertEquals(bid1, bid2, "Two PassBids with the same PlayerId should be considered equal");
     }

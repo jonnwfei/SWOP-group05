@@ -28,10 +28,9 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
      * For a human strategy, this will trigger a prompt to the UI/Console.
      * For an AI strategy, this will algorithmically evaluate the player's hand to calculate the optimal bid. (currently just PASS)
      *
-     * @param playerId the player making the bid, required to properly construct and bind the resulting {@link Bid} contract.
      * @return the chosen {@link Bid}.
      */
-    Bid determineBid(PlayerId playerId, List<Card> hand);
+    Bid determineBid(List<Card> hand);
 
 
     Card chooseCardToPlay(List<Card> currentHand, Suit lead );

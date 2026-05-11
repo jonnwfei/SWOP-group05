@@ -14,13 +14,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("BidType Enum Rules & Factory")
 class BidTypeTest {
 
-    private PlayerId testPlayerId;
     private Suit testSuit;
 
     @BeforeEach
     void setUp() {
         // Arrange: Using lightweight PlayerId instead of physical Player objects
-        testPlayerId = new PlayerId();
         testSuit = Suit.HEARTS;
     }
 
@@ -63,25 +61,25 @@ class BidTypeTest {
         @Test
         @DisplayName("PASS instantiates a PassBid")
         void instantiate_Pass_ReturnsPassBid() {
-            assertInstanceOf(PassBid.class, BidType.PASS.instantiate(testPlayerId, null));
+            assertInstanceOf(PassBid.class, BidType.PASS.instantiate(null));
         }
 
         @Test
         @DisplayName("PROPOSAL instantiates a ProposalBid")
         void instantiate_Proposal_ReturnsProposalBid() {
-            assertInstanceOf(ProposalBid.class, BidType.PROPOSAL.instantiate(testPlayerId, null));
+            assertInstanceOf(ProposalBid.class, BidType.PROPOSAL.instantiate(null));
         }
 
         @Test
         @DisplayName("SOLO_PROPOSAL instantiates a SoloProposalBid")
         void instantiate_SoloProposal_ReturnsSoloProposalBid() {
-            assertInstanceOf(SoloProposalBid.class, BidType.SOLO_PROPOSAL.instantiate(testPlayerId, null));
+            assertInstanceOf(SoloProposalBid.class, BidType.SOLO_PROPOSAL.instantiate(null));
         }
 
         @Test
         @DisplayName("ACCEPTANCE instantiates an AcceptedBid")
         void instantiate_Acceptance_ReturnsAcceptedBid() {
-            assertInstanceOf(AcceptedBid.class, BidType.ACCEPTANCE.instantiate(testPlayerId, null));
+            assertInstanceOf(AcceptedBid.class, BidType.ACCEPTANCE.instantiate(null));
         }
 
         @ParameterizedTest(name = "{0} instantiates an AbondanceBid")
@@ -92,19 +90,19 @@ class BidTypeTest {
                 "ABONDANCE_12", "ABONDANCE_12_OT"
         })
         void instantiate_AbondanceVariants_ReturnsAbondanceBid(BidType type) {
-            assertInstanceOf(AbondanceBid.class, type.instantiate(testPlayerId, testSuit));
+            assertInstanceOf(AbondanceBid.class, type.instantiate(testSuit));
         }
 
         @ParameterizedTest(name = "{0} instantiates a MiserieBid")
         @EnumSource(mode = EnumSource.Mode.INCLUDE, names = {"MISERIE", "OPEN_MISERIE"})
         void instantiate_MiserieVariants_ReturnsMiserieBid(BidType type) {
-            assertInstanceOf(MiserieBid.class, type.instantiate(testPlayerId, null));
+            assertInstanceOf(MiserieBid.class, type.instantiate(null));
         }
 
         @ParameterizedTest(name = "{0} instantiates a SoloBid")
         @EnumSource(mode = EnumSource.Mode.INCLUDE, names = {"SOLO", "SOLO_SLIM"})
         void instantiate_SoloVariants_ReturnsSoloBid(BidType type) {
-            assertInstanceOf(SoloBid.class, type.instantiate(testPlayerId, testSuit));
+            assertInstanceOf(SoloBid.class, type.instantiate(testSuit));
         }
 
         @ParameterizedTest(name = "{0} instantiates a TroelBid")
@@ -112,7 +110,7 @@ class BidTypeTest {
         void instantiate_TroelVariants_ReturnsTroelBid(BidType type) {
             // FIX: Because TroelBid now uses PlayerId and Suit (passed in by BidState),
             // it safely instantiates without needing to inspect an actual hand for Aces!
-            assertInstanceOf(TroelBid.class, type.instantiate(testPlayerId, testSuit));
+            assertInstanceOf(TroelBid.class, type.instantiate(testSuit));
         }
     }
 }
