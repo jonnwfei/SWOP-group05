@@ -343,12 +343,13 @@ public class TerminalRenderer {
         System.out.println("(3) Save this session");
         System.out.println("(4) Remove a round");
         System.out.println("(5) Add a player");
-        if (event.canRemovePlayer()) {
-            System.out.println("(6) Remove a player");
-            System.out.println("(7) Show score table");
-        } else {
-            System.out.println("(6) Show score table");
-        }
+
+        int next = 6;
+        if (event.canRemovePlayer())  System.out.println("(" + next++ + ") Remove a player");
+        System.out.println("(" + next++ + ") Show score table");
+        if (event.canUndo())          System.out.println("(" + next++ + ") Undo last action");
+        if (event.canRedo())          System.out.println("(" + next   + ") Redo last action");
+
         System.out.print("Your choice: ");
     }
 

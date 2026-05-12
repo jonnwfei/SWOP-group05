@@ -126,7 +126,7 @@ public class Adapter {
 
             case ScoreBoardResult s ->
                     new AdapterResult.NeedsIO(List.of(),
-                            new ScoreBoardIOEvent(s.names(), s.scores(), s.canRemovePlayer()));
+                            new ScoreBoardIOEvent(s.names(), s.scores(), s.canRemovePlayer(), controller.canUndo(), controller.canRedo()));
 
             case EndOfTurnResult e ->
                     new AdapterResult.NeedsIO(List.of(), new EndOfTurnIOEvent(e));

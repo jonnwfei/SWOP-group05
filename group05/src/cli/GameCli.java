@@ -38,6 +38,7 @@ public class GameCli {
         while (true) {
             controller.reset();
             SaveMode mode = menuFlow.run();
+            controller.clearHistory();
             GameEditFlow editFlow = new GameEditFlow(terminalManager, controller, persistenceService, mode);
             ScoreBoardFlow scoreBoardFlow = new ScoreBoardFlow(terminalManager, controller, editFlow);
 

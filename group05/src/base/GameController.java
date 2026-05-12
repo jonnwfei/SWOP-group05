@@ -11,12 +11,17 @@ import base.domain.strategy.HighBotStrategy;
 import base.domain.strategy.HumanStrategy;
 import base.domain.strategy.LowBotStrategy;
 import base.domain.strategy.SmartBotStrategy;
+import cli.history.ActionHistory;
+import cli.history.historyActions.AddPlayerAction;
+import cli.history.historyActions.RemovePlayerAction;
+import cli.history.historyActions.RemoveRoundAction;
 
 import java.util.Collection;
 import java.util.List;
 
 public class GameController {
     private final WhistGame game;
+    private final ActionHistory history = new ActionHistory();
 
     public GameController(WhistGame game) {
         this.game = game;
@@ -33,14 +38,6 @@ public class GameController {
 
     public boolean isGameOver() {
         return game.isOver();
-    }
-
-    public void addPlayer(Player player) {
-        game.addPlayer(player);
-    }
-
-    public void removePlayer(Player player) {
-        game.removePlayer(player);
     }
 
     public List<Player> getPlayers() {
@@ -71,9 +68,6 @@ public class GameController {
         return game.getRounds();
     }
 
-    public void removeRound(Round round) {
-        game.removeRound(round);
-    }
 
     public void recalibrateScores() {
         game.recalibrateScores();
@@ -108,22 +102,7 @@ public class GameController {
     }
 
     // Player factories — flows pass intent, controller constructs
-    public void addHumanPlayer(String name) {
-        game.addPlayer(new Player(new HumanStrategy(), name));
-    }
 
-    public void addSmartBot(String name) {
-        PlayerId id = new PlayerId();
-        game.addPlayer(new Player(new SmartBotStrategy(id), name, id));
-    }
-
-    public void addHighBot(String name) {
-        game.addPlayer(new Player(new HighBotStrategy(), name));
-    }
-
-    public void addLowBot(String name) {
-        game.addPlayer(new Player(new LowBotStrategy(), name));
-    }
 
     public void setFirstPlayerAsDealer() {
         game.setFirstPlayerAsDealer();
@@ -144,5 +123,38 @@ public class GameController {
     public int getPlayerCount() {
         return game.getAllPlayers().size();
     }
+    public void undo() { history.undo(); }
+    public void redo() { history.redo(); }
+    public boolean canUndo() { return history.canUndo(); }
+    public boolean canRedo() { return history.canRedo(); }
+    public void addRoundAtIndex(Round round, int index) {
+        game.addRoundAtIndex(round, index);
+    }
 
+    public void addHumanPlayer(String name) {
+        Player player = new Player(new HumanStrategy(), name);
+        history.execute(new AddPlayerAction(game, player));
+    }
+
+    public void addSmartBot(String name) {
+        PlayerId id = new PlayerId();
+        history.execute(new AddPlayerAction(game, new Player(new SmartBotStrategy(id), name, id)));
+    }
+
+    public void addHighBot(String name) {
+        history.execute(new AddPlayerAction(game, new Player(new HighBotStrategy(), name)));
+    }
+
+    public void addLowBot(String name) {
+        history.execute(new AddPlayerAction(game, new Player(new LowBotStrategy(), name)));
+    }
+
+    public void removePlayer(Player player) {
+        history.execute(new RemovePlayerAction(game, player));
+    }
+
+    public void removeRound(Round round) {
+        game.removeRound(round);
+    }
+    public void clearHistory() { history.clear(); }
 }

@@ -37,27 +37,33 @@ public class ScoreBoardFlow {
     public boolean run(SaveMode mode) {
         while (true) {
             int choice = showMenu();
-            switch (choice) {
-                case 1 -> {
-                    if (controller.getAllPlayers().size() > 4) controller.rotateActivePlayers();
-                    if (mode == SaveMode.COUNT) {
-                        controller.startCount();
-                    } else {
-                        controller.startGame();
-                        controller.advanceDealer();
-                    }
-                    return true;
+            boolean canRemove = controller.canRemovePlayer();
+            boolean canUndo   = controller.canUndo();
+            boolean canRedo   = controller.canRedo();
+
+            // options 1-5 are fixed
+            if      (choice == 1) {
+                if (controller.getAllPlayers().size() > 4) controller.rotateActivePlayers();
+                if (mode == SaveMode.COUNT) {
+                    controller.startCount();
+                } else {
+                    controller.startGame();
+                    controller.advanceDealer();
                 }
-                case 2 -> { return false; }
-                case 3 -> editFlow.saveGame();
-                case 4 -> editFlow.removeRound();
-                case 5 -> editFlow.addPlayer();
-                case 6 -> {
-                    if (controller.canRemovePlayer()) editFlow.removePlayer();
-                    else showScoreTable();
-                }
-                case 7 -> showScoreTable(); // only reachable when canRemove is true
-                default -> throw new IllegalStateException("Unexpected value: " + choice);
+                return true;
+            }
+            else if (choice == 2) { return false; }
+            else if (choice == 3) { editFlow.saveGame(); }
+            else if (choice == 4) { editFlow.removeRound(); }
+            else if (choice == 5) { editFlow.addPlayer(); }
+            else {
+                // options 6+ shift depending on what's available
+                int next = 6;
+                if (canRemove && choice == next++) { editFlow.removePlayer(); continue; }
+                if (choice == next++)              { showScoreTable();        continue; }
+                if (canUndo   && choice == next++) { controller.undo();       continue; }
+                if (canRedo   && choice == next)   { controller.redo();       continue; }
+                throw new IllegalStateException("Unexpected value: " + choice);
             }
         }
     }
@@ -71,8 +77,16 @@ public class ScoreBoardFlow {
     private int showMenu() {
         List<String>  names     = controller.getPlayerNames();
         List<Integer> scores    = controller.getPlayerScores();
-        boolean       canRemove = controller.canRemovePlayer();
-        int max = canRemove ? 7 : 6;
-        return terminalInputHelper.askInt(new ScoreBoardIOEvent(names, scores, canRemove), 1, max);
+        boolean canRemove       = controller.canRemovePlayer();
+        boolean canUndo         = controller.canUndo();
+        boolean canRedo         = controller.canRedo();
+
+        int max = 6                              // options 1-6 always present
+                + (canRemove ? 1 : 0)           // remove player
+                + (canUndo   ? 1 : 0)
+                + (canRedo   ? 1 : 0);
+
+        return terminalInputHelper.askInt(
+                new ScoreBoardIOEvent(names, scores, canRemove, canUndo, canRedo), 1, max);
     }
 }

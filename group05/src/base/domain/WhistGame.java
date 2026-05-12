@@ -411,4 +411,16 @@ public class WhistGame {
     public void removePlayerAtIndex(int index) {
         removePlayer(allPlayers.get(index));
     }
+
+    public void addRoundAtIndex(Round round, int index) {
+        if (round == null) throw new IllegalArgumentException("Round cannot be null");
+        if (index < 0 || index > rounds.size()) throw new IllegalArgumentException("Index out of bounds: " + index);
+        rounds.add(index, round);
+    }
+    // WhistGame
+    public void addPlayerAtIndex(Player player, int index) {
+        if (player == null) throw new IllegalArgumentException("Player cannot be null");
+        allPlayers.add(index, player);
+        player.getDecisionStrategy().onJoinGame(this::addObserver);
+    }
 }
