@@ -11,8 +11,6 @@ import base.domain.trick.Trick;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * Represents a single Round in a game of Whist.
@@ -271,7 +269,7 @@ public class Round {
      * @return number of tricks won by the team.
      */
     public int getTricksWonBy(List<Player> team) {
-        List<PlayerId> teamIds = team.stream().map(Player::getId).collect(Collectors.toList());
+        List<PlayerId> teamIds = team.stream().map(Player::getId).toList();
         int count = 0;
         for (Trick t : playedTricks) {
             if (teamIds.contains(t.getWinningPlayerId())) {
@@ -389,7 +387,7 @@ public class Round {
         int bidderIndex = players.indexOf(this.getPlayerById(highestBid.getPlayerId()));
         List<Integer> participantIndices = biddingTeam.stream()
                 .map(players::indexOf).toList();
-        List<Integer> miserieWinnerIndices = countMiserieWinners.stream().map(players::indexOf).toList();
+        List<Integer> miserieWinnerIndices = MiserieWinners.stream().map(players::indexOf).toList();
 
         try {
             return new RoundSnapshot(
