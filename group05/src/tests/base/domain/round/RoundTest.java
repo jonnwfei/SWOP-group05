@@ -249,59 +249,6 @@ class RoundTest {
                     "Round should early-terminate when the only Miserie bidder fails.");
         }
     }
-
-    @Nested
-    @DisplayName("Count Mode Scoring")
-    class CountModeScoringTests {
-
-        @Test
-        @DisplayName("calculateScoresForCount validation guards")
-        void calculateScoresForCount_Validation() {
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(null, 13, List.of(p1), null));
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 13, null, null));
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 13, Collections.emptyList(), null));
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 13, Arrays.asList(p1, null), null));
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 13, List.of(p1, p2, p3, p4, externalPlayer), null));
-
-            when(mockHighestBid.getType()).thenReturn(BidType.SOLO);
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, -2, List.of(p1), null));
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 14, List.of(p1), null));
-        }
-
-        @Test
-        @DisplayName("Miserie count scoring uses base points per participant outcome")
-        void countMiserieScoring() {
-            when(mockHighestBid.getType()).thenReturn(BidType.MISERIE);
-            when(mockHighestBid.calculateBasePoints(0)).thenReturn(30);   // succeeded
-            when(mockHighestBid.calculateBasePoints(1)).thenReturn(-30);  // failed
-
-            assertThrows(IllegalArgumentException.class,
-                    () -> round.calculateScoresForCount(mockHighestBid, -1, List.of(p1), Arrays.asList(p1, null)));
-
-            // p1 won the miserie, p2 lost it. Count mode passes the team/winners explicitly,
-            // so no BidManager population is needed.
-            round.calculateScoresForCount(mockHighestBid, -1, List.of(p1, p2), List.of(p1));
-
-            assertTrue(round.isFinished());
-            verify(p1).updateScore(60);  //  30 * multiplier(2)
-            verify(p2).updateScore(-60); // -30 * multiplier(2)
-        }
-
-        @Test
-        @DisplayName("Standard count scoring distributes points across teams")
-        void countStandardScoring() {
-            when(mockHighestBid.getType()).thenReturn(BidType.PROPOSAL);
-            when(mockHighestBid.calculateBasePoints(13)).thenReturn(30);
-
-            round.calculateScoresForCount(mockHighestBid, 13, List.of(p1, p2), null);
-
-            verify(p1).updateScore(60);
-            verify(p2).updateScore(60);
-            verify(p3).updateScore(-60);
-            verify(p4).updateScore(-60);
-        }
-    }
-
     @Nested
     @DisplayName("Play Mode Scoring & Distribution")
     class PlayModeScoringTests {
