@@ -15,6 +15,7 @@ import static cli.events.BidEvents.*;
 import static cli.events.CountEvents.*;
 import static cli.events.MenuEvents.*;
 import static cli.events.PlayEvents.*;
+import static cli.events.ReportEvents.*;
 
 public class TerminalRenderer {
     public void render(IOEvent event) {
@@ -52,6 +53,12 @@ public class TerminalRenderer {
             case MessageIOEvent t -> renderMessageEvent(t);
             case LoadSaveIOEvent l -> renderLoadSaveEvent(l);
             case ScoreTableIOEvent l -> renderScoreTableEvent(l);
+
+
+
+            case ReportFormatSelectionIOEvent ignored -> renderReportFormatSelectionEvent();
+            case DisplayReportIOEvent e -> renderDisplayReportEvent(e);
+            case ReportSavedIOEvent e -> renderReportSavedEvent(e);
             default -> throw new IllegalStateException("Unhandled IOEvent: " + event);
         }
     }
@@ -441,5 +448,25 @@ public class TerminalRenderer {
             System.out.println("   [" + (i + 1) + "] " + names.get(i));
         }
         System.out.print("Your choice: ");
+    }
+
+
+    private void renderReportFormatSelectionEvent() {
+        System.out.println("In which format would you like your report?");
+        System.out.println("  (1) Text file (.txt)");
+        System.out.println("  (2) Markdown  (.md)");
+        System.out.println("  (3) JSON      (.json)");
+        System.out.print("Your choice: ");
+    }
+
+    private void renderDisplayReportEvent(DisplayReportIOEvent event) {
+        System.out.println("\n========================================");
+        System.out.println("  THANKS FOR PLAYING — FINAL REPORT");
+        System.out.println("========================================");
+        System.out.println(event.report());
+    }
+
+    private void renderReportSavedEvent(ReportSavedIOEvent event) {
+        System.out.println("Report saved to: " + event.path());
     }
 }
