@@ -107,8 +107,10 @@ public class GameController {
     public void setFirstPlayerAsDealer() {
         game.setFirstPlayerAsDealer();
     }
+    // Fix 2: delegate to the history-aware removePlayer
     public void removePlayerAtIndex(int index) {
-        game.removePlayerAtIndex(index);
+        Player player = game.getAllPlayers().get(index);
+        removePlayer(player); // removePlayer() already calls history.execute(new RemovePlayerAction(...))
     }
 
     // Projections — flows never need to import Player
@@ -154,7 +156,9 @@ public class GameController {
     }
 
     public void removeRound(Round round) {
-        game.removeRound(round);
+        int index = game.getRounds().indexOf(round);
+        history.execute(new RemoveRoundAction(game, round, index));
     }
+
     public void clearHistory() { history.clear(); }
 }
