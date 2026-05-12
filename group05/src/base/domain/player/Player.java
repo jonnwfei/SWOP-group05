@@ -166,14 +166,14 @@ public class Player {
 
     /**
      * Constructs a snapshot of a player, containing their name, strategy type, and score from their current state in the game.
-     * @param player the player instance to create a snapshot from
      * @return PlayerSnapshot of the provided player
      * @throws IllegalArgumentException if the player is null
      */
     public PlayerSnapshot toSnapshot() {
         return new PlayerSnapshot(
-                playerId.toString(),
+                playerId.id().toString(),
                 playerName,
                 this.getDecisionStrategy().toSnapshotType(),
-                player.getScore());
+                playerScore
+        );
     }}
