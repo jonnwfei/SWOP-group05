@@ -195,7 +195,6 @@ public class BidState extends State {
         if (pendingBidType != null) {
             throw new IllegalStateException("State violation: Cannot process a new bid while waiting for a suit selection.");
         }
-
         if (!isLegalBidType(chosenBidType)) {
             throw new IllegalArgumentException("State violation: Bid " + chosenBidType + " is not legal in the current context.");
         }

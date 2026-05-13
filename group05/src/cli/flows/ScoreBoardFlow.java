@@ -1,5 +1,6 @@
 package cli.flows;
 
+import base.GameController;
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.storage.snapshots.SaveMode;
@@ -20,24 +21,24 @@ import java.util.List;
 public class ScoreBoardFlow {
 
     private final TerminalManager terminalManager;
-    private final WhistGame game;
+    private final GameController controller;
     private final GameEditFlow editFlow;
     /**
      * Creates a new ScoreBoardFlow.
      *
      * @param terminalManager handles user interaction
-     * @param game the current game instance
+     * @param controller the current game instance
      * @param editFlow shared edit functionality
      */
-    public ScoreBoardFlow(TerminalManager terminalManager, WhistGame game, GameEditFlow editFlow) {
+    public ScoreBoardFlow(TerminalManager terminalManager, GameController controller, GameEditFlow editFlow) {
         if (terminalManager == null)
             throw new IllegalArgumentException("terminalManager cannot be null");
-        if (game == null)
+        if (controller == null)
             throw new IllegalArgumentException("game cannot be null");
         if (editFlow == null)
             throw new IllegalArgumentException("editFlow cannot be null");
         this.terminalManager = terminalManager;
-        this.game = game;
+        this.controller = controller;
         this.editFlow = editFlow;
     }
 
@@ -52,16 +53,16 @@ public class ScoreBoardFlow {
             int choice = showMenu();
             switch (choice) {
                 case 1 -> {
-                    if (game.getAllPlayers().size() > 4) {
-                        game.rotateActivePlayers();
+                    if (controller.getAllPlayers().size() > 4) {
+                        controller.rotateActivePlayers();
                     }
                     if (mode == SaveMode.COUNT){
-                        game.startCount();
+                        controller.startCount();
                     }
                     else {
 
-                        game.startGame();
-                        game.advanceDealer();
+                        controller.startGame();
+                        controller.advanceDealer();
                     }
 
                     return true; }   // another round
@@ -80,9 +81,9 @@ public class ScoreBoardFlow {
      * @return selected menu option
      */
     private int showMenu() {
-        List<String> names = game.getAllPlayers().stream().map(Player::getName).toList();
-        List<Integer> scores = game.getAllPlayers().stream().map(Player::getScore).toList();
-        boolean canRemove = game.canRemovePlayer();
+        List<String> names = controller.getAllPlayers().stream().map(Player::getName).toList();
+        List<Integer> scores = controller.getAllPlayers().stream().map(Player::getScore).toList();
+        boolean canRemove = controller.canRemovePlayer();
         int max = canRemove ? 6 : 5;
         return askInt(new ScoreBoardIOEvent(names, scores, canRemove), 1, max);
     }

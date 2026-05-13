@@ -1,5 +1,6 @@
 package cli.adapter;
 
+import base.GameController;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
@@ -36,15 +37,11 @@ import java.util.List;
 public class Adapter {
 
     private final TerminalParser parser;
-    private final WhistGame game;
+    private final GameController controller;
 
-    /**
-     * Initializes the Adapter with a reference to the WhistGame.
-     * @param game The current gameInstance, needed to map user input to actual Player objects and access game state for context when parsing responses.
-     */
-    public Adapter(WhistGame game) {
+    public Adapter(GameController controller) {
         this.parser = new TerminalParser();
-        this.game = game;
+        this.controller = controller;
     }
 
     /**
@@ -267,7 +264,7 @@ public class Adapter {
                     }
                     List<PlayerId> playerIds = indices.stream()
                             .map(i -> p.playerNames().get(i - 1))
-                            .map(name -> game.getAllPlayers().stream()
+                            .map(name -> controller.getPlayers().stream()
                                     .filter(player -> player.getName().equals(name))
                                     .findFirst()
                                     .map(Player::getId)

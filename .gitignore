@@ -18,3 +18,8 @@
 /group05/src/META-INF/MANIFEST.MF
 /saves/
 /testSaves/
+/doc/
+.DS_Store
+lib/
+*.iml
+doc.zip

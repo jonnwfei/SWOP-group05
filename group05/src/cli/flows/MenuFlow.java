@@ -1,14 +1,12 @@
 package cli.flows;
 
-import base.domain.WhistGame;
+import base.GameController;
 import base.domain.WhistRules;
 import base.domain.deck.Deck;
-import base.domain.player.*;
 import base.storage.GamePersistenceService;
 import base.storage.snapshots.SaveMode;
-import base.domain.strategy.*;
+import cli.util.TerminalInputHelper;
 import cli.TerminalManager;
-import cli.events.IOEvent;
 
 import static cli.events.MenuEvents.*;
 
@@ -21,21 +19,24 @@ import java.util.List;
  */
 public class MenuFlow {
 
+    private final TerminalInputHelper input;
     private final TerminalManager terminalManager;
+    private final GameController controller;
     private final GamePersistenceService persistenceService;
-    private final WhistGame game;
     private SaveMode savedMode;
+
     /**
      * Creates a new MenuFlow.
      *
      * @param terminalManager handles user interaction
      * @param persistenceService handles save/load operations
-     * @param game the game instance to configure
+     * @param controller handles the game interaction
      */
-    public MenuFlow(TerminalManager terminalManager, GamePersistenceService persistenceService, WhistGame game) {
+    public MenuFlow(TerminalManager terminalManager, GamePersistenceService persistenceService, GameController controller) {
+        this.input = new TerminalInputHelper(terminalManager);
         this.terminalManager = terminalManager;
+        this.controller = controller;
         this.persistenceService = persistenceService;
-        this.game = game;
     }
     /**
      * Displays the main menu and executes the selected option.
@@ -43,12 +44,11 @@ public class MenuFlow {
      * @return the selected SaveMode (GAME or COUNT)
      */
     public SaveMode run() {
-        int choice = askInt(new WelcomeMenuIOEvent(), 1, 3);
-
+        int choice = input.askInt(new WelcomeMenuIOEvent(), 1, 3);
         return switch (choice) {
             case 1 -> { setupGame();     yield SaveMode.GAME; }
-            case 2 -> { setupCount();   yield SaveMode.COUNT; }
-            case 3 -> { setupLoadSave(); yield savedMode; } // see below
+            case 2 -> { setupCount();    yield SaveMode.COUNT; }
+            case 3 -> { setupLoadSave(); yield savedMode; }
             default -> throw new IllegalStateException("Unexpected menu choice: " + choice);
         };
     }
@@ -57,18 +57,17 @@ public class MenuFlow {
      * Sets up a full game with humans and bots.
      */
     private void setupGame() {
-        int bots = askInt(new AmountOfBotsIOEvent(), 0, WhistRules.REQUIRED_PLAYERS );
+        int bots = input.askInt(new AmountOfBotsIOEvent(), 0, WhistRules.REQUIRED_PLAYERS);
         int minHumans = WhistRules.REQUIRED_PLAYERS - bots;
-        int humans = askInt(new AmountOfHumansIOEvent(minHumans, WhistRules.MAX_PLAYERS), minHumans, WhistRules.MAX_PLAYERS );
+        int humans = input.askInt(new AmountOfHumansIOEvent(minHumans, WhistRules.MAX_PLAYERS), minHumans, WhistRules.MAX_PLAYERS);
 
         addHumanPlayers(1, humans);
         addBotPlayers(humans + 1, bots);
 
-        game.setDeck(new Deck());
-        game.setRandomDealer();
-
+        controller.setDeck(new Deck());
+        controller.setRandomDealer();
         printPlayerNames();
-        game.startGame();
+        controller.startGame();
     }
 
     /**
@@ -76,10 +75,9 @@ public class MenuFlow {
      */
     private void setupCount() {
         addHumanPlayers(1, WhistRules.REQUIRED_PLAYERS);
-        game.setDealerPlayer(game.getAllPlayers().getFirst()); // default to first player as dealer for counting mode
-
+        controller.setFirstPlayerAsDealer();
         printPlayerNames();
-        game.startCount();
+        controller.startCount();
     }
     /**
      * Loads a saved game and restores its mode.
@@ -91,21 +89,19 @@ public class MenuFlow {
 //            run();
             return;
         }
+        int choice = input.askInt(new LoadSaveIOEvent(availableSaves), 0, availableSaves.size());
+        if (choice == 0) return;
 
-        int saveFileChoice = askInt(new LoadSaveIOEvent(availableSaves), 0, availableSaves.size());
-        if (saveFileChoice == 0) return;
-
-        String chosenDescription = availableSaves.get(saveFileChoice - 1); // off by one
+        String description = availableSaves.get(choice - 1);
         try {
-            SaveMode mode = persistenceService.loadIntoGame(game, chosenDescription);
+            SaveMode mode = persistenceService.loadIntoGame(controller.getGame(), description);
             this.savedMode = mode;
             switch (mode) {
-                case GAME  -> game.startGame();
-                case COUNT -> game.startCount();
+                case GAME  -> controller.startGame();
+                case COUNT -> controller.startCount();
             }
         } catch (Exception e) {
-            System.out.println("Error while loading game: " + e);
-            throw new IllegalArgumentException("Failed to load game with description: " + chosenDescription, e);
+            throw new IllegalArgumentException("Failed to load game: " + description, e);
         }
     }
 
@@ -118,10 +114,8 @@ public class MenuFlow {
      */
     private void addHumanPlayers(int startIndex, int amount) {
         for (int i = 0; i < amount; i++) {
-            int playerNumber = startIndex + i;
-            String name = askString(new PlayerNameIOEvent(playerNumber));
-            // Using the convenience constructor that auto-generates the PlayerId
-            game.addPlayer(new Player(new HumanStrategy(), name));
+            String name = input.askString(new PlayerNameIOEvent(startIndex + i));
+            controller.addHumanPlayer(name);
         }
     }
     /**
@@ -133,73 +127,16 @@ public class MenuFlow {
     private void addBotPlayers(int startIndex, int amount) {
         for (int i = 0; i < amount; i++) {
             int botNumber = startIndex + i;
-            int strategy = askInt(new BotStrategyIOEvent(botNumber), 1, 3);
-
-            Player bot = switch (strategy) {
-                case 1 -> new Player(new HighBotStrategy(), "Bot " + botNumber);
-                case 2 -> new Player(new LowBotStrategy(), "Bot " + botNumber);
-                default -> {
-                        PlayerId smartId = new PlayerId();
-                        yield new Player(new SmartBotStrategy(), "Bot " + botNumber, smartId);
-                    }
-                };
-            game.addPlayer(bot);
-        }
-    }
-    /**
-     * Prints all player names to the terminal.
-     */
-    private void printPlayerNames() {
-        terminalManager.handle(new PrintNamesIOEvent(
-                game.getAllPlayers().stream().map(Player::getName).toList()
-        ));
-    }
-
-
-    /**
-     * Reads an integer from the user.
-     *
-     * @param event IO event to display
-     * @return parsed integer
-     */
-    private int askInt(IOEvent event) {
-        while (true) {
-            try {
-                String raw = terminalManager.handle(event).rawInput();
-                return Integer.parseInt(raw.trim());
-            } catch (Exception e) {
-                System.out.println("Invalid input. Please enter a number.");
+            int strategy = input.askInt(new BotStrategyIOEvent(botNumber), 1, 3);
+            switch (strategy) {
+                case 1 -> controller.addHighBot("Bot " + botNumber);
+                case 2 -> controller.addLowBot("Bot " + botNumber);
+                default -> controller.addSmartBot("Bot " + botNumber);
             }
         }
     }
-    /**
-     * Reads an integer within a range.
-     *
-     * @param event IO event to display
-     * @param min minimum value
-     * @param max maximum value
-     * @return validated integer
-     */
-    private int askInt(IOEvent event, int min, int max) {
-        while (true) {
-            int value = askInt(event);
-            if (value >= min && value <= max)
-                return value;
-            System.out.println("Please enter a number between " + min + " and " + max + ".");
-        }
-    }
-    /**
-     * Reads a non-empty string from the user.
-     *
-     * @param event IO event to display
-     * @return validated string
-     */
-    private String askString(IOEvent event) {
-        while (true) {
-            String raw = terminalManager.handle(event).rawInput();
-            if (raw != null && !raw.isBlank())
-                return raw.trim();
-            System.out.println("Input cannot be empty.");
-        }
+
+    private void printPlayerNames() {
+        terminalManager.handle(new PrintNamesIOEvent(controller.getPlayerNames()));
     }
 }

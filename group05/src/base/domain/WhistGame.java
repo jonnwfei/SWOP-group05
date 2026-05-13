@@ -12,6 +12,7 @@ import static base.domain.deck.Deck.DealType;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.results.GameResult;
 import base.domain.round.Round;
 import base.domain.states.BidState;
 import base.domain.states.CountState;
@@ -341,7 +342,8 @@ public class WhistGame {
      * Call this after removing a round to ensure the scoreboard is accurate.
      */
     public void recalibrateScores() {
-        // 1. Reset all players to 0
+        // 1. Reset all players to
+        // 0
         for (Player p : this.allPlayers) {
             p.updateScore(-p.getScore());
         }
@@ -376,5 +378,34 @@ public class WhistGame {
      */
     public boolean canRemovePlayer() {
         return (this.allPlayers.size() > REQUIRED_PLAYERS);
+    }
+
+    /**
+     * Drives the state machine forward until user input is required.
+     * @param command null on the first call, otherwise the user's response to the last result.
+     * @return The GameResult the UI layer needs to render and respond to.
+     */
+    public GameResult advance(GameCommand command) {
+        boolean stateRunning = true;
+        while (!isOver()) {
+            while (stateRunning) {
+                StateStep step = (command == null)
+                        ? executeState()
+                        : executeState(command);
+                command = null;
+                stateRunning = !step.shouldTransition();
+                if (step.hasResult()) return step.result();
+            }
+            nextState();
+            stateRunning = true;
+        }
+        return null;
+    }
+    public void setFirstPlayerAsDealer() {
+        this.dealerPlayer = allPlayers.getFirst();
+    }
+
+    public void removePlayerAtIndex(int index) {
+        removePlayer(allPlayers.get(index));
     }
 }
