@@ -24,11 +24,10 @@ public final class HumanStrategy implements Strategy {
     /**
      * Returns null as the bid is determined via external UI input
      * captured by the bidState
-     * @param playerId The player instance.
      * @return null.
      */
     @Override
-    public Bid determineBid(PlayerId playerId, List<Card> hand) {
+    public Bid determineBid(List<Card> hand) {
         return null;
     }
 

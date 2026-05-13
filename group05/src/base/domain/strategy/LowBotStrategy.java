@@ -21,12 +21,11 @@ public final class LowBotStrategy implements Strategy {
 
     /**
      * Always returns a PassBid. This strategy does not attempt to win bids.
-     * @param playerId The player instance using this strategy.
      * @return A passBid instance.
      */
     @Override
-    public Bid determineBid(PlayerId playerId, List<Card> hand) {
-        return new PassBid(playerId);
+    public Bid determineBid(List<Card> hand) {
+        return new PassBid();
     }
 
     /**

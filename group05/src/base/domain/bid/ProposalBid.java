@@ -10,33 +10,13 @@ import java.util.List;
  * Represents a player's initial offer to form a partnership.
  * Acts as a transitional contract that must be resolved (accepted, passed,
  * or upgraded to a Solo Proposal) before the Playing Phase begins.
- * @param proposer The player initiating the proposal.
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public record ProposalBid(PlayerId proposer) implements Bid {
-
-    public ProposalBid {
-        if (proposer == null) {throw new IllegalArgumentException("Proposer cannot be null.");}
-    }
+public record ProposalBid() implements Bid {
 
     @Override
-    public PlayerId getPlayerId() {return proposer;}
-
-    /**
-     * Determines the bidding team by pairing the Proposer with the player who accepted.
-     *
-     * @param allBids    All bids placed during the round to search for the Acceptance.
-     * @param allPlayers All players in the game.
-     * @return A list containing both the Proposer and the Acceptor.
-     * @throws IllegalArgumentException if no Acceptance bid is found in the bid history.
-     */
-    @Override
-    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        PlayerId acceptor = allBids.stream().filter(bid -> bid.getType() == BidType.ACCEPTANCE).map(Bid::getPlayerId).findFirst().orElse(null);
-        if (acceptor == null) {throw new IllegalArgumentException("There was no acceptor found in allBids, it's impossible to have ProposalBid without AcceptedBid!");}
-        return List.of(proposer, acceptor);
-    }
+    public int teamSize() {return 2;}
 
     @Override
     public BidType getType() {return BidType.PROPOSAL;}
