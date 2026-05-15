@@ -83,32 +83,38 @@ public final class CardMath {
     }
 
     /**
-     * Determines if a newly played card beats the currently winning card in a trick.
+     * Determines which of two cards is strictly stronger according to Whist trick-taking rules.
+     * This is a context-free mathematical evaluation and does not assume either card is currently winning.
      *
-     * @param challenger  The newly played card being evaluated.
-     * @param currentBest The card currently winning the trick. If null, challenger automatically wins.
-     * @param trumpSuit   The active trump suit for the round (null if playing a No-Trump bid).
-     * @return {@code true} if the challenger beats the current best, {@code false} otherwise.
+     * @param challenger The card attempting to win.
+     * @param incumbent  The card currently holding priority (or null if first card).
+     * @param leadSuit   The suit led in the trick.
+     * @param trumpSuit  The active trump suit (null if No-Trump / Miserie).
+     * @return {@code true} if the challenger mathematically beats the incumbent, {@code false} otherwise.
      * @throws NullPointerException if the challenger card is null.
      */
-    public static boolean doesCardBeat(Card challenger, Card currentBest, Suit trumpSuit) {
+    public static boolean doesCardBeat(Card challenger, Card incumbent, Suit leadSuit, Suit trumpSuit) {
         Objects.requireNonNull(challenger, "Challenger card cannot be null.");
 
-        // If it's the first card played, it automatically wins
-        if (currentBest == null) {
+        if (incumbent == null) {
             return true;
         }
 
-        Suit challengerSuit = challenger.suit();
-        Suit currentBestSuit = currentBest.suit();
+        Suit cSuit = challenger.suit();
+        Suit iSuit = incumbent.suit();
 
-        // 1. Suits match: The highest rank wins.
-        if (challengerSuit == currentBestSuit) {
-            return challenger.rank().compareTo(currentBest.rank()) > 0;
+        // Same suit: The highest rank always wins.
+        // (cleanly handles Trump vs Trump, Lead vs Lead, and Off-suit vs Off-suit)
+        if (cSuit == iSuit) {
+            return challenger.rank().compareTo(incumbent.rank()) > 0;
         }
 
-        // 2. Suits differ: Challenger only wins if it is a Trump card.
-        return challengerSuit == trumpSuit;
+        if (cSuit == trumpSuit) return true;
+
+        if (iSuit == trumpSuit) return false;
+
+        // Neither are trumps, and they are different suits.
+        return cSuit == leadSuit;
     }
 
     /**
@@ -153,15 +159,16 @@ public final class CardMath {
      *
      * @param legalCards      The legal cards the player can choose from.
      * @param cardToLoseTo The card the player is trying to avoid beating.
+     * @param leadSuit   The suit led in the trick.
      * @param trump        The active trump suit (null if No-Trump).
      * @return The highest losing card, or null if all available options will win the trick.
      */
-    public static Card findHighestLosingCard(List<Card> legalCards, Card cardToLoseTo, Suit trump) {
+    public static Card findHighestLosingCard(List<Card> legalCards, Card cardToLoseTo, Suit leadSuit, Suit trump) {
         if (legalCards == null || legalCards.isEmpty()) return null;
 
         return legalCards.stream()
                 .filter(Objects::nonNull)
-                .filter(c -> !doesCardBeat(c, cardToLoseTo, trump))
+                .filter(c -> !doesCardBeat(c, cardToLoseTo, lead, trump))
                 .max(Comparator.comparing(Card::rank))
                 .orElse(null);
     }
@@ -172,15 +179,16 @@ public final class CardMath {
      *
      * @param options      The legal cards the player can choose from.
      * @param cardToLoseTo The card the player is trying to avoid beating.
+     * @param leadSuit   The suit led in the trick.
      * @param trump        The active trump suit (null if No-Trump).
      * @return The lowest losing card, or null if all available options will win the trick.
      */
-    public static Card findLowestLosingCard(List<Card> options, Card cardToLoseTo, Suit trump) {
+    public static Card findLowestLosingCard(List<Card> options, Card cardToLoseTo, Suit leadSuit, Suit trump) {
         if (options == null || options.isEmpty()) return null;
 
         return options.stream()
                 .filter(Objects::nonNull)
-                .filter(c -> !doesCardBeat(c, cardToLoseTo, trump))
+                .filter(c -> !doesCardBeat(c, cardToLoseTo, lead, trump))
                 .min(Comparator.comparing(Card::rank))
                 .orElse(null);
     }

@@ -6,6 +6,7 @@ import base.domain.card.Suit;
 import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.PlayerId;
+import base.domain.trick.Trick;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
 
@@ -21,23 +22,20 @@ public class SmartBotMemory implements GameObserver {
     private Suit currentTrump;
     private final List<Card> unplayedCards;
     private final List<BidTurn> bidsMemory;
-    private final List<PlayTurn> currentTrickPlayTurns;
+    private Trick currentTrick;
 
     // Identity & Contract State
     private final List<PlayerId> biddingTeam;
     private BidType activeBid;
 
-    private final Map<PlayerId, Integer> tricksWon;
 
     public SmartBotMemory() {
         this.unplayedCards = new Deck().getCards();
         this.bidsMemory = new ArrayList<>();
-        this.currentTrickPlayTurns = new ArrayList<>();
         this.biddingTeam = new ArrayList<>();
-        this.tricksWon = new HashMap<>();
     }
 
-    // --- Observer Methods (Pure Data Recording) ---
+    // --- Observer Methods  ---
 
     @Override
     public void onRoundStarted(List<PlayerId> players) {
@@ -46,9 +44,8 @@ public class SmartBotMemory implements GameObserver {
         this.bidsMemory.clear();
         this.unplayedCards.clear();
         this.unplayedCards.addAll(new Deck().getCards());
-        this.currentTrickPlayTurns.clear();
         this.biddingTeam.clear();
-        this.tricksWon.clear();
+        this.currentTrick = null;
     }
 
     @Override
@@ -71,27 +68,57 @@ public class SmartBotMemory implements GameObserver {
     @Override
     public void onTurnPlayed(PlayTurn playTurn) {
         this.unplayedCards.remove(playTurn.playedCard());
-        this.currentTrickPlayTurns.add(playTurn);
+
+        if (this.currentTrick == null) {
+            this.currentTrick = new Trick(playTurn.playerId(), this.currentTrump);
+        }
+
+        this.currentTrick.addTurn(playTurn.playerId(), playTurn.playedCard());
     }
 
     @Override
     public void onTrickCompleted(PlayerId winner) {
         // Record the win and reset the trick buffer for the next round
-        this.tricksWon.put(winner, this.tricksWon.getOrDefault(winner, 0) + 1);
-        this.currentTrickPlayTurns.clear();
+        this.currentTrick = null;
     }
 
-    // --- Standardized Generic Queries (No Game Rules) ---
+    // --- Standardized Generic Queries ---
+
+    public Suit getLeadSuit() {
+        return currentTrick == null ? null : currentTrick.getLeadingSuit();
+    }
+
+    public boolean isLeadPlayer() {
+        return currentTrick == null;
+    }
+
+    public PlayerId getCurrentWinnerId() {
+        return currentTrick == null ? null : currentTrick.getWinningPlayerId();
+    }
+
+    public Card getCurrentWinningCard() {
+        return currentTrick == null ? null : currentTrick.getCurrentWinningCard();
+    }
+
+    public boolean hasPlayerActedInCurrentTrick(PlayerId playerId) {
+        if (currentTrick == null || playerId == null) return false;
+        return currentTrick.getTurns().stream().anyMatch(t -> t.playerId().equals(playerId));
+    }
+
+    public Card getCardPlayedBy(PlayerId playerId) {
+        if (currentTrick == null || playerId == null) return null;
+        return currentTrick.getTurns().stream()
+                .filter(t -> t.playerId().equals(playerId))
+                .map(PlayTurn::playedCard)
+                .findFirst()
+                .orElse(null);
+    }
 
     public BidType getActiveBid() { return activeBid; }
 
     public Suit getCurrentTrump() { return currentTrump; }
 
     public boolean isPlayerOnBiddingTeam(PlayerId playerId) { return biddingTeam.contains(playerId); }
-
-    public List<PlayTurn> getCurrentTrickTurns() {
-        return Collections.unmodifiableList(currentTrickPlayTurns);
-    }
 
     public BidTurn getHighestBid() {
         return bidsMemory.stream()
@@ -104,23 +131,6 @@ public class SmartBotMemory implements GameObserver {
                 .max(Comparator.comparing(BidTurn::bidType))
                 .map(highest -> highest.bidType() == BidType.PROPOSAL)
                 .orElse(false);
-    }
-
-    public boolean isLeadPlayer() {
-        return this.currentTrickPlayTurns.isEmpty();
-    }
-
-    public boolean hasPlayerActedInCurrentTrick(PlayerId playerId) {
-        return this.currentTrickPlayTurns.stream()
-                .anyMatch(turn -> turn.playerId().equals(playerId));
-    }
-
-    public Card getCardPlayedBy(PlayerId playerId) {
-        return this.currentTrickPlayTurns.stream()
-                .filter(turn -> turn.playerId().equals(playerId))
-                .map(PlayTurn::playedCard)
-                .findFirst()
-                .orElse(null);
     }
 
     public boolean isHighestUnplayedCardInSuit(Card card) {

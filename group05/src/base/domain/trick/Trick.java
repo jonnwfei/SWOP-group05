@@ -58,6 +58,11 @@ public class Trick {
         return playTurns.getFirst().playedCard().suit();
     }
 
+    /** @return The card that is currently winning the trick, or null if empty. */
+    public Card getCurrentWinningCard() {
+        return this.currentWinningCard;
+    }
+
     /** @return The ID of the player who won the trick or is currently winning. */
     public PlayerId getWinningPlayerId() {
         return this.winningPlayerId;
@@ -115,7 +120,7 @@ public class Trick {
         }
 
         // Delegate the complex math to our Pure Fabrication evaluator!
-        if (CardMath.doesCardBeat(playedCard, currentWinningCard, trumpSuit)) {
+        if (CardMath.doesCardBeat(playedCard, currentWinningCard, getLeadingSuit(), trumpSuit)) {
             this.winningPlayerId = playerId;
             this.currentWinningCard = playedCard;
         }

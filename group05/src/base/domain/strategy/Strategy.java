@@ -42,5 +42,10 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
      */
     default void onJoinGame(GameEventPublisher publisher) {}
 
+    /**
+     * Lifecycle hook called when the strategy is removed from a game.
+     * Default implementation does nothing, for strategies that don't need to listen to events.
+     * @param publisher A restricted interface to unsubscribe from game events.
+     */
     default void onLeaveGame(GameEventPublisher publisher) {}
 }
