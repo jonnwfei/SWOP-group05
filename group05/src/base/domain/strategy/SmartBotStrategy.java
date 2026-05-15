@@ -8,23 +8,19 @@ import base.domain.card.CardMath;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.observer.GameEventPublisher;
-import base.domain.observer.GameObserver;
 import base.domain.player.PlayerId;
 import base.domain.turn.BidTurn;
+import base.domain.turn.PlayTurn;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
-import static base.domain.card.CardMath.findHighestCards;
-import static base.domain.card.CardMath.findLowestCards;
-
 /**
  * Encapsulates the AI decision-making algorithms for a simulated Whist player.
  * <p>
  * This class implements the {@link Strategy} interface and uses a localized
- * {@link SmartBotMemory} observer to independently evaluate game states without
- * direct access to the global game engine, ensuring it cannot cheat.
+ * {@link SmartBotMemory} data store to independently evaluate game states.
  *
  * @author Tommy Wu, Stan Kestens
  * @since 01/03/2026
@@ -34,45 +30,26 @@ public final class SmartBotStrategy implements Strategy {
     /** Internal record for evaluating the optimal trump suit during the bidding phase. */
     private record TrumpEvaluation(Suit suit, int expectedTricks) {}
 
+    enum PlayTactic { NORMAL, MISERIE, ANTI_MISERIE }
+
     private static final int MIN_TRICKS_FOR_ACCEPTANCE = 3;
     private static final int MIN_TRICKS_FOR_PROPOSAL = 5;
     private static final int MIN_TRICKS_FOR_ABONDANCE = 9;
 
-    /** Represents the three core behavioral states the bot can assume during the play phase. */
-    private enum PlayTactic {
-        NORMAL,       // Playing standard rules, attempting to win tricks for the team.
-        MISERIE,      // Attempting to actively lose every trick (has placed a Miserie bid).
-        ANTI_MISERIE  // Attempting to force the Miserie bidder to win a trick.
-    }
-
-    // --- Internal Memory & State ---
-    private PlayTactic currentPlayTactic;
+    // --- Internal State & Memory ---
     private final SmartBotMemory memory;
-    private final PlayerId myself;
     private final Random random;
+
+    // Tracks the bot's own bid since it does not know its PlayerId
+    private BidType myLastBid;
 
     /**
      * Initializes a new Smart Bot.
-     *
-     * @param myself The unique identifier of the player this strategy is controlling.
-     * @throws IllegalArgumentException if the provided PlayerId is null.
      */
-    public SmartBotStrategy(PlayerId myself) {
-        if (myself == null) {
-            throw new IllegalArgumentException("PlayerId can't be null");
-        }
-        this.myself = myself;
+    public SmartBotStrategy() {
         this.memory = new SmartBotMemory();
-        this.currentPlayTactic = PlayTactic.NORMAL;
         this.random = new Random();
-    }
-
-    /**
-     * Exposes the bot's internal memory so the Game Engine can register it as an event listener.
-     * @return The {@link GameObserver} implementation belonging to this bot.
-     */
-    public GameObserver getGameObserver() {
-        return this.memory;
+        this.myLastBid = null;
     }
 
     // --- Public Strategy Methods ---
@@ -87,7 +64,7 @@ public final class SmartBotStrategy implements Strategy {
     public Bid determineBid(List<Card> hand) {
         BidType miserieBidType = evaluateMiserieEligibility(hand);
         if (miserieBidType != null && isLegalBid(miserieBidType)) {
-            return miserieBidType.instantiate(null);
+            return registerAndReturnBid(miserieBidType, null);
         }
 
         int tricksWithCurrentTrump = estimateWinningTricks(hand, memory.getCurrentTrump());
@@ -96,26 +73,224 @@ public final class SmartBotStrategy implements Strategy {
         if (bestEvaluation.expectedTricks() >= MIN_TRICKS_FOR_ABONDANCE) {
             Bid highBid = mapToHighBid(bestEvaluation.expectedTricks(), bestEvaluation.suit());
             if (isLegalBid(highBid.getType())) {
-                return highBid;
+                return registerAndReturnBid(highBid.getType(), bestEvaluation.suit());
             }
         }
 
-        if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_ACCEPTANCE && memory.hasActiveProposal()) {
-            return BidType.ACCEPTANCE.instantiate(null);
+        if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_ACCEPTANCE && memory.hasActiveProposal() && isLegalBid(BidType.ACCEPTANCE)) {
+            return registerAndReturnBid(BidType.ACCEPTANCE, null);
         }
 
-        if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_PROPOSAL) {
-            if (isLegalBid(BidType.PROPOSAL)) {
-                return BidType.PROPOSAL.instantiate(null);
-            }
+        if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_PROPOSAL && !memory.hasActiveProposal() && isLegalBid(BidType.PROPOSAL)) {
+            return registerAndReturnBid(BidType.PROPOSAL, null);
         }
 
-        return BidType.PASS.instantiate(null);
+        return registerAndReturnBid(BidType.PASS, null);
     }
 
     /**
-     * Checks if a desired bid is legally allowed to be placed over the current highest bid.
+     * Determines the optimal card to play for the current trick based on the active tactic.
+     *
+     * @param currentHand The bot's current hand of cards.
+     * @param lead The suit led in the current trick (null if the bot is leading).
+     * @return The mathematically optimal {@link Card} to play.
+     * @throws IllegalArgumentException if currentHand is null or empty.
      */
+    @Override
+    public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
+        if (currentHand == null || currentHand.isEmpty()) {
+            throw new IllegalArgumentException("Cannot choose a card from an empty or null hand.");
+        }
+
+        PlayTactic tactic = determineCurrentTactic();
+        List<Card> legalCards = CardMath.getLegalCards(currentHand, lead);
+
+        if (legalCards.isEmpty()) {
+            throw new IllegalStateException("Critical Error: Legal cards filtered to empty list.");
+        }
+
+        return switch (tactic) {
+            case NORMAL        -> playToWinTrick(legalCards, lead);
+            case MISERIE       -> playToLoseTrick(legalCards);
+            case ANTI_MISERIE  -> playToForceMiserieLoss(legalCards);
+        };
+    }
+
+    @Override
+    public void onJoinGame(GameEventPublisher publisher) {
+        publisher.addObserver(memory);
+    }
+
+    @Override
+    public void onLeaveGame(GameEventPublisher publisher) {
+        publisher.removeObserver(memory);
+    }
+
+    // --- State & Rule Evaluation (Strategy as the Brain) ---
+
+    private Bid registerAndReturnBid(BidType type, Suit trump) {
+        this.myLastBid = type;
+        return type.instantiate(trump);
+    }
+
+    //TODO: fix
+    private boolean amIOnBiddingTeam() {
+        BidType activeBidType = memory.getActiveBid();
+        if (activeBidType == null) return false;
+
+        // Shared activeBidTypes
+        if (activeBidType == BidType.PROPOSAL || activeBidType == BidType.ACCEPTANCE) {
+            return myLastBid == BidType.PROPOSAL || myLastBid == BidType.ACCEPTANCE;
+        }
+
+        // Solo activeBidTypes
+        return myLastBid == activeBidType;
+    }
+
+    private PlayTactic determineCurrentTactic() {
+        BidType activeBidType = memory.getActiveBid();
+        if (activeBidType != null && activeBidType.getCategory() == BidCategory.MISERIE) {
+            return amIOnBiddingTeam() ? PlayTactic.MISERIE : PlayTactic.ANTI_MISERIE;
+        }
+        return PlayTactic.NORMAL;
+    }
+
+    //TODO: duplicate logic in Trick
+    private PlayTurn calculateCurrentWinningTurn() {
+        List<PlayTurn> turns = memory.getCurrentTrickTurns();
+        if (turns.isEmpty()) return null;
+
+        Suit trumpSuit = memory.getCurrentTrump();
+
+        PlayTurn winningTurn = turns.getFirst();
+        for (PlayTurn turn : turns) {
+            if (CardMath.doesCardBeat(turn.playedCard(), winningTurn.playedCard(), trumpSuit)) {
+                winningTurn = turn;
+            }
+        }
+        return winningTurn;
+    }
+
+    private boolean isTeamWinningCurrentTrick() {
+        PlayTurn winningTurn = calculateCurrentWinningTurn();
+        if (winningTurn == null) return false;
+
+        boolean amIOnactiveBidType = amIOnBiddingTeam();
+        boolean isWinnerOnactiveBidType = memory.isPlayerOnBiddingTeam(winningTurn.playerId());
+
+        return amIOnactiveBidType == isWinnerOnactiveBidType;
+    }
+
+    // --- Tactical Playing Helpers ---
+
+    /**
+     * Heuristic for standard Whist play.
+     * The objective is to win tricks for the team while conserving high-value cards.
+     *
+     * @param legalCards The filtered list of cards the bot is legally allowed to play.
+     * @param lead       The suit led in the current trick (null if leading).
+     * @return The optimal card to play.
+     */
+    private Card playToWinTrick(List<Card> legalCards, Suit lead) {
+        if (memory.isLeadPlayer()) {
+            Card guaranteedWinner = findGuaranteedWinningLead(legalCards);
+            return guaranteedWinner != null ? guaranteedWinner : getRandomCard(CardMath.findLowestCards(legalCards));
+        }
+
+        if (isTeamWinningCurrentTrick()) {
+            return getRandomCard(CardMath.findLowestCards(legalCards));
+        }
+
+        boolean isVoidInLead = lead != null && legalCards.stream().noneMatch(c -> c.suit() == lead);
+
+        if (isVoidInLead) {
+            Suit trump = memory.getCurrentTrump();
+            Card lowestTrump = CardMath.findLowestCardOfSuit(legalCards, trump);
+            if (lowestTrump != null) return lowestTrump;
+            return getRandomCard(CardMath.findLowestCards(legalCards));
+        }
+
+        return getRandomCard(CardMath.findHighestCards(legalCards));
+    }
+
+    /**
+     * Heuristic for Miserie play.
+     * The objective is to actively dodge winning the trick, as the bot has bid Miserie.
+     *
+     * @param legalCards The filtered list of cards the bot is legally allowed to play.
+     * @return The optimal card to play.
+     */
+    private Card playToLoseTrick(List<Card> legalCards) {
+        if (memory.isLeadPlayer()) {
+            return getRandomCard(CardMath.findLowestCards(legalCards));
+        }
+
+        Card currentWinningCard = getWinningCard();
+        Card highestLosing = CardMath.findHighestLosingCard(legalCards, currentWinningCard, null);
+
+        if (highestLosing != null) {
+            return highestLosing;
+        }
+
+        return getRandomCard(CardMath.findHighestCards(legalCards));
+    }
+
+    /**
+     * Heuristic for Anti-Miserie play.
+     * The objective is to collude with the table to force the Miserie bidder to win the trick.
+     *
+     * @param legalCards The filtered list of cards the bot is legally allowed to play.
+     * @return The optimal card to play.
+     */
+    private Card playToForceMiserieLoss(List<Card> legalCards) {
+        BidTurn highestBid = memory.getHighestBid();
+        if (highestBid == null) return getRandomCard(CardMath.findLowestCards(legalCards));
+
+        PlayerId miseriePlayerId = highestBid.playerId();
+
+        if (!memory.hasPlayerActedInCurrentTrick(miseriePlayerId)) {
+            return getRandomCard(CardMath.findLowestCards(legalCards));
+        }
+
+        PlayTurn winningTurn = calculateCurrentWinningTurn();
+        boolean isTargetWinning = winningTurn != null && miseriePlayerId.equals(winningTurn.playerId());
+
+        if (isTargetWinning) {
+            Card miserieCard = memory.getCardPlayedBy(miseriePlayerId);
+            Card lowestLosingCard = CardMath.findLowestLosingCard(legalCards, miserieCard, null);
+
+            return lowestLosingCard != null ? lowestLosingCard : getRandomCard(CardMath.findHighestCards(legalCards));
+        }
+
+        return getRandomCard(CardMath.findHighestCards(legalCards));
+    }
+
+    // --- Utility Helpers ---
+
+    /** Selects a random card from a list of tied cards to ensure unpredictable bot behavior. */
+    private Card getRandomCard(List<Card> tiedCards) {
+        if (tiedCards == null || tiedCards.isEmpty()) {
+            throw new IllegalStateException("Cannot select a random card from an empty list.");
+        }
+        return tiedCards.get(this.random.nextInt(tiedCards.size()));
+    }
+
+    private Card findGuaranteedWinningLead(List<Card> cards) {
+        for (Card card : cards) {
+            if (memory.isHighestUnplayedCardInSuit(card)) {
+                return card;
+            }
+        }
+        return null;
+    }
+
+    private Card getWinningCard() {
+        PlayTurn turn = calculateCurrentWinningTurn();
+        return turn != null ? turn.playedCard() : null;
+    }
+
+    // --- Bidding Helpers ---
+
     private boolean isLegalBid(BidType intendedBid) {
         if (intendedBid == BidType.PASS) return true;
 
@@ -135,181 +310,6 @@ public final class SmartBotStrategy implements Strategy {
 
         return true;
     }
-
-    /**
-     * Determines the optimal card to play for the current trick based on the active tactic.
-     *
-     * @param currentHand The bot's current hand of cards.
-     * @param lead The suit led in the current trick (null if the bot is leading).
-     * @return The mathematically optimal {@link Card} to play.
-     * @throws IllegalArgumentException if currentHand is null or empty.
-     */
-    @Override
-    public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
-        if (currentHand == null || currentHand.isEmpty()) {
-            throw new IllegalArgumentException("Cannot choose a card from an empty or null hand.");
-        }
-
-        updateCurrentTactic();
-        List<Card> legalCards = CardMath.getLegalCards(currentHand, lead);
-
-        if (legalCards.isEmpty()) {
-            throw new IllegalStateException("Critical Error: Legal cards filtered to empty list.");
-        }
-
-        // Centralized dispatch to highly cohesive tactical methods
-        return switch (currentPlayTactic) {
-            case NORMAL        -> playToWinTrick(legalCards, lead);
-            case MISERIE       -> playToLoseTrick(legalCards, lead);
-            case ANTI_MISERIE  -> playToForceMiserieLoss(legalCards, lead);
-        };
-    }
-
-    @Override
-    public void onJoinGame(GameEventPublisher publisher) {
-        publisher.addObserver(memory);
-    }
-
-    // --- State Routing Helper ---
-
-    /**
-     * Updates the bot's internal tactical posture based on the outcome of the bidding phase.
-     */
-    private void updateCurrentTactic() {
-        BidTurn highestBidTurn = memory.getHighestBid();
-
-        if (highestBidTurn != null && highestBidTurn.bidType().getCategory() == BidCategory.MISERIE) {
-            if (highestBidTurn.playerId().equals(myself)) {
-                this.currentPlayTactic = PlayTactic.MISERIE;
-            } else {
-                this.currentPlayTactic = PlayTactic.ANTI_MISERIE;
-            }
-        } else {
-            this.currentPlayTactic = PlayTactic.NORMAL;
-        }
-    }
-
-    // --- Tactical Playing Helpers ---
-
-    /**
-     * Heuristic for standard Whist play. Attempts to win tricks for the team while conserving high cards.
-     */
-    private Card playToWinTrick(List<Card> legalCards, Suit lead) {
-        if (memory.isLeadPlayer()) {
-            Card guaranteedWinner = findGuaranteedWinningLead(legalCards);
-            if (guaranteedWinner != null) return guaranteedWinner;
-            return getRandomCard(findLowestCards(legalCards));
-        }
-
-        if (memory.isTeamWinning(myself)) {
-            // Conserve high cards if partner is already winning
-            return getRandomCard(findLowestCards(legalCards));
-        } else {
-            Suit trump = memory.getCurrentTrump();
-            boolean isVoidInLead = lead != null && legalCards.stream().noneMatch(c -> c.suit() == lead);
-
-            if (isVoidInLead) {
-                Card lowestTrump = findLowestTrump(legalCards, trump);
-                if (lowestTrump != null) return lowestTrump;
-
-                // If forced to discard, dump the lowest possible card
-                return getRandomCard(findLowestCards(legalCards));
-            }
-
-            // Must follow suit; attempt to win by playing the highest card
-            return getRandomCard(findHighestCards(legalCards));
-        }
-    }
-
-    /**
-     * Heuristic for Miserie play. The bot actively attempts to dodge winning the trick.
-     */
-    private Card playToLoseTrick(List<Card> legalCards, Suit lead) {
-        if (memory.isLeadPlayer()) {
-            return getRandomCard(findLowestCards(legalCards));
-        }
-
-        Card currentWinningCard = getWinningCard();
-        // Miserie has no trumps, pass null.
-        Card highestSafe = findHighestSafeCard(legalCards, currentWinningCard, lead, null);
-
-        // Play the highest card that doesn't win. If forced to win, dump the absolute highest card.
-        return highestSafe != null ? highestSafe : getRandomCard(findHighestCards(legalCards));
-    }
-
-    /**
-     * Heuristic for Anti-Miserie play. The bot colludes to force the Miserie bidder to win.
-     */
-    private Card playToForceMiserieLoss(List<Card> legalCards, Suit lead) {
-        BidTurn highestBid = memory.getHighestBid();
-        if (highestBid == null) return getRandomCard(findLowestCards(legalCards)); // Fallback
-
-        PlayerId miseriePlayerId = highestBid.playerId();
-
-        if (!memory.hasPlayerActedInCurrentTrick(miseriePlayerId)) {
-            return getRandomCard(findLowestCards(legalCards));
-        }
-
-        // We play after the Miserie player
-        if (miseriePlayerId.equals(memory.calculateCurrentWinnerId())) {
-            Card miserieCard = memory.getCardPlayedBy(miseriePlayerId);
-
-            // Try to play our lowest card that keeps the Miserie player winning
-            Card lowestSafeCard = findLowestSafeCard(legalCards, miserieCard, lead, null);
-            return lowestSafeCard != null ? lowestSafeCard : getRandomCard(findHighestCards(legalCards));
-        } else {
-            // Miserie player is currently safe, play the highest legal card to win the trick and lead the next
-            return getRandomCard(findHighestCards(legalCards));
-        }
-    }
-
-    // --- Card Filtering & Math Tools (Pure Fabrication) ---
-
-    /** Selects a random card from a list of tied cards to ensure unpredictable bot behavior. */
-    private Card getRandomCard(List<Card> tiedCards) {
-        if (tiedCards == null || tiedCards.isEmpty()) {
-            throw new IllegalStateException("Cannot select a random card from an empty list.");
-        }
-        return tiedCards.get(this.random.nextInt(tiedCards.size()));
-    }
-
-    private Card findHighestSafeCard(List<Card> options, Card cardToLoseTo, Suit lead, Suit trump) {
-        return options.stream()
-                .filter(c -> !CardMath.doesCardBeat(c, cardToLoseTo, lead, trump)) // FIXED: using !doesCardBeat to find a losing card
-                .max(Comparator.comparing(Card::rank))
-                .orElse(null);
-    }
-
-    private Card findLowestSafeCard(List<Card> options, Card cardToLoseTo, Suit lead, Suit trump) {
-        return options.stream()
-                .filter(c -> !CardMath.doesCardBeat(c, cardToLoseTo, lead, trump)) // FIXED: using !doesCardBeat to find a losing card
-                .min(Comparator.comparing(Card::rank))
-                .orElse(null);
-    }
-
-    private Card findLowestTrump(List<Card> cards, Suit trumpSuit) {
-        if (trumpSuit == null) return null;
-        return cards.stream()
-                .filter(c -> c.suit() == trumpSuit)
-                .min(Comparator.comparing(Card::rank))
-                .orElse(null);
-    }
-
-    private Card findGuaranteedWinningLead(List<Card> cards) {
-        for (Card card : cards) {
-            if (memory.isHighestUnplayedCardInSuit(card)) {
-                return card;
-            }
-        }
-        return null;
-    }
-
-    private Card getWinningCard() {
-        var winningTurn = memory.getCurrentWinningTurn();
-        return winningTurn != null ? winningTurn.playedCard() : null;
-    }
-
-    // --- Bidding Helpers ---
 
     private BidType evaluateMiserieEligibility(List<Card> hand) {
         Card highestCard = hand.stream()

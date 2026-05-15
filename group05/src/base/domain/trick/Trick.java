@@ -1,5 +1,6 @@
 package base.domain.trick;
 
+import base.domain.card.CardMath;
 import base.domain.card.Suit;
 import base.domain.card.Card;
 import base.domain.player.PlayerId;
@@ -104,7 +105,7 @@ public class Trick {
     }
 
     /**
-     * Updates the state of the trick using the globally defined TrickEvaluator rules.
+     * Updates the state of the trick using the globally defined CardMath rules.
      */
     private void updateWinningPlayer(PlayerId playerId, Card playedCard) {
         if (this.winningPlayerId == null) {
@@ -114,9 +115,7 @@ public class Trick {
         }
 
         // Delegate the complex math to our Pure Fabrication evaluator!
-        TrickEvaluator evaluator = new TrickEvaluator(getLeadingSuit(), this.trumpSuit);
-
-        if (evaluator.doesBeat(playedCard, this.currentWinningCard)) {
+        if (CardMath.doesCardBeat(playedCard, currentWinningCard, trumpSuit)) {
             this.winningPlayerId = playerId;
             this.currentWinningCard = playedCard;
         }

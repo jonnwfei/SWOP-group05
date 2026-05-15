@@ -12,6 +12,8 @@ import base.domain.trick.Trick;
 import java.util.ArrayList;
 import java.util.List;
 
+import static base.domain.WhistRules.MAX_TURNS;
+
 /**
  * Represents a single Round in a game of Whist.
  * A Round consists of a Bidding phase followed by a Play phase of exactly 13 Tricks.
@@ -27,6 +29,7 @@ import java.util.List;
  * @since 24/02/26
  */
 public class Round {
+
     /** The 4 players participating in this round. */
     private final List<Player> players;
 
@@ -161,7 +164,6 @@ public class Round {
 
         this.highestBid = finalBids.getFirst();
         this.players.forEach(Player::flushHand);
-        this.biddingTeam.addAll(this.players);
         this.finished = true;
     }
 
@@ -186,10 +188,13 @@ public class Round {
     public void finalizeTrick(Trick trick) {
         if (trick == null) {
             throw new IllegalArgumentException("Trick must not be null.");
-        if (trick.getTurns().size() != MAX_TURNS)
-            throw new IllegalArgumentException("Trick is not completed yet");
-        if (this.isFinished())
-            throw new IllegalStateException("Cannot add trick: The round is already finished");
+        }
+        if (trick.getTurns().size() != MAX_TURNS) {
+            throw new IllegalArgumentException("Trick is not completed yet.");
+        }
+        if (this.isFinished()) {
+            throw new IllegalStateException("Cannot add trick: The round is already finished.");
+        }
 
         this.playedTricks.add(trick);
         this.currentPlayer = getPlayerById(trick.getWinningPlayerId());

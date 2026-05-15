@@ -35,13 +35,12 @@ public final class HumanStrategy implements Strategy {
      * Returns null as the card selection is handled via external UI input
      * captured by the {@code PlayState}.
      *
-     * @param playerId
      * @param currentHand The player's current hand.
      * @param lead        The suit led in the current trick.
      * @return null.
      */
     @Override
-    public Card chooseCardToPlay(PlayerId playerId, List<Card> currentHand, Suit lead) {
+    public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
         return null;
     }
 }

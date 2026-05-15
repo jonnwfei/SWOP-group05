@@ -32,13 +32,12 @@ public final class HighBotStrategy implements Strategy {
     /**
      * Selects the card with the highest rank from the set of legal moves.
      *
-     * @param playerId
      * @param currentHand The list of cards currently held by the player.
      * @param lead        The suit led in the current trick
      * @return The card with the maximum rank among legal choices.
      */
     @Override
-    public Card chooseCardToPlay(PlayerId playerId, List<Card> currentHand, Suit lead) {
+    public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
         if (currentHand == null || currentHand.isEmpty()) {
             throw new IllegalArgumentException("Cannot choose a card from an empty or null hand.");
         }

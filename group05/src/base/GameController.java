@@ -4,15 +4,10 @@ import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
-import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
-import base.domain.strategy.HighBotStrategy;
-import base.domain.strategy.HumanStrategy;
-import base.domain.strategy.LowBotStrategy;
-import base.domain.strategy.SmartBotStrategy;
+import base.domain.strategy.*;
 
-import java.util.Collection;
 import java.util.List;
 
 public class GameController {
@@ -27,6 +22,7 @@ public class GameController {
     }
 
     public void reset() {
+        //TODO: both functions are always called together, why not combine into one reset funciton?
         game.resetPlayers();
         game.resetRounds();
     }
@@ -113,8 +109,7 @@ public class GameController {
     }
 
     public void addSmartBot(String name) {
-        PlayerId id = new PlayerId();
-        game.addPlayer(new Player(new SmartBotStrategy(id), name, id));
+        game.addPlayer(new Player(new SmartBotStrategy(), name));
     }
 
     public void addHighBot(String name) {

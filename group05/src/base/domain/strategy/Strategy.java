@@ -33,11 +33,14 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
     Bid determineBid(List<Card> hand);
 
 
-    Card chooseCardToPlay(PlayerId playerId, List<Card> currentHand, Suit lead );
+    Card chooseCardToPlay(List<Card> currentHand, Suit lead );
 
     /**
-     * Lifecycle hook called when the strategy is added to a live game.
+     * Lifecycle hook called when the strategy is attached to a game.
+     * Default implementation does nothing, for strategies that don't need to listen to events.
      * @param publisher A restricted interface to subscribe to game events.
      */
     default void onJoinGame(GameEventPublisher publisher) {}
+
+    default void onLeaveGame(GameEventPublisher publisher) {}
 }

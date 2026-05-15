@@ -14,13 +14,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static base.domain.card.CardMath.getHighestRankOfSuit;
+import static base.domain.card.CardMath.findHighestCardOfSuit;
+
 
 /**
  * Owns the PlayerId <-> Bid mapping and all bid-history reasoning for a single Round.
  * Acts as the link between Round, Player and Bid: Bid stays player-agnostic,
  * Round and BidState ask the manager who placed/accepted/partnered which bid.
- *
  * Lifecycle: one BidManager per Round. Constructed by Round, shared with BidState.
  */
 public final class BidManager {
@@ -72,7 +72,7 @@ public final class BidManager {
     }
 
     /**
-     * Drops the outstanding PROPOSAL (used when no acceptance arrives or it is rejected).
+     * Drops the outstanding PROPOSAL (used when no acceptance arrives, or it is rejected).
      * Replaces the proposer's bid with PASS and recomputes the highest bid.
      */
     public void invalidateProposal() {
@@ -187,7 +187,7 @@ public final class BidManager {
         return players.stream()
                 .filter(p -> !p.getId().equals(bidder))
                 .max(Comparator.comparing(
-                        p -> getHighestRankOfSuit(Suit.HEARTS, p.getHand()),
+                        p -> findHighestCardOfSuit(p.getHand(), Suit.HEARTS).rank(),
                         Comparator.nullsFirst(Comparator.naturalOrder())))
                 .map(Player::getId)
                 .orElseThrow(() -> new IllegalStateException("Troela partner not found. Corrupted deck!"));
