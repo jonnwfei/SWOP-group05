@@ -22,12 +22,11 @@ public final class HighBotStrategy implements Strategy {
     /**
      * Always returns a PassBid. Despite high play-play aggression, this bot
      * does not currently participate in bidding.
-     * @param playerId The player instance using this strategy.
      * @return A {@link PassBid} instance.
      */
     @Override
-    public Bid determineBid(PlayerId playerId, List<Card> hand) {
-        return new PassBid(playerId);
+    public Bid determineBid(List<Card> hand) {
+        return new PassBid();
     }
 
     /**

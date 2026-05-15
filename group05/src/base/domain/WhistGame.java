@@ -391,18 +391,13 @@ public class WhistGame {
      * @return The GameResult the UI layer needs to render and respond to.
      */
     public GameResult advance(GameCommand command) {
-        boolean stateRunning = true;
         while (!isOver()) {
-            while (stateRunning) {
-                StateStep step = (command == null)
-                        ? executeState()
-                        : executeState(command);
-                command = null;
-                stateRunning = !step.shouldTransition();
-                if (step.hasResult()) return step.result();
-            }
-            nextState();
-            stateRunning = true;
+            StateStep step = (command == null)
+                    ? executeState()
+                    : executeState(command);
+            command = null;
+            if (step.shouldTransition()) nextState();
+            if (step.hasResult()) return step.result();
         }
         return null;
     }

@@ -8,34 +8,19 @@ import java.util.List;
 
 /**
  * Contract for Abondance bids (9 to 12 tricks) with a custom trump suit if applicable.
- * @param playerId The proposer of the bid.
  * @param bidType Specific ABONDANCE level (e.g., ABONDANCE_9).
  * @param trump The user-defined trump suit for the round.
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public record AbondanceBid(PlayerId playerId, BidType bidType, Suit trump) implements Bid {
+public record AbondanceBid(BidType bidType, Suit trump) implements Bid {
 
     public AbondanceBid {
-        if (playerId == null) {throw new IllegalArgumentException("Player cannot be null.");}
         if (bidType == null) {throw new IllegalArgumentException("BidType cannot be null.");}
         if (bidType.getCategory() != BidCategory.ABONDANCE) {throw new IllegalArgumentException("AbondanceBid requires an ABONDANCE rank!");}
     }
-
     @Override
-    public PlayerId getPlayerId() {return playerId;}
-
-    /**
-     * Determines the bidding team. In an Abondance contract, the bidder always plays alone.
-     *
-     * @param allBids    All bids placed during the round.
-     * @param allPlayers All players in the game.
-     * @return A list containing only the solo bidder.
-     */
-    @Override
-    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        return List.of(playerId);
-    }
+    public int teamSize() {return 1;}
 
     @Override
     public BidType getType() {return bidType;}

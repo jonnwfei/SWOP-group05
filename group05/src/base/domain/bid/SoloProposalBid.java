@@ -10,30 +10,13 @@ import java.util.List;
  * Contract for a proposer who chooses to play alone after their initial proposal is rejected.
  * The trump suit defaults to the originally dealt trump.
  *
- * @param playerId The original proposer now playing solo.
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public record SoloProposalBid(PlayerId playerId) implements Bid {
-
-    public SoloProposalBid {
-        if (playerId == null) {throw new IllegalArgumentException("Player cannot be null.");}
-    }
+public record SoloProposalBid() implements Bid {
 
     @Override
-    public PlayerId getPlayerId() {return playerId;}
-
-    /**
-     * Determines the bidding team. Since the proposal was rejected, the bidder plays alone.
-     *
-     * @param allBids    All bids placed during the round.
-     * @param allPlayers All players in the game.
-     * @return A list containing only the solo player.
-     */
-    @Override
-    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        return List.of(playerId);
-    }
+    public int teamSize() {return 1;}
 
     @Override
     public BidType getType() {return BidType.SOLO_PROPOSAL;}

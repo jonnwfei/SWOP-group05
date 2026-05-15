@@ -8,33 +8,15 @@ import java.util.List;
 
 /**
  * Represents a contract where a player accepts another player's Proposal.
- * @param acceptor The player who agreed to the proposal.
  * @author Tommy Wu
  * @since 25/02/2026
  */
-public record AcceptedBid(PlayerId acceptor) implements Bid {
+public record AcceptedBid() implements Bid {
 
-    public AcceptedBid {
-        if (acceptor == null) {throw new IllegalArgumentException("Acceptor cannot be null.");}
-    }
 
     @Override
-    public PlayerId getPlayerId() {return acceptor;}
+    public int teamSize() {return 2;}
 
-    /**
-     * Determines the bidding team by pairing the Acceptor with the original Proposer.
-     *
-     * @param allBids    All bids placed during the round to search for the Proposal.
-     * @param allPlayers All players in the game.
-     * @return A list containing both the Acceptor and the Proposer.
-     * @throws IllegalArgumentException if no Proposal bid is found in the bid history.
-     */
-    @Override
-    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        PlayerId proposer = allBids.stream().filter(bid -> bid.getType() == BidType.PROPOSAL).map(Bid::getPlayerId).findFirst().orElse(null);
-        if  (proposer == null) {throw new IllegalArgumentException("There was no proposer found in allBids, it's impossible to have AcceptedBid without ProposalBid!");}
-        return List.of(acceptor, proposer);
-    }
 
     @Override
     public BidType getType() {return BidType.ACCEPTANCE;}

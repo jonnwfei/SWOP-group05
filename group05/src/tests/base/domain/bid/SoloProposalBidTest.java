@@ -17,23 +17,21 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Solo Proposal Bid Rules & Calculations")
 class SoloProposalBidTest {
 
-    private PlayerId testPlayerId;
     private Suit dealtTrump;
     private SoloProposalBid bid;
 
     @BeforeEach
     void setUp() {
         // Arrange
-        testPlayerId = new PlayerId();
         dealtTrump = Suit.DIAMONDS;
-        bid = new SoloProposalBid(testPlayerId);
+        bid = new SoloProposalBid();
     }
 
     @Test
     @DisplayName("Constructor enforces non-null parameters")
     void constructor_NullParameters_ThrowsIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                new SoloProposalBid(null)
+                new SoloProposalBid()
         );
         assertTrue(exception.getMessage().toLowerCase().contains("null"), "Should reject null PlayerId");
     }
@@ -41,21 +39,7 @@ class SoloProposalBidTest {
     @Test
     @DisplayName("Basic Accessors return correctly assigned values")
     void basicAccessors_ReturnExpectedValues() {
-        assertEquals(testPlayerId, bid.getPlayerId(), "getPlayerId() should return the player's ID");
-        assertEquals(testPlayerId, bid.playerId(), "Record accessor should return the player's ID");
         assertEquals(BidType.SOLO_PROPOSAL, bid.getType(), "getType() should always return SOLO_PROPOSAL");
-    }
-
-    @Test
-    @DisplayName("getTeam() always returns only the solo proposer")
-    void getTeam_AlwaysReturnsOnlyTheProposer() {
-        // Act
-        // A solo proposal ignores the bid history and player lists, so empty collections are safe
-        List<PlayerId> team = bid.getTeam(Collections.emptyList(), Collections.emptyList());
-
-        // Assert
-        assertEquals(1, team.size(), "Team should consist of exactly 1 player");
-        assertTrue(team.contains(testPlayerId), "Team must contain the solo player");
     }
 
     @Test

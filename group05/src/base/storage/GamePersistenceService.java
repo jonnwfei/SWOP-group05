@@ -10,6 +10,8 @@ import java.util.List;
 
 /**
  * Application service that converts between live game data and snapshots.
+ * Bid history is read from / written to each Round's {@link BidManager};
+ * Bid itself is fully player-agnostic.
  *
  * @author John Cai
  * @since 06/04/2026
@@ -77,4 +79,3 @@ public class GamePersistenceService {
         return snapshot.mode();
     }
 }
-
