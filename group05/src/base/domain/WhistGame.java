@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+import static base.domain.WhistRules.REQUIRED_PLAYERS;
+
 /**
  * Represents a game of Whist.
  * Acts as the Aggregate Root, managing the global player roster, round history, and state transitions.
@@ -35,11 +37,6 @@ import java.util.stream.Collectors;
  * @since 28/02/2026
  */
 public class WhistGame {
-
-    @Deprecated
-    public static final int REQUIRED_PLAYERS = 4;
-    @Deprecated
-    public static final int MAX_PLAYERS = 67;
 
     private State state;
     private Deck deck;
@@ -185,6 +182,7 @@ public class WhistGame {
     }
 
     public void setDeck(Deck deck) {
+        if (deck == null) throw new IllegalArgumentException("Deck cannot be null.");
         this.deck = deck;
     }
 
@@ -252,8 +250,8 @@ public class WhistGame {
         List<Player> activePlayers = getPlayers();
         if (activePlayers.size() < REQUIRED_PLAYERS)
             throw new IllegalStateException("Game must have at least 4 players to start a round.");
-        if (!activePlayers.contains(startingPlayer))
-            throw new IllegalArgumentException("Starting player not at the table.");
+        if (!activePlayers.contains(startingPlayer) || startingPlayer == null)
+            throw new IllegalArgumentException("Starting player not at the table or is null.");
 
         int multiplier = 1;
         if (!this.rounds.isEmpty() && getCurrentRound().getHighestBid().getType() == BidType.PASS) {
@@ -382,7 +380,7 @@ public class WhistGame {
      * @return true if possible to remove player
      */
     public boolean canRemovePlayer() {
-        return (this.allPlayers.size() > WhistRules.REQUIRED_PLAYERS);
+        return (this.allPlayers.size() > REQUIRED_PLAYERS);
     }
 
     /**
@@ -422,6 +420,9 @@ public class WhistGame {
      * @throws IllegalStateException if the dealer is null or not in the players list
      */
     public GameSnapshot toSnapshot(SaveMode mode, String description) {
+        if (mode == null) throw new IllegalArgumentException("Save mode cannot be null");
+        if (description == null) throw new IllegalArgumentException("Description cannot be null");
+
         String normalizedDescription = description.trim();
         if (normalizedDescription.isEmpty()) {
             throw new IllegalArgumentException("Save description cannot be empty");
@@ -483,7 +484,7 @@ public class WhistGame {
 
         for (RoundSnapshot snapshot : roundSnapshots) {
             Player mainBidder = players.get(snapshot.bidderIndex());
-            Bid highestBid = snapshot.bidType().instantiate(mainBidder.getId(), snapshot.trumpSuit());
+            Bid highestBid = snapshot.bidType().instantiate(snapshot.trumpSuit());
 
             List<Player> participants = snapshot.participantIndices().stream()
                     .map(players::get)
