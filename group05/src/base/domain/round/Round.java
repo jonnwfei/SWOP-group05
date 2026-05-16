@@ -272,6 +272,7 @@ public class Round {
      * @throws IllegalStateException if no player with the given id is found.
      */
     public Player getPlayerById(PlayerId id) {
+        if (id == null) throw new IllegalArgumentException("PlayerId must not be null.");
         return players.stream()
                 .filter(p -> p.getId().equals(id))
                 .findFirst()
@@ -412,8 +413,9 @@ public class Round {
         if (players.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
 
         BidType bidType = highestBid.getType();
+        PlayerId bidderId = bidManager.getHighestBidder().isPresent() ? bidManager.getHighestBidder().get() : null; // TODO: when Optional is removed, change this
+        int bidderIndex = players.indexOf(bidderId != null ? this.getPlayerById(bidderId) : players.getFirst());
 
-        int bidderIndex = players.indexOf(this.getPlayerById(highestBid.getPlayerId()));
         List<Integer> participantIndices = biddingTeam.stream()
                 .map(players::indexOf).toList();
         List<Integer> miserieWinnerIndices = miserieWinners.stream().map(players::indexOf).toList();
@@ -518,7 +520,7 @@ public class Round {
      */
     private void resolveTeams() {
         if (bidManager.getAllBids().size() != this.players.size()) {
-            throw new IllegalStateException("Biddings are not finalised; must be called at the end of bidding phase.");
+            throw new IllegalStateException("Bids are not finalised; must be called at the end of bidding phase.");
         }
         int totalCards = players.stream().mapToInt(p -> p.getHand().size()).sum();
         if (totalCards != 52) {
