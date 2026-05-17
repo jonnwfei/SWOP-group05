@@ -297,10 +297,7 @@ public class BidState extends State {
         if (current != null && current.getType() != BidType.PASS) {
             PlayerId highestBidderId = bidManager.getHighestBidder();
             if (highestBidderId != null) {
-                Player highestBidderPlayer = getGame().getPlayerById(highestBidderId);
-                if (highestBidderPlayer != null) {
-                    highestBidderName = highestBidderPlayer.getName();
-                }
+                highestBidderName = getGame().getPlayerById(highestBidderId).getName();
             }
         }
 
