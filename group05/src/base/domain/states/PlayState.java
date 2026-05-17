@@ -3,6 +3,7 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
+import base.domain.bid.BidManager;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
 import base.domain.commands.GameCommand;
@@ -146,7 +147,7 @@ public class PlayState extends State {
     private void populateExposedHands(List<String> exposedNames, List<List<Card>> exposedHands) {
         for (Bid bid : currentRound.getBids()) {
             if (bid.getType() == BidType.OPEN_MISERIE) {
-                Player proposer = getGame().getPlayerById(bid.getPlayerId());
+                Player proposer = getGame().getPlayerById(currentRound.getBidManager().getBidderOf(bid));
                 exposedNames.add(proposer.getName());
                 exposedHands.add(proposer.getHand());
             }

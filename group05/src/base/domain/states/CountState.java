@@ -123,7 +123,7 @@ public class CountState extends State {
                 return StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), multiSelect, selectedBidType));
             }
             this.participatingPlayerIds = players;
-            this.bid = selectedBidType.instantiate(participatingPlayerIds.getFirst(), trumpSuit);
+            this.bid = selectedBidType.instantiate(trumpSuit);
 
             if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;

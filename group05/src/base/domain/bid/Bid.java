@@ -23,24 +23,6 @@ public sealed interface Bid extends Comparable<Bid> permits
         SoloBid,
         TroelBid
 {
-    /**
-     * Retrieves the playerId who holds this bid contract.
-     *
-     * @return The {@link Player} who made the bid.
-     */
-    PlayerId getPlayerId();
-
-    /**
-     * Determines the bidding team for this bid based on its specific rules.
-     * Must be called immediately after the Bidding Phase,
-     * before any cards are played, as some bids rely on inspecting full hands.
-     *
-     * @param allBids    All bids made this round (used to resolve dependent bids like Acceptance).
-     * @param allPlayers All players in the round (used to find forced partners like in Troel).
-     * @return A list of players forming the bidding team.
-     * @throws IllegalStateException if the team cannot be determined (e.g., partner not found).
-     */
-    List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers);
 
     /**
      * Retrieves the specific type of the bid.
@@ -77,4 +59,6 @@ public sealed interface Bid extends Comparable<Bid> permits
     default int compareTo(Bid other) {
         return this.getType().compareTo(other.getType());
     }
+
+    int teamSize();
 }

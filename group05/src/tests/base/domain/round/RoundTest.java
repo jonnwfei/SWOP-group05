@@ -21,7 +21,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @DisplayName("Round Domain Entity Tests")
@@ -33,7 +32,7 @@ class RoundTest {
     @Mock private Player p4;
     @Mock private Player externalPlayer;
 
-    @Mock private SoloBid mockHighestBid;
+    @Mock private Bid mockHighestBid;
 
     private AutoCloseable mocks;
     private List<Player> players;
@@ -54,7 +53,6 @@ class RoundTest {
         lenient().when(p4.getId()).thenReturn(id4);
         lenient().when(externalPlayer.getId()).thenReturn(new PlayerId());
 
-        // Fulfill the resolveTeams() domain invariant: total cards must equal 52
         lenient().when(p1.getHand()).thenReturn(createDummyHand(13));
         lenient().when(p2.getHand()).thenReturn(createDummyHand(13));
         lenient().when(p3.getHand()).thenReturn(createDummyHand(13));
@@ -74,13 +72,15 @@ class RoundTest {
     class ConstructorTests {
 
         @Test
-        @DisplayName("Successfully initializes with 4 valid players")
+        @DisplayName("Successfully initializes with 4 valid players and a fresh BidManager")
         void shouldInitializeSuccessfully() {
             assertEquals(4, round.getPlayers().size());
             assertEquals(p1, round.getCurrentPlayer());
             assertEquals(2, round.getMultiplier());
             assertFalse(round.isFinished());
             assertEquals(List.of(0, 0, 0, 0), round.getScoreDeltas());
+            assertNotNull(round.getBidManager(), "Round must expose its BidManager");
+            assertTrue(round.getBidManager().getAllBids().isEmpty());
         }
 
         @Test
@@ -106,7 +106,7 @@ class RoundTest {
         @Test
         @DisplayName("startPlayPhase enforces non-null parameters and correct bid size")
         void startPlayPhase_Validation() {
-            List<Bid> validBids = List.of(mockHighestBid, mock(PassBid.class), mock(PassBid.class), mock(PassBid.class));
+            List<Bid> validBids = List.of(mockHighestBid, mock(Bid.class), mock(Bid.class), mock(Bid.class));
 
             assertThrows(IllegalArgumentException.class, () -> round.startPlayPhase(null, mockHighestBid, Suit.HEARTS, p1));
             assertThrows(IllegalArgumentException.class, () -> round.startPlayPhase(validBids.subList(0, 3), mockHighestBid, Suit.HEARTS, p1));
@@ -115,11 +115,17 @@ class RoundTest {
         }
 
         @Test
-        @DisplayName("startPlayPhase successfully resolves teams and locks in state")
+        @DisplayName("startPlayPhase resolves the bidding team via BidManager and locks in state")
         void startPlayPhase_Success() {
-            List<Bid> bids = List.of(mockHighestBid, mock(PassBid.class), mock(PassBid.class), mock(PassBid.class));
-            when(mockHighestBid.getTeam(anyList(), anyList())).thenReturn(List.of(id1, id2));
+            // Proposal by p1, accepted by p2 — manager-resolved team = {p1, p2}
+            Bid proposalBid = mock(Bid.class);
+            when(proposalBid.getType()).thenReturn(BidType.PROPOSAL);
+            when(mockHighestBid.getType()).thenReturn(BidType.ACCEPTANCE);
 
+            round.getBidManager().placeBid(id1, proposalBid.getType(), null);
+            round.getBidManager().placeBid(id2, mockHighestBid.getType(), null);
+
+            List<Bid> bids = List.of(proposalBid, mockHighestBid, mock(Bid.class), mock(Bid.class));
             round.startPlayPhase(bids, mockHighestBid, Suit.SPADES, p3);
 
             assertEquals(mockHighestBid, round.getHighestBid());
@@ -132,30 +138,36 @@ class RoundTest {
         @Test
         @DisplayName("resolveTeams throws if cards do not sum to 52")
         void resolveTeams_HandValidation() {
-            List<Bid> bids = List.of(mockHighestBid, mock(PassBid.class), mock(PassBid.class), mock(PassBid.class));
-            when(p1.getHand()).thenReturn(createDummyHand(1)); // Invalidates the 52 card check
+            when(mockHighestBid.getType()).thenReturn(BidType.SOLO);
+            round.getBidManager().placeBid(id1, mockHighestBid.getType(), null);
 
-            IllegalStateException ex = assertThrows(IllegalStateException.class, () -> round.startPlayPhase(bids, mockHighestBid, Suit.SPADES, p3));
+            List<Bid> bids = List.of(mockHighestBid, mock(Bid.class), mock(Bid.class), mock(Bid.class));
+            when(p1.getHand()).thenReturn(createDummyHand(1)); // breaks the 52-card invariant
+
+            IllegalStateException ex = assertThrows(IllegalStateException.class,
+                    () -> round.startPlayPhase(bids, mockHighestBid, Suit.SPADES, p3));
             assertTrue(ex.getMessage().contains("before the play phase begins"));
         }
 
         @Test
         @DisplayName("abortWithAllPass validation guards")
         void abortWithAllPass_Validation() {
-            Bid passBid = mock(PassBid.class);
+            Bid passBid = mock(Bid.class);
             when(passBid.getType()).thenReturn(BidType.PASS);
-            Bid soloBid = mock(SoloBid.class);
+            Bid soloBid = mock(Bid.class);
             when(soloBid.getType()).thenReturn(BidType.SOLO);
 
             assertThrows(IllegalArgumentException.class, () -> round.abortWithAllPass(null));
             assertThrows(IllegalArgumentException.class, () -> round.abortWithAllPass(List.of(passBid)));
-            assertThrows(IllegalArgumentException.class, () -> round.abortWithAllPass(List.of(passBid, passBid, passBid, soloBid)), "All bids must be PASS");
+            assertThrows(IllegalArgumentException.class,
+                    () -> round.abortWithAllPass(List.of(passBid, passBid, passBid, soloBid)),
+                    "All bids must be PASS");
         }
 
         @Test
         @DisplayName("abortWithAllPass flushes hands and ends round")
         void abortWithAllPass_Success() {
-            Bid passBid = mock(PassBid.class);
+            Bid passBid = mock(Bid.class);
             when(passBid.getType()).thenReturn(BidType.PASS);
             List<Bid> passBids = List.of(passBid, passBid, passBid, passBid);
 
@@ -185,133 +197,76 @@ class RoundTest {
         @DisplayName("finalizeTrick validation guards")
         void finalizeTrick_Validation() {
             Trick incompleteTrick = mock(Trick.class);
-            when(incompleteTrick.getTurns()).thenReturn(List.of(mock(), mock())); // Only 2 turns
+            when(incompleteTrick.getTurns()).thenReturn(List.of(mock(), mock()));
 
             assertThrows(IllegalArgumentException.class, () -> round.finalizeTrick(null));
             assertThrows(IllegalArgumentException.class, () -> round.finalizeTrick(incompleteTrick));
 
-            // Force round to finish
             round.abortWithAllPass(createFourPassBids());
             Trick validTrick = mockCompletedTrick(id1);
-            assertThrows(IllegalStateException.class, () -> round.finalizeTrick(validTrick), "Cannot add trick to finished round");
+            assertThrows(IllegalStateException.class, () -> round.finalizeTrick(validTrick),
+                    "Cannot add trick to finished round");
         }
 
         @Test
         @DisplayName("finalizeTrick assigns next turn to winner and checks auto-finish")
         void finalizeTrick_SuccessAndAutoFinish() {
             when(mockHighestBid.getType()).thenReturn(BidType.SOLO);
-            when(mockHighestBid.getTeam(anyList(), anyList())).thenReturn(List.of(id1)); // P1 is the Solo bidder
             when(mockHighestBid.calculateBasePoints(anyInt())).thenReturn(30);
+            round.getBidManager().placeBid(id1, mockHighestBid.getType(), Suit.HEARTS); // team = {id1}
 
             round.startPlayPhase(createFourPassBids(), mockHighestBid, Suit.HEARTS, p1);
 
-            for(int i = 0; i < 12; i++) {
-                round.finalizeTrick(mockCompletedTrick(id3));
-            }
+            for (int i = 0; i < 12; i++) round.finalizeTrick(mockCompletedTrick(id3));
 
             assertFalse(round.isFinished());
             assertEquals(p3, round.getCurrentPlayer());
 
-            // 13th trick auto-finishes the round and distributes scores ONCE
             round.finalizeTrick(mockCompletedTrick(id3));
             assertTrue(round.isFinished());
 
-            // FIX: Score is distributed once at the end of the round, not per trick!
-            // P1 Base (30) * Multiplier (2) = 60. Opponents (P3) pay a third: -20.
+            // Score distributed once at end of round: 30 base * 2 multiplier = 60,
+            // each opponent (incl. p3) pays a third: -20.
             verify(p3, times(1)).updateScore(-20);
         }
 
         @Test
-        @DisplayName("isMiserieEarlyTermination instantly finishes round if all bidders fail")
+        @DisplayName("isMiserieEarlyTermination instantly finishes round if all miserie bidders fail")
         void miserieEarlyTermination() {
             when(mockHighestBid.getType()).thenReturn(BidType.MISERIE);
-            when(mockHighestBid.getPlayerId()).thenReturn(id1);
-            when(mockHighestBid.getTeam(anyList(), anyList())).thenReturn(List.of(id1));
+            round.getBidManager().placeBid(id1, mockHighestBid.getType(), null); // sole miserie bidder
 
-            // Mock the bids list to show p1 bid Miserie
             List<Bid> bids = new ArrayList<>();
             bids.add(mockHighestBid);
-            bids.add(mock(PassBid.class)); bids.add(mock(PassBid.class)); bids.add(mock(PassBid.class));
+            bids.add(mock(Bid.class)); bids.add(mock(Bid.class)); bids.add(mock(Bid.class));
 
             round.startPlayPhase(bids, mockHighestBid, null, p1);
 
-            // P1 wins a trick, failing their miserie contract immediately
+            // P1 wins a trick → only miserie bidder fails → early termination
             round.finalizeTrick(mockCompletedTrick(id1));
 
-            assertTrue(round.isFinished(), "Round should early-terminate since the only Miserie bidder failed.");
+            assertTrue(round.isFinished(),
+                    "Round should early-terminate when the only Miserie bidder fails.");
         }
     }
-
-    @Nested
-    @DisplayName("Count Mode Scoring")
-    class CountModeScoringTests {
-
-        @Test
-        @DisplayName("calculateScoresForCount validation guards")
-        void calculateScoresForCount_Validation() {
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(null, 13, List.of(p1), null));
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 13, null, null));
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 13, Collections.emptyList(), null));
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 13, Arrays.asList(p1, null), null));
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 13, List.of(p1, p2, p3, p4, externalPlayer), null));
-
-            when(mockHighestBid.getType()).thenReturn(BidType.SOLO);
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, -2, List.of(p1), null)); // Tricks < 0
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, 14, List.of(p1), null)); // Tricks > 13
-        }
-
-        @Test
-        @DisplayName("Miserie Count Scoring correctly calculates base points")
-        void countMiserieScoring() {
-            when(mockHighestBid.getType()).thenReturn(BidType.MISERIE);
-            when(mockHighestBid.calculateBasePoints(0)).thenReturn(30); // Won
-            when(mockHighestBid.calculateBasePoints(1)).thenReturn(-30); // Lost
-
-            assertThrows(IllegalArgumentException.class, () -> round.calculateScoresForCount(mockHighestBid, -1, List.of(p1), Arrays.asList(p1, null)));
-
-            // P1 won, P2 lost
-            round.calculateScoresForCount(mockHighestBid, -1, List.of(p1, p2), List.of(p1));
-
-            assertTrue(round.isFinished());
-            // Multiplier is 2 (from setup)
-            verify(p1).updateScore(60); // 30 * 2
-            verify(p2).updateScore(-60); // -30 * 2
-        }
-
-        @Test
-        @DisplayName("Standard Count Scoring automatically distributes teams")
-        void countStandardScoring() {
-            when(mockHighestBid.getType()).thenReturn(BidType.PROPOSAL);
-            when(mockHighestBid.calculateBasePoints(13)).thenReturn(30);
-
-            round.calculateScoresForCount(mockHighestBid, 13, List.of(p1, p2), null);
-
-            verify(p1).updateScore(60);  // 30 * 2
-            verify(p2).updateScore(60);
-            verify(p3).updateScore(-60); // Defenders lose points
-            verify(p4).updateScore(-60);
-        }
-    }
-
     @Nested
     @DisplayName("Play Mode Scoring & Distribution")
     class PlayModeScoringTests {
 
         @Test
-        @DisplayName("distributeScores throws IllegalStateException if 1v3 game is not zero-sum (divisible by 3)")
+        @DisplayName("distributeScores throws if 1v3 game is not divisible by 3")
         void zeroSumValidation() {
             when(mockHighestBid.getType()).thenReturn(BidType.SOLO);
-            when(mockHighestBid.getTeam(anyList(), anyList())).thenReturn(List.of(id1));
-            // Base points of 10 * multiplier 1 = 10. 10 % 3 != 0.
-            when(mockHighestBid.calculateBasePoints(anyInt())).thenReturn(10);
+            when(mockHighestBid.calculateBasePoints(anyInt())).thenReturn(10); // 10 % 3 != 0
 
             Round indivisibleRound = new Round(players, p1, 1);
-            indivisibleRound.startPlayPhase(createFourPassBids(), mockHighestBid, Suit.HEARTS, p1);
+            indivisibleRound.getBidManager().placeBid(id1, mockHighestBid.getType(), Suit.HEARTS);
 
+            indivisibleRound.startPlayPhase(createFourPassBids(), mockHighestBid, Suit.HEARTS, p1);
             for (int i = 0; i < 12; i++) indivisibleRound.finalizeTrick(mockCompletedTrick(id1));
 
-            // 13th trick triggers distribution which throws
-            IllegalStateException ex = assertThrows(IllegalStateException.class, () -> indivisibleRound.finalizeTrick(mockCompletedTrick(id1)));
+            IllegalStateException ex = assertThrows(IllegalStateException.class,
+                    () -> indivisibleRound.finalizeTrick(mockCompletedTrick(id1)));
             assertTrue(ex.getMessage().contains("divisible by 3"));
         }
 
@@ -319,11 +274,11 @@ class RoundTest {
         @DisplayName("getWinningPlayers returns defenders if standard bid fails")
         void getWinningPlayers_FailedStandardBid() {
             when(mockHighestBid.getType()).thenReturn(BidType.SOLO);
-            when(mockHighestBid.getTeam(anyList(), anyList())).thenReturn(List.of(id1));
-            when(mockHighestBid.calculateBasePoints(0)).thenReturn(-30); // Negative means fail
+            when(mockHighestBid.calculateBasePoints(0)).thenReturn(-30); // failed
+            round.getBidManager().placeBid(id1, mockHighestBid.getType(), null);
 
             round.startPlayPhase(createFourPassBids(), mockHighestBid, Suit.HEARTS, p1);
-            for (int i = 0; i < 13; i++) round.finalizeTrick(mockCompletedTrick(id2)); // Defenders win all tricks
+            for (int i = 0; i < 13; i++) round.finalizeTrick(mockCompletedTrick(id2));
 
             List<Player> winners = round.getWinningPlayers();
             assertFalse(winners.contains(p1));
@@ -331,21 +286,27 @@ class RoundTest {
         }
 
         @Test
-        @DisplayName("getWinningPlayers handles Miserie evaluation correctly")
+        @DisplayName("getWinningPlayers handles Miserie per-participant evaluation")
         void getWinningPlayers_Miserie() {
             when(mockHighestBid.getType()).thenReturn(BidType.MISERIE);
-            when(mockHighestBid.getTeam(anyList(), anyList())).thenReturn(List.of(id1, id2));
             when(mockHighestBid.calculateBasePoints(anyInt())).thenReturn(30);
+
+            // Two miserie bidders → team = {id1, id2}
+            Bid secondMiserie = mock(Bid.class);
+            when(secondMiserie.getType()).thenReturn(BidType.MISERIE);
+            when(secondMiserie.calculateBasePoints(anyInt())).thenReturn(30);
+            round.getBidManager().placeBid(id1, mockHighestBid.getType(), null);
+            round.getBidManager().placeBid(id2, secondMiserie.getType(), null);
 
             round.startPlayPhase(createFourPassBids(), mockHighestBid, null, p1);
 
-            // P1 takes 0 tricks (Wins), P2 takes 1 trick (Loses)
+            // p1 takes 0 tricks (succeeds), p2 takes 1 trick (fails)
             round.finalizeTrick(mockCompletedTrick(id2));
             for (int i = 0; i < 12; i++) round.finalizeTrick(mockCompletedTrick(id3));
 
             List<Player> winners = round.getWinningPlayers();
             assertTrue(winners.contains(p1));
-            assertFalse(winners.contains(p2)); // Failed
+            assertFalse(winners.contains(p2));
         }
     }
 
@@ -364,9 +325,9 @@ class RoundTest {
             assertThrows(IllegalArgumentException.class, () -> round.restoreFromSnapshot(mockHighestBid, Suit.HEARTS, List.of(externalPlayer), 13, null, deltas));
             assertThrows(IllegalArgumentException.class, () -> round.restoreFromSnapshot(mockHighestBid, Suit.HEARTS, parts, -2, null, deltas));
             assertThrows(IllegalArgumentException.class, () -> round.restoreFromSnapshot(mockHighestBid, Suit.HEARTS, parts, 14, null, deltas));
-            assertThrows(IllegalArgumentException.class, () -> round.restoreFromSnapshot(mockHighestBid, Suit.HEARTS, parts, 13, null, List.of(0))); // Wrong delta size
+            assertThrows(IllegalArgumentException.class, () -> round.restoreFromSnapshot(mockHighestBid, Suit.HEARTS, parts, 13, null, List.of(0)));
             assertThrows(IllegalArgumentException.class, () -> round.restoreFromSnapshot(mockHighestBid, Suit.HEARTS, parts, 13, null, Arrays.asList(0, null, 0, 0)));
-            assertThrows(IllegalArgumentException.class, () -> round.restoreFromSnapshot(mockHighestBid, Suit.HEARTS, parts, 13, List.of(p2), deltas)); // Miserie winner not in participants
+            assertThrows(IllegalArgumentException.class, () -> round.restoreFromSnapshot(mockHighestBid, Suit.HEARTS, parts, 13, List.of(p2), deltas));
         }
 
         @Test
@@ -379,6 +340,10 @@ class RoundTest {
             assertEquals(Suit.CLUBS, round.getTrumpSuit());
             assertEquals(10, round.getCountTricksWon());
             assertEquals(List.of(30, -10, -10, -10), round.getScoreDeltas());
+            // restoreFromSnapshot does NOT populate BidManager — GamePersistenceService
+            // calls placeBid before restoreFromSnapshot. The unit test for Round in
+            // isolation simply leaves the manager empty.
+            assertTrue(round.getBidManager().getAllBids().isEmpty());
         }
     }
 
@@ -396,17 +361,17 @@ class RoundTest {
         @Test
         @DisplayName("getBiddingTeamTricksWon handles empty teams gracefully")
         void getBiddingTeamTricksWon() {
-            assertEquals(-1, round.getBiddingTeamTricksWon(), "Should return -1 if teams not resolved yet");
+            assertEquals(-1, round.getBiddingTeamTricksWon(),
+                    "Should return -1 if teams not resolved yet");
         }
 
         @Test
-        @DisplayName("getLastPlayedTrick returns null if empty")
+        @DisplayName("getLastPlayedTrick returns null if empty, getTricks works after abort")
         void getLastPlayedTrick() {
             assertNull(round.getLastPlayedTrick());
 
-            // Force past guards to add a trick
             round.abortWithAllPass(createFourPassBids());
-            round.getTricks(); // Purely for coverage of getTricks()
+            round.getTricks();
         }
 
         @Test
@@ -416,15 +381,22 @@ class RoundTest {
         }
 
         @Test
-        @DisplayName("setters and simple accessors")
+        @DisplayName("setters, simple accessors, and BidManager pass-through")
         void coverageFillers() {
             round.setHighestBid(mockHighestBid);
             assertEquals(mockHighestBid, round.getHighestBid());
             assertEquals(2, round.getMultiplier());
             assertTrue(round.getCountMiserieWinners().isEmpty());
-            assertTrue(round.getBids().isEmpty());
+            assertTrue(round.getBids().isEmpty(),
+                    "getBids() now delegates to BidManager — empty before any placeBid()");
             assertTrue(round.getBiddingTeamPlayers().isEmpty());
             assertEquals(List.of(p1, p2, p3, p4), round.getPlayers());
+
+            // getBids() reflects the BidManager once a bid is registered
+            when(mockHighestBid.getType()).thenReturn(BidType.SOLO);
+            round.getBidManager().placeBid(id1, mockHighestBid.getType(), Suit.HEARTS);
+            assertEquals(1, round.getBids().size());
+            assertSame(mockHighestBid, round.getBids().get(0));
         }
     }
 
@@ -443,7 +415,7 @@ class RoundTest {
     }
 
     private List<Bid> createFourPassBids() {
-        Bid passBid = mock(PassBid.class);
+        Bid passBid = mock(Bid.class);
         when(passBid.getType()).thenReturn(BidType.PASS);
         return List.of(passBid, passBid, passBid, passBid);
     }

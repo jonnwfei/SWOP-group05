@@ -9,31 +9,13 @@ import java.util.List;
 /**
  * Represents a player's decision to pass during the auction.
  * Functions as a fallback bid when a player opts out of the current contract.
- * @param playerId The player who decided to pass.
  * @author Tommy Wu
  * @since 25/02/26
  */
-public record PassBid(PlayerId playerId) implements Bid {
-
-    public PassBid {
-        if (playerId == null) {throw new IllegalArgumentException("Player cannot be null.");}
-    }
+public record PassBid() implements Bid {
 
     @Override
-    public PlayerId getPlayerId() {return playerId;}
-
-    /**
-     * Determines the team for this bid.
-     * Since a Pass bid never wins the bidding phase, this is purely to satisfy the Bid interface.
-     *
-     * @param allBids    All bids placed during the round.
-     * @param allPlayers All players in the game.
-     * @return A list containing only the passing player.
-     */
-    @Override
-    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        return List.of(playerId);
-    }
+    public int teamSize() {return 1;}
 
     @Override
     public BidType getType() {return BidType.PASS;}

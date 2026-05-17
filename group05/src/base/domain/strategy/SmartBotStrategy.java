@@ -80,42 +80,37 @@ public final class SmartBotStrategy implements Strategy {
     /**
      * Evaluates the bot's hand and the current bidding history to determine the optimal bid.
      *
-     * @param playerId The player context (used to instantiate the returned Bid object).
      * @return A legally instantiated {@link Bid}.
      * @throws IllegalArgumentException if the provided player is null.
      */
     @Override
-    public Bid determineBid(PlayerId playerId, List<Card> hand) {
-        if (playerId == null) {
-            throw new IllegalArgumentException("Player cannot be null.");
-        }
-
+    public Bid determineBid(List<Card> hand) {
         BidType miserieBidType = evaluateMiserieEligibility(hand);
         if (miserieBidType != null && isLegalBid(miserieBidType)) {
-            return miserieBidType.instantiate(playerId, null);
+            return miserieBidType.instantiate(null);
         }
 
         int tricksWithCurrentTrump = estimateWinningTricks(hand, memory.getCurrentTrump());
         TrumpEvaluation bestEvaluation = findBestTrumpSuit(hand, tricksWithCurrentTrump);
 
         if (bestEvaluation.expectedTricks() >= MIN_TRICKS_FOR_ABONDANCE) {
-            Bid highBid = mapToHighBid(playerId, bestEvaluation.expectedTricks(), bestEvaluation.suit());
+            Bid highBid = mapToHighBid(bestEvaluation.expectedTricks(), bestEvaluation.suit());
             if (isLegalBid(highBid.getType())) {
                 return highBid;
             }
         }
 
         if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_ACCEPTANCE && memory.hasActiveProposal()) {
-            return BidType.ACCEPTANCE.instantiate(playerId, null);
+            return BidType.ACCEPTANCE.instantiate(null);
         }
 
         if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_PROPOSAL) {
             if (isLegalBid(BidType.PROPOSAL)) {
-                return BidType.PROPOSAL.instantiate(playerId, null);
+                return BidType.PROPOSAL.instantiate(null);
             }
         }
 
-        return BidType.PASS.instantiate(playerId, null);
+        return BidType.PASS.instantiate(null);
     }
 
     /**
@@ -353,17 +348,17 @@ public final class SmartBotStrategy implements Strategy {
         return new TrumpEvaluation(bestSuit, maxTricks);
     }
 
-    private Bid mapToHighBid(PlayerId playerId, int tricks, Suit chosenTrump) {
+    private Bid mapToHighBid(int tricks, Suit chosenTrump) {
         return switch (tricks) {
-            case 9  -> BidType.ABONDANCE_9.instantiate(playerId, chosenTrump);
-            case 10 -> BidType.ABONDANCE_10.instantiate(playerId, chosenTrump);
-            case 11 -> BidType.ABONDANCE_11.instantiate(playerId, chosenTrump);
-            case 12 -> BidType.ABONDANCE_12_OT.instantiate(playerId, chosenTrump);
+            case 9  -> BidType.ABONDANCE_9.instantiate(chosenTrump);
+            case 10 -> BidType.ABONDANCE_10.instantiate(chosenTrump);
+            case 11 -> BidType.ABONDANCE_11.instantiate(chosenTrump);
+            case 12 -> BidType.ABONDANCE_12_OT.instantiate(chosenTrump);
             case 13 -> {
                 if (chosenTrump == memory.getCurrentTrump()) {
-                    yield BidType.SOLO_SLIM.instantiate(playerId, chosenTrump);
+                    yield BidType.SOLO_SLIM.instantiate(chosenTrump);
                 } else {
-                    yield BidType.SOLO.instantiate(playerId, chosenTrump);
+                    yield BidType.SOLO.instantiate(chosenTrump);
                 }
             }
             default -> throw new IllegalArgumentException("Invalid tricks value: " + tricks);
