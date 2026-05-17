@@ -18,6 +18,41 @@ public final class CardMath {
     private CardMath() {}
 
     /**
+     * Determines which of two cards is strictly stronger according to Whist trick-taking rules.
+     * This is a context-free mathematical evaluation and does not assume either card is currently winning.
+     *
+     * @param challenger The card attempting to win.
+     * @param incumbent  The card currently holding priority (or null if first card).
+     * @param leadSuit   The suit led in the trick.
+     * @param trumpSuit  The active trump suit (null if No-Trump / Miserie).
+     * @return {@code true} if the challenger mathematically beats the incumbent, {@code false} otherwise.
+     * @throws NullPointerException if the challenger card is null.
+     */
+    public static boolean doesCardBeat(Card challenger, Card incumbent, Suit leadSuit, Suit trumpSuit) {
+        Objects.requireNonNull(challenger, "Challenger card cannot be null.");
+
+        if (incumbent == null) {
+            return true;
+        }
+
+        Suit cSuit = challenger.suit();
+        Suit iSuit = incumbent.suit();
+
+        // Same suit: The highest rank always wins.
+        // (cleanly handles Trump vs Trump, Lead vs Lead, and Off-suit vs Off-suit)
+        if (cSuit == iSuit) {
+            return challenger.rank().compareTo(incumbent.rank()) > 0;
+        }
+
+        if (cSuit == trumpSuit) return true;
+
+        if (iSuit == trumpSuit) return false;
+
+        // Neither are trumps, and they are different suits.
+        return cSuit == leadSuit;
+    }
+
+    /**
      * Filters a hand to return only the cards that are legally allowed to be played.
      * According to Whist rules, a player must follow the lead suit if possible.
      *
@@ -83,41 +118,6 @@ public final class CardMath {
     }
 
     /**
-     * Determines which of two cards is strictly stronger according to Whist trick-taking rules.
-     * This is a context-free mathematical evaluation and does not assume either card is currently winning.
-     *
-     * @param challenger The card attempting to win.
-     * @param incumbent  The card currently holding priority (or null if first card).
-     * @param leadSuit   The suit led in the trick.
-     * @param trumpSuit  The active trump suit (null if No-Trump / Miserie).
-     * @return {@code true} if the challenger mathematically beats the incumbent, {@code false} otherwise.
-     * @throws NullPointerException if the challenger card is null.
-     */
-    public static boolean doesCardBeat(Card challenger, Card incumbent, Suit leadSuit, Suit trumpSuit) {
-        Objects.requireNonNull(challenger, "Challenger card cannot be null.");
-
-        if (incumbent == null) {
-            return true;
-        }
-
-        Suit cSuit = challenger.suit();
-        Suit iSuit = incumbent.suit();
-
-        // Same suit: The highest rank always wins.
-        // (cleanly handles Trump vs Trump, Lead vs Lead, and Off-suit vs Off-suit)
-        if (cSuit == iSuit) {
-            return challenger.rank().compareTo(incumbent.rank()) > 0;
-        }
-
-        if (cSuit == trumpSuit) return true;
-
-        if (iSuit == trumpSuit) return false;
-
-        // Neither are trumps, and they are different suits.
-        return cSuit == leadSuit;
-    }
-
-    /**
      * Finds the highest ranked card of a specific suit within a list of cards.
      *
      * @param cards The list of cards to search.
@@ -168,7 +168,7 @@ public final class CardMath {
 
         return legalCards.stream()
                 .filter(Objects::nonNull)
-                .filter(c -> !doesCardBeat(c, cardToLoseTo, lead, trump))
+                .filter(c -> !doesCardBeat(c, cardToLoseTo, leadSuit, trump))
                 .max(Comparator.comparing(Card::rank))
                 .orElse(null);
     }
@@ -188,8 +188,48 @@ public final class CardMath {
 
         return options.stream()
                 .filter(Objects::nonNull)
-                .filter(c -> !doesCardBeat(c, cardToLoseTo, lead, trump))
+                .filter(c -> !doesCardBeat(c, cardToLoseTo, leadSuit, trump))
                 .min(Comparator.comparing(Card::rank))
                 .orElse(null);
+    }
+
+    //TODO:use functions below for troel finding in BidManager
+    /**
+     * Counts how many cards of a specific rank are present in a list of cards.
+     *
+     * @param cards The list of cards to evaluate.
+     * @param rank  The target rank to count.
+     * @return The number of cards matching the rank.
+     * @throws NullPointerException if rank is null.
+     */
+    public static long countCardsOfRank(List<Card> cards, Rank rank) {
+        if (cards == null || cards.isEmpty()) return 0;
+        Objects.requireNonNull(rank, "Rank cannot be null.");
+
+        return cards.stream()
+                .filter(c -> c != null && c.rank() == rank)
+                .count();
+    }
+
+    /**
+     * Determines which suits are missing for a specific rank in a given list of cards.
+     *
+     * @param cards The list of cards to evaluate.
+     * @param rank  The target rank.
+     * @return A list of suits that do NOT have a card of the specified rank in the list.
+     * @throws NullPointerException if cards or rank is null.
+     */
+    public static List<Suit> findMissingSuitsOfRank(List<Card> cards, Rank rank) {
+        Objects.requireNonNull(cards, "Cards list cannot be null.");
+        Objects.requireNonNull(rank, "Rank cannot be null.");
+
+        List<Suit> heldSuits = cards.stream()
+                .filter(c -> c != null && c.rank() == rank)
+                .map(Card::suit)
+                .toList();
+
+        return java.util.Arrays.stream(Suit.values())
+                .filter(s -> !heldSuits.contains(s))
+                .toList();
     }
 }
