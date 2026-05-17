@@ -38,8 +38,7 @@ public class SmartBotMemory implements GameObserver {
 
     @Override
     public void onRoundStarted(List<PlayerId> players) {
-        Objects.requireNonNull(players, "player list cannot be null");
-        if (players.isEmpty()) {
+        if (players == null || players.isEmpty()) {
             throw new IllegalArgumentException("Player list cannot be null or empty when starting a round.");
         }
 
