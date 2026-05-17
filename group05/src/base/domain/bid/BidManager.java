@@ -256,6 +256,13 @@ public final class BidManager {
             throw new IllegalStateException("No highest bid to resolve a team for.");
 
         BidType type = highestBid.getType();
+
+        // SOLO_PROPOSAL is a solo contract despite its PROPOSAL category;
+        // treat it like SOLO/ABONDANCE (single-player attacking team).
+        if (type == BidType.SOLO_PROPOSAL) {
+            return List.of(highestBidder);
+        }
+
         return switch (type.getCategory()) {
             case PASS -> List.of(highestBidder);
             case PROPOSAL, ACCEPTANCE -> {
