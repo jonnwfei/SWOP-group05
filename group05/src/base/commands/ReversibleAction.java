@@ -1,4 +1,4 @@
-package cli.history;
+package base.commands;
 
 public interface ReversibleAction {
     void execute();

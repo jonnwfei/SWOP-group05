@@ -1,4 +1,4 @@
-package cli.history;
+package base.commands;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -10,7 +10,7 @@ public class ActionHistory {
     public void execute(ReversibleAction action) {
         action.execute();
         undoStack.push(action);
-        redoStack.clear(); // any new action wipes the redo history
+        redoStack.clear();
     }
 
     public void undo() {

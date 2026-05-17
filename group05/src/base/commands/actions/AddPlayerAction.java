@@ -1,9 +1,8 @@
-package cli.history.historyActions;
+package base.commands.actions;
 
-import base.GameController;
+import base.commands.ReversibleAction;
 import base.domain.WhistGame;
 import base.domain.player.Player;
-import cli.history.ReversibleAction;
 
 public class AddPlayerAction implements ReversibleAction {
     private final WhistGame game;

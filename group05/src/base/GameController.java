@@ -11,11 +11,12 @@ import base.domain.strategy.HighBotStrategy;
 import base.domain.strategy.HumanStrategy;
 import base.domain.strategy.LowBotStrategy;
 import base.domain.strategy.SmartBotStrategy;
-import cli.history.ActionHistory;
-import cli.history.historyActions.AddPlayerAction;
-import cli.history.historyActions.RemovePlayerAction;
-import cli.history.historyActions.RemoveRoundAction;
 
+
+import base.commands.ActionHistory;
+import base.commands.actions.AddPlayerAction;
+import base.commands.actions.RemovePlayerAction;
+import base.commands.actions.RemoveRoundAction;
 import java.util.Collection;
 import java.util.List;
 
