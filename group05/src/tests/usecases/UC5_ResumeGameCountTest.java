@@ -1,6 +1,7 @@
 package usecases;
 
 import base.GameController;
+import cli.GameCli;
 import base.domain.WhistGame;
 import base.storage.SaveRepository;
 import base.storage.snapshots.GameSnapshot;
@@ -56,12 +57,13 @@ class UC5_ResumeGameCountTest {
             lenient().when(mock.loadByDescription(anyString())).thenAnswer(inv -> isolatedRepo.loadByDescription(inv.getArgument(0)));
 
         })) {
-            GameController controller = new GameController();
-            Field gameField = GameController.class.getDeclaredField("game");
-            gameField.setAccessible(true);
-            WhistGame game = (WhistGame) gameField.get(controller);
+            GameCli cli = new GameCli();
+            Field controllerField = GameCli.class.getDeclaredField("controller");
+            controllerField.setAccessible(true);
+            GameController controller = (GameController) controllerField.get(cli);
+            WhistGame game = controller.getGame();
 
-            try { controller.run(); } catch (Exception ignored) {}
+            try { cli.run(); } catch (Exception ignored) {}
             return game;
         }
     }

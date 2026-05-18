@@ -1,5 +1,6 @@
-package tests.cli.flows;
+package cli.flows;
 
+import base.GameController;
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.storage.snapshots.SaveMode;
@@ -22,12 +23,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-/*
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ScoreBoardFlow Logic & Routing")
 class ScoreBoardFlowTest {
 
     @Mock private TerminalManager terminalManager;
+    private GameController controller;
     @Mock private WhistGame game;
     @Mock private GameEditFlow editFlow;
     @Mock private Player p1, p2, p3, p4, p5;
@@ -39,7 +40,8 @@ class ScoreBoardFlowTest {
     @BeforeEach
     void setUp() {
         System.setOut(new PrintStream(outContent));
-        scoreBoardFlow = new ScoreBoardFlow(terminalManager, game, editFlow);
+        controller = new GameController(game);
+        scoreBoardFlow = new ScoreBoardFlow(terminalManager, controller, editFlow);
 
         // Standard setup for player lists to prevent NPEs in showMenu
         lenient().when(game.getAllPlayers()).thenReturn(List.of(p1, p2, p3, p4));
@@ -64,9 +66,9 @@ class ScoreBoardFlowTest {
         @Test
         @DisplayName("Throws exception if any dependency is null")
         void testNullGuards() {
-            assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(null, game, editFlow));
-            assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(terminalManager, null, editFlow));
-            assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(terminalManager, game, null));
+            assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(null, controller, editFlow));
+            assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(terminalManager, (GameController) null, editFlow));
+            assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(terminalManager, controller, null));
         }
     }
 
@@ -190,4 +192,4 @@ class ScoreBoardFlowTest {
         }
     }
 }
-*/
+

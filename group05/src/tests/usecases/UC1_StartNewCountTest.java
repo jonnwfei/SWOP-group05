@@ -1,6 +1,7 @@
 package usecases;
 
 import base.GameController;
+import cli.GameCli;
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import org.junit.jupiter.api.*;
@@ -44,13 +45,14 @@ class UC1_StartNewCountTest {
         String script = String.join("\n", lines) + "\n";
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
-        GameController controller = new GameController();
-        Field gameField = GameController.class.getDeclaredField("game");
-        gameField.setAccessible(true);
-        WhistGame game = (WhistGame) gameField.get(controller);
+        GameCli cli = new GameCli();
+            Field controllerField = GameCli.class.getDeclaredField("controller");
+            controllerField.setAccessible(true);
+            GameController controller = (GameController) controllerField.get(cli);
+        WhistGame game = controller.getGame();
 
         try {
-            controller.run();
+            cli.run();
         } catch (Exception ignored) {}
 
         return game;

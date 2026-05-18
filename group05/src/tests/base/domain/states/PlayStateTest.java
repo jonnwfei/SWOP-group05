@@ -116,7 +116,7 @@ class PlayStateTest {
 
             Bid mockBid = mock(MiserieBid.class);
             when(mockBid.getType()).thenReturn(BidType.OPEN_MISERIE);
-            when(mockBid.getPlayerId()).thenReturn(id2); // Bob plays open miserie
+            // getPlayerId removed from Bid // Bob plays open miserie
 
             when(round.getHighestBid()).thenReturn(mockBid);
             when(round.getBids()).thenReturn(List.of(mockBid));

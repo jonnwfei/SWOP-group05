@@ -310,7 +310,7 @@ class BidStateTest {
             BidState state = new BidState(game);
 
             // FIX: Use the new "currentHighestBid" field and instantiate a real Bid
-            setPrivateField(state, "currentHighestBid", BidType.PROPOSAL.instantiate(id1, null));
+            setPrivateField(state, "currentHighestBid", BidType.PROPOSAL.instantiate(null));
 
             assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "handleEndOfBidding"));
             assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "handleRejectedProposal", BidType.PASS));
@@ -328,11 +328,11 @@ class BidStateTest {
             assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
 
             // Guard 2: PASS winning bid
-            setPrivateField(state, "currentHighestBid", BidType.PASS.instantiate(id1, null));
+            setPrivateField(state, "currentHighestBid", BidType.PASS.instantiate(null));
             assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
 
             // Guard 3: Unresolved PROPOSAL
-            setPrivateField(state, "currentHighestBid", BidType.PROPOSAL.instantiate(id1, null));
+            setPrivateField(state, "currentHighestBid", BidType.PROPOSAL.instantiate(null));
             assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
         }
     }

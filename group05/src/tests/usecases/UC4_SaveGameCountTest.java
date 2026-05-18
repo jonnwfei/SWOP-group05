@@ -1,6 +1,7 @@
 package usecases;
 
 import base.GameController;
+import cli.GameCli;
 import base.domain.WhistGame;
 import base.storage.SaveRepository;
 import base.storage.snapshots.GameSnapshot;
@@ -54,11 +55,12 @@ class UC4_SaveGameCountTest {
             lenient().when(mock.loadByDescription(anyString())).thenAnswer(inv -> isolatedRepo.loadByDescription(inv.getArgument(0)));
 
         })) {
-            GameController controller = new Ga();
-            Field f = GameController.class.getDeclaredField("game");
-            f.setAccessible(true);
-            WhistGame game = (WhistGame) f.get(controller);
-            try { controller.run(); } catch (Exception ignored) {}
+            GameCli cli = new GameCli();
+            Field controllerField = GameCli.class.getDeclaredField("controller");
+            controllerField.setAccessible(true);
+            GameController controller = (GameController) controllerField.get(cli);
+            WhistGame game = controller.getGame();
+            try { cli.run(); } catch (Exception ignored) {}
             return game;
         }
     }

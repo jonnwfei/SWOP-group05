@@ -1,6 +1,7 @@
 package usecases;
 
 import base.GameController;
+import cli.GameCli;
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import org.junit.jupiter.api.*;
@@ -31,11 +32,12 @@ class UC8_RemoveRoundsTest {
     private WhistGame runCount(String... lines) throws Exception {
         String script = String.join("\n", lines) + "\n";
         System.setIn(new ByteArrayInputStream(script.getBytes()));
-        GameController controller = new GameController();
-        Field f = GameController.class.getDeclaredField("game");
-        f.setAccessible(true);
-        WhistGame game = (WhistGame) f.get(controller);
-        try { controller.run(); } catch (Exception ignored) {}
+        GameCli cli = new GameCli();
+            Field controllerField = GameCli.class.getDeclaredField("controller");
+            controllerField.setAccessible(true);
+            GameController controller = (GameController) controllerField.get(cli);
+        WhistGame game = controller.getGame();
+        try { cli.run(); } catch (Exception ignored) {}
         return game;
     }
 

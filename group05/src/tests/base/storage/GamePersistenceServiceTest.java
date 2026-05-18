@@ -73,7 +73,7 @@ class GamePersistenceServiceTest {
 
     private Round createValidMockRound() {
         Round mockRound = mock(Round.class);
-        Bid realBid = new SoloBid(p1.getId(), BidType.SOLO, Suit.HEARTS);
+        Bid realBid = new SoloBid(BidType.SOLO, Suit.HEARTS);
 
         when(mockRound.getHighestBid()).thenReturn(realBid);
         when(mockRound.getPlayers()).thenReturn(fourPlayers);
@@ -238,7 +238,7 @@ class GamePersistenceServiceTest {
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
 
             // Round with missing participants for a non-PASS bid
-            when(mockRound.getHighestBid()).thenReturn(new SoloBid(p1.getId(), BidType.SOLO, Suit.HEARTS));
+            when(mockRound.getHighestBid()).thenReturn(new SoloBid(BidType.SOLO, Suit.HEARTS));
             when(mockRound.getBiddingTeamPlayers()).thenReturn(List.of());
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
         }
@@ -247,7 +247,7 @@ class GamePersistenceServiceTest {
         @DisplayName("Rejects PASS round if tricksWon is not -1")
         void shouldRejectPassRoundWithInvalidTricks() {
             Round mockRound = createValidMockRound();
-            when(mockRound.getHighestBid()).thenReturn(new PassBid(p1.getId()));
+            when(mockRound.getHighestBid()).thenReturn(new PassBid());
             when(mockRound.getCountTricksWon()).thenReturn(5); // Should strictly be -1 for PASS
 
             when(mockGame.getRounds()).thenReturn(List.of(mockRound));
@@ -300,7 +300,7 @@ class GamePersistenceServiceTest {
         @DisplayName("Rejects rounds with invalid miserie winners")
         void shouldThrowOnInvalidMiserieWinners() {
             Round mockRound = createValidMockRound();
-            when(mockRound.getHighestBid()).thenReturn(new MiserieBid(p1.getId(), BidType.MISERIE));
+            when(mockRound.getHighestBid()).thenReturn(new MiserieBid(BidType.MISERIE));
             when(mockRound.isFinished()).thenReturn(true);
 
             Player alienPlayer = new Player(new HumanStrategy(), "Alien", new PlayerId());
@@ -315,7 +315,7 @@ class GamePersistenceServiceTest {
         void shouldThrowOnInvalidDeltas() {
             Round mockRound = createValidMockRound();
             when(mockRound.getScoreDeltas()).thenReturn(List.of(90, -30, -30));
-            when(mockRound.getHighestBid()).thenReturn(new SoloBid(p1.getId(), BidType.SOLO, null));
+            when(mockRound.getHighestBid()).thenReturn(new SoloBid(BidType.SOLO, null));
             when(mockRound.isFinished()).thenReturn(true);
 
             Player alienPlayer = new Player(new HumanStrategy(), "Alien", new PlayerId());
@@ -331,17 +331,17 @@ class GamePersistenceServiceTest {
         @DisplayName("Coverage test - resolveTricksWon() should throw when PASS bid and tricksWon is not -1")
         void shouldCoverageResolveTricksWon() {
             Round mockRound = createValidMockRound();
-            when(mockRound.getHighestBid()).thenReturn(new PassBid(p1.getId()));
+            when(mockRound.getHighestBid()).thenReturn(new PassBid());
             when(mockRound.getCountTricksWon()).thenReturn(-1);
             when(mockRound.getBiddingTeamTricksWon()).thenReturn(14);
 
             when(mockGame.getRounds()).thenReturn(List.of(mockRound));
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
 
-            when(mockRound.getHighestBid()).thenReturn(new SoloBid(p1.getId(),  BidType.SOLO, null));
+            when(mockRound.getHighestBid()).thenReturn(new SoloBid(BidType.SOLO, null));
             when(mockRound.getBiddingTeamTricksWon()).thenReturn(-14);
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
-            when(mockRound.getHighestBid()).thenReturn(new SoloBid(p1.getId(),  BidType.SOLO, null));
+            when(mockRound.getHighestBid()).thenReturn(new SoloBid(BidType.SOLO, null));
             when(mockRound.getBiddingTeamTricksWon()).thenReturn(14);
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
         }
@@ -350,7 +350,7 @@ class GamePersistenceServiceTest {
         @DisplayName("Rejects non-PASS rounds with zero participants")
         void shouldThrowOnZeroParticipantsForNormalBid() {
             Round mockRound = createValidMockRound();
-            when(mockRound.getHighestBid()).thenReturn(new SoloBid(p1.getId(), BidType.SOLO, Suit.HEARTS));
+            when(mockRound.getHighestBid()).thenReturn(new SoloBid(BidType.SOLO, Suit.HEARTS));
             when(mockRound.getBiddingTeamPlayers()).thenReturn(List.of()); // Empty participants!
 
             when(mockGame.getRounds()).thenReturn(List.of(mockRound));
