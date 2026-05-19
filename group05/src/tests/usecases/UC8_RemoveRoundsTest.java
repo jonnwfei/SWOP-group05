@@ -33,9 +33,9 @@ class UC8_RemoveRoundsTest {
         String script = String.join("\n", lines) + "\n";
         System.setIn(new ByteArrayInputStream(script.getBytes()));
         GameCli cli = new GameCli();
-            Field controllerField = GameCli.class.getDeclaredField("controller");
-            controllerField.setAccessible(true);
-            GameController controller = (GameController) controllerField.get(cli);
+        Field controllerField = GameCli.class.getDeclaredField("controller");
+        controllerField.setAccessible(true);
+        GameController controller = (GameController) controllerField.get(cli);
         WhistGame game = controller.getGame();
         try { cli.run(); } catch (Exception ignored) {}
         return game;

@@ -1,7 +1,6 @@
 package base.domain.strategy;
 
 import base.domain.bid.Bid;
-import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
@@ -96,8 +95,10 @@ class SmartBotStrategyTest {
         @DisplayName("determineBid throws on null player or empty hand")
         void bidValidation() {
             List<Card> validHand = List.of(new Card(Suit.HEARTS, Rank.TWO));
-            // Removed null player validation
+
+            assertDoesNotThrow(() -> strategy.determineBid(validHand));
             assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(Collections.emptyList()));
+            assertThrows(NullPointerException.class, () -> strategy.determineBid(null));
         }
 
         @Test

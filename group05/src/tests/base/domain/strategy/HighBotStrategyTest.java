@@ -41,7 +41,6 @@ class HighBotStrategyTest {
 
             assertNotNull(bid);
             assertEquals(BidType.PASS, bid.getType());
-            // assertEquals(botId, bid.getPlayerId());
         }
     }
 

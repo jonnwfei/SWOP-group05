@@ -46,9 +46,9 @@ class UC1_StartNewCountTest {
         System.setIn(new ByteArrayInputStream(script.getBytes()));
 
         GameCli cli = new GameCli();
-            Field controllerField = GameCli.class.getDeclaredField("controller");
-            controllerField.setAccessible(true);
-            GameController controller = (GameController) controllerField.get(cli);
+        Field controllerField = GameCli.class.getDeclaredField("controller");
+        controllerField.setAccessible(true);
+        GameController controller = (GameController) controllerField.get(cli);
         WhistGame game = controller.getGame();
 
         try {
