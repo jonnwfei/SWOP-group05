@@ -121,6 +121,7 @@ public class GameController {
         game.addPlayer(new Player(new HighBotStrategy(), name));
     }
 
+
     public void addLowBot(String name) {
         game.addPlayer(new Player(new LowBotStrategy(), name));
     }
