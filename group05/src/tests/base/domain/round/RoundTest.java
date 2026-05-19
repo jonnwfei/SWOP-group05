@@ -17,7 +17,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -108,7 +107,7 @@ class RoundTest {
             round.getBidManager().placeBid(id2, BidType.PASS, null);
             round.getBidManager().placeBid(id3, BidType.PASS, null);
             round.getBidManager().placeBid(id4, BidType.PASS, null);
-            Bid highestBid = round.getBidManager().getHighestBid().get();
+            Bid highestBid = round.getBidManager().getHighestBid();
             List<Bid> validBids = List.of(highestBid, new PassBid(), new PassBid(), new PassBid());
 
             assertThrows(IllegalArgumentException.class, () -> round.startPlayPhase(null, highestBid, Suit.HEARTS, p1));
@@ -125,7 +124,7 @@ class RoundTest {
             round.getBidManager().placeBid(id2, BidType.ACCEPTANCE, null);
             round.getBidManager().placeBid(id3, BidType.PASS, null);
             round.getBidManager().placeBid(id4, BidType.PASS, null);
-            Bid acceptanceBid = round.getBidManager().getHighestBid().get();
+            Bid acceptanceBid = round.getBidManager().getHighestBid();
 
             List<Bid> bids = List.of(new ProposalBid(), acceptanceBid, new PassBid(), new PassBid());
             round.startPlayPhase(bids, acceptanceBid, Suit.SPADES, p3);
@@ -374,22 +373,30 @@ class RoundTest {
         }
 
         @Test
-        @DisplayName("setters, simple accessors, and BidManager pass-through")
+        @DisplayName("Initial state, simple accessors, and atomic resolution")
         void coverageFillers() {
-            Bid passBid = new PassBid();
-            round.setHighestBid(passBid);
-            assertEquals(passBid, round.getHighestBid());
+            // 1. Verify initial state (highestBid should be null before any action)
+            assertNull(round.getHighestBid(), "Highest bid should be null initially");
             assertEquals(2, round.getMultiplier());
             assertTrue(round.getCountMiserieWinners().isEmpty());
             assertTrue(round.getBids().isEmpty(),
                     "getBids() now delegates to BidManager — empty before any placeBid()");
             assertTrue(round.getBiddingTeamPlayers().isEmpty());
             assertEquals(List.of(p1, p2, p3, p4), round.getPlayers());
+            assertEquals(-1, round.getCountTricksWon());
 
-            // getBids() reflects the BidManager once a bid is registered
-            round.getBidManager().placeBid(id1, BidType.SOLO, Suit.HEARTS);
+            // 2. Verify BidManager pass-through
+            Bid soloBid = round.getBidManager().placeBid(id1, BidType.SOLO, Suit.HEARTS);
             assertEquals(1, round.getBids().size());
-            assertEquals(BidType.SOLO, round.getBids().get(0).getType());
+            assertEquals(BidType.SOLO, round.getBids().getFirst().getType());
+
+            // 3. Verify accessors update correctly after atomic manual resolution (replacing setters)
+            round.resolveManualCount(soloBid, List.of(p1), 9, List.of());
+
+            assertEquals(soloBid, round.getHighestBid());
+            assertEquals(List.of(p1), round.getBiddingTeamPlayers());
+            assertEquals(9, round.getCountTricksWon());
+            assertTrue(round.isFinished(), "Manual count should mark the round as finished");
         }
     }
 
