@@ -1,15 +1,7 @@
 package base.domain.bid;
 
-import base.domain.card.Card;
-import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.player.Player;
-import base.domain.player.PlayerId;
 
-import java.util.Comparator;
-import java.util.List;
-
-import static base.domain.card.CardMath.getHighestRankOfSuit;
 
 /**
  * Represents a forced contract triggered when a player holds 3 or 4 Aces.

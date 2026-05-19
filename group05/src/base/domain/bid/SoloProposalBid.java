@@ -1,10 +1,6 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
-import base.domain.player.Player;
-import base.domain.player.PlayerId;
-
-import java.util.List;
 
 /**
  * Contract for a proposer who chooses to play alone after their initial proposal is rejected.
