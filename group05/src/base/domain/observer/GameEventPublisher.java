@@ -6,4 +6,5 @@ package base.domain.observer;
  */
 public interface GameEventPublisher {
     void addObserver(GameObserver observer);
+    void removeObserver(GameObserver observer);
 }

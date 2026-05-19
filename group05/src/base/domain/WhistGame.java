@@ -5,8 +5,11 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
+
+import static base.domain.WhistRules.*;
 import static base.domain.deck.Deck.DealType;
 
+import base.domain.observer.GameEventPublisher;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
@@ -26,19 +29,14 @@ import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+
 /**
  * Represents a game of Whist.
  * Acts as the Aggregate Root, managing the global player roster, round history, and state transitions.
  * @author Stan Kestens, Tommy Wu
  * @since 28/02/2026
  */
-public class WhistGame {
-
-    @Deprecated
-    public static final int REQUIRED_PLAYERS = 4;
-    @Deprecated
-    public static final int MAX_PLAYERS = 67;
-
+public class WhistGame implements GameEventPublisher {
     private State state;
     private Deck deck;
     private Player dealerPlayer;
@@ -118,7 +116,7 @@ public class WhistGame {
         if (allPlayers.contains(player))
             throw new IllegalArgumentException("Player already in Game");
         this.allPlayers.add(player);
-        player.getDecisionStrategy().onJoinGame(this::addObserver);
+        player.getDecisionStrategy().onJoinGame(this);
     }
 
     /**
@@ -131,11 +129,12 @@ public class WhistGame {
         if (getTotalPlayerCount() <= REQUIRED_PLAYERS) {
             throw new IllegalStateException("Cannot remove player: at least 4 total players are required.");
         }
-
-        boolean removed = this.allPlayers.remove(player);
-        if (!removed) {
+        if (!this.allPlayers.contains(player)) {
             throw new IllegalArgumentException("Cannot remove player: player is not part of this game.");
         }
+
+        this.allPlayers.remove(player);
+        player.getDecisionStrategy().onLeaveGame(this);
 
         if (player.equals(this.dealerPlayer)) {
             this.dealerPlayer = getPlayers().isEmpty() ? null : getPlayers().getFirst();
@@ -306,6 +305,8 @@ public class WhistGame {
         if (observer != null) this.observers.add(observer);
     }
 
+    public void removeObserver(GameObserver observer) {if (observer != null) this.observers.remove(observer);}
+
     public void notifyRoundStarted() {
         List<PlayerId> ids = getPlayers().stream().map(Player::getId).toList();
         for (GameObserver observer : observers) observer.onRoundStarted(ids);
@@ -317,6 +318,19 @@ public class WhistGame {
 
     public void notifyBidPlaced(BidTurn bidTurn) {
         for (GameObserver observer : observers) observer.onBidPlaced(bidTurn);
+    }
+
+    public void notifyTurnPlayed(PlayTurn playTurn) {
+        for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
+    }
+
+    //TODO: use these on states
+    public void notifyBiddingFinalized(BidType winningBid, List<PlayerId> biddingTeam) {
+        for (GameObserver observer : observers) observer.onBiddingFinalized(winningBid, biddingTeam);
+    }
+
+    public void notifyTrickCompleted(PlayerId winner) {
+        for (GameObserver observer : observers) observer.onTrickCompleted(winner);
     }
 
     public  void removeRound(Round round){
@@ -371,16 +385,13 @@ public class WhistGame {
             }
         }
     }
-    public void notifyTurnPlayed(PlayTurn playTurn) {
-        for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
-    }
 
     /**
      *
      * @return true if possible to remove player
      */
     public boolean canRemovePlayer() {
-        return (this.allPlayers.size() > WhistRules.REQUIRED_PLAYERS);
+        return (this.allPlayers.size() > REQUIRED_PLAYERS);
     }
 
     /**

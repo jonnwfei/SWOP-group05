@@ -236,7 +236,7 @@ public class GamePersistenceService {
             case HUMAN -> new HumanStrategy();
             case HIGH_BOT -> new HighBotStrategy();
             case LOW_BOT -> new LowBotStrategy();
-            case SMART_BOT -> new SmartBotStrategy(restoredId);
+            case SMART_BOT -> new SmartBotStrategy();
         };
     }
 }

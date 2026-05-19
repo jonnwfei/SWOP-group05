@@ -51,8 +51,8 @@ class HighBotStrategyTest {
         @Test
         @DisplayName("Should throw exception if hand is null or empty")
         void throwsOnInvalidHand() {
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(null, Suit.HEARTS));
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(List.of(), Suit.HEARTS));
+            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(botId, null, Suit.HEARTS));
+            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(botId, List.of(), Suit.HEARTS));
         }
 
         @Test
@@ -64,7 +64,7 @@ class HighBotStrategyTest {
 
             List<Card> hand = List.of(heartTwo, heartQueen, spadeAce);
 
-            Card played = strategy.chooseCardToPlay(hand, Suit.HEARTS);
+            Card played = strategy.chooseCardToPlay(botId, hand, Suit.HEARTS);
 
             assertEquals(heartQueen, played, "Must follow suit and pick the highest Heart, ignoring the Spade Ace.");
         }
@@ -77,7 +77,7 @@ class HighBotStrategyTest {
 
             List<Card> hand = List.of(diamondTen, clubKing);
 
-            Card played = strategy.chooseCardToPlay(hand, Suit.SPADES);
+            Card played = strategy.chooseCardToPlay(botId, hand, Suit.SPADES);
 
             assertEquals(clubKing, played, "Cannot follow Spades, so must play the highest card available (Club King).");
         }
@@ -90,7 +90,7 @@ class HighBotStrategyTest {
 
             List<Card> hand = List.of(heartTwo, spadeAce);
 
-            Card played = strategy.chooseCardToPlay(hand, null);
+            Card played = strategy.chooseCardToPlay(botId, hand, null);
 
             assertEquals(spadeAce, played, "When leading the trick, should open with the strongest card.");
         }
