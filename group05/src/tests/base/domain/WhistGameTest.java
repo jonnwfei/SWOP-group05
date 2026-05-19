@@ -250,8 +250,7 @@ class WhistGameTest {
             addFourPlayers();
 
             Round pastRound = mock(Round.class);
-            Bid passBid = mock(PassBid.class);
-            when(passBid.getType()).thenReturn(BidType.PASS);
+            Bid passBid = new PassBid();
             when(pastRound.getHighestBid()).thenReturn(passBid);
             game.addRound(pastRound);
 

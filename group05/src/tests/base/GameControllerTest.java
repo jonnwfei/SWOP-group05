@@ -3,7 +3,9 @@ package base;
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.domain.results.GameResult;
+import base.domain.results.CountResults;
 import base.domain.commands.GameCommand;
+import base.domain.strategy.HumanStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,8 +34,8 @@ class GameControllerTest {
     @Test
     @DisplayName("Delegates advance to WhistGame")
     void testAdvance() {
-        GameCommand command = mock(GameCommand.class);
-        GameResult expected = mock(GameResult.class);
+        GameCommand command = new GameCommand.NumberCommand(1);
+        GameResult expected = new CountResults.AmountOfTrickWonResult();
         when(mockGame.advance(command)).thenReturn(expected);
 
         GameResult result = controller.advance(command);
@@ -78,7 +80,7 @@ class GameControllerTest {
     @Test
     @DisplayName("Projection methods return data from WhistGame")
     void testProjections() {
-        Player p1 = new Player(null, "Alice");
+        Player p1 = new Player(new HumanStrategy(), "Alice");
         p1.updateScore(10);
         when(mockGame.getAllPlayers()).thenReturn(List.of(p1));
 

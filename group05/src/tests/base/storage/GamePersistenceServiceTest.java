@@ -2,6 +2,7 @@ package base.storage;
 
 import base.domain.WhistGame;
 import base.domain.bid.*;
+import base.domain.bid.BidManager;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
@@ -73,9 +74,14 @@ class GamePersistenceServiceTest {
 
     private Round createValidMockRound() {
         Round mockRound = mock(Round.class);
-        Bid realBid = new SoloBid(BidType.SOLO, Suit.HEARTS);
 
-        when(mockRound.getHighestBid()).thenReturn(realBid);
+        // Use a real BidManager with the SOLO bid registered under p1 so getBidderOf
+        // resolves by object identity (the same reference is used as highestBid).
+        BidManager realBidManager = new BidManager(fourPlayers);
+        Bid soloBid = realBidManager.placeBid(p1.getId(), BidType.SOLO, Suit.HEARTS);
+
+        when(mockRound.getHighestBid()).thenReturn(soloBid);
+        when(mockRound.getBidManager()).thenReturn(realBidManager);
         when(mockRound.getPlayers()).thenReturn(fourPlayers);
         when(mockRound.getPlayerById(any())).thenReturn(p1);
         when(mockRound.getBiddingTeamPlayers()).thenReturn(List.of(p1));

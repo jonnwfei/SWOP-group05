@@ -1,6 +1,7 @@
 package base.domain.states;
 
 import base.domain.WhistGame;
+import base.domain.bid.BidManager;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Rank;
@@ -72,6 +73,15 @@ class BidStateTest {
 
         lenient().when(round.getCurrentPlayer()).thenReturn(p1);
 
+        // BidManager: provide a real BidManager so BidState.bidManager is not null
+        lenient().when(round.getBidManager()).thenReturn(new BidManager(List.of(p1, p2, p3, p4)));
+
+        // Empty hands by default so detectForcedBid() finds no aces
+        lenient().when(p1.getHand()).thenReturn(new ArrayList<>());
+        lenient().when(p2.getHand()).thenReturn(new ArrayList<>());
+        lenient().when(p3.getHand()).thenReturn(new ArrayList<>());
+        lenient().when(p4.getHand()).thenReturn(new ArrayList<>());
+
         // Player lookups
         lenient().when(game.getPlayerById(id1)).thenReturn(p1);
         lenient().when(game.getPlayerById(id2)).thenReturn(p2);
@@ -130,10 +140,11 @@ class BidStateTest {
         @Test
         @DisplayName("TROEL (3 Aces) is automatically applied and skips the forced player's turn")
         void appliesTroel() {
-            when(p1.hasCard(any(Card.class))).thenAnswer(inv -> {
-                Card c = inv.getArgument(0);
-                return c.rank() == Rank.ACE && c.suit() != Suit.SPADES;
-            });
+            // detectForcedBid uses getHand(); give p1 three Aces (missing SPADES)
+            when(p1.getHand()).thenReturn(List.of(
+                    new Card(Suit.CLUBS, Rank.ACE),
+                    new Card(Suit.DIAMONDS, Rank.ACE),
+                    new Card(Suit.HEARTS, Rank.ACE)));
 
             BidState state = new BidState(game);
 
@@ -145,7 +156,12 @@ class BidStateTest {
         @Test
         @DisplayName("TROELA (4 Aces) is automatically applied")
         void appliesTroela() {
-            when(p3.hasCard(argThat(c -> c.rank() == Rank.ACE))).thenReturn(true);
+            // detectForcedBid uses getHand(); give p3 all four Aces
+            when(p3.getHand()).thenReturn(List.of(
+                    new Card(Suit.CLUBS, Rank.ACE),
+                    new Card(Suit.DIAMONDS, Rank.ACE),
+                    new Card(Suit.HEARTS, Rank.ACE),
+                    new Card(Suit.SPADES, Rank.ACE)));
 
             BidState state = new BidState(game);
 
@@ -309,11 +325,9 @@ class BidStateTest {
         void corruptProposalResolution() throws Exception {
             BidState state = new BidState(game);
 
-            // FIX: Use the new "currentHighestBid" field and instantiate a real Bid
-            setPrivateField(state, "currentHighestBid", BidType.PROPOSAL.instantiate(null));
-
-            assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "handleEndOfBidding"));
-            assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "handleRejectedProposal", BidType.PASS));
+            // handleRejectedProposal requires a PROPOSAL as the highest bid; without one it throws ISE
+            assertThrows(IllegalStateException.class,
+                    () -> invokePrivateHandleMethod(state, "handleRejectedProposal", BidType.PASS));
         }
 
         @Test
@@ -321,19 +335,19 @@ class BidStateTest {
         void corruptPlayStatePrep() throws Exception {
             BidState state = new BidState(game);
 
-            // FIX: Since we store the Bid now, the risk is different. We test the new guard branches in setRoundReadyForPlayState!
+            // Access the real BidManager held by this state instance
+            java.lang.reflect.Field bmField = BidState.class.getDeclaredField("bidManager");
+            bmField.setAccessible(true);
+            BidManager bm = (BidManager) bmField.get(state);
 
-            // Guard 1: Null highest bid
-            setPrivateField(state, "currentHighestBid", null);
-            assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
+            // Guard 1: No bids placed → no highest bid → ISE
+            assertThrows(IllegalStateException.class,
+                    () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
 
-            // Guard 2: PASS winning bid
-            setPrivateField(state, "currentHighestBid", BidType.PASS.instantiate(null));
-            assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
-
-            // Guard 3: Unresolved PROPOSAL
-            setPrivateField(state, "currentHighestBid", BidType.PROPOSAL.instantiate(null));
-            assertThrows(IllegalStateException.class, () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
+            // Guard 2: Unresolved PROPOSAL as highest bid → ISE
+            bm.placeBid(id1, BidType.PROPOSAL, null);
+            assertThrows(IllegalStateException.class,
+                    () -> invokePrivateHandleMethod(state, "setRoundReadyForPlayState"));
         }
     }
 
@@ -359,10 +373,12 @@ class BidStateTest {
         @Test
         @DisplayName("Troel: Partner of the Troel bidder leads first")
         void troelPartnerLeads() {
-            when(p1.hasCard(any(Card.class))).thenAnswer(inv -> {
-                Card c = inv.getArgument(0);
-                return c.rank() == Rank.ACE && c.suit() != Suit.SPADES;
-            });
+            // detectForcedBid uses getHand(); p1 holds 3 Aces (missing SPADES) → forced TROEL
+            when(p1.getHand()).thenReturn(List.of(
+                    new Card(Suit.CLUBS, Rank.ACE),
+                    new Card(Suit.DIAMONDS, Rank.ACE),
+                    new Card(Suit.HEARTS, Rank.ACE)));
+            // findTroelPartner still uses hasCard() to locate the holder of the missing Ace
             when(p3.hasCard(argThat(c -> c.rank() == Rank.ACE && c.suit() == Suit.SPADES))).thenReturn(true);
 
             BidState state = new BidState(game);

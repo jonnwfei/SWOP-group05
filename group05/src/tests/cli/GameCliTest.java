@@ -188,7 +188,7 @@ class GameCliTest {
             when(mockTerminalManager.handle(immediateEvent)).thenReturn(null);
 
             // Execute private method
-            GameCommand resultCommand = invokePrivateMethodArgs("handleIO",
+            GameCommand resultCommand = invokePrivateMethodArgs("promptUser",
                     new Class<?>[]{AdapterResult.NeedsIO.class, GameResult.class},
                     new Object[]{needsIO, concreteResult});
 

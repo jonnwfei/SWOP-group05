@@ -192,7 +192,7 @@ class GameEditFlowTest {
                     .thenReturn(realResponse("abc"), realResponse("  1 ,, 2 "));
 
             assertTrue(flow.removePlayer());
-            verify(game).removePlayer(p1);
+            verify(game).removePlayerAtIndex(0);
         }
     }
 
