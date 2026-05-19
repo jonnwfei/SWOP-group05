@@ -31,13 +31,8 @@ class TroelBidTest {
     }
 
     @Test
-    @DisplayName("Constructor enforces non-null parameters and correct categories")
+    @DisplayName("Constructor enforces non-null BidType and correct category")
     void constructor_InvalidParameters_ThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () ->
-                        new TroelBid(BidType.TROEL, Suit.SPADES),
-                "Should reject null PlayerId"
-        );
-
         assertThrows(IllegalArgumentException.class, () ->
                         new TroelBid(null, Suit.SPADES),
                 "Should reject null BidType"

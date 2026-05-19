@@ -212,9 +212,6 @@ public class Round {
     /**
      * Manually triggers score calculation. For normal play this is done
      * automatically by {@link #finalizeTrick(Trick)} when the round completes.
-     * For count-mode use, set the relevant state via the setters first
-     * ({@link #setHighestBid}, {@link #setBiddingTeam}, {@link #setCountTricksWon},
-     * {@link #setMiserieWinners}) and then call this method.
      */
     public void calculateScores() {
         scoringService.calculateScores(this);
@@ -374,21 +371,24 @@ public class Round {
     // Setters used for count-mode or restoration
     // =========================================================================
 
-    public void setBiddingTeam(List<Player> players) {
+    /**
+     * Atomically resolves a round created via manual count-mode,
+     * enforcing that all required state is provided at once.
+     */
+    public void resolveManualCount(Bid highestBid, List<Player> biddingTeam, int tricksWon, List<Player> miserieWinners) {
+        if (highestBid == null || biddingTeam == null || miserieWinners == null) {
+            throw new IllegalArgumentException("Cannot resolve manual count with incomplete data");
+        }
+
+        this.highestBid = highestBid;
         this.biddingTeam.clear();
-        this.biddingTeam.addAll(players);
-    }
+        this.biddingTeam.addAll(biddingTeam);
+        this.countTricksWon = tricksWon;
+        this.miserieWinners = new ArrayList<>(miserieWinners);
 
-    public void setCountTricksWon(int tricks) {
-        this.countTricksWon = tricks;
-    }
-
-    public void setMiserieWinners(List<Player> winners) {
-        this.miserieWinners = winners == null ? new ArrayList<>() : new ArrayList<>(winners);
-    }
-
-    public void setHighestBid(Bid bid) {
-        this.highestBid = bid;
+        // The Round immediately acts on the new data, acting as the Controller/Expert
+        this.finished = true;
+        this.calculateScores();
     }
 
     // =========================================================================

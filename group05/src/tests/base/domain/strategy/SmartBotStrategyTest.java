@@ -90,8 +90,10 @@ class SmartBotStrategyTest {
         @DisplayName("determineBid throws on null player or empty hand")
         void bidValidation() {
             List<Card> validHand = List.of(new Card(Suit.HEARTS, Rank.TWO));
-            assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(null, validHand));
-            assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(botId, Collections.emptyList()));
+
+            assertDoesNotThrow(() -> strategy.determineBid(validHand));
+            assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(Collections.emptyList()));
+            assertThrows(NullPointerException.class, () -> strategy.determineBid(null));
         }
 
         @Test
@@ -136,7 +138,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
 
             // It has 4 Aces, but 13 expected tricks means it MUST bid Solo Slim!
-            assertEquals(BidType.SOLO_SLIM, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.SOLO_SLIM, strategy.determineBid(hand).getType());
         }
 
         // ==========================================
@@ -147,14 +149,14 @@ class SmartBotStrategyTest {
         @DisplayName("Bids OPEN_MISERIE if max card is <= 7")
         void bidsOpenMiserie() {
             List<Card> hand = List.of(new Card(Suit.HEARTS, Rank.TWO), new Card(Suit.SPADES, Rank.SEVEN));
-            assertEquals(BidType.OPEN_MISERIE, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.OPEN_MISERIE, strategy.determineBid(hand).getType());
         }
 
         @Test
         @DisplayName("Bids MISERIE if max card is <= 10")
         void bidsMiserie() {
             List<Card> hand = List.of(new Card(Suit.HEARTS, Rank.EIGHT), new Card(Suit.SPADES, Rank.TEN));
-            assertEquals(BidType.MISERIE, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.MISERIE, strategy.determineBid(hand).getType());
         }
 
         @Test
@@ -164,7 +166,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
             when(mockMemory.hasActiveProposal()).thenReturn(false);
 
-            assertEquals(BidType.PROPOSAL, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.PROPOSAL, strategy.determineBid(hand).getType());
         }
 
         @Test
@@ -174,7 +176,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
             when(mockMemory.hasActiveProposal()).thenReturn(true);
 
-            assertEquals(BidType.ACCEPTANCE, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.ACCEPTANCE, strategy.determineBid(hand).getType());
         }
 
         @Test
@@ -183,16 +185,16 @@ class SmartBotStrategyTest {
             List<Card> hand = generateTrickHand(1); // 1 Trick
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
 
-            assertEquals(BidType.PASS, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.PASS, strategy.determineBid(hand).getType());
         }
 
         @DisplayName("Abondance Tier mapping routing (9 to 13 tricks)")
         void abondanceRouting() {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.HEARTS);
 
-            assertEquals(BidType.ABONDANCE_10, strategy.determineBid(botId, generateTrickHand(10)).getType());
-            assertEquals(BidType.ABONDANCE_11, strategy.determineBid(botId, generateTrickHand(11)).getType());
-            assertEquals(BidType.ABONDANCE_12_OT, strategy.determineBid(botId, generateTrickHand(12)).getType());
+            assertEquals(BidType.ABONDANCE_10, strategy.determineBid(generateTrickHand(10)).getType());
+            assertEquals(BidType.ABONDANCE_11, strategy.determineBid(generateTrickHand(11)).getType());
+            assertEquals(BidType.ABONDANCE_12_OT, strategy.determineBid(generateTrickHand(12)).getType());
 
             List<Card> flushOfSpades = List.of(
                     new Card(Suit.SPADES, Rank.TWO), new Card(Suit.SPADES, Rank.THREE),
@@ -204,13 +206,13 @@ class SmartBotStrategyTest {
                     new Card(Suit.SPADES, Rank.ACE)
             );
 
-            Bid soloBid = strategy.determineBid(botId, flushOfSpades);
+            Bid soloBid = strategy.determineBid(flushOfSpades);
             assertEquals(BidType.SOLO, soloBid.getType(), "Different trump should yield SOLO");
 
             // Current trump is SPADES.
             // Result: Bot keeps trump as Spades. (Spades == Spades -> SOLO_SLIM)
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
-            Bid soloSlimBid = strategy.determineBid(botId, flushOfSpades);
+            Bid soloSlimBid = strategy.determineBid(flushOfSpades);
             assertEquals(BidType.SOLO_SLIM, soloSlimBid.getType(), "Same trump should yield SOLO_SLIM");
         }
 
@@ -218,7 +220,7 @@ class SmartBotStrategyTest {
         @DisplayName("Throws exception on mathematically impossible trick counts (>13)")
         void boundsCheckHighBids() {
             List<Card> impossibleHand = generateTrickHand(14);
-            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(botId, impossibleHand));
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(impossibleHand));
             assertTrue(ex.getMessage().contains("Invalid tricks value: 14"));
         }
 
