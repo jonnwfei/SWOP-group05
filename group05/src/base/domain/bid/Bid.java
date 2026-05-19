@@ -32,6 +32,14 @@ public sealed interface Bid extends Comparable<Bid> permits
     BidType getType();
 
     /**
+     * Calculates the base points earned or lost based on the target threshold.
+     *
+     * @param tricksWon The number of tricks successfully taken by the player/team.
+     * @return The calculated score (positive for success, negative for failure).
+     */
+    int calculateBasePoints(int tricksWon);
+
+    /**
      * Determines the active trump suit for the round if this is the highest bid at the end of bidding phase.
      *
      * @param dealtTrump The original trump suit dealt at the start of the round.

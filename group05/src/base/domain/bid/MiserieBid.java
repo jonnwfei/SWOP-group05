@@ -35,4 +35,16 @@ public record MiserieBid(BidType bidType) implements Bid {
     public Suit determineTrump(Suit dealtTrump) {
         return null;
     }
+
+
+    @Override
+    public int calculateBasePoints(int tricksWon) {
+        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
+        int points = bidType.getBasePoints();
+        if (tricksWon > bidType.getTargetTricks()) {
+            points = -1 * points;
+            return points;
+        }
+        return points;
+    }
 }

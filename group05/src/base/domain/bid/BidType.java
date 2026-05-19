@@ -1,154 +1,158 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
+import base.domain.player.PlayerId;
 
 /**
- * Acts as the centralized identifier and factory for all valid contracts (bids) in the game.
- * This enum implements the Flyweight pattern by storing the static categorical rules
- * associated with each bid type.
- * <p>
- * Note: Scoring parameters (target tricks, base points) are explicitly excluded from this enum
- * and are managed by the ScoringRegistry to support dynamic/retroactive scoring changes.
- *
+ * Acts as the centralized registry and Information Expert for all valid contracts (bids) in the game.
+ * This enum implements the Flyweight pattern by permanently storing the static rules
+ * associated with each bid type, such as the required number of tricks to win,
+ * the base point value awarded (or penalized), and the broader category the bid belongs to.
  * @author Tommy Wu
  * @since 26/02/26
  */
 public enum BidType {
     /** The default null-bid when a player chooses not to participate. */
-    PASS(BidCategory.PASS, false) {
+    PASS(0, 0, BidCategory.PASS, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new PassBid(); }
+        public Bid instantiate(Suit trumpSuit) {return new PassBid();}
     },
 
     /** A temporary state looking for a partner. Should be resolved before the Bidding Phase ends. */
-    PROPOSAL(BidCategory.PROPOSAL, false) {
+    PROPOSAL(0, 0, BidCategory.PROPOSAL, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new ProposalBid(); }
+        public Bid instantiate(Suit trumpSuit) {return new ProposalBid();}
     },
 
-    /** A proposal to play alone. */
-    SOLO_PROPOSAL(BidCategory.PROPOSAL, false) {
+    /** A proposal to play alone, requiring 5 tricks. */
+    SOLO_PROPOSAL(5, 6, BidCategory.PROPOSAL, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new SoloProposalBid(); }
+        public Bid instantiate(Suit trumpSuit) {return new SoloProposalBid();}
     },
 
-    /** Forms a team of two players (Proposer and Acceptor). */
-    ACCEPTANCE(BidCategory.ACCEPTANCE, false) {
+    /** Forms a team of two players (Proposer and Acceptor), requiring 8 tricks total. */
+    ACCEPTANCE(8, 2, BidCategory.ACCEPTANCE, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new AcceptedBid(); }
+        public Bid instantiate(Suit trumpSuit) {return new AcceptedBid();}
     },
 
-    /** Play alone. Player may choose a new trump suit. */
-    ABONDANCE_9(BidCategory.ABONDANCE, true) {
+    /** play alone requiring 9 tricks. Player may choose a new trump suit. */
+    ABONDANCE_9(9, 15, BidCategory.ABONDANCE, true) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new AbondanceBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new AbondanceBid( this, trumpSuit);}
     },
 
-    /** Play alone using the Original Trump (OT) suit. */
-    ABONDANCE_9_OT(BidCategory.ABONDANCE, false) {
+    /** play alone requiring 9 tricks using the Original Trump (OT) suit. */
+    ABONDANCE_9_OT(9, 15, BidCategory.ABONDANCE, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new AbondanceBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new AbondanceBid( this, trumpSuit);}
     },
 
-    /** Play alone. Player may choose a new trump suit. */
-    ABONDANCE_10(BidCategory.ABONDANCE, true) {
+    /** play alone requiring 10 tricks. Player may choose a new trump suit. */
+    ABONDANCE_10(10, 18, BidCategory.ABONDANCE, true) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new AbondanceBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new AbondanceBid( this, trumpSuit);}
     },
 
-    /** Play alone using the Original Trump (OT) suit. */
-    ABONDANCE_10_OT(BidCategory.ABONDANCE, false) {
+    /** play alone requiring 10 tricks using the Original Trump (OT) suit. */
+    ABONDANCE_10_OT(10, 18, BidCategory.ABONDANCE, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new AbondanceBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new AbondanceBid( this, trumpSuit);}
     },
 
-    /** Play alone. No trump suit exists during this round, multiple players can play simultaneously. */
-    MISERIE(BidCategory.MISERIE, false) {
+    /** play alone requiring exactly 0 tricks. No trump suit exists during this round, multiple players can play simultaneously. */
+    MISERIE(0, 21, BidCategory.MISERIE, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new MiserieBid(this); }
+        public Bid instantiate(Suit trumpSuit) {return new MiserieBid( this);}
     },
 
-    /** Play alone. Player may choose a new trump suit. */
-    ABONDANCE_11(BidCategory.ABONDANCE, true) {
+    /** play alone requiring 11 tricks. Player may choose a new trump suit. */
+    ABONDANCE_11(11, 24, BidCategory.ABONDANCE, true) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new AbondanceBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new AbondanceBid( this, trumpSuit);}
     },
 
-    /** Play alone using the Original Trump (OT) suit. */
-    ABONDANCE_11_OT(BidCategory.ABONDANCE, false) {
+    /** play alone requiring 11 tricks using the Original Trump (OT) suit. */
+    ABONDANCE_11_OT(11, 24, BidCategory.ABONDANCE, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new AbondanceBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new AbondanceBid( this, trumpSuit);}
     },
 
-    /** Play alone. Player may choose a new trump suit. */
-    ABONDANCE_12(BidCategory.ABONDANCE, true) {
+    /** play alone requiring 12 tricks. Player may choose a new trump suit. */
+    ABONDANCE_12(12, 27, BidCategory.ABONDANCE, true) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new AbondanceBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new AbondanceBid( this, trumpSuit);}
     },
 
-    /** Play alone using the Original Trump (OT) suit. */
-    ABONDANCE_12_OT(BidCategory.ABONDANCE, false) {
+    /** play alone requiring 12 tricks using the Original Trump (OT) suit. */
+    ABONDANCE_12_OT(12, 27, BidCategory.ABONDANCE, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new AbondanceBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new AbondanceBid( this, trumpSuit);}
     },
 
-    /**
-     * A forced team bid triggered when a player holds exactly 3 Aces.
-     * The partner is the player holding the 4th missing Ace.
+    /** * A forced team bid triggered when a player holds exactly 3 Aces.
+     * The partner is the player holding the 4th missing Ace, playing together to win at least 8 tricks.
      */
-    TROEL(BidCategory.TROEL, false) {
+    TROEL(8, 4,BidCategory.TROEL , false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new TroelBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new TroelBid( this, trumpSuit);}
     },
 
-    /**
-     * A forced team bid triggered when a player holds all 4 Aces.
-     * The partner is the player holding the highest Heart.
+    /** * A forced team bid triggered when a player holds all 4 Aces.
+     * The partner is the player holding the highest Heart, playing together to win at least 9 tricks.
      */
-    TROELA(BidCategory.TROEL, false) {
+    TROELA(9, 4, BidCategory.TROEL, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new TroelBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new TroelBid( this, trumpSuit);}
     },
 
-    /** Play alone. The player's cards must be revealed after the first trick, multiple players can play simultaneously. */
-    OPEN_MISERIE(BidCategory.MISERIE, false) {
+    /** play alone requiring exactly 0 tricks. The player's cards must be revealed after the first trick, multiple players can play simultaneously. */
+    OPEN_MISERIE(0, 42, BidCategory.MISERIE, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new MiserieBid(this); }
+        public Bid instantiate(Suit trumpSuit) {return new MiserieBid( this);}
     },
 
-    /** Solo play requiring all tricks. Player may choose a new trump suit. */
-    SOLO(BidCategory.SOLO, true) {
+    /** Solo play requiring all 13 tricks. Player may choose a new trump suit. */
+    SOLO(13, 75, BidCategory.SOLO, true) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new SoloBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new SoloBid( this, trumpSuit);}
     },
 
-    /** The highest bid. Solo play requiring all tricks, original trump. */
-    SOLO_SLIM(BidCategory.SOLO, false) {
+    /** The highest bid. Solo play requiring all 13 tricks. */
+    SOLO_SLIM(13, 90, BidCategory.SOLO, false) {
         @Override
-        public Bid instantiate(Suit trumpSuit) { return new SoloBid(this, trumpSuit); }
+        public Bid instantiate(Suit trumpSuit) {return new SoloBid( this, trumpSuit);}
     };
 
+    private final int targetTricks;
+    private final int basePoints;
     private final BidCategory bidCategory;
-    private final boolean requiresSuit;
+    private  final boolean requiresSuit;
 
     /**
-     * Constructs a specific bid type with its immutable categorical rules.
+     * Constructs a specific bid type with its immutable, static game rules.
      *
-     * @param bidCategory  The broader classification of the bid used for object validation and grouping.
-     * @param requiresSuit The boolean flag indicating if the player must actively choose a new trump suit.
+     * @param targetTricks The exact number of tricks required to win the contract (e.g., 0 for Miserie, 9 for Abondance).
+     * @param basePoints   The point value awarded on victory, or deducted on defeat.
+     * @param bidCategory  The broader classification of the bid used for object validation.
+     * @param requiresSuit The boolean flag indicating if the player must actively choose a new trump suit
      */
-    BidType(BidCategory bidCategory, boolean requiresSuit) {
+    BidType(int targetTricks, int basePoints, BidCategory bidCategory, boolean requiresSuit) {
+        this.targetTricks = targetTricks;
+        this.basePoints = basePoints;
         this.bidCategory = bidCategory;
         this.requiresSuit = requiresSuit;
     }
 
-    public BidCategory getCategory() { return bidCategory; }
-    public boolean getRequiresSuit() { return requiresSuit; }
+    //GETTERS
+    public int getTargetTricks() {return targetTricks;}
+    public int getBasePoints() {return basePoints;}
+    public BidCategory getCategory() {return bidCategory;}
+    public boolean getRequiresSuit() {return requiresSuit;}
 
     /**
      * Polymorphically instantiates the correct Bid implementation for this specific BidType.
      * @param trumpSuit The suit chosen by the player (if requiresSuit is true).
      * @return A fully instantiated, immutable Bid object.
      */
-    public abstract Bid instantiate(Suit trumpSuit);
-}
+    public abstract Bid instantiate(Suit trumpSuit);}

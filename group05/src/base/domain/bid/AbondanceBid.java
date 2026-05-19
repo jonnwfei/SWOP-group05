@@ -35,4 +35,15 @@ public record AbondanceBid(BidType bidType, Suit trump) implements Bid {
         if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
         return trump;
     }
+
+    @Override
+    public int calculateBasePoints(int tricksWon) {
+        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
+        int points = bidType.getBasePoints();
+        if (tricksWon < bidType.getTargetTricks()) {
+            points = -1 * points;
+            return points;
+        }
+        return points;
+    }
 }
