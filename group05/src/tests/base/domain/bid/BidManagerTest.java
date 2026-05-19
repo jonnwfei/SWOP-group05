@@ -14,7 +14,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -98,17 +97,17 @@ class BidManagerTest {
         @DisplayName("PASS does not become the highest bid")
         void passNeverHighest() {
             manager.placeBid(id1, BidType.PASS, null);
-            assertTrue(manager.getHighestBid().isEmpty());
-            assertTrue(manager.getHighestBidder().isEmpty());
+            assertNull(manager.getHighestBid());
+            assertNull(manager.getHighestBidder());
         }
 
         @Test
         @DisplayName("First non-PASS bid becomes the highest")
         void firstNonPassBecomesHighest() {
             manager.placeBid(id1, BidType.PROPOSAL, null);
-            assertTrue(manager.getHighestBid().isPresent());
-            assertEquals(BidType.PROPOSAL, manager.getHighestBid().get().getType());
-            assertEquals(id1, manager.getHighestBidder().orElseThrow());
+            assertNotNull(manager.getHighestBid());
+            assertEquals(BidType.PROPOSAL, manager.getHighestBid().getType());
+            assertEquals(id1, manager.getHighestBidder());
         }
 
         @Test
@@ -116,8 +115,8 @@ class BidManagerTest {
         void higherBidReplaces() {
             manager.placeBid(id1, BidType.PROPOSAL, null);
             manager.placeBid(id2, BidType.ACCEPTANCE, null);
-            assertEquals(BidType.ACCEPTANCE, manager.getHighestBid().get().getType());
-            assertEquals(id2, manager.getHighestBidder().orElseThrow());
+            assertEquals(BidType.ACCEPTANCE, manager.getHighestBid().getType());
+            assertEquals(id2, manager.getHighestBidder());
         }
 
         @Test
@@ -125,8 +124,8 @@ class BidManagerTest {
         void lowerBidIgnored() {
             manager.placeBid(id1, BidType.ACCEPTANCE, null);
             manager.placeBid(id2, BidType.PROPOSAL, null);
-            assertEquals(BidType.ACCEPTANCE, manager.getHighestBid().get().getType());
-            assertEquals(id1, manager.getHighestBidder().orElseThrow());
+            assertEquals(BidType.ACCEPTANCE, manager.getHighestBid().getType());
+            assertEquals(id1, manager.getHighestBidder());
         }
 
         @Test
@@ -176,13 +175,13 @@ class BidManagerTest {
         @DisplayName("Replaces proposer's bid with PASS and recomputes highest")
         void replacesProposalWithPass() {
             manager.placeBid(id1, BidType.PROPOSAL, null);
-            assertEquals(BidType.PROPOSAL, manager.getHighestBid().get().getType());
+            assertEquals(BidType.PROPOSAL, manager.getHighestBid().getType());
 
             manager.invalidateProposal();
 
-            assertTrue(manager.getHighestBid().isEmpty(),
-                    "Highest bid should be empty after proposal invalidated");
-            assertTrue(manager.findProposer().isEmpty());
+            assertNull(manager.getHighestBid(),
+                    "Highest bid should be null after proposal invalidated");
+            assertNull(manager.findProposer());
         }
 
         @Test
@@ -198,10 +197,9 @@ class BidManagerTest {
             // p1 places acceptance first, then p2 proposes
             manager.placeBid(id1, BidType.ACCEPTANCE, null);
             manager.placeBid(id2, BidType.PROPOSAL, null);
-            // highest is now ACCEPTANCE (outranks PROPOSAL)
+            // highest is ACCEPTANCE (outranks PROPOSAL); invalidating proposal keeps it
             manager.invalidateProposal();
-            // ACCEPTANCE remains highest
-            assertEquals(BidType.ACCEPTANCE, manager.getHighestBid().get().getType());
+            assertEquals(BidType.ACCEPTANCE, manager.getHighestBid().getType());
         }
     }
 
@@ -292,16 +290,16 @@ class BidManagerTest {
     class PartnerQueryTests {
 
         @Test
-        @DisplayName("findProposer returns empty when no proposal placed")
+        @DisplayName("findProposer returns null when no proposal placed")
         void noProposer() {
-            assertTrue(manager.findProposer().isEmpty());
+            assertNull(manager.findProposer());
         }
 
         @Test
         @DisplayName("findProposer returns the proposer's id")
         void findsProposer() {
             manager.placeBid(id2, BidType.PROPOSAL, null);
-            assertEquals(Optional.of(id2), manager.findProposer());
+            assertEquals(id2, manager.findProposer());
         }
 
         @Test
@@ -309,7 +307,7 @@ class BidManagerTest {
         void findsAcceptor() {
             manager.placeBid(id1, BidType.PROPOSAL, null);
             manager.placeBid(id2, BidType.ACCEPTANCE, null);
-            assertEquals(Optional.of(id2), manager.findAcceptor());
+            assertEquals(id2, manager.findAcceptor());
         }
 
         @Test
@@ -374,7 +372,6 @@ class BidManagerTest {
         private List<Card> handWithAces(Suit... aceSuits) {
             java.util.ArrayList<Card> hand = new java.util.ArrayList<>();
             for (Suit s : aceSuits) hand.add(new Card(s, Rank.ACE));
-            // pad to 13 cards with non-aces
             int i = 0;
             while (hand.size() < 13) {
                 hand.add(new Card(Suit.CLUBS, Rank.values()[i++ % 13]));
@@ -387,9 +384,9 @@ class BidManagerTest {
         void fourAcesIsTroela() {
             when(p1.getHand()).thenReturn(handWithAces(
                     Suit.HEARTS, Suit.SPADES, Suit.CLUBS, Suit.DIAMONDS));
-            Optional<BidType> result = manager.detectForcedBid(p1);
-            assertTrue(result.isPresent());
-            assertEquals(BidType.TROELA, result.get());
+            BidType result = manager.detectForcedBid(p1);
+            assertNotNull(result);
+            assertEquals(BidType.TROELA, result);
         }
 
         @Test
@@ -397,16 +394,16 @@ class BidManagerTest {
         void threeAcesIsTroel() {
             when(p1.getHand()).thenReturn(handWithAces(
                     Suit.HEARTS, Suit.SPADES, Suit.CLUBS));
-            Optional<BidType> result = manager.detectForcedBid(p1);
-            assertTrue(result.isPresent());
-            assertEquals(BidType.TROEL, result.get());
+            BidType result = manager.detectForcedBid(p1);
+            assertNotNull(result);
+            assertEquals(BidType.TROEL, result);
         }
 
         @Test
-        @DisplayName("2 aces → no forced bid")
+        @DisplayName("2 aces → no forced bid (returns null)")
         void twoAcesNoForce() {
             when(p1.getHand()).thenReturn(handWithAces(Suit.HEARTS, Suit.SPADES));
-            assertTrue(manager.detectForcedBid(p1).isEmpty());
+            assertNull(manager.detectForcedBid(p1));
         }
 
         @Test
