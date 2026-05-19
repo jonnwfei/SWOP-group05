@@ -37,11 +37,10 @@ class HighBotStrategyTest {
             List<Card> dummyHand = List.of(new Card(Suit.HEARTS, Rank.ACE));
 
             // Passing the ID and Hand, completely decoupled from the Player object!
-            Bid bid = strategy.determineBid(botId, dummyHand);
+            Bid bid = strategy.determineBid(dummyHand);
 
             assertNotNull(bid);
             assertEquals(BidType.PASS, bid.getType());
-            assertEquals(botId, bid.getPlayerId());
         }
     }
 

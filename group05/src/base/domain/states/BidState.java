@@ -17,7 +17,6 @@ import base.domain.turn.BidTurn;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Manages the Bidding phase of the Whist game.
@@ -78,14 +77,13 @@ public class BidState extends State {
 
     private void applyForcedBids() {
         for (Player player : getGame().getPlayers()) {
-            Optional<BidType> forced = bidManager.detectForcedBid(player);
-            if (forced.isEmpty()) continue;
+            BidType forced = bidManager.detectForcedBid(player);
+            if (forced == null) continue;
 
-            BidType type = forced.get();
-            Suit suit = (type == BidType.TROEL)
+            Suit suit = (forced == BidType.TROEL)
                     ? bidManager.findMissingAceSuit(player)
                     : Suit.HEARTS;
-            commitBid(player.getId(), type, suit);
+            commitBid(player.getId(), forced, suit);
             break;
         }
     }
@@ -105,7 +103,7 @@ public class BidState extends State {
 
         GameResult earlyReturn = switch (command) {
             case BidCommand b -> {
-                Bid current = bidManager.getHighestBid().orElse(null);
+                Bid current = bidManager.getHighestBid();
                 if (bidManager.isBiddingComplete() && current != null && current.getType() == BidType.PROPOSAL) {
                     yield handleRejectedProposal(b.bid());
                 }
@@ -127,7 +125,7 @@ public class BidState extends State {
                     "State violation: Cannot transition to next state before bidding is complete.");
         }
 
-        Bid highest = bidManager.getHighestBid().orElse(null);
+        Bid highest = bidManager.getHighestBid();
         if (highest == null || highest.getType() == BidType.PASS) {
             getGame().getCurrentRound().abortWithAllPass(bidManager.getAllBids());
             return new BidState(getGame());
@@ -175,12 +173,13 @@ public class BidState extends State {
         if (decision != BidType.PASS && decision != BidType.SOLO_PROPOSAL)
             throw new IllegalArgumentException("Rejected proposal decision must be PASS or SOLO_PROPOSAL.");
 
-        Bid current = bidManager.getHighestBid().orElse(null);
+        Bid current = bidManager.getHighestBid();
         if (current == null || current.getType() != BidType.PROPOSAL)
             throw new IllegalStateException("State violation: Not in a rejected proposal context.");
 
-        PlayerId proposerId = bidManager.findProposer().orElseThrow(
-                () -> new IllegalStateException("Critical error: PROPOSAL bid not found in memory."));
+        PlayerId proposerId = bidManager.findProposer();
+        if (proposerId == null)
+            throw new IllegalStateException("Critical error: PROPOSAL bid not found in memory.");
 
         // Switch the active player back to the proposer and let them choose their fallback bid.
         this.currentPlayer = getGame().getPlayerById(proposerId);
@@ -191,18 +190,20 @@ public class BidState extends State {
     }
 
     private GameResult handleEndOfBidding() {
-        Bid highest = bidManager.getHighestBid().orElse(null);
+        Bid highest = bidManager.getHighestBid();
         if (highest != null && highest.getType() == BidType.PROPOSAL) {
-            PlayerId proposerId = bidManager.findProposer().orElseThrow(
-                    () -> new IllegalStateException("Critical error: Proposal bid missing at end of bidding."));
+            PlayerId proposerId = bidManager.findProposer();
+            if (proposerId == null)
+                throw new IllegalStateException("Critical error: Proposal bid missing at end of bidding.");
             return new ProposalRejected(getGame().getPlayerById(proposerId).getName());
         }
         return new BiddingCompleted();
     }
 
     private void setRoundReadyForPlayState() {
-        Bid winningBid = bidManager.getHighestBid().orElseThrow(
-                () -> new IllegalStateException("Cannot prepare play state: No winning bid was determined."));
+        Bid winningBid = bidManager.getHighestBid();
+        if (winningBid == null)
+            throw new IllegalStateException("Cannot prepare play state: No winning bid was determined.");
         if (winningBid.getType() == BidType.PASS)
             throw new IllegalStateException("Cannot prepare play state: winning bid is PASS.");
         if (winningBid.getType() == BidType.PROPOSAL)
@@ -222,12 +223,12 @@ public class BidState extends State {
      * broadcasts the BidTurn, and refreshes the current trump suit if the highest bid changed.
      */
     private void commitBid(PlayerId playerId, BidType bidType, Suit trumpSuit) {
-        Bid previousHighest = bidManager.getHighestBid().orElse(null);
+        Bid previousHighest = bidManager.getHighestBid();
         Bid placed = bidManager.placeBid(playerId, bidType, trumpSuit);
 
         getGame().notifyBidPlaced(new BidTurn(playerId, bidType));
 
-        Bid newHighest = bidManager.getHighestBid().orElse(null);
+        Bid newHighest = bidManager.getHighestBid();
         if (newHighest != null && newHighest != previousHighest) {
             this.currentTrumpSuit = placed.determineTrump(dealtTrumpSuit);
             getGame().notifyTrumpDetermined(currentTrumpSuit);
@@ -270,30 +271,34 @@ public class BidState extends State {
 
         WhistGame game = this.getGame();
         BidCategory category = winningBid.getType().getCategory();
-        PlayerId bidder = bidManager.getHighestBidder().orElseThrow(
-                () -> new IllegalStateException("Highest bidder unknown when resolving first leader."));
+
+        PlayerId bidder = bidManager.getHighestBidder();
+        if (bidder == null)
+            throw new IllegalStateException("Highest bidder unknown when resolving first leader.");
 
         if (category == BidCategory.ABONDANCE || category == BidCategory.SOLO) {
             return game.getPlayerById(bidder);
         }
+
         if (category == BidCategory.TROEL) {
-            PlayerId partnerId = bidManager.resolveBiddingTeam().stream()
-                    .filter(id -> !id.equals(bidder))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("No partner found in the Troel team!"));
-            return game.getPlayerById(partnerId);
+            for (PlayerId id : bidManager.resolveBiddingTeam()) {
+                if (!id.equals(bidder)) return game.getPlayerById(id);
+            }
+            throw new IllegalStateException("No partner found in the Troel team!");
         }
+
         return game.getNextPlayer(game.getDealerPlayer());
     }
 
     private BidTurnResult buildBidTurnResult() {
-        Bid current = bidManager.getHighestBid().orElse(null);
+        Bid current = bidManager.getHighestBid();
+
         String highestBidderName = null;
         if (current != null && current.getType() != BidType.PASS) {
-            highestBidderName = bidManager.getHighestBidder()
-                    .map(getGame()::getPlayerById)
-                    .map(Player::getName)
-                    .orElse(null);
+            PlayerId highestBidderId = bidManager.getHighestBidder();
+            if (highestBidderId != null) {
+                highestBidderName = getGame().getPlayerById(highestBidderId).getName();
+            }
         }
 
         return new BidTurnResult(
