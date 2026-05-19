@@ -67,7 +67,7 @@ class ScoreBoardFlowTest {
         @DisplayName("Throws exception if any dependency is null")
         void testNullGuards() {
             assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(null, controller, editFlow));
-            assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(terminalManager, (GameController) null, editFlow));
+            assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(terminalManager, null, editFlow));
             assertThrows(IllegalArgumentException.class, () -> new ScoreBoardFlow(terminalManager, controller, null));
         }
     }
