@@ -45,6 +45,7 @@ public class Player {
      * @param playerId         the unique identifier for this player instance.
      * @throws IllegalArgumentException if {@code decisionStrategy}, {@code name}, or {@code playerId} is null.
      */
+    //TODO: remove?
     public Player(Strategy decisionStrategy, String name, PlayerId playerId) {
         if (decisionStrategy == null || name == null || playerId == null) throw new IllegalArgumentException("Strategy, name and/or Id can't be null");
         this.decisionStrategy = decisionStrategy;
@@ -93,7 +94,7 @@ public class Player {
      * @return the {@link Card} chosen by the player's strategy.
      */
     public Card chooseCard(Suit lead) {
-        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead);
+        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead, );
     }
 
     /**
