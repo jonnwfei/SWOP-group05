@@ -33,7 +33,7 @@ class BidResultsTest {
     private final BidType testBidType = BidType.SOLO;
 
     // Instantiate a real Bid object using the BidType factory method
-    private final Bid testBid = BidType.SOLO.instantiate(testPlayerId, Suit.HEARTS);
+    private final Bid testBid = BidType.SOLO.instantiate(Suit.HEARTS);
 
     @Nested
     @DisplayName("Architectural Integrity")

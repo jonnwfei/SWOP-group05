@@ -12,7 +12,6 @@ import base.domain.strategy.HumanStrategy;
 import base.domain.strategy.LowBotStrategy;
 import base.domain.strategy.SmartBotStrategy;
 
-import java.util.Collection;
 import java.util.List;
 
 public class GameController {
