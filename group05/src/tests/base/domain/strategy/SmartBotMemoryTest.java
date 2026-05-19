@@ -1,11 +1,10 @@
-package tests.base.domain.strategy;
+package base.domain.strategy;
 
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.player.PlayerId;
-import base.domain.strategy.SmartBotMemory;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,12 +15,14 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 /**
- * Validates the internal memory states, event processing, and defensive guardrails
+ * Validates the internal memory states, event processing, and situational evaluations
  * of the SmartBotMemory observer.
  */
-@DisplayName("Smart Bot Memory (Observer & State Container)")
+@DisplayName("Smart Bot Memory (Observer & Logic)")
 class SmartBotMemoryTest {
 
     private SmartBotMemory memory;
@@ -43,10 +44,8 @@ class SmartBotMemoryTest {
         @DisplayName("onRoundStarted completely clears and resets all state buffers")
         void shouldResetMemoryOnNewRound() {
             // Arrange: Dirty the state
-            memory.onRoundStarted(List.of(p1, p2, p3, p4));
             memory.onTrumpDetermined(Suit.HEARTS);
             memory.onBidPlaced(new BidTurn(p1, BidType.SOLO));
-            memory.onBiddingFinalized(BidType.SOLO, List.of(p1));
             memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.ACE)));
 
             // Act: Trigger a new round
@@ -55,40 +54,32 @@ class SmartBotMemoryTest {
             // Assert: Everything should be wiped clean
             assertNull(memory.getCurrentTrump(), "Trump suit should be cleared");
             assertNull(memory.getHighestBid(), "Bid history should be cleared");
-            assertNull(memory.getActiveBid(), "Active contract should be cleared");
-            assertFalse(memory.isPlayerOnBiddingTeam(p1), "Bidding team should be cleared");
             assertNull(memory.getLeadSuit(), "Lead suit should be null for empty trick");
             assertTrue(memory.isLeadPlayer(), "Should be the lead player again");
             assertFalse(memory.hasPlayerActedInCurrentTrick(p1), "Trick plays should be cleared");
         }
 
         @Test
-        @DisplayName("onTrickCompleted immediately resets the table for the next trick")
-        void shouldClearTrickOnTrickCompleted() {
+        @DisplayName("onTurnPlayed lazily rolls over the trick buffer on the first play of a new trick")
+        void shouldLazyRolloverTrickBuffer() {
             memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.HEARTS, Rank.TWO)));
             memory.onTurnPlayed(new PlayTurn(p2, new Card(Suit.HEARTS, Rank.THREE)));
+            memory.onTurnPlayed(new PlayTurn(p3, new Card(Suit.HEARTS, Rank.FOUR)));
 
             assertFalse(memory.isLeadPlayer(), "Trick is currently active");
-            assertNotNull(memory.getLeadSuit(), "Lead suit exists");
 
-            // Act
-            memory.onTrickCompleted(p2);
+            memory.onTurnPlayed(new PlayTurn(p4, new Card(Suit.HEARTS, Rank.FIVE)));
 
-            // Assert
-            assertTrue(memory.isLeadPlayer(), "Trick buffer should be wiped clean");
-            assertNull(memory.getLeadSuit(), "Lead suit should be reset");
-            assertNull(memory.getCurrentWinnerId(), "Winner ID should be reset");
-        }
+            assertFalse(memory.isLeadPlayer(), "Trick buffer should NOT clear immediately after 4 plays");
+            assertNotNull(memory.calculateCurrentWinnerId(), "Buffer must hold the 4 cards to calculate the winner");
+            assertEquals(Suit.HEARTS, memory.getLeadSuit(), "Lead suit should still be HEARTS");
 
-        @Test
-        @DisplayName("Engine events aggressively throw exceptions on null or corrupt data")
-        void engineDefensiveChecks() {
-            assertThrows(IllegalArgumentException.class, () -> memory.onRoundStarted(null));
-            assertThrows(IllegalArgumentException.class, () -> memory.onRoundStarted(List.of()));
-            assertThrows(IllegalArgumentException.class, () -> memory.onBidPlaced(null));
-            assertThrows(IllegalArgumentException.class, () -> memory.onBiddingFinalized(BidType.SOLO, null));
-            assertThrows(IllegalArgumentException.class, () -> memory.onTurnPlayed(null));
-            assertThrows(IllegalArgumentException.class, () -> memory.onTurnPlayed(new PlayTurn(null, new Card(Suit.HEARTS, Rank.ACE))));
+            // 1st play of Trick 2 triggers the rollover wipe
+            memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.SPADES, Rank.ACE)));
+
+            // ASSERT WIPE & RESTART: The buffer should now only contain the Spades Ace
+            assertEquals(Suit.SPADES, memory.getLeadSuit(), "Lead suit should be reset to the new trick's lead (SPADES)");
+            assertEquals(p1, memory.calculateCurrentWinnerId(), "P1 should currently be winning the new trick");
         }
     }
 
@@ -127,18 +118,6 @@ class SmartBotMemoryTest {
             memory.onBidPlaced(new BidTurn(p2, BidType.PROPOSAL));
             assertTrue(memory.hasActiveProposal());
         }
-
-        @Test
-        @DisplayName("onBiddingFinalized stores the active bid and tracks the bidding team")
-        void biddingFinalizationTracking() {
-            memory.onBiddingFinalized(BidType.SOLO, List.of(p2));
-
-            assertEquals(BidType.SOLO, memory.getActiveBid());
-            assertTrue(memory.isPlayerOnBiddingTeam(p2));
-            assertFalse(memory.isPlayerOnBiddingTeam(p1));
-            assertFalse(memory.isPlayerOnBiddingTeam(p3));
-            assertFalse(memory.isPlayerOnBiddingTeam(p4));
-        }
     }
 
     @Nested
@@ -146,18 +125,20 @@ class SmartBotMemoryTest {
     class TrickQueryTests {
 
         @Test
-        @DisplayName("Trick queries safely return null when the trick is empty")
+        @DisplayName("Trick queries return null when the trick is empty")
         void emptyTrickQueries() {
             assertNull(memory.getLeadSuit());
-            assertNull(memory.getCurrentWinningCard());
-            assertNull(memory.getCurrentWinnerId());
+            assertNull(memory.getCurrentWinningTurn());
+            assertNull(memory.calculateCurrentWinnerId());
         }
 
         @Test
-        @DisplayName("Player trick queries gracefully handle null inputs without crashing")
-        void gracefulNullHandling() {
-            assertFalse(memory.hasPlayerActedInCurrentTrick(null));
-            assertNull(memory.getCardPlayedBy(null));
+        @DisplayName("Player queries enforce defensive null checks")
+        void defensiveNullChecks() {
+            assertThrows(IllegalArgumentException.class, () -> memory.hasPlayerActedInCurrentTrick(null));
+            assertThrows(IllegalArgumentException.class, () -> memory.getCardPlayedBy(null));
+            assertThrows(IllegalArgumentException.class, () -> memory.isHighestUnplayedCardInSuit(null));
+            assertThrows(IllegalArgumentException.class, () -> memory.isTeamWinning(null));
         }
 
         @Test
@@ -174,7 +155,7 @@ class SmartBotMemoryTest {
         }
 
         @Test
-        @DisplayName("getCurrentWinningCard and getCurrentWinnerId delegate correctly to the Trick object")
+        @DisplayName("getCurrentWinningTurn and calculateCurrentWinnerId track the trick leader")
         void trickWinnerTracking() {
             memory.onTrumpDetermined(Suit.CLUBS);
 
@@ -182,12 +163,11 @@ class SmartBotMemoryTest {
             memory.onTurnPlayed(new PlayTurn(p2, new Card(Suit.HEARTS, Rank.QUEEN))); // Higher Lead
             memory.onTurnPlayed(new PlayTurn(p3, new Card(Suit.DIAMONDS, Rank.ACE))); // Off-suit (loses)
 
-            assertEquals(p2, memory.getCurrentWinnerId());
-            assertEquals(Rank.QUEEN, memory.getCurrentWinningCard().rank());
+            assertEquals(p2, memory.calculateCurrentWinnerId());
+            assertEquals(Rank.QUEEN, memory.getCurrentWinningTurn().playedCard().rank());
 
             memory.onTurnPlayed(new PlayTurn(p4, new Card(Suit.CLUBS, Rank.TWO))); // Trump wins
-            assertEquals(p4, memory.getCurrentWinnerId());
-            assertEquals(Suit.CLUBS, memory.getCurrentWinningCard().suit());
+            assertEquals(p4, memory.calculateCurrentWinnerId());
         }
     }
 
@@ -198,8 +178,6 @@ class SmartBotMemoryTest {
         @Test
         @DisplayName("isHighestUnplayedCardInSuit correctly evaluates master cards dynamically")
         void shouldDetectMasterCard() {
-            memory.onRoundStarted(List.of(p1, p2, p3, p4)); // Populates the unplayed deck
-
             Card kingOfHearts = new Card(Suit.HEARTS, Rank.KING);
             Card aceOfHearts = new Card(Suit.HEARTS, Rank.ACE);
 
@@ -213,11 +191,86 @@ class SmartBotMemoryTest {
             // Now the King is mathematically the highest unplayed card in that suit
             assertTrue(memory.isHighestUnplayedCardInSuit(kingOfHearts));
         }
+    }
+
+    @Nested
+    @DisplayName("Partnership & Team Logic")
+    class TeamLogicTests {
 
         @Test
-        @DisplayName("isHighestUnplayedCardInSuit throws strictly on nulls")
-        void cardCountingDefensiveChecks() {
-            assertThrows(NullPointerException.class, () -> memory.isHighestUnplayedCardInSuit(null));
+        @DisplayName("isTeamWinning throws IllegalStateException if evaluated before bidding concludes")
+        void throwsIfEvaluatedTooEarly() {
+            assertThrows(IllegalStateException.class, () -> memory.isTeamWinning(p1));
+
+            memory.onRoundStarted(List.of(p1, p2, p3, p4));
+            memory.onBidPlaced(new BidTurn(p1, BidType.PASS));
+            // Only 1 bid placed, needs 4. Should throw.
+            assertThrows(IllegalStateException.class, () -> memory.isTeamWinning(p1));
+        }
+
+        @Test
+        @DisplayName("isTeamWinning returns false if no one is currently winning the trick")
+        void returnsFalseIfNoWinnerYet() {
+            completeBiddingPhase(BidType.PROPOSAL, BidType.PASS, BidType.ACCEPTANCE, BidType.PASS);
+            assertFalse(memory.isTeamWinning(p1));
+        }
+
+        @Test
+        @DisplayName("isTeamWinning returns true if the asking player is themselves winning")
+        void returnsTrueIfSelfIsWinning() {
+            completeBiddingPhase(BidType.PASS, BidType.PASS, BidType.PASS, BidType.SOLO);
+            memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.SPADES, Rank.ACE)));
+
+            assertTrue(memory.isTeamWinning(p1));
+        }
+
+        @Test
+        @DisplayName("isTeamWinning evaluates Proposal/Acceptance partnerships correctly")
+        void proposalAcceptancePartnerships() {
+            // P1 Proposes, P3 Accepts. They are a team. P2 and P4 are the opposing team.
+            completeBiddingPhase(BidType.PROPOSAL, BidType.PASS, BidType.ACCEPTANCE, BidType.PASS);
+
+            // P1 is winning the trick
+            memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.SPADES, Rank.ACE)));
+
+            assertTrue(memory.isTeamWinning(p3), "P3 should recognize P1 as their partner.");
+            assertFalse(memory.isTeamWinning(p2), "P2 should recognize they are not on the winning team.");
+        }
+
+        @Test
+        @DisplayName("isTeamWinning returns false for non-partnership bids if partner is winning")
+        void soloBidsReturnFalseForOthers() {
+            completeBiddingPhase(BidType.PASS, BidType.PASS, BidType.PASS, BidType.SOLO);
+
+            // P4 is winning
+            memory.onTurnPlayed(new PlayTurn(p4, new Card(Suit.SPADES, Rank.ACE)));
+
+            // P1 is NOT on P4's team because SOLO is not a partnership bid
+            assertFalse(memory.isTeamWinning(p1));
+        }
+
+        @Test
+        @DisplayName("isTeamWinning defensive guard checks for missing highest bid")
+        void defensiveHighestBidGuard() {
+            completeBiddingPhase(BidType.PASS, BidType.PASS, BidType.PASS, BidType.PASS);
+            memory.onTurnPlayed(new PlayTurn(p1, new Card(Suit.SPADES, Rank.ACE)));
+
+            // Using Mockito Spy to artificially trigger a defensive block in the memory logic
+            SmartBotMemory spyMemory = spy(memory);
+            doReturn(null).when(spyMemory).getHighestBid();
+
+            IllegalStateException ex = assertThrows(IllegalStateException.class, () -> spyMemory.isTeamWinning(p2));
+            assertEquals("Highest Bid hasn't been set yet", ex.getMessage());
+        }
+
+        /** Helper to quickly populate a valid bidding phase */
+        private void completeBiddingPhase(BidType b1, BidType b2, BidType b3, BidType b4) {
+            memory.onRoundStarted(List.of(p1, p2, p3, p4));
+            memory.onBidPlaced(new BidTurn(p1, b1));
+            memory.onBidPlaced(new BidTurn(p2, b2));
+            memory.onBidPlaced(new BidTurn(p3, b3));
+            memory.onBidPlaced(new BidTurn(p4, b4));
+            memory.onTrumpDetermined(Suit.HEARTS);
         }
     }
 }

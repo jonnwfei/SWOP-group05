@@ -3,7 +3,7 @@ package base.domain.strategy;
 import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
-import base.domain.player.TeamRole;
+import base.domain.player.PlayerId;
 
 import java.util.List;
 
@@ -34,14 +34,12 @@ public final class HumanStrategy implements Strategy {
     /**
      * Returns null as the card selection is handled via external UI input
      * captured by the {@code PlayState}.
-     *
      * @param currentHand The player's current hand.
-     * @param lead        The suit led in the current trick.
-     * @param role
+     * @param lead The suit led in the current trick.
      * @return null.
      */
     @Override
-    public Card chooseCardToPlay(List<Card> currentHand, Suit lead, TeamRole role) {
+    public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
         return null;
     }
 }
