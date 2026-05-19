@@ -413,7 +413,7 @@ public class Round {
         if (players.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
 
         BidType bidType = highestBid.getType();
-        PlayerId bidderId = bidManager.getHighestBidder().isPresent() ? bidManager.getHighestBidder().get() : null; // TODO: when Optional is removed, change this
+        PlayerId bidderId = bidManager.getHighestBidder(); // TODO: when Optional is removed, change this
         int bidderIndex = players.indexOf(bidderId != null ? this.getPlayerById(bidderId) : players.getFirst());
 
         List<Integer> participantIndices = biddingTeam.stream()
