@@ -19,14 +19,16 @@ import org.junit.jupiter.api.*;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import org.mockito.ArgumentCaptor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
-
 
 @DisplayName("Game Persistence Service Tests")
 class GamePersistenceServiceTest {
@@ -79,8 +81,122 @@ class GamePersistenceServiceTest {
                 new PlayerSnapshot(p4.getId().id().toString(),"P4", StrategySnapshotType.HUMAN, 0)
         );
     }
-    
-    // ... rest of nested classes ...
+
+    @Nested
+    @DisplayName("Constructor Constraints")
+    class ConstructorTests {
+
+        @Test
+        @DisplayName("Rejects initialization with a null repository")
+        void shouldRejectNullRepository() {
+            assertThrows(IllegalArgumentException.class, () -> new GamePersistenceService(null));
+        }
+
+        @Test
+        @DisplayName("Initializes successfully with the default repository and safely verifies directory creation")
+        void shouldInitializeWithDefaultRepository() throws Exception {
+            Path defaultPath = Paths.get("saves");
+
+            // 1. RECORD: Did the folder already exist before this test started?
+            boolean existedBefore = Files.exists(defaultPath);
+
+            // Act: Using the actual default constructor
+            GamePersistenceService service = new GamePersistenceService();
+
+            assertNotNull(service);
+
+            // Assert: Default saves path must exist
+            assertTrue(Files.exists(defaultPath), "The 'saves' directory should exist.");
+            assertTrue(Files.isDirectory(defaultPath), "The path should be a directory, not a file.");
+
+            // 2. CLEANUP: Only delete the folder if THIS test was the one that created it!
+            if (!existedBefore) {
+                // Since this specific test doesn't save any actual games,
+                // the folder will be empty and safe to delete.
+                Files.deleteIfExists(defaultPath);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Save Game & Player Data Serialization")
+    class SaveGameTests {
+
+        @Test
+        @DisplayName("Successfully saves a game in GAME mode with accurate data mapping")
+        void shouldSaveGameMainSuccessScenario() {
+            String description = "late night stretch";
+            SaveMode mode = SaveMode.GAME;
+            p1.updateScore(15);
+
+            persistenceService.save(mockGame, mode, description);
+
+            ArgumentCaptor<GameSnapshot> snapshotCaptor = ArgumentCaptor.forClass(GameSnapshot.class);
+            verify(mockRepository).save(snapshotCaptor.capture());
+
+            GameSnapshot savedSnapshot = snapshotCaptor.getValue();
+            assertEquals(description, savedSnapshot.description());
+            assertEquals(mode, savedSnapshot.mode());
+            assertEquals(0, savedSnapshot.dealerIndex());
+            assertEquals(4, savedSnapshot.players().size());
+            assertEquals(15, savedSnapshot.players().getFirst().score());
+        }
+
+        @Test
+        @DisplayName("Successfully maps complex strategy types (HighBot, LowBot, SmartBot)")
+        void shouldMapStrategyTypesCorrectly() {
+            Player highBot = new Player(new HighBotStrategy(), "HighBot", new PlayerId());
+            Player lowBot = new Player(new LowBotStrategy(), "LowBot", new PlayerId());
+            Player smartBot = new Player(new SmartBotStrategy(new PlayerId()), "SmartBot", new PlayerId());
+
+            when(mockGame.getAllPlayers()).thenReturn(List.of(highBot, lowBot, smartBot, p4));
+            when(mockGame.getDealerPlayer()).thenReturn(highBot);
+
+            persistenceService.save(mockGame, SaveMode.GAME, "Bot Save");
+
+            ArgumentCaptor<GameSnapshot> captor = ArgumentCaptor.forClass(GameSnapshot.class);
+            verify(mockRepository).save(captor.capture());
+            GameSnapshot saved = captor.getValue();
+
+            assertEquals(StrategySnapshotType.HIGH_BOT, saved.players().get(0).strategyType());
+            assertEquals(StrategySnapshotType.LOW_BOT, saved.players().get(1).strategyType());
+            assertEquals(StrategySnapshotType.SMART_BOT, saved.players().get(2).strategyType());
+        }
+
+        @Test
+        @DisplayName("Throws when attempting to map a null strategy")
+        void shouldThrowWhenStrategyIsNull() {
+            Player corruptedPlayer = mock(Player.class);
+            when(corruptedPlayer.getId()).thenReturn(new PlayerId());
+            when(corruptedPlayer.getName()).thenReturn("Corrupted");
+            when(corruptedPlayer.getDecisionStrategy()).thenReturn(null); // The culprit
+
+            when(mockGame.getAllPlayers()).thenReturn(List.of(corruptedPlayer, p2, p3, p4));
+            when(mockGame.getDealerPlayer()).thenReturn(corruptedPlayer);
+
+            assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
+        }
+
+        @Test
+        @DisplayName("Rejects null or blank arguments aggressively")
+        void shouldRejectInvalidSaveArguments() {
+            assertThrows(IllegalArgumentException.class, () -> persistenceService.save(null, SaveMode.GAME, "Desc"));
+            assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, null, "Desc"));
+            assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, null));
+            assertThrows(IllegalArgumentException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "   "));
+        }
+
+        @Test
+        @DisplayName("Rejects saving if the dealer state is null or corrupted")
+        void shouldThrowWhenDealerStateIsCorrupted() {
+            when(mockGame.getDealerPlayer()).thenReturn(null);
+            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Null Dealer Save"));
+
+            Player ghostDealer = new Player(new HumanStrategy(), "Ghost", new PlayerId());
+            when(mockGame.getDealerPlayer()).thenReturn(ghostDealer);
+            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Ghost Save"));
+        }
+    }
 
     @Nested
     @DisplayName("Round Serialization (toSnapshot)")
@@ -111,7 +227,7 @@ class GamePersistenceServiceTest {
         void shouldRejectPassRoundWithInvalidTricks() {
             Round round = new Round(fourPlayers, p1, 1);
             Bid passBid = round.getBidManager().placeBid(p1.getId(), BidType.PASS, null);
-            
+
             // Force invalid tricks (5) for a PASS bid
             round.resolveManualCount(passBid, List.of(), 5, List.of());
 
@@ -125,7 +241,7 @@ class GamePersistenceServiceTest {
         @DisplayName("Catches inner RoundSnapshot Validation Exceptions and wraps them in IllegalStateException")
         void shouldWrapRoundSnapshotValidationExceptions() throws Exception {
             Round round = createValidRound();
-            
+
             // Force invalid Deltas (Sums to +10) via reflection to bypass domain logic
             java.lang.reflect.Field deltaField = Round.class.getDeclaredField("scoreDeltas");
             deltaField.setAccessible(true);
@@ -142,12 +258,12 @@ class GamePersistenceServiceTest {
         @DisplayName("Rejects rounds with invalid player counts")
         void shouldThrowOnInvalidPlayerCount() throws Exception {
             Round round = createValidRound();
-            
+
             // Force invalid player count via reflection
             java.lang.reflect.Field playersField = Round.class.getDeclaredField("players");
             playersField.setAccessible(true);
             playersField.set(round, List.of(p1, p2, p3));
-            
+
             when(mockGame.getRounds()).thenReturn(List.of(round));
             when(mockGame.toSnapshot()).thenCallRealMethod();
 
@@ -160,7 +276,7 @@ class GamePersistenceServiceTest {
             Round round = new Round(fourPlayers, p1, 1);
             Player alienPlayer = new Player(new HumanStrategy(), "Alien", new PlayerId());
             Bid soloBid = round.getBidManager().placeBid(p1.getId(), BidType.SOLO, Suit.HEARTS);
-            
+
             when(mockGame.toSnapshot()).thenCallRealMethod();
 
             // 1. Participant not in the game
@@ -181,7 +297,7 @@ class GamePersistenceServiceTest {
 
             when(mockGame.getRounds()).thenReturn(List.of(round));
             when(mockGame.toSnapshot()).thenCallRealMethod();
-            
+
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
         }
 
@@ -227,7 +343,7 @@ class GamePersistenceServiceTest {
         void shouldThrowOnZeroParticipantsForNormalBid() {
             Round round = new Round(fourPlayers, p1, 1);
             Bid soloBid = round.getBidManager().placeBid(p1.getId(), BidType.SOLO, Suit.HEARTS);
-            
+
             // Zero participants for SOLO
             round.resolveManualCount(soloBid, List.of(), 13, List.of());
 
@@ -247,8 +363,6 @@ class GamePersistenceServiceTest {
         void shouldLoadGameModeAndRestoreFullState() {
             String description = "Saved Game";
             GameSnapshot mockSnapshot = new GameSnapshot(description, SaveMode.GAME, 0, createValidPlayerSnapshots(), List.of());
-
-            // Stub the repository
             when(mockRepository.loadByDescription(description)).thenReturn(mockSnapshot);
 
             // Call the service
