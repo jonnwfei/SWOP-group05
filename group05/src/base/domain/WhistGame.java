@@ -12,6 +12,8 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
+import base.domain.scores.ScoringParameters;
+import base.domain.scores.ScoringRegistry;
 import base.domain.states.BidState;
 import base.domain.states.CountState;
 import base.domain.states.State;
@@ -45,6 +47,7 @@ public class WhistGame {
     private final List<Player> allPlayers;
     private final List<Round> rounds;
     private final List<GameObserver> observers;
+    private final ScoringRegistry scoringRegistry;
 
     public WhistGame() {
         this.state = null;
@@ -52,6 +55,7 @@ public class WhistGame {
         this.rounds = new ArrayList<>();
         this.observers = new ArrayList<>();
         this.dealerPlayer = null;
+        this.scoringRegistry = new ScoringRegistry();
     }
 
     // --- Player Management ---
@@ -405,5 +409,16 @@ public class WhistGame {
 
     public void removePlayerAtIndex(int index) {
         removePlayer(allPlayers.get(index));
+    }
+
+    //TODO: use GameHistory
+    public void applyScoringChange(BidType bidType, ScoringParameters scoringParameters) {
+        this.scoringRegistry.updateParameters(bidType, scoringParameters);
+
+        for (Round round : this.rounds) {
+            round.recalculateRetroactiveScores(this.scoringRegistry);
+        }
+
+        recalibrateScores();
     }
 }

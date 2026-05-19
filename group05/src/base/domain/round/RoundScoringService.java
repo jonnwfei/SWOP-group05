@@ -3,7 +3,10 @@ package base.domain.round;
 import base.domain.bid.Bid;
 import base.domain.bid.BidCategory;
 import base.domain.player.Player;
+import base.domain.scores.ScoringParameters;
+import base.domain.scores.ScoringRegistry;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,37 +31,43 @@ public class RoundScoringService {
      * @param round the round for which scores must be calculated.
      * @throws IllegalStateException if the round has no highest bid.
      */
-    public void calculateScores(Round round) {
+    public void calculateScores(Round round, ScoringRegistry scoringRegistry) {
         Bid highestBid = round.getHighestBid();
         if (highestBid == null) {
             throw new IllegalStateException("Cannot calculate scores without a highest bid.");
         }
 
         if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
-            calculateMiserieScores(round);
+            calculateMiserieScores(round, scoringRegistry);
         } else {
-            calculateStandardScores(round);
+            calculateStandardScores(round, scoringRegistry);
         }
 
         round.markFinished();
     }
 
-    private void calculateMiserieScores(Round round) {
+    private void calculateMiserieScores(Round round, ScoringRegistry scoringRegistry) {
         List<Player> bidders = round.getBiddingTeamPlayers();
+
+        ScoringParameters miserieParameter = scoringRegistry.getParameters(round.getHighestBid().getType());
+
         for (Player p : bidders) {
             int tricks = resolvePlayerTricks(round, p);
+            int basePoints = miserieParameter.calculatePoints(tricks);
+
             distributeScores(
                     round,
-                    round.getHighestBid().calculateBasePoints(tricks),
+                    basePoints,
                     List.of(p));
         }
     }
 
-    private void calculateStandardScores(Round round) {
+    private void calculateStandardScores(Round round, ScoringRegistry scoringRegistry) {
         int tricksWon = resolveTeamTricks(round);
+        int basePoints = scoringRegistry.getParameters(round.getHighestBid().getType()).calculatePoints(tricksWon);
         distributeScores(
                 round,
-                round.getHighestBid().calculateBasePoints(tricksWon),
+                basePoints,
                 round.getBiddingTeamPlayers());
     }
 

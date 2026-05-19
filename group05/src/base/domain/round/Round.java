@@ -7,6 +7,7 @@ import base.domain.bid.BidType;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.scores.ScoringRegistry;
 import base.domain.trick.Trick;
 
 import java.util.ArrayList;
@@ -497,5 +498,16 @@ public class Round {
         bidManager.resolveBiddingTeam().stream()
                 .map(this::getPlayerById)
                 .forEach(biddingTeam::add);
+    }
+
+    /**
+     * Retroactively recalculates this round's scores based on updated global rules.
+     */
+    public void recalculateRetroactiveScores(ScoringRegistry registry) {
+        for (int i = 0; i < scoreDeltas.size(); i++) {
+            scoreDeltas.set(i, 0);
+        }
+
+        scoringService.calculateScores(this, registry);
     }
 }
