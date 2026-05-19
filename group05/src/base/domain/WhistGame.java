@@ -21,11 +21,7 @@ import base.domain.strategy.Strategy;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static base.domain.WhistRules.REQUIRED_PLAYERS;
@@ -415,13 +411,19 @@ public class WhistGame {
      * Constructs a GameSnapshot from the current state of the provided game instance, using the specified save mode and description.
      * @return GameSnapshot representing the current state of the game
      * @throws IllegalArgumentException if the description is blank
-     * @throws IllegalStateException if the dealer is null or not in the players list
+     * @throws IllegalStateException if the dealer is null or not in the players list or round history containts null entries
      */
     public GameSnapshot toSnapshot() {
         List<Player> allPlayers = this.getAllPlayers();
+        if (allPlayers.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalStateException("Cannot create snapshot: allPlayers contains null entries");
+        }
         List<PlayerSnapshot> snapshots = allPlayers.stream().map(Player::toSnapshot).toList();
 
         List<Round> rounds = this.getRounds();
+        if (rounds.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalStateException("Cannot create snapshot: round history contains null entries");
+        }
         List<RoundSnapshot> roundSnapshots = rounds.stream().map(Round::toSnapshot).toList();
 
         Player dealer = this.getDealerPlayer();
@@ -436,8 +438,10 @@ public class WhistGame {
      * Restores the state of the provided game instance based on the data contained in the given GameSnapshot.
      * This includes resetting the game's players and rounds, then re-adding the players with their respective strategies, names, and scores as specified in the snapshot.
      * @param snapshot the snapshot containing the saved state to restore
+     * @throws NullPointerException if the snapshot is null
      */
     public void restoreGame(GameSnapshot snapshot) {
+        Objects.requireNonNull(snapshot, "Snapshot must not be null");
         this.resetPlayers();
         this.resetRounds();
 
