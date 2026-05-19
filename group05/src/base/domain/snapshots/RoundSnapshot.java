@@ -1,5 +1,6 @@
 package base.domain.snapshots;
 
+import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.card.Suit;
 
@@ -81,6 +82,17 @@ public record RoundSnapshot(
 
         int sum = scoreDeltas.stream().mapToInt(Integer::intValue).sum();
         if (sum != 0) throw new IllegalArgumentException("Score deltas must be zero-sum, got " + sum);
+
+        // Consistency validation
+        if (bidType == BidType.PASS && tricksWon != -1) { // TODO: can be updated when Round refactor comes in
+            throw new IllegalArgumentException("PASS round must have tricksWon = -1");
+        }
+
+        if (bidType != BidType.PASS && bidType.getCategory() != BidCategory.MISERIE) {
+            if (participantIndices.isEmpty()) {
+                throw new IllegalArgumentException("Non-PASS round must have at least one participant");
+            }
+        }
 
         // for immutability
         participantIndices = List.copyOf(participantIndices);
