@@ -49,9 +49,15 @@ public class GamePersistenceService {
         if (game == null) throw new IllegalArgumentException("Cannot save null game");
         if (mode == null) throw new IllegalArgumentException("Cannot save without a save mode ");
         if (description == null) throw new IllegalArgumentException("Cannot save without a description");
+        String normalizedDescription = description.trim();
+        if (normalizedDescription.isEmpty()) {
+            throw new IllegalArgumentException("Save description cannot be empty");
+        }
 
-        GameSnapshot snapshot = game.toSnapshot(mode, description);
-        repository.save(snapshot);
+        GameSnapshot rawSnapshot = game.toSnapshot();
+        GameSnapshot finalSnapshot = rawSnapshot.withMetaData(normalizedDescription, mode);
+
+        repository.save(finalSnapshot);
     }
 
     /**

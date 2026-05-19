@@ -413,21 +413,11 @@ public class WhistGame {
 
     /**
      * Constructs a GameSnapshot from the current state of the provided game instance, using the specified save mode and description.
-     * @param mode the game mode to save (full game or count session)
-     * @param description description/alias or name for the save, used for choosing between saves when loading
      * @return GameSnapshot representing the current state of the game
      * @throws IllegalArgumentException if the description is blank
      * @throws IllegalStateException if the dealer is null or not in the players list
      */
-    public GameSnapshot toSnapshot(SaveMode mode, String description) {
-        if (mode == null) throw new IllegalArgumentException("Save mode cannot be null");
-        if (description == null) throw new IllegalArgumentException("Description cannot be null");
-
-        String normalizedDescription = description.trim();
-        if (normalizedDescription.isEmpty()) {
-            throw new IllegalArgumentException("Save description cannot be empty");
-        }
-
+    public GameSnapshot toSnapshot() {
         List<Player> allPlayers = this.getAllPlayers();
         List<PlayerSnapshot> snapshots = allPlayers.stream().map(Player::toSnapshot).toList();
 
@@ -439,7 +429,7 @@ public class WhistGame {
         int dealerIndex = allPlayers.indexOf(dealer);
         if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list");
 
-        return new GameSnapshot(normalizedDescription, mode, dealerIndex, snapshots, roundSnapshots);
+        return new GameSnapshot(dealerIndex, snapshots, roundSnapshots);
     }
 
     /**

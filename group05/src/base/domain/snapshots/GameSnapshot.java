@@ -20,6 +20,24 @@ import java.util.List;
  */
 public record GameSnapshot(String description, SaveMode mode, Integer dealerIndex, List<PlayerSnapshot> players,
         List<RoundSnapshot> rounds) {
+
+    /**
+     * Convenience constructor for GameSnapshot that uses a temporary description and defaults to GAME save mode.
+     */
+    public GameSnapshot(Integer dealerIndex, List<PlayerSnapshot> players, List<RoundSnapshot> rounds) {
+        this("TEMP", SaveMode.GAME, dealerIndex, players, rounds);
+    }
+
+    /**
+     * Creates a new GameSnapshot with updated metadata (description and save mode) while preserving the core game state.
+     * @param newDescription user-chosen description for the save, used for choosing between saves when loading
+     * @param mode mode
+     * @return GameSnapshot with updated metadata and preserved game state
+     */
+    public GameSnapshot withMetaData(String newDescription, SaveMode mode) {
+        return new GameSnapshot(newDescription, mode, this.dealerIndex, this.players, this.rounds);
+    }
+
     /**
      * Defensive constructor for GameSnapshot
      * 
