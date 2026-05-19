@@ -7,6 +7,8 @@ import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
 import static base.domain.deck.Deck.DealType;
 
+import base.commands.ActionHistory;
+import base.commands.CommandBuilder;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
@@ -45,6 +47,8 @@ public class WhistGame {
     private final List<Player> allPlayers;
     private final List<Round> rounds;
     private final List<GameObserver> observers;
+    private final ActionHistory history = new ActionHistory();
+    private final CommandBuilder commands = new CommandBuilder(this);
 
     public WhistGame() {
         this.state = null;
@@ -120,6 +124,23 @@ public class WhistGame {
         this.allPlayers.add(player);
         player.getDecisionStrategy().onJoinGame(this::addObserver);
     }
+
+    // --- History-tracked player factories ---
+
+    public void addHumanPlayer(String name)  { history.execute(commands.addHumanPlayer(name)); }
+    public void addSmartBot(String name)     { history.execute(commands.addSmartBot(name)); }
+    public void addHighBot(String name)      { history.execute(commands.addHighBot(name)); }
+    public void addLowBot(String name)       { history.execute(commands.addLowBot(name)); }
+
+    public void deletePlayer(Player player)      { history.execute(commands.removePlayer(player)); }
+    public void deletePlayerAtIndex(int index)   { history.execute(commands.removePlayerAtIndex(index)); }
+    public void deleteRound(Round round)         { history.execute(commands.removeRound(round)); }
+
+    public void undo() { history.undo(); }
+    public void redo() { history.redo(); }
+    public boolean canUndo() { return history.canUndo(); }
+    public boolean canRedo() { return history.canRedo(); }
+    public void clearHistory() { history.clear(); }
 
     /**
      * Removes any player from the game roster as long as at least 4 players remain.

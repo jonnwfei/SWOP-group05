@@ -4,25 +4,13 @@ import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
-import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
-import base.domain.strategy.HighBotStrategy;
-import base.domain.strategy.HumanStrategy;
-import base.domain.strategy.LowBotStrategy;
-import base.domain.strategy.SmartBotStrategy;
 
-
-import base.commands.ActionHistory;
-import base.commands.actions.AddPlayerAction;
-import base.commands.actions.RemovePlayerAction;
-import base.commands.actions.RemoveRoundAction;
-import java.util.Collection;
 import java.util.List;
 
 public class GameController {
     private final WhistGame game;
-    private final ActionHistory history = new ActionHistory();
 
     public GameController(WhistGame game) {
         this.game = game;
@@ -69,7 +57,6 @@ public class GameController {
         return game.getRounds();
     }
 
-
     public void recalibrateScores() {
         game.recalibrateScores();
     }
@@ -92,7 +79,6 @@ public class GameController {
 
     /**
      * TODO : delete this -> need to fix the uses for the game persistence
-     * @return whistgame
      */
     public WhistGame getGame() {
         return this.game;
@@ -102,19 +88,14 @@ public class GameController {
         game.setDealerPlayer(first);
     }
 
-    // Player factories — flows pass intent, controller constructs
-
-
     public void setFirstPlayerAsDealer() {
         game.setFirstPlayerAsDealer();
     }
-    // Fix 2: delegate to the history-aware removePlayer
+
     public void removePlayerAtIndex(int index) {
-        Player player = game.getAllPlayers().get(index);
-        removePlayer(player); // removePlayer() already calls history.execute(new RemovePlayerAction(...))
+        game.deletePlayerAtIndex(index);
     }
 
-    // Projections — flows never need to import Player
     public List<String> getPlayerNames() {
         return game.getAllPlayers().stream().map(Player::getName).toList();
     }
@@ -126,40 +107,23 @@ public class GameController {
     public int getPlayerCount() {
         return game.getAllPlayers().size();
     }
-    public void undo() { history.undo(); }
-    public void redo() { history.redo(); }
-    public boolean canUndo() { return history.canUndo(); }
-    public boolean canRedo() { return history.canRedo(); }
+
+    public void undo()           { game.undo(); }
+    public void redo()           { game.redo(); }
+    public boolean canUndo()     { return game.canUndo(); }
+    public boolean canRedo()     { return game.canRedo(); }
+
     public void addRoundAtIndex(Round round, int index) {
         game.addRoundAtIndex(round, index);
     }
 
-    public void addHumanPlayer(String name) {
-        Player player = new Player(new HumanStrategy(), name);
-        history.execute(new AddPlayerAction(game, player));
-    }
+    public void addHumanPlayer(String name)  { game.addHumanPlayer(name); }
+    public void addSmartBot(String name)     { game.addSmartBot(name); }
+    public void addHighBot(String name)      { game.addHighBot(name); }
+    public void addLowBot(String name)       { game.addLowBot(name); }
 
-    public void addSmartBot(String name) {
-        PlayerId id = new PlayerId();
-        history.execute(new AddPlayerAction(game, new Player(new SmartBotStrategy(id), name, id)));
-    }
+    public void removePlayer(Player player)  { game.deletePlayer(player); }
+    public void removeRound(Round round)     { game.deleteRound(round); }
 
-    public void addHighBot(String name) {
-        history.execute(new AddPlayerAction(game, new Player(new HighBotStrategy(), name)));
-    }
-
-    public void addLowBot(String name) {
-        history.execute(new AddPlayerAction(game, new Player(new LowBotStrategy(), name)));
-    }
-
-    public void removePlayer(Player player) {
-        history.execute(new RemovePlayerAction(game, player));
-    }
-
-    public void removeRound(Round round) {
-        int index = game.getRounds().indexOf(round);
-        history.execute(new RemoveRoundAction(game, round, index));
-    }
-
-    public void clearHistory() { history.clear(); }
+    public void clearHistory()               { game.clearHistory(); }
 }
