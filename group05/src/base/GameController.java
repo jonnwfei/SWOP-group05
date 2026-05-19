@@ -12,7 +12,6 @@ import base.domain.strategy.HumanStrategy;
 import base.domain.strategy.LowBotStrategy;
 import base.domain.strategy.SmartBotStrategy;
 
-import java.util.Collection;
 import java.util.List;
 
 public class GameController {
@@ -120,7 +119,6 @@ public class GameController {
     public void addHighBot(String name) {
         game.addPlayer(new Player(new HighBotStrategy(), name));
     }
-
 
     public void addLowBot(String name) {
         game.addPlayer(new Player(new LowBotStrategy(), name));

@@ -67,7 +67,7 @@ class GameEditFlowTest {
         @Test
         void constructorGuards() {
             assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(null, controller, persistenceService, SaveMode.GAME));
-            assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(terminalManager, (GameController) null, persistenceService, SaveMode.GAME));
+            assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(terminalManager, null, persistenceService, SaveMode.GAME));
             assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(terminalManager, controller, null, SaveMode.GAME));
             assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(terminalManager, controller, persistenceService, null));
         }
@@ -88,7 +88,6 @@ class GameEditFlowTest {
                     .thenReturn(realResponse(null), realResponse("   "), realResponse("My Save"));
 
             flow.saveGame();
-            
             verify(persistenceService).save(game, SaveMode.GAME, "My Save");
         }
 

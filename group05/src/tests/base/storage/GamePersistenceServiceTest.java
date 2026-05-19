@@ -241,10 +241,12 @@ class GamePersistenceServiceTest {
             // Round with missing participants for a non-PASS bid
 
             Round missingParticipantsRound = createValidMockRound();
+            Bid soloBid = missingParticipantsRound.getBidManager().placeBid(p1.getId(), BidType.SOLO, Suit.HEARTS);
+
             when(missingParticipantsRound.getBiddingTeamPlayers()).thenReturn(List.of()); // Empty participants!
-            when(mockRound.getHighestBid()).thenReturn(new SoloBid(BidType.SOLO, Suit.HEARTS));
+            when(missingParticipantsRound.getHighestBid()).thenReturn(soloBid);
             when(mockGame.getRounds()).thenReturn(List.of(missingParticipantsRound));
-            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
+            assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
         }
 
         @Test
