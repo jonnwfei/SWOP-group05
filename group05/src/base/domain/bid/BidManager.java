@@ -7,7 +7,6 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +18,7 @@ import static base.domain.card.CardMath.getHighestRankOfSuit;
  * Owns the PlayerId <-> Bid mapping and all bid-history reasoning for a single Round.
  * Acts as the link between Round, Player and Bid: Bid stays player-agnostic,
  * Round and BidState ask the manager who placed/accepted/partnered which bid.
- *
+ * <br>
  * Lifecycle: one BidManager per Round. Constructed by Round, shared with BidState.
  */
 public final class BidManager {
@@ -71,7 +70,7 @@ public final class BidManager {
     }
 
     /**
-     * Drops the outstanding PROPOSAL (used when no acceptance arrives or it is rejected).
+     * Drops the outstanding PROPOSAL (used when no acceptance arrives, or it is rejected).
      * Replaces the proposer's bid with PASS and recomputes the highest bid.
      */
     public void invalidateProposal() {
@@ -264,7 +263,7 @@ public final class BidManager {
         }
 
         return switch (type.getCategory()) {
-            case PASS -> List.of(highestBidder);
+            case PASS, SOLO, ABONDANCE -> List.of(highestBidder);
             case PROPOSAL, ACCEPTANCE -> {
                 PlayerId proposer = findProposer();
                 if (proposer == null)
@@ -280,7 +279,35 @@ public final class BidManager {
                 yield List.of(highestBidder, partner);
             }
             case MISERIE -> findMiserieParticipants(type);
-            case SOLO, ABONDANCE -> List.of(highestBidder);
         };
+    }
+    // ---------------------------------------------------------------------
+    // Convenience method for reconstructing a bid history from count-mode input
+    // ---------------------------------------------------------------------
+
+    /**
+     * Reconstructs a valid bid history from a manual count-mode input.
+     * Automatically registers secondary bids (like ACCEPTANCE or multiple MISERIE bids)
+     * based on the participating players.
+     *
+     * @return the primary official Bid
+     */
+    public Bid reconstructManualHistory(BidType mainType, Suit trumpSuit, List<PlayerId> participants) {
+        if (participants == null || participants.isEmpty()) {
+            throw new IllegalArgumentException("Must have at least one participant");
+        }
+
+        PlayerId primaryBidder = participants.getFirst();
+        Bid officialBid = placeBid(primaryBidder, mainType, trumpSuit);
+
+        if (mainType == BidType.PROPOSAL && participants.size() > 1) {
+            placeBid(participants.get(1), BidType.ACCEPTANCE, null);
+        } else if (mainType.getCategory() == BidCategory.MISERIE) {
+            for (int i = 1; i < participants.size(); i++) {
+                placeBid(participants.get(i), mainType, null);
+            }
+        }
+
+        return officialBid;
     }
 }

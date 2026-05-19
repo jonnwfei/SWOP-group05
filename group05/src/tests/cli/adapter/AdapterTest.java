@@ -1,5 +1,6 @@
 package cli.adapter;
 
+import base.GameController;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.*;
 class AdapterTest {
 
     private WhistGame game;
+    private GameController controller;
     private Player humanPlayer;
     private Player botPlayer;
     private PlayerId humanId;
@@ -67,7 +69,8 @@ class AdapterTest {
         lenient().when(game.getPlayers()).thenReturn(List.of(humanPlayer, botPlayer));
         lenient().when(game.getAllPlayers()).thenReturn(List.of(humanPlayer, botPlayer));
 
-        adapter = new Adapter(game);
+        controller = new GameController(game);
+        adapter = new Adapter(controller);
     }
 
     @Nested

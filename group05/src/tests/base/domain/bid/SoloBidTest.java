@@ -30,13 +30,8 @@ class SoloBidTest {
     }
 
     @Test
-    @DisplayName("Constructor enforces non-null parameters")
+    @DisplayName("Constructor enforces non-null BidType")
     void constructor_NullParameters_ThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () ->
-                        new SoloBid(soloBidType, chosenTrump),
-                "Should reject null PlayerId"
-        );
-
         assertThrows(IllegalArgumentException.class, () ->
                         new SoloBid(null, chosenTrump),
                 "Should reject null BidType"
