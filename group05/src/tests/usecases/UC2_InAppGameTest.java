@@ -1,6 +1,7 @@
 package usecases;
 
 import base.GameController;
+import cli.GameCli;
 import base.domain.WhistGame;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
@@ -43,13 +44,14 @@ class UC2_InAppGameTest {
         try (MockedConstruction<Deck> _ = mockConstruction(Deck.class, (mock, _) -> {
             if (hands != null) when(mock.deal()).thenReturn(hands);
         })) {
-            GameController controller = new GameController();
+            GameCli cli = new GameCli();
+            Field controllerField = GameCli.class.getDeclaredField("controller");
+            controllerField.setAccessible(true);
+            GameController controller = (GameController) controllerField.get(cli);
 
-            Field gameField = GameController.class.getDeclaredField("game");
-            gameField.setAccessible(true);
-            WhistGame game = (WhistGame) gameField.get(controller);
+            WhistGame game = controller.getGame();
 
-            try { controller.run(); } catch (Exception ignored) {}
+            try { cli.run(); } catch (Exception ignored) {}
             return game;
         }
     }

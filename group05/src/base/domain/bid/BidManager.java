@@ -7,12 +7,10 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
 import static base.domain.card.CardMath.getHighestRankOfSuit;
 
@@ -20,7 +18,7 @@ import static base.domain.card.CardMath.getHighestRankOfSuit;
  * Owns the PlayerId <-> Bid mapping and all bid-history reasoning for a single Round.
  * Acts as the link between Round, Player and Bid: Bid stays player-agnostic,
  * Round and BidState ask the manager who placed/accepted/partnered which bid.
- *
+ * <br>
  * Lifecycle: one BidManager per Round. Constructed by Round, shared with BidState.
  */
 public final class BidManager {
@@ -59,9 +57,9 @@ public final class BidManager {
      */
     public Bid placeBid(PlayerId playerId, BidType bidType, Suit trumpSuit) {
         if (playerId == null) throw new IllegalArgumentException("playerId required");
-        if (bidType == null) throw new IllegalArgumentException("bidType required");
+        if (bidType == null)  throw new IllegalArgumentException("bidType required");
 
-        Bid bid = bidType.instantiate(trumpSuit);  // TRANSITIONAL: until BidType.instantiate drops PlayerId
+        Bid bid = bidType.instantiate(trumpSuit);
         bidsByPlayer.put(playerId, bid);
 
         if (bidType != BidType.PASS && (highestBid == null || bid.compareTo(highestBid) > 0)) {
@@ -72,11 +70,11 @@ public final class BidManager {
     }
 
     /**
-     * Drops the outstanding PROPOSAL (used when no acceptance arrives or it is rejected).
+     * Drops the outstanding PROPOSAL (used when no acceptance arrives, or it is rejected).
      * Replaces the proposer's bid with PASS and recomputes the highest bid.
      */
     public void invalidateProposal() {
-        PlayerId proposer = findProposer().orElse(null);
+        PlayerId proposer = findProposer();
         if (proposer == null) return;
         bidsByPlayer.put(proposer, BidType.PASS.instantiate(null));
         recomputeHighest();
@@ -99,8 +97,15 @@ public final class BidManager {
     // Queries: highest bid, completion, legality
     // ---------------------------------------------------------------------
 
-    public Optional<Bid> getHighestBid() { return Optional.ofNullable(highestBid); }
-    public Optional<PlayerId> getHighestBidder() { return Optional.ofNullable(highestBidder); }
+    /**
+     * Returns the currently highest committed non-PASS bid, or null if none exists.
+     */
+    public Bid getHighestBid() { return highestBid; }
+
+    /**
+     * Returns the PlayerId who placed the highest bid, or null if no bid has been placed.
+     */
+    public PlayerId getHighestBidder() { return highestBidder; }
 
     /** Reverse lookup: which player placed the given Bid (object identity)? */
     public PlayerId getBidderOf(Bid bid) {
@@ -144,24 +149,35 @@ public final class BidManager {
     // Partner / participant resolution
     // ---------------------------------------------------------------------
 
-    public Optional<PlayerId> findProposer() { return findBidderByType(BidType.PROPOSAL); }
-    public Optional<PlayerId> findAcceptor() { return findBidderByType(BidType.ACCEPTANCE); }
+    /**
+     * Returns the PlayerId who placed a PROPOSAL bid, or null if none exists.
+     */
+    public PlayerId findProposer() { return findBidderByType(BidType.PROPOSAL); }
 
-    private Optional<PlayerId> findBidderByType(BidType type) {
-        return bidsByPlayer.entrySet().stream()
-                .filter(e -> e.getValue().getType() == type)
-                .map(Map.Entry::getKey)
-                .findFirst();
+    /**
+     * Returns the PlayerId who placed an ACCEPTANCE bid, or null if none exists.
+     */
+    public PlayerId findAcceptor() { return findBidderByType(BidType.ACCEPTANCE); }
+
+    /**
+     * Returns the first PlayerId whose committed bid matches the given type, or null.
+     */
+    private PlayerId findBidderByType(BidType type) {
+        for (Map.Entry<PlayerId, Bid> e : bidsByPlayer.entrySet()) {
+            if (e.getValue().getType() == type) return e.getKey();
+        }
+        return null;
     }
 
     /** All players who placed a bid of exactly the given Miserie type. */
     public List<PlayerId> findMiserieParticipants(BidType miserieType) {
         if (miserieType == null || miserieType.getCategory() != BidCategory.MISERIE)
             throw new IllegalArgumentException("Expected a MISERIE bid type, got " + miserieType);
-        return bidsByPlayer.entrySet().stream()
-                .filter(e -> e.getValue().getType() == miserieType)
-                .map(Map.Entry::getKey)
-                .toList();
+        List<PlayerId> result = new ArrayList<>();
+        for (Map.Entry<PlayerId, Bid> e : bidsByPlayer.entrySet()) {
+            if (e.getValue().getType() == miserieType) result.add(e.getKey());
+        }
+        return result;
     }
 
     /**
@@ -176,33 +192,41 @@ public final class BidManager {
 
         if (troelType == BidType.TROEL) {
             Card missingAce = new Card(missingAceSuit, Rank.ACE);
-            return players.stream()
-                    .filter(p -> p.hasCard(missingAce))
-                    .map(Player::getId)
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("Troel partner not found. Corrupted deck!"));
+            for (Player p : players) {
+                if (p.hasCard(missingAce)) return p.getId();
+            }
+            throw new IllegalStateException("Troel partner not found. Corrupted deck!");
         }
 
-        // TROELA
-        return players.stream()
-                .filter(p -> !p.getId().equals(bidder))
-                .max(Comparator.comparing(
-                        p -> getHighestRankOfSuit(Suit.HEARTS, p.getHand()),
-                        Comparator.nullsFirst(Comparator.naturalOrder())))
-                .map(Player::getId)
-                .orElseThrow(() -> new IllegalStateException("Troela partner not found. Corrupted deck!"));
+        // TROELA: player (excluding bidder) with the highest Heart
+        Player best = null;
+        Rank bestRank = null;
+        for (Player p : players) {
+            if (p.getId().equals(bidder)) continue;
+            Rank r = getHighestRankOfSuit(Suit.HEARTS, p.getHand());
+            if (best == null || (r != null && (bestRank == null || r.compareTo(bestRank) > 0))) {
+                best = p;
+                bestRank = r;
+            }
+        }
+        if (best == null)
+            throw new IllegalStateException("Troela partner not found. Corrupted deck!");
+        return best.getId();
     }
 
     // ---------------------------------------------------------------------
     // Forced-bid detection (was BidState.applyForcedBids)
     // ---------------------------------------------------------------------
 
-    /** Returns TROELA if the player has 4 Aces, TROEL if 3, otherwise empty. */
-    public Optional<BidType> detectForcedBid(Player player) {
+    /**
+     * Returns TROELA if the player has 4 Aces, TROEL if 3, otherwise null.
+     * Callers must null-check the return value.
+     */
+    public BidType detectForcedBid(Player player) {
         long aces = player.getHand().stream().filter(c -> c.rank() == Rank.ACE).count();
-        if (aces == 4) return Optional.of(BidType.TROELA);
-        if (aces == 3) return Optional.of(BidType.TROEL);
-        return Optional.empty();
+        if (aces == 4) return BidType.TROELA;
+        if (aces == 3) return BidType.TROEL;
+        return null;
     }
 
     /** The suit of the single Ace this player is missing (only meaningful when they hold 3 Aces). */
@@ -231,13 +255,22 @@ public final class BidManager {
             throw new IllegalStateException("No highest bid to resolve a team for.");
 
         BidType type = highestBid.getType();
+
+        // SOLO_PROPOSAL is a solo contract despite its PROPOSAL category;
+        // treat it like SOLO/ABONDANCE (single-player attacking team).
+        if (type == BidType.SOLO_PROPOSAL) {
+            return List.of(highestBidder);
+        }
+
         return switch (type.getCategory()) {
-            case PASS -> List.of(highestBidder);
+            case PASS, SOLO, ABONDANCE -> List.of(highestBidder);
             case PROPOSAL, ACCEPTANCE -> {
-                PlayerId proposer = findProposer().orElseThrow(
-                        () -> new IllegalStateException("Acceptance without a proposer"));
-                PlayerId acceptor = findAcceptor().orElseThrow(
-                        () -> new IllegalStateException("Proposal without an acceptor"));
+                PlayerId proposer = findProposer();
+                if (proposer == null)
+                    throw new IllegalStateException("Acceptance without a proposer");
+                PlayerId acceptor = findAcceptor();
+                if (acceptor == null)
+                    throw new IllegalStateException("Proposal without an acceptor");
                 yield List.of(proposer, acceptor);
             }
             case TROEL -> {
@@ -246,7 +279,35 @@ public final class BidManager {
                 yield List.of(highestBidder, partner);
             }
             case MISERIE -> findMiserieParticipants(type);
-            case SOLO, ABONDANCE -> List.of(highestBidder);
         };
+    }
+    // ---------------------------------------------------------------------
+    // Convenience method for reconstructing a bid history from count-mode input
+    // ---------------------------------------------------------------------
+
+    /**
+     * Reconstructs a valid bid history from a manual count-mode input.
+     * Automatically registers secondary bids (like ACCEPTANCE or multiple MISERIE bids)
+     * based on the participating players.
+     *
+     * @return the primary official Bid
+     */
+    public Bid reconstructManualHistory(BidType mainType, Suit trumpSuit, List<PlayerId> participants) {
+        if (participants == null || participants.isEmpty()) {
+            throw new IllegalArgumentException("Must have at least one participant");
+        }
+
+        PlayerId primaryBidder = participants.getFirst();
+        Bid officialBid = placeBid(primaryBidder, mainType, trumpSuit);
+
+        if (mainType == BidType.PROPOSAL && participants.size() > 1) {
+            placeBid(participants.get(1), BidType.ACCEPTANCE, null);
+        } else if (mainType.getCategory() == BidCategory.MISERIE) {
+            for (int i = 1; i < participants.size(); i++) {
+                placeBid(participants.get(i), mainType, null);
+            }
+        }
+
+        return officialBid;
     }
 }
