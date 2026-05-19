@@ -104,8 +104,9 @@ public final class BidManager {
     public Bid getHighestBid() { return highestBid; }
 
     /**
-     * Returns the PlayerId who placed the highest bid, or null if no bid has been placed.
-     */
+     * Returns the PlayerId who placed the highest committed non-PASS bid,
+     * or null if no such bid exists (that is, if {@link #getHighestBid()} is null).
+     * */
     public PlayerId getHighestBidder() { return highestBidder; }
 
     /** Reverse lookup: which player placed the given Bid (object identity)? */
