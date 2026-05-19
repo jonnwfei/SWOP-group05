@@ -1,7 +1,5 @@
 package base.domain.snapshots;
 
-import base.domain.WhistRules;
-
 import java.util.List;
 
 /**
