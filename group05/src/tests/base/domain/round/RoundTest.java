@@ -254,12 +254,20 @@ class RoundTest {
     @DisplayName("Play Mode Scoring & Distribution")
     class PlayModeScoringTests {
 
-        @Disabled("All real bid types have basePoints divisible by 3 — " +
-                  "this guard protects against corrupt bids which cannot be created without mocking final records.")
         @Test
         @DisplayName("distributeScores throws if 1v3 game is not divisible by 3")
         void zeroSumValidation() {
-            // Guard is defensive — cannot be triggered with any real BidType (all have points % 3 == 0).
+            // 1. MOCK the concrete permitted subclass (do NOT use 'new')
+            Bid corruptBid = mock(SoloBid.class);
+
+            // Now Mockito allows you to stub the methods
+            when(corruptBid.getType()).thenReturn(BidType.SOLO);
+            when(corruptBid.calculateBasePoints(anyInt())).thenReturn(10); // 10 % 3 != 0
+
+            // 2. Trigger atomic resolution (1v3 game).
+            assertThrows(IllegalStateException.class, () ->
+                            round.resolveManualCount(corruptBid, List.of(p1), 13, List.of())
+                    , "Expected guard clause to reject a 1v3 score that isn't divisible by 3");
         }
 
         @Test
