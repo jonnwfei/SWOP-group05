@@ -33,26 +33,4 @@ public record SoloProposalBid() implements Bid {
         if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
         return dealtTrump;
     }
-
-    /**
-     * Calculates the points won or lost based on tricks taken.
-     * Earns extra points (+3) for each overtrick, and doubles the total score if all 13 tricks are won.
-     *
-     * @param tricksWon The number of tricks won by the solo player.
-     * @return Positive calculated points if the contract was met, negative base points if failed.
-     * @throws IllegalArgumentException if tricksWon is negative.
-     */
-    @Override
-    public int calculateBasePoints(int tricksWon) {
-        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
-        int points = BidType.SOLO_PROPOSAL.getBasePoints();
-        int extra = tricksWon - BidType.SOLO_PROPOSAL.getTargetTricks();
-        if (extra < 0) {
-            points = -1 * points;
-            return points;
-        }
-        points += 3*extra;
-        if (tricksWon == 13) {points = 2*points;}
-        return points;
-    }
 }
