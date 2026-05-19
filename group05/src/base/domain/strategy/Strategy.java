@@ -6,7 +6,6 @@ import base.domain.card.Suit;
 import base.domain.observer.GameEventPublisher;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
-import base.domain.player.TeamRole;
 
 import java.util.List;
 
@@ -34,19 +33,11 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
     Bid determineBid(List<Card> hand);
 
 
-    Card chooseCardToPlay(List<Card> currentHand, Suit lead, TeamRole role);
+    Card chooseCardToPlay(List<Card> currentHand, Suit lead );
 
     /**
-     * Lifecycle hook called when the strategy is attached to a game.
-     * Default implementation does nothing, for strategies that don't need to listen to events.
+     * Lifecycle hook called when the strategy is added to a live game.
      * @param publisher A restricted interface to subscribe to game events.
      */
     default void onJoinGame(GameEventPublisher publisher) {}
-
-    /**
-     * Lifecycle hook called when the strategy is removed from a game.
-     * Default implementation does nothing, for strategies that don't need to listen to events.
-     * @param publisher A restricted interface to unsubscribe from game events.
-     */
-    default void onLeaveGame(GameEventPublisher publisher) {}
 }

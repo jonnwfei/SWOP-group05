@@ -7,8 +7,6 @@ import base.domain.player.PlayerId;
 
 import java.util.List;
 
-import static base.domain.WhistRules.MAX_TRICKS;
-
 /**
  * Domain service responsible for determining whether a {@link Round} is finished.
  * <p>
@@ -48,7 +46,7 @@ public class RoundCompletionService {
      * @return {@code true} if the round conditions warrant an automatic end.
      */
     public boolean shouldAutoFinish(Round round) {
-        if (round.getTricks().size() >= MAX_TRICKS) {
+        if (round.getTricks().size() >= Round.MAX_TRICKS) {
             return true;
         }
 

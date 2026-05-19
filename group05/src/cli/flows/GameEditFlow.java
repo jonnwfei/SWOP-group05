@@ -12,14 +12,6 @@ import static cli.events.MenuEvents.*;
 
 import java.util.List;
 
-/**
- * Shared IO flow for cross-cutting game editing actions.
- * Behaviour differs between COUNT and GAME mode — e.g. only GAME mode
- * allows adding bots.
- *
- * @author John Cai
- * @since 18/04/2026
- */
 public class GameEditFlow {
 
     private final TerminalInputHelper input;
@@ -39,9 +31,6 @@ public class GameEditFlow {
         this.mode = mode;
     }
 
-    /**
-     * Saves the current game with a user-provided description.
-     */
     public void saveGame() {
         String description = input.askString(new SaveDescriptionIOEvent());
         try {
@@ -65,11 +54,6 @@ public class GameEditFlow {
         }
     }
 
-    /**
-     * Removes a player selected by the user.
-     *
-     * @return true if a player was removed, false otherwise
-     */
     public boolean removePlayer() {
         if (!controller.canRemovePlayer()) return false;
         List<Integer> indices = input.askIntList(new PlayerSelectionIOEvent(controller.getAllPlayers(), false, null));
@@ -80,11 +64,6 @@ public class GameEditFlow {
         return true;
     }
 
-    /**
-     * Removes a round selected by the user and recalculates scores.
-     *
-     * @return true if a round was removed, false otherwise
-     */
     public boolean removeRound() {
         List<Round> rounds = controller.getRounds();
         if (rounds.isEmpty()) return false;

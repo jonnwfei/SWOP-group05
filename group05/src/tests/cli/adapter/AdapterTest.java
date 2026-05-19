@@ -64,7 +64,7 @@ class AdapterTest {
 
         lenient().when(botPlayer.getId()).thenReturn(botId);
         lenient().when(botPlayer.getName()).thenReturn("Bob-Bot");
-        lenient().when(botPlayer.getDecisionStrategy()).thenReturn(new SmartBotStrategy());
+        lenient().when(botPlayer.getDecisionStrategy()).thenReturn(new SmartBotStrategy(botId));
 
         lenient().when(game.getPlayers()).thenReturn(List.of(humanPlayer, botPlayer));
         lenient().when(game.getAllPlayers()).thenReturn(List.of(humanPlayer, botPlayer));
