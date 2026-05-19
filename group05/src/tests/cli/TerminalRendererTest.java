@@ -133,7 +133,7 @@ class TerminalRendererTest {
 
         base.domain.player.Player mockPlayer = mock(base.domain.player.Player.class);
         base.domain.player.PlayerId dummyId = new base.domain.player.PlayerId();
-        base.domain.bid.Bid realBid = base.domain.bid.BidType.SOLO.instantiate(dummyId, base.domain.card.Suit.HEARTS);
+        base.domain.bid.Bid realBid = base.domain.bid.BidType.SOLO.instantiate(base.domain.card.Suit.HEARTS);
         List<base.domain.card.Card> hand = List.of(mockCard);
         List<base.domain.bid.BidType> availableBids = List.of(base.domain.bid.BidType.PASS);
 

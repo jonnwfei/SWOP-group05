@@ -188,12 +188,12 @@ class PlayerTest {
         @Test
         @DisplayName("chooseBid() should delegate decision to strategy using player's ID")
         void delegatesChooseBid() {
-            when(mockStrategy.determineBid(eq(player.getId()), anyList())).thenReturn(mockBid);
+            when(mockStrategy.determineBid(anyList())).thenReturn(mockBid);
 
             Bid result = player.chooseBid();
 
             assertEquals(mockBid, result);
-            verify(mockStrategy).determineBid(eq(player.getId()), anyList());
+            verify(mockStrategy).determineBid(anyList());
         }
     }
 

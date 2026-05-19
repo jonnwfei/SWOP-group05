@@ -29,15 +29,10 @@ class MiserieBidTest {
     }
 
     @Test
-    @DisplayName("Constructor enforces non-null parameters")
+    @DisplayName("Constructor enforces non-null BidType")
     void constructor_NullParameters_ThrowsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () ->
-                        new MiserieBid(miserieBidType),
-                "Should reject null PlayerId"
-        );
-
-        assertThrows(IllegalArgumentException.class, () ->
-                        new MiserieBid( null),
+                        new MiserieBid(null),
                 "Should reject null BidType"
         );
     }

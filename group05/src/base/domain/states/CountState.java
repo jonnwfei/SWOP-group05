@@ -107,7 +107,6 @@ public class CountState extends State {
 
     private GameResult handleSuit(Suit suit) {
         this.trumpSuit = suit;
-
         currentPhase = CountPhase.SELECT_PLAYERS;
         if (selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA) {
             return new PlayerSelectionResult(getGame().getPlayers(), true, selectedBidType);
@@ -138,22 +137,20 @@ public class CountState extends State {
 
     private StateStep finalizeCalculation(int tricks, List<PlayerId> winnersId) {
         Player primaryBidder = getGame().getPlayerById(participatingPlayerIds.getFirst());
-        Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
-        getGame().addRound(round);
-
         List<Player> participatingPlayers = participatingPlayerIds.stream()
                 .map(getGame()::getPlayerById)
                 .toList();
         List<Player> winners = winnersId == null ? List.of()
                 : winnersId.stream().map(getGame()::getPlayerById).toList();
 
-        // CountState sets the fields, Round just executes
-        round.setTrumpSuit(this.trumpSuit);
-        round.setHighestBid(bid);
-        round.setBiddingTeam(participatingPlayers);
-        round.setCountTricksWon(tricks);
-        round.setMiserieWinners(winners);
-        round.calculateScores();
+        Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
+
+        Bid officialBid = round.getBidManager().reconstructManualHistory(
+                selectedBidType, trumpSuit, participatingPlayerIds
+        );
+
+        round.resolveManualCount(officialBid, participatingPlayers, tricks, winners);
+        getGame().addRound(round);
 
         currentPhase = CountPhase.PROMPT_NEXT_STATE;
         return StateStep.transitionWithoutResult();

@@ -2,8 +2,8 @@ package base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
+import base.domain.bid.BidManager;
 import base.domain.bid.BidType;
-import base.domain.bid.MiserieBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
@@ -114,12 +114,13 @@ class PlayStateTest {
         void exposesOpenMiserieHands() {
             PlayState state = new PlayState(game);
 
-            Bid mockBid = mock(MiserieBid.class);
-            when(mockBid.getType()).thenReturn(BidType.OPEN_MISERIE);
-            when(mockBid.getPlayerId()).thenReturn(id2); // Bob plays open miserie
+            // Bob (id2/p2) plays open miserie — register in a real BidManager so getBidderOf works
+            BidManager realBm = new BidManager(List.of(p1, p2, p3, p4));
+            Bid openMiserieBid = realBm.placeBid(id2, BidType.OPEN_MISERIE, null);
 
-            when(round.getHighestBid()).thenReturn(mockBid);
-            when(round.getBids()).thenReturn(List.of(mockBid));
+            when(round.getBidManager()).thenReturn(realBm);
+            when(round.getHighestBid()).thenReturn(openMiserieBid);
+            when(round.getBids()).thenReturn(List.of(openMiserieBid));
 
             Card exposedCard = new Card(Suit.SPADES, Rank.ACE);
             when(p2.getHand()).thenReturn(List.of(exposedCard));

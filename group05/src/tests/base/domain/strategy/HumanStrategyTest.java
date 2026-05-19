@@ -35,7 +35,7 @@ class HumanStrategyTest {
         @DisplayName("determineBid() should return null as UI handles human input")
         void determineBidReturnsNull() {
             // Passing the ID and Hand, completely decoupled from the Player object!
-            assertNull(strategy.determineBid(humanId, dummyHand),
+            assertNull(strategy.determineBid(dummyHand),
                     "Human strategy should return null. The UI/State machine handles actual bid creation.");
         }
     }
