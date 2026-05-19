@@ -18,9 +18,6 @@ import static base.domain.WhistRules.MAX_TURNS;
  * @since 25/02/2026
  */
 public class Trick {
-    /**
-     * The maximum number of players/cards in a single trick.
-     */
 
     private final Suit trumpSuit;
     private final PlayerId startingPlayerId;

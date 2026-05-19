@@ -211,6 +211,13 @@ public final class CardMath {
                 .count();
     }
 
+    public static long countCardsOfSuit(List<Card> cards, Suit suit) {
+        if (cards == null || cards.isEmpty()) return 0;
+        Objects.requireNonNull(suit, "Suit cannot be null.");
+
+        return cards.stream().filter(c -> c != null && c.suit() == suit).count();
+    }
+
     /**
      * Determines which suits are missing for a specific rank in a given list of cards.
      *

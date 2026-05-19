@@ -5,7 +5,7 @@ import base.domain.bid.PassBid;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
 import base.domain.card.Suit;
-import base.domain.player.PlayerId;
+import base.domain.player.TeamRole;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -32,18 +32,16 @@ public final class LowBotStrategy implements Strategy {
      * Selects the card with the lowest rank from the set of legal moves.
      *
      * @param currentHand The list of cards currently held by the player.
-     *@param lead        The suit led in the current trick (maybe null if the bot leads).
+     * @param lead        The suit led in the current trick (maybe null if the bot leads).
+     * @param role
      * @return The card with the minimum rank among legal choices.
      */
     @Override
-    public Card chooseCardToPlay(List<Card> currentHand, Suit lead) {
+    public Card chooseCardToPlay(List<Card> currentHand, Suit lead, TeamRole role) {
         if (currentHand == null || currentHand.isEmpty()) {
             throw new IllegalArgumentException("Cannot choose a card from an empty or null hand.");
         }
         List<Card> legalCards = CardMath.getLegalCards(currentHand, lead);
-        if (legalCards.isEmpty()) {
-            throw new IllegalStateException("Critical Error: Legal cards filtered to empty list.");
-        }
         return Collections.min(legalCards, Comparator.comparing(Card::rank));
     }
 
