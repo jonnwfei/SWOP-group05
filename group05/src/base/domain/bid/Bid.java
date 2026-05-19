@@ -1,6 +1,10 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
+import base.domain.player.Player;
+import base.domain.player.PlayerId;
+
+import java.util.List;
 
 /**
  * The core contract for all bids made during the bidding phase.

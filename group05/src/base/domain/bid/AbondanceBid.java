@@ -1,6 +1,10 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
+import base.domain.player.Player;
+import base.domain.player.PlayerId;
+
+import java.util.List;
 
 /**
  * Contract for Abondance bids (9 to 12 tricks) with a custom trump suit if applicable.
