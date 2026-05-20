@@ -1,4 +1,4 @@
-package base.storage.snapshots;
+package base.domain.snapshots;
 
 import java.util.UUID;
 

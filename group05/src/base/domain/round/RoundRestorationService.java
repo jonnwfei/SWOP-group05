@@ -1,6 +1,7 @@
 package base.domain.round;
 
 import base.domain.bid.Bid;
+import base.domain.bid.BidType;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 
@@ -16,7 +17,7 @@ import java.util.Objects;
  * @author Stan Kestens
  * @since 08/05/2026
  */
-public class RoundRestorationService {
+public class RoundRestorationService { // TODO: this will be removed
 
     /**
      * Restores the round’s internal state from a snapshot.
@@ -61,10 +62,12 @@ public class RoundRestorationService {
         if (highestBid == null) {
             throw new IllegalArgumentException("Cannot restore round without highest bid.");
         }
-        if (participants == null
-                || participants.isEmpty()
-                || participants.stream().anyMatch(Objects::isNull)) {
-            throw new IllegalArgumentException("Participants invalid.");
+        if (participants == null || participants.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Participants list cannot be null or contain nulls.");
+        }
+        // Allow empty participants ONLY for PASS rounds
+        if (highestBid.getType() != BidType.PASS && participants.isEmpty()) {
+            throw new IllegalArgumentException("Non-PASS rounds must have at least one participant.");
         }
         if (tricksWon < -1 || tricksWon > Round.MAX_TRICKS) {
             throw new IllegalArgumentException("Invalid tricks won value.");

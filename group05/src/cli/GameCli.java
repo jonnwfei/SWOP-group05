@@ -3,7 +3,7 @@ import base.GameController;
 import base.domain.WhistGame;
 import base.domain.commands.GameCommand;
 import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
+import base.domain.snapshots.SaveMode;
 import cli.adapter.Adapter;
 import cli.flows.GameEditFlow;
 import cli.flows.MenuFlow;

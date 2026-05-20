@@ -1,11 +1,12 @@
 package base.domain;
 
+import base.domain.bid.Bid;
+import base.domain.bid.BidManager;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
-import static base.domain.deck.Deck.DealType;
 
 import base.commands.ActionHistory;
 import base.commands.CommandBuilder;
@@ -14,19 +15,19 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
+import base.domain.snapshots.*;
 import base.domain.states.BidState;
 import base.domain.states.CountState;
 import base.domain.states.State;
 import base.domain.states.StateStep;
+import base.domain.strategy.Strategy;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static base.domain.WhistRules.REQUIRED_PLAYERS;
 
 /**
  * Represents a game of Whist.
@@ -35,11 +36,6 @@ import java.util.stream.Collectors;
  * @since 28/02/2026
  */
 public class WhistGame {
-
-    @Deprecated
-    public static final int REQUIRED_PLAYERS = 4;
-    @Deprecated
-    public static final int MAX_PLAYERS = 67;
 
     private State state;
     private Deck deck;
@@ -204,6 +200,7 @@ public class WhistGame {
     }
 
     public void setDeck(Deck deck) {
+        if (deck == null) throw new IllegalArgumentException("Deck cannot be null.");
         this.deck = deck;
     }
 
@@ -251,7 +248,7 @@ public class WhistGame {
         if (activePlayers.size() != REQUIRED_PLAYERS) throw new IllegalStateException("Cannot deal cards: Table must have exactly 4 players.");
 
         this.deck.shuffle();
-        List<List<Card>> hands = this.deck.deal(DealType.WHIST);
+        List<List<Card>> hands = this.deck.deal();
 
         Suit dealtTrump = hands.getLast().getLast().suit();
 
@@ -271,8 +268,8 @@ public class WhistGame {
         List<Player> activePlayers = getPlayers();
         if (activePlayers.size() < REQUIRED_PLAYERS)
             throw new IllegalStateException("Game must have at least 4 players to start a round.");
-        if (!activePlayers.contains(startingPlayer))
-            throw new IllegalArgumentException("Starting player not at the table.");
+        if (!activePlayers.contains(startingPlayer) || startingPlayer == null)
+            throw new IllegalArgumentException("Starting player not at the table or is null.");
 
         int multiplier = 1;
         if (!this.rounds.isEmpty() && getCurrentRound().getHighestBid().getType() == BidType.PASS) {
@@ -401,7 +398,7 @@ public class WhistGame {
      * @return true if possible to remove player
      */
     public boolean canRemovePlayer() {
-        return (this.allPlayers.size() > WhistRules.REQUIRED_PLAYERS);
+        return (this.allPlayers.size() > REQUIRED_PLAYERS);
     }
 
     /**
@@ -438,5 +435,124 @@ public class WhistGame {
         if (player == null) throw new IllegalArgumentException("Player cannot be null");
         allPlayers.add(index, player);
         player.getDecisionStrategy().onJoinGame(this::addObserver);
+    }
+
+    // =================================================================================
+    // Game Snapshot Extraction & Restoration
+    // =================================================================================
+
+    /**
+     * Constructs a GameSnapshot from the current state of this game instance.
+     * @return GameSnapshot representing the current state of the game
+     * @throws IllegalArgumentException if the description is blank
+     * @throws IllegalStateException if the dealer is null, not in the players list or if the players or
+     *  round history contain null entries
+     */
+    public GameSnapshot toSnapshot() {
+        List<Player> allPlayers = this.getAllPlayers();
+        if (allPlayers.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalStateException("Cannot create snapshot: allPlayers contains null entries");
+        }
+        List<PlayerSnapshot> snapshots = allPlayers.stream().map(Player::toSnapshot).toList();
+
+        List<Round> rounds = this.getRounds();
+        if (rounds.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalStateException("Cannot create snapshot: round history contains null entries");
+        }
+        List<RoundSnapshot> roundSnapshots = rounds.stream().map(Round::toSnapshot).toList();
+
+        Player dealer = this.getDealerPlayer();
+        if (dealer == null) throw new IllegalStateException("Cannot create snapshot of a game with a null dealer player");
+        int dealerIndex = allPlayers.indexOf(dealer);
+        if (dealerIndex < 0) throw new IllegalStateException("Dealer player must be part of the current players list");
+
+        return new GameSnapshot(dealerIndex, snapshots, roundSnapshots);
+    }
+
+    /**
+     * Restores the state of the provided game instance based on the data contained in the given GameSnapshot.
+     * This includes resetting the game's players and rounds, then re-adding the players with their respective strategies, names, and scores as specified in the snapshot.
+     * @param snapshot the snapshot containing the saved state to restore
+     * @throws NullPointerException if the snapshot is null
+     */
+    public void restoreGame(GameSnapshot snapshot) {
+        Objects.requireNonNull(snapshot, "Snapshot must not be null");
+        this.resetPlayers();
+        this.resetRounds();
+
+        for (PlayerSnapshot playerSnapshot : snapshot.players()) {
+            PlayerId restoredId = PlayerId.fromString(playerSnapshot.id());
+            Strategy playerStrategy = Strategy.toStrategy(playerSnapshot.strategyType(), restoredId);
+
+            Player player = new Player(playerStrategy, playerSnapshot.name(), restoredId);
+            player.updateScore(playerSnapshot.score());
+            this.addPlayer(player);
+        }
+
+        restoreRoundHistory(snapshot.rounds());
+
+        if (snapshot.mode() == SaveMode.GAME) {
+            this.setDeck(new Deck());
+        }
+
+        this.setDealerPlayer(allPlayers.get(snapshot.dealerIndex()));
+    }
+
+    /**
+     * Rebuilds round history placeholders so round-based workflows keep functioning after load.
+     * @param roundSnapshots persisted round snapshots
+     * @throws IllegalStateException if trying to restore rounds to a game without exactly 4 players
+     */
+    private void restoreRoundHistory(List<RoundSnapshot> roundSnapshots) {
+        if (roundSnapshots == null ||roundSnapshots.isEmpty()) {
+            return;
+        }
+
+        List<Player> players = this.getPlayers();
+        if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
+
+        for (RoundSnapshot snapshot : roundSnapshots) {
+            Player mainBidder = players.get(snapshot.bidderIndex());
+
+            List<Player> participants = snapshot.participantIndices().stream()
+                    .map(players::get)
+                    .toList();
+
+            List<Player> miserieWinners = snapshot.miserieWinnerIndices().stream()
+                    .map(players::get)
+                    .toList();
+
+            Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
+            BidManager roundBidManager = restoredRound.getBidManager();
+            Bid highestBid = null;
+
+            // 2. Rebuild the BidManager's history based on the bid type
+            if (snapshot.bidType() == BidType.PASS) {
+                // For an all-PASS round, register a PASS for all 4 players
+                for (Player p : players) {
+                    Bid passBid = roundBidManager.placeBid(p.getId(), BidType.PASS, null);
+                    if (p.equals(mainBidder)) {
+                        highestBid = passBid; // Capture one of them to satisfy the restore method
+                    }
+                }
+            } else {
+                // For normal rounds, use the manager's reconstruction utility
+                List<PlayerId> participantIds = participants.stream().map(Player::getId).toList();
+                highestBid = roundBidManager.reconstructManualHistory(
+                        snapshot.bidType(),
+                        snapshot.trumpSuit(),
+                        participantIds
+                );
+            }
+            restoredRound.restoreFromSnapshot(
+                    highestBid,
+                    snapshot.trumpSuit(),
+                    participants,
+                    snapshot.tricksWon(),
+                    miserieWinners,
+                    snapshot.scoreDeltas());
+
+            this.addRound(restoredRound);
+        }
     }
 }

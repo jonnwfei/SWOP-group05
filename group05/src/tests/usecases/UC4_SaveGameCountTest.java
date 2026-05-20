@@ -4,7 +4,7 @@ import base.GameController;
 import cli.GameCli;
 import base.domain.WhistGame;
 import base.storage.SaveRepository;
-import base.storage.snapshots.GameSnapshot;
+import base.domain.snapshots.GameSnapshot;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.ExtendWith;

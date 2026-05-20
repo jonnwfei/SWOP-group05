@@ -2,11 +2,11 @@ package base.storage;
 
 import base.domain.bid.BidType;
 import base.domain.card.Suit;
-import base.storage.snapshots.GameSnapshot;
-import base.storage.snapshots.PlayerSnapshot;
-import base.storage.snapshots.RoundSnapshot;
-import base.storage.snapshots.SaveMode;
-import base.storage.snapshots.StrategySnapshotType;
+import base.domain.snapshots.GameSnapshot;
+import base.domain.snapshots.PlayerSnapshot;
+import base.domain.snapshots.RoundSnapshot;
+import base.domain.snapshots.SaveMode;
+import base.domain.snapshots.StrategySnapshotType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -43,7 +43,9 @@ class SaveRepositoryTest {
         // Extracting raw UUID string correctly to avoid the PlayerId[id=...] record toString() format
         players = List.of(
                 new PlayerSnapshot(UUID.randomUUID().toString(), "Tommy", StrategySnapshotType.HUMAN, 10),
-                new PlayerSnapshot(UUID.randomUUID().toString(), "Seppe", StrategySnapshotType.HIGH_BOT, -10)
+                new PlayerSnapshot(UUID.randomUUID().toString(), "Seppe", StrategySnapshotType.HIGH_BOT, -10),
+                new PlayerSnapshot(UUID.randomUUID().toString(), "Seppe2", StrategySnapshotType.HIGH_BOT, -10),
+                new PlayerSnapshot(UUID.randomUUID().toString(), "Seppe3", StrategySnapshotType.HIGH_BOT, -10)
         );
 
         rounds = List.of(
@@ -92,7 +94,7 @@ class SaveRepositoryTest {
             assertEquals("Friday Night Game", loadedSnapshot.description());
             assertEquals(SaveMode.GAME, loadedSnapshot.mode());
             assertEquals(0, loadedSnapshot.dealerIndex());
-            assertEquals(2, loadedSnapshot.players().size());
+            assertEquals(4, loadedSnapshot.players().size());
             assertEquals(1, loadedSnapshot.rounds().size());
 
             // Assert Player State
@@ -116,7 +118,9 @@ class SaveRepositoryTest {
 
             List<PlayerSnapshot> players2 = List.of(
                     new PlayerSnapshot(UUID.randomUUID().toString(), "Stan", StrategySnapshotType.HUMAN, 67),
-                    new PlayerSnapshot(UUID.randomUUID().toString(), "Seppe", StrategySnapshotType.LOW_BOT, -67)
+                    new PlayerSnapshot(UUID.randomUUID().toString(), "Seppe", StrategySnapshotType.LOW_BOT, -67),
+                    new PlayerSnapshot(UUID.randomUUID().toString(), "Seppe2", StrategySnapshotType.LOW_BOT, -67),
+                    new PlayerSnapshot(UUID.randomUUID().toString(), "Seppe3", StrategySnapshotType.LOW_BOT, -67)
             );
             GameSnapshot secondSnapshot = new GameSnapshot("Another Game", SaveMode.COUNT, 0, players2, List.of());
             saveRepository.save(secondSnapshot);
@@ -133,18 +137,26 @@ class SaveRepositoryTest {
         @Test
         @DisplayName("Fallback to safe defaults when loading older save files missing data")
         void testBackwardCompatibilityLoad() throws IOException {
-            // Arrange: Manually write a file simulating an older version (no IDs, no trumpSuit)
             Path saveFile = tempSaveDirectory.resolve("old-save.properties");
             Properties properties = new Properties();
             properties.setProperty("description", "Old Save");
             properties.setProperty("mode", SaveMode.GAME.name());
             properties.setProperty("dealerIndex", "0");
 
-            properties.setProperty("player.count", "1");
+            properties.setProperty("player.count", "4");
+
+            // Player 0: Deliberately missing ID to test fallback
             properties.setProperty("player.0.name", "Alice");
             properties.setProperty("player.0.strategy", StrategySnapshotType.HUMAN.name());
             properties.setProperty("player.0.score", "5");
-            // Deliberately NOT setting player.0.id
+
+            // Players 1, 2, and 3: Just enough valid data to pass validation
+            for (int i = 1; i < 4; i++) {
+                properties.setProperty("player." + i + ".id", UUID.randomUUID().toString());
+                properties.setProperty("player." + i + ".name", "Bot " + i);
+                properties.setProperty("player." + i + ".strategy", StrategySnapshotType.SMART_BOT.name());
+                properties.setProperty("player." + i + ".score", "0");
+            }
 
             properties.setProperty("round.count", "1");
             properties.setProperty("round.0.bidType", BidType.PASS.name());
