@@ -57,11 +57,10 @@ class GameControllerTest {
     void testPlayerManagement() {
         Player player = mock(Player.class);
 
-        controller.addPlayer(player);
-        verify(mockGame).addPlayer(player);
-
+        // addPlayer doesn't exist on GameController; use the factory methods instead.
+        // removePlayer delegates to game.deletePlayer, not game.removePlayer.
         controller.removePlayer(player);
-        verify(mockGame).removePlayer(player);
+        verify(mockGame).deletePlayer(player);
 
         when(mockGame.getAllPlayers()).thenReturn(List.of(player));
         assertEquals(List.of(player), controller.getPlayers());
@@ -70,11 +69,13 @@ class GameControllerTest {
     @Test
     @DisplayName("Player factory methods add players correctly")
     void testPlayerFactories() {
+        // These delegate straight through to same-named methods on WhistGame,
+        // so verify those methods directly instead of verifying addPlayer.
         controller.addHumanPlayer("Alice");
-        verify(mockGame).addPlayer(argThat(p -> p.getName().equals("Alice")));
+        verify(mockGame).addHumanPlayer("Alice");
 
         controller.addSmartBot("Bot1");
-        verify(mockGame).addPlayer(argThat(p -> p.getName().equals("Bot1")));
+        verify(mockGame).addSmartBot("Bot1");
     }
 
     @Test

@@ -2,13 +2,17 @@ package cli.flows;
 
 import base.GameController;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
+import base.domain.round.Round;
 import base.domain.snapshots.SaveMode;
 import cli.TerminalManager;
-import cli.events.IOEvent;
+import cli.events.MenuEvents.*;
+import cli.util.TerminalInputHelper;
+import cli.events.CountEvents.*;
 
-import static cli.events.CountEvents.ScoreBoardIOEvent;
-
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Between-rounds scoreboard menu. Delegates cross-cutting edit actions to
@@ -22,88 +26,70 @@ public class ScoreBoardFlow {
     private final TerminalManager terminalManager;
     private final GameController controller;
     private final GameEditFlow editFlow;
-    /**
-     * Creates a new ScoreBoardFlow.
-     *
-     * @param terminalManager handles user interaction
-     * @param controller the current game instance
-     * @param editFlow shared edit functionality
-     */
+    private final TerminalInputHelper terminalInputHelper;
+
     public ScoreBoardFlow(TerminalManager terminalManager, GameController controller, GameEditFlow editFlow) {
-        if (terminalManager == null)
-            throw new IllegalArgumentException("terminalManager cannot be null");
-        if (controller == null)
-            throw new IllegalArgumentException("game cannot be null");
-        if (editFlow == null)
-            throw new IllegalArgumentException("editFlow cannot be null");
-        this.terminalManager = terminalManager;
-        this.controller = controller;
-        this.editFlow = editFlow;
+        if (terminalManager == null) throw new IllegalArgumentException("terminalManager cannot be null");
+        if (controller == null)      throw new IllegalArgumentException("game cannot be null");
+        if (editFlow == null)        throw new IllegalArgumentException("editFlow cannot be null");
+        this.terminalManager     = terminalManager;
+        this.controller          = controller;
+        this.editFlow            = editFlow;
+        this.terminalInputHelper = new TerminalInputHelper(this.terminalManager);
     }
 
-    /**
-     * Runs the scoreboard loop until the user exits or continues.
-     *
-     * @param mode current game mode
-     * @return true to continue playing, false to return to menu
-     */
     public boolean run(SaveMode mode) {
         while (true) {
             int choice = showMenu();
-            switch (choice) {
-                case 1 -> {
-                    if (controller.getAllPlayers().size() > 4) {
-                        controller.rotateActivePlayers();
-                    }
-                    if (mode == SaveMode.COUNT){
-                        controller.startCount();
-                    }
-                    else {
+            boolean canRemove = controller.canRemovePlayer();
+            boolean canUndo   = controller.canUndo();
+            boolean canRedo   = controller.canRedo();
 
-                        controller.startGame();
-                        controller.advanceDealer();
-                    }
-
-                    return true; }   // another round
-                case 2 -> { return false; }  // main menu
-                case 3 ->  editFlow.saveGame();  // save then re-show
-                case 4 ->  editFlow.removeRound();
-                case 5 ->  editFlow.addPlayer();
-                case 6 ->  editFlow.removePlayer();
-                default -> throw new IllegalStateException("Unexpected value: " + choice);
+            // options 1-5 are fixed
+            if      (choice == 1) {
+                if (controller.getAllPlayers().size() > 4) controller.rotateActivePlayers();
+                if (mode == SaveMode.COUNT) {
+                    controller.startCount();
+                } else {
+                    controller.startGame();
+                    controller.advanceDealer();
+                }
+                return true;
+            }
+            else if (choice == 2) { return false; }
+            else if (choice == 3) { editFlow.saveGame(); }
+            else if (choice == 4) { editFlow.removeRound(); }
+            else if (choice == 5) { editFlow.addPlayer(); }
+            else {
+                // options 6+ shift depending on what's available
+                int next = 6;
+                if (canRemove && choice == next++) { editFlow.removePlayer(); continue; }
+                if (choice == next++)              { showScoreTable();        continue; }
+                if (canUndo   && choice == next++) { controller.undo();       continue; }
+                if (canRedo   && choice == next)   { controller.redo();       continue; }
+                throw new IllegalStateException("Unexpected value: " + choice);
             }
         }
     }
-    /**
-     * Displays the scoreboard and menu options.
-     *
-     * @return selected menu option
-     */
+    private void showScoreTable() {
+        terminalManager.handle(new ScoreTableIOEvent(
+                controller.getPlayerNamesMap(),
+                controller.getRounds()));
+    }
+
     private int showMenu() {
-        List<String> names = controller.getAllPlayers().stream().map(Player::getName).toList();
-        List<Integer> scores = controller.getAllPlayers().stream().map(Player::getScore).toList();
-        boolean canRemove = controller.canRemovePlayer();
-        int max = canRemove ? 6 : 5;
-        return askInt(new ScoreBoardIOEvent(names, scores, canRemove), 1, max);
-    }
-    /**
-     * Reads an integer within a range.
-     *
-     * @param event IO event to display
-     * @param min minimum value
-     * @param max maximum value
-     * @return validated integer
-     */
-    private int askInt(IOEvent event, int min, int max) {
-        while (true) {
-            try {
-                String raw = terminalManager.handle(event).rawInput();
-                int value = Integer.parseInt(raw.trim());
-                if (value >= min && value <= max) return value;
-                System.out.println("Please enter a number between " + min + " and " + max + ".");
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid input. Please enter a number.");
-            }
-        }
+        List<String>  names     = controller.getPlayerNames();
+        List<Integer> scores    = controller.getPlayerScores();
+        boolean canRemove       = controller.canRemovePlayer();
+        boolean canUndo         = controller.canUndo();
+        boolean canRedo         = controller.canRedo();
+
+        int max = 6                              // options 1-6 always present
+                + (canRemove ? 1 : 0)           // remove player
+                + (canUndo   ? 1 : 0)
+                + (canRedo   ? 1 : 0);
+
+        return terminalInputHelper.askInt(
+                new ScoreBoardIOEvent(names, scores, canRemove, canUndo, canRedo), 1, max);
     }
 }

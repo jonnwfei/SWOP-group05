@@ -106,6 +106,7 @@ public class CountState extends State {
 
     private GameResult handleSuit(Suit suit) {
         this.trumpSuit = suit;
+
         currentPhase = CountPhase.SELECT_PLAYERS;
         if (selectedBidType == PROPOSAL || selectedBidType == TROEL || selectedBidType == TROELA) {
             return new PlayerSelectionResult(getGame().getPlayers(), true, selectedBidType);

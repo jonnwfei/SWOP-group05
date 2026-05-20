@@ -90,7 +90,7 @@ class UC5_ResumeGameCountTest {
     // Steps 1-5: Resume a saved count
     // =========================================================================
 
-    @Disabled("Depends on saveCount() which fails: CountState does not populate BidManager")  // TODO: fix this
+
     @Test
     @DisplayName("Steps 1-5: Resume saved count — players and scores are restored")
     void testResumeCount() throws Exception {
@@ -108,7 +108,7 @@ class UC5_ResumeGameCountTest {
         assertFalse(game.getPlayers().isEmpty(), "Resumed game must have players");
     }
 
-    @Disabled("Depends on saveCount() which fails: CountState does not populate BidManager")  // TODO: fix this
+
     @Test
     @DisplayName("Steps 1-5: Resume saved game — menu path doesn't crash")
     void testResumeGame() throws Exception {
@@ -123,7 +123,6 @@ class UC5_ResumeGameCountTest {
         assertNotNull(game);
     }
 
-    @Disabled("Depends on saveCount() which fails: CountState does not populate BidManager")  // TODO: fix this
     @Test
     @DisplayName("Steps 1-5: Resumed count preserves accumulated scores")
     void testResumeCountPreservesScores() throws Exception {
@@ -160,8 +159,6 @@ class UC5_ResumeGameCountTest {
     // =========================================================================
     // Negative: invalid save index
     // =========================================================================
-
-    @Disabled("Depends on saveCount() which fails: CountState does not populate BidManager")  // TODO: fix this
     @Test
     @DisplayName("Step 3: Invalid save index re-prompts")
     void testInvalidSaveIndexRePrompts() throws Exception {
@@ -177,7 +174,6 @@ class UC5_ResumeGameCountTest {
         assertNotNull(game);
     }
 
-    @Disabled("Depends on saveCount() which fails: CountState does not populate BidManager")  // TODO: fix this
     @Test
     @DisplayName("Step 3: Out-of-range save index re-prompts")
     void testOutOfRangeSaveIndexRePrompts() throws Exception {

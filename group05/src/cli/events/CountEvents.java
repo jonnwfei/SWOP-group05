@@ -26,7 +26,7 @@ public sealed interface CountEvents extends IOEvent {
         }
     }
 
-    record ScoreBoardIOEvent(List<String> playerNames, List<Integer> scores, boolean canRemovePlayer) implements CountEvents {
+    record ScoreBoardIOEvent(List<String> playerNames, List<Integer> scores, boolean canRemovePlayer, boolean canUndo, boolean canRedo) implements CountEvents {
         public boolean needsInput() {
             return true;
         }
