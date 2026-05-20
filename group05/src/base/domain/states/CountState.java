@@ -36,7 +36,6 @@ public class CountState extends State {
 
     private CountPhase currentPhase = CountPhase.START;
     private int nextStateDecision;
-    private Bid bid;
     private BidType selectedBidType;
     private Suit trumpSuit;
     private List<PlayerId> participatingPlayerIds;
@@ -122,7 +121,7 @@ public class CountState extends State {
                 return StateStep.stay(new PlayerSelectionResult(getGame().getPlayers(), multiSelect, selectedBidType));
             }
             this.participatingPlayerIds = players;
-            this.bid = selectedBidType.instantiate(trumpSuit);
+            Bid bid = selectedBidType.instantiate(trumpSuit);
 
             if (selectedBidType == MISERIE || selectedBidType == OPEN_MISERIE) {
                 currentPhase = CountPhase.SELECT_WINNERS;
@@ -137,11 +136,6 @@ public class CountState extends State {
 
     private StateStep finalizeCalculation(int tricks, List<PlayerId> winnersId) {
         Player primaryBidder = getGame().getPlayerById(participatingPlayerIds.getFirst());
-        List<Player> participatingPlayers = participatingPlayerIds.stream()
-                .map(getGame()::getPlayerById)
-                .toList();
-        List<Player> winners = winnersId == null ? List.of()
-                : winnersId.stream().map(getGame()::getPlayerById).toList();
 
         Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
 
@@ -149,7 +143,7 @@ public class CountState extends State {
                 selectedBidType, trumpSuit, participatingPlayerIds
         );
 
-        round.resolveManualCount(officialBid, participatingPlayers, tricks, winners);
+        round.resolveManualCount(officialBid, trumpSuit, this.participatingPlayerIds, tricks, winnersId, getGame().getScoringRegistry());
         getGame().addRound(round);
 
         currentPhase = CountPhase.PROMPT_NEXT_STATE;

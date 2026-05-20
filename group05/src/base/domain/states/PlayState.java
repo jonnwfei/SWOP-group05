@@ -11,6 +11,7 @@ import base.domain.commands.GameCommand.*;
 import base.domain.player.Player;
 import base.domain.results.*;
 import base.domain.round.Round;
+import base.domain.round.RoundContract;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 
@@ -24,16 +25,25 @@ import java.util.List;
  */
 public class PlayState extends State {
     private final Round currentRound;
+    private final RoundContract roundContract;
     private Trick currentTrick;
 
     public PlayState(WhistGame game) {
         super(game);
+
         Round round = game.getCurrentRound();
         if (round == null) {
             throw new IllegalStateException("Cannot create PlayState: no currentRound exists.");
         }
         this.currentRound = round;
-        this.currentTrick = new Trick(currentRound.getCurrentPlayer().getId(), currentRound.getTrumpSuit());
+
+        RoundContract roundContract = round.getRoundContract();
+        if (roundContract == null) {
+            throw new IllegalStateException("Cannot create PlayState: no RoundContract formed.");
+        }
+        this.roundContract = roundContract;
+
+        this.currentTrick = new Trick(currentRound.getCurrentPlayer().getId(), currentRound.getRoundContract().TrumpSuit());
     }
 
     @Override
@@ -109,17 +119,17 @@ public class PlayState extends State {
             Player winningPlayer = getGame().getPlayerById(currentTrick.getWinningPlayerId());
 
             // Round registers the trick and automatically scores itself if it's the 13th or all miserie players won
-            currentRound.finalizeTrick(currentTrick);
+            currentRound.finalizeTrick(currentTrick, getGame().getScoringRegistry());
 
-            this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getTrumpSuit());
+            this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getRoundContract().TrumpSuit());
         } else {
             currentRound.advanceToNextPlayer();
         }
     }
 
     private GameResult buildNeedCardResult(Player player) {
-        boolean isOpenMiserie = currentRound.getHighestBid() != null &&
-                currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
+        boolean isOpenMiserie = roundContract.winningBid() != null &&
+                roundContract.winningBid().getType() == BidType.OPEN_MISERIE;
 
         List<String> exposedNames = new ArrayList<>();
         List<List<Card>> exposedHands = new ArrayList<>();

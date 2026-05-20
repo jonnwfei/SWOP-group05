@@ -258,7 +258,7 @@ public class WhistGame {
             throw new IllegalArgumentException("Starting player not at the table.");
 
         int multiplier = 1;
-        if (!this.rounds.isEmpty() && getCurrentRound().getHighestBid().getType() == BidType.PASS) {
+        if (!this.rounds.isEmpty() && getCurrentRound().getRoundContract().winningBid().getType() == BidType.PASS) {
             multiplier = 2;
         }
         addRound(new Round(activePlayers, startingPlayer, multiplier));
@@ -421,4 +421,6 @@ public class WhistGame {
 
         recalibrateScores();
     }
+
+    public ScoringRegistry getScoringRegistry() {return scoringRegistry;}
 }
