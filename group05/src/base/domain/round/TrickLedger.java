@@ -1,6 +1,5 @@
 package base.domain.round;
 
-import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
 
@@ -37,10 +36,9 @@ public class TrickLedger {
         return tricks.size() == MAX_TRICKS;
     }
 
-    public int getTricksWonByTeam(List<Player> team) {
-        List<PlayerId> teamIds = team.stream().map(Player::getId).toList();
+    public int getTricksWonByTeam(List<PlayerId> team) {
         return (int) tricks.stream()
-                .filter(t -> teamIds.contains(t.getWinningPlayerId()))
+                .filter(t -> team.contains(t.getWinningPlayerId()))
                 .count();
     }
 
