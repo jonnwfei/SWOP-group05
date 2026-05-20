@@ -10,22 +10,49 @@ import base.domain.scores.ScoringRegistry;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * An immutable Value Object representing the finalized rules of the round.
  */
 public record RoundContract(
         Bid winningBid,
-        Suit TrumpSuit,
+        Suit trumpSuit,
         List<PlayerId> biddingTeam,
         List<PlayerId> defendingTeam,
         int multiplier
 ) {
+    // Compact constructor for defensive programming & immutability
+    public RoundContract {
+        Objects.requireNonNull(winningBid, "Winning bid cannot be null.");
+        Objects.requireNonNull(biddingTeam, "Bidding team cannot be null.");
+        Objects.requireNonNull(defendingTeam, "Defending team cannot be null.");
+
+        if (biddingTeam.isEmpty()) {
+            throw new IllegalArgumentException("Bidding team cannot be empty.");
+        }
+        if (defendingTeam.isEmpty()) {
+            throw new IllegalArgumentException("Defending team cannot be empty.");
+        }
+        if (biddingTeam.size() + defendingTeam.size() != 4) {
+            throw new IllegalArgumentException("A round contract must involve exactly 4 players.");
+        }
+        if (multiplier < 1) {
+            throw new IllegalArgumentException("Multiplier must be at least 1.");
+        }
+
+        // Defensive copying ensures the lists cannot be mutated externally after creation
+        biddingTeam = List.copyOf(biddingTeam);
+        defendingTeam = List.copyOf(defendingTeam);
+    }
 
     /**
      * Evaluates the outcome using the LATEST rules from the registry.
      */
     public Map<PlayerId, Integer> evaluateOutcome(TrickLedger ledger, ScoringRegistry scoringRegistry) {
+        Objects.requireNonNull(ledger, "TrickLedger cannot be null.");
+        Objects.requireNonNull(scoringRegistry, "ScoringRegistry cannot be null.");
+
         Map<PlayerId, Integer> deltas = new HashMap<>();
 
         // 1. Fetch the dynamic parameters from the registry, NOT the bid
@@ -39,10 +66,10 @@ public record RoundContract(
         // 3. Standard calculation using the fetched parameters
         int tricksWon = ledger.getTricksWonByTeam(biddingTeam);
 
-        // BUG FIX: Added the multiplier here! It was missing in your original code.
+        // 4. Calculate base points and apply multiplier
         int basePoints = params.calculatePoints(tricksWon) * multiplier;
 
-        // 4. Distribute points (Standard zero-sum logic)
+        // 5. Distribute points (Standard zero-sum logic)
         for (PlayerId p : biddingTeam) deltas.put(p, basePoints);
 
         for (PlayerId p : defendingTeam) {

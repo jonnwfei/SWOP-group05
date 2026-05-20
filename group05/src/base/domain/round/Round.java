@@ -13,6 +13,7 @@ import base.domain.trick.Trick;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Represents a single Round in a game of Whist.
@@ -37,13 +38,18 @@ public class Round {
     private boolean finished;
 
     public Round(List<Player> players, Player startingPlayer, int multiplier) {
-        if (players == null || players.size() != 4) {
-            throw new IllegalArgumentException("Players list must contain exactly 4 players.");
+        if (players == null || players.size() != 4 || players.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Players list must contain exactly 4 non-null players.");
         }
         if (startingPlayer == null || !players.contains(startingPlayer)) {
             throw new IllegalArgumentException("Starting Player must not be null and must be in the players list.");
         }
-        this.players = new ArrayList<>(players);
+        if (multiplier < 1) {
+            throw new IllegalArgumentException("Multiplier must be at least 1.");
+        }
+
+        // Defensive copy to ensure structural immutability of the player layout
+        this.players = List.copyOf(players);
         this.currentPlayer = startingPlayer;
         this.trickLedger = new TrickLedger();
         this.bidManager = new BidManager(this.players);
@@ -60,14 +66,15 @@ public class Round {
     // =========================================================================
 
     public void startPlayPhase(List<Bid> finalBids, Bid highestBid, Suit trumpSuit, Player firstPlayer) {
+        if (this.finished) throw new IllegalStateException("Cannot start play phase: Round is already finished.");
+        Objects.requireNonNull(highestBid, "Winning bid cannot be null.");
+        Objects.requireNonNull(firstPlayer, "First player cannot be null.");
+
         if (finalBids == null || finalBids.size() != this.players.size()) {
             throw new IllegalArgumentException("Must have exactly 4 final bids.");
         }
-        if (highestBid == null) {
-            throw new IllegalArgumentException("Cannot start play phase without a winning bid.");
-        }
-        if (firstPlayer == null) {
-            throw new IllegalArgumentException("Cannot start play phase without a first player.");
+        if (!this.players.contains(firstPlayer)) {
+            throw new IllegalArgumentException("First player must be a participant of this round.");
         }
         if (bidManager.getAllBids().size() != this.players.size()) {
             throw new IllegalStateException("BidManager state out of sync with provided finalBids.");
@@ -82,25 +89,29 @@ public class Round {
     }
 
     public void abortWithAllPass(List<Bid> finalBids) {
+        if (this.finished) throw new IllegalStateException("Cannot abort: Round is already finished.");
         if (finalBids == null || finalBids.size() != this.players.size()) {
             throw new IllegalArgumentException("Must have exactly 4 final bids.");
         }
-        if (!finalBids.stream().allMatch(bid -> bid.getType() == BidType.PASS)) {
+        if (!finalBids.stream().allMatch(bid -> bid != null && bid.getType() == BidType.PASS)) {
             throw new IllegalArgumentException("All bids must be PASS.");
         }
+
         this.players.forEach(Player::flushHand);
         this.finished = true;
     }
 
     public void advanceToNextPlayer() {
+        if (this.finished) throw new IllegalStateException("Cannot advance turn: Round is already finished.");
+
         int currentIdx = players.indexOf(currentPlayer);
         this.currentPlayer = players.get((currentIdx + 1) % 4);
     }
 
     public void finalizeTrick(Trick trick, ScoringRegistry registry) {
-        if (this.finished) {
-            throw new IllegalStateException("Cannot add trick to finished round");
-        }
+        if (this.finished) throw new IllegalStateException("Cannot add trick to finished round.");
+        Objects.requireNonNull(trick, "Trick cannot be null.");
+        Objects.requireNonNull(registry, "ScoringRegistry cannot be null.");
 
         this.trickLedger.recordTrick(trick);
         this.currentPlayer = getPlayerById(trick.getWinningPlayerId());
@@ -119,6 +130,7 @@ public class Round {
      * Calculates scores using the RoundContract and applies the deltas to the players.
      */
     public void applyFinalScores(ScoringRegistry registry) {
+        Objects.requireNonNull(registry, "ScoringRegistry cannot be null.");
         if (this.roundContract == null || !this.finished) return;
 
         Map<PlayerId, Integer> newScores = this.roundContract.evaluateOutcome(this.trickLedger, registry);
@@ -136,6 +148,7 @@ public class Round {
      * Retroactively recalculates this round's scores based on updated global rules.
      */
     public void recalculateRetroactiveScores(ScoringRegistry registry) {
+        Objects.requireNonNull(registry, "ScoringRegistry cannot be null.");
         if (this.roundContract == null || !this.finished) return;
 
         // Reset the internal deltas array to 0s and revert player scores
@@ -156,7 +169,7 @@ public class Round {
     public BidManager getBidManager() { return bidManager; }
     public RoundContract getRoundContract() { return roundContract; }
 
-    public List<Player> getPlayers() { return List.copyOf(players); }
+    public List<Player> getPlayers() { return players; }
     public Player getCurrentPlayer() { return currentPlayer; }
     public List<Bid> getBids() { return bidManager.getAllBids(); }
     public int getMultiplier() { return multiplier; }
@@ -166,10 +179,11 @@ public class Round {
     public boolean isFinished() { return finished; }
 
     public Player getPlayerById(PlayerId id) {
+        Objects.requireNonNull(id, "PlayerId cannot be null.");
         return players.stream()
                 .filter(p -> p.getId().equals(id))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("PlayerId not found!"));
+                .orElseThrow(() -> new IllegalStateException("PlayerId not found in round!"));
     }
 
     /**
@@ -180,6 +194,7 @@ public class Round {
      * @return a list of winning players, or an empty list if the round is not yet finished.
      */
     public List<Player> getWinningPlayers(ScoringRegistry registry) {
+        Objects.requireNonNull(registry, "ScoringRegistry cannot be null.");
         if (!isFinished() || this.roundContract == null) {
             return new ArrayList<>();
         }
@@ -189,12 +204,9 @@ public class Round {
 
         // 1. Special Case: Miserie
         if (bidType.getCategory() == BidCategory.MISERIE) {
-            // In manual count mode without a ledger, use the explicit winners list
             if (this.trickLedger.getTricks().isEmpty() && !this.miserieWinners.isEmpty()) {
                 return this.miserieWinners.stream().map(this::getPlayerById).toList();
             }
-
-            // Otherwise, ask the ledger who succeeded (won 0 tricks)
             for (PlayerId bidder : roundContract.biddingTeam()) {
                 if (!trickLedger.hasPlayerWonAnyTrick(bidder)) {
                     winningIds.add(bidder);
@@ -204,19 +216,13 @@ public class Round {
         }
 
         // 2. Standard Contracts
-        int tricksWon;
-        if (this.countTricksWon >= 0) {
-            // Manual count mode
-            tricksWon = this.countTricksWon;
-        } else {
-            // Normal play mode
-            tricksWon = trickLedger.getTricksWonByTeam(roundContract.biddingTeam());
-        }
+        int tricksWon = (this.countTricksWon >= 0)
+                ? this.countTricksWon
+                : trickLedger.getTricksWonByTeam(roundContract.biddingTeam());
 
         // 3. Ask the scoring registry if those tricks are enough to win points
         int points = registry.getParameters(bidType).calculatePoints(tricksWon);
 
-        // If points are positive, the attacking team succeeded
         if (points > 0) {
             winningIds.addAll(roundContract.biddingTeam());
         } else {
@@ -231,8 +237,13 @@ public class Round {
     // =========================================================================
 
     public void resolveManualCount(Bid highestBid, Suit trumpSuit, List<PlayerId> biddingTeam, int tricksWon, List<PlayerId> miserieWinners, ScoringRegistry registry) {
-        if (highestBid == null || biddingTeam == null || miserieWinners == null) {
-            throw new IllegalArgumentException("Cannot resolve manual count with incomplete data");
+        if (this.finished) throw new IllegalStateException("Cannot resolve manual count: Round is already finished.");
+        Objects.requireNonNull(highestBid, "Winning bid cannot be null.");
+        Objects.requireNonNull(biddingTeam, "Bidding team cannot be null.");
+        Objects.requireNonNull(registry, "ScoringRegistry cannot be null.");
+
+        if (tricksWon < -1 || tricksWon > TrickLedger.MAX_TRICKS) {
+            throw new IllegalArgumentException("Invalid tricks won value.");
         }
 
         List<PlayerId> defendingTeam = new ArrayList<>(this.players.stream().map(Player::getId).toList());
@@ -240,22 +251,31 @@ public class Round {
 
         this.roundContract = new RoundContract(highestBid, trumpSuit, biddingTeam, defendingTeam, this.multiplier);
         this.countTricksWon = tricksWon;
-        this.miserieWinners = new ArrayList<>(miserieWinners);
+        this.miserieWinners = miserieWinners == null ? new ArrayList<>() : new ArrayList<>(miserieWinners);
 
         this.finished = true;
-
-        // Note: For a fully strict implementation, manual count should also populate a mock TrickLedger
-        // or RoundContract needs an overloaded evaluateOutcome that accepts integers directly.
         this.applyFinalScores(registry);
     }
 
     public void restoreFromSnapshot(
             Bid highestBid,
-            Suit  trumpSuit,
+            Suit trumpSuit,
             List<PlayerId> biddingTeam,
             int tricksWon,
             List<PlayerId> miserieWinners,
             List<Integer> restoredScoreDeltas) {
+
+        if (this.finished) throw new IllegalStateException("Cannot restore: Round is already finished.");
+        Objects.requireNonNull(highestBid, "Highest bid cannot be null.");
+        Objects.requireNonNull(biddingTeam, "Bidding team cannot be null.");
+        Objects.requireNonNull(restoredScoreDeltas, "Restored score deltas cannot be null.");
+
+        if (restoredScoreDeltas.size() != this.players.size()) {
+            throw new IllegalArgumentException("Must provide exactly 4 score deltas.");
+        }
+        if (tricksWon < -1 || tricksWon > TrickLedger.MAX_TRICKS) {
+            throw new IllegalArgumentException("Invalid tricks won value.");
+        }
 
         List<PlayerId> defendingTeam = new ArrayList<>(this.players.stream().map(Player::getId).toList());
         defendingTeam.removeAll(biddingTeam);
@@ -278,9 +298,7 @@ public class Round {
     // =========================================================================
 
     private boolean isMiserieEarlyTermination() {
-        if (this.roundContract == null) {
-            return false;
-        }
+        if (this.roundContract == null) return false;
 
         Bid highestBid = this.bidManager.getHighestBid();
         if (highestBid == null || highestBid.getType().getCategory() != BidCategory.MISERIE) {
@@ -288,9 +306,7 @@ public class Round {
         }
 
         List<PlayerId> miserieBidders = this.bidManager.findMiserieParticipants(highestBid.getType());
-        if (miserieBidders.isEmpty()) {
-            return false;
-        }
+        if (miserieBidders.isEmpty()) return false;
 
         for (PlayerId bidderId : miserieBidders) {
             boolean wonATrick = this.trickLedger.hasPlayerWonAnyTrick(bidderId);
