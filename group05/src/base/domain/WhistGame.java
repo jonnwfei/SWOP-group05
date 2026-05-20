@@ -7,7 +7,8 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
-
+import static base.domain.WhistRules.*;
+import base.domain.observer.GameEventPublisher;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
@@ -21,11 +22,9 @@ import base.domain.states.StateStep;
 import base.domain.strategy.Strategy;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
-
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static base.domain.WhistRules.REQUIRED_PLAYERS;
 
 /**
  * Represents a game of Whist.
@@ -33,8 +32,7 @@ import static base.domain.WhistRules.REQUIRED_PLAYERS;
  * @author Stan Kestens, Tommy Wu
  * @since 28/02/2026
  */
-public class WhistGame {
-
+public class WhistGame implements GameEventPublisher {
     private State state;
     private Deck deck;
     private Player dealerPlayer;
@@ -114,7 +112,7 @@ public class WhistGame {
         if (allPlayers.contains(player))
             throw new IllegalArgumentException("Player already in Game");
         this.allPlayers.add(player);
-        player.getDecisionStrategy().onJoinGame(this::addObserver);
+        player.getDecisionStrategy().onJoinGame(this);
     }
 
     /**
@@ -127,11 +125,12 @@ public class WhistGame {
         if (getTotalPlayerCount() <= REQUIRED_PLAYERS) {
             throw new IllegalStateException("Cannot remove player: at least 4 total players are required.");
         }
-
-        boolean removed = this.allPlayers.remove(player);
-        if (!removed) {
+        if (!this.allPlayers.contains(player)) {
             throw new IllegalArgumentException("Cannot remove player: player is not part of this game.");
         }
+
+        this.allPlayers.remove(player);
+        player.getDecisionStrategy().onLeaveGame(this);
 
         if (player.equals(this.dealerPlayer)) {
             this.dealerPlayer = getPlayers().isEmpty() ? null : getPlayers().getFirst();
@@ -303,6 +302,10 @@ public class WhistGame {
         if (observer != null) this.observers.add(observer);
     }
 
+    public void removeObserver(GameObserver observer) {
+        if (observer != null) this.observers.remove(observer);
+    }
+
     public void notifyRoundStarted() {
         List<PlayerId> ids = getPlayers().stream().map(Player::getId).toList();
         for (GameObserver observer : observers) observer.onRoundStarted(ids);
@@ -314,6 +317,22 @@ public class WhistGame {
 
     public void notifyBidPlaced(BidTurn bidTurn) {
         for (GameObserver observer : observers) observer.onBidPlaced(bidTurn);
+    }
+
+    public void notifyTurnPlayed(PlayTurn playTurn) {
+        for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
+    }
+
+    public void notifyBiddingFinalized(BidType winningBid, List<PlayerId> biddingTeam) {
+        for (GameObserver observer : observers) observer.onBiddingFinalized(winningBid, biddingTeam);
+    }
+
+    public void notifyTrickCompleted(PlayerId winner) {
+        for (GameObserver observer : observers) observer.onTrickCompleted(winner);
+    }
+
+    public void notifyRoundFinished() {
+        for (GameObserver observer : observers) observer.onRoundFinished();
     }
 
     public  void removeRound(Round round){
@@ -367,9 +386,6 @@ public class WhistGame {
                 currentPlayer.updateScore(delta);
             }
         }
-    }
-    public void notifyTurnPlayed(PlayTurn playTurn) {
-        for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
     }
 
     /**
@@ -449,7 +465,7 @@ public class WhistGame {
 
         for (PlayerSnapshot playerSnapshot : snapshot.players()) {
             PlayerId restoredId = PlayerId.fromString(playerSnapshot.id());
-            Strategy playerStrategy = Strategy.toStrategy(playerSnapshot.strategyType(), restoredId);
+            Strategy playerStrategy = Strategy.toStrategy(playerSnapshot.strategyType());
 
             Player player = new Player(playerStrategy, playerSnapshot.name(), restoredId);
             player.updateScore(playerSnapshot.score());

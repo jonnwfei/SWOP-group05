@@ -1,9 +1,9 @@
 package base.domain.trick;
 
 import base.domain.card.Card;
+import base.domain.card.CardMath;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,136 +12,124 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("TrickEvaluator Rules & Mechanics")
+@DisplayName("CardMath.doesCardBeat() — Trick-Winning Evaluation Rules")
 class TrickEvaluatorTest {
 
     @Nested
-    @DisplayName("Constructor & Validation Constraints")
+    @DisplayName("Validation Constraints")
     class ValidationTests {
 
         @Test
-        @DisplayName("Should throw exception when Lead Suit is null")
-        void shouldThrowWhenLeadSuitIsNull() {
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> new TrickEvaluator(null, Suit.HEARTS)
-            );
-            assertTrue(exception.getMessage().contains("leadSuit must not be null"));
-        }
-
-        @Test
-        @DisplayName("Should create successfully when Trump Suit is null (Miserie)")
-        void shouldAllowNullTrumpSuit() {
-            TrickEvaluator evaluator = new TrickEvaluator(Suit.CLUBS, null);
-            assertNotNull(evaluator, "Evaluator should be instantiated even without a trump suit.");
-        }
-
-        @Test
-        @DisplayName("Should throw exception when cards are null in doesBeat()")
-        void shouldThrowWhenCardsAreNull() {
-            TrickEvaluator evaluator = new TrickEvaluator(Suit.HEARTS, Suit.SPADES);
+        @DisplayName("Should throw NullPointerException when challenger is null")
+        void shouldThrowWhenChallengerIsNull() {
             Card validCard = new Card(Suit.HEARTS, Rank.TEN);
+            assertThrows(
+                    NullPointerException.class,
+                    () -> CardMath.doesCardBeat(null, validCard, Suit.HEARTS, Suit.SPADES)
+            );
+        }
 
-            assertThrows(IllegalArgumentException.class, () -> evaluator.doesBeat(null, validCard));
-            assertThrows(IllegalArgumentException.class, () -> evaluator.doesBeat(validCard, null));
+        @Test
+        @DisplayName("Should return true when incumbent is null (first card played always leads)")
+        void shouldReturnTrueWhenIncumbentIsNull() {
+            Card challenger = new Card(Suit.HEARTS, Rank.TEN);
+            assertTrue(CardMath.doesCardBeat(challenger, null, Suit.HEARTS, Suit.SPADES));
+        }
+
+        @Test
+        @DisplayName("Should evaluate correctly when Trump Suit is null (Miserie mode)")
+        void shouldAllowNullTrumpSuit() {
+            Card leadAce = new Card(Suit.CLUBS, Rank.ACE);
+            Card offSuit = new Card(Suit.HEARTS, Rank.TWO);
+            // In no-trump, lead-suit Ace beats an off-suit Two
+            assertFalse(CardMath.doesCardBeat(offSuit, leadAce, Suit.CLUBS, null));
         }
     }
 
     @Nested
     @DisplayName("Trump Suit Contests")
     class TrumpTests {
-        private TrickEvaluator evaluator;
-
-        @BeforeEach
-        void setUp() {
-            // Lead is SPADES, Trump is HEARTS
-            evaluator = new TrickEvaluator(Suit.SPADES, Suit.HEARTS);
-        }
 
         @Test
         @DisplayName("Trump card should always beat a non-trump card")
         void trumpBeatsNonTrump() {
             Card currentBest = new Card(Suit.SPADES, Rank.ACE);   // Lead suit, highest rank
-            Card challenger = new Card(Suit.HEARTS, Rank.TWO);    // Trump suit, lowest rank
+            Card challenger  = new Card(Suit.HEARTS, Rank.TWO);   // Trump suit, lowest rank
 
-            assertTrue(evaluator.doesBeat(challenger, currentBest));
+            // Lead is SPADES, Trump is HEARTS
+            assertTrue(CardMath.doesCardBeat(challenger, currentBest, Suit.SPADES, Suit.HEARTS));
         }
 
         @Test
         @DisplayName("Non-trump card should never beat a trump card")
         void nonTrumpLosesToTrump() {
             Card currentBest = new Card(Suit.HEARTS, Rank.TWO);   // Trump suit
-            Card challenger = new Card(Suit.SPADES, Rank.ACE);    // Lead suit
+            Card challenger  = new Card(Suit.SPADES, Rank.ACE);   // Lead suit
 
-            assertFalse(evaluator.doesBeat(challenger, currentBest));
+            assertFalse(CardMath.doesCardBeat(challenger, currentBest, Suit.SPADES, Suit.HEARTS));
         }
 
         @ParameterizedTest(name = "Challenger {0} vs Current Best {1} -> expects {2}")
         @CsvSource({
-                "ACE, KING, true",   // Higher trump beats lower trump
-                "TEN, JACK, false",  // Lower trump loses to higher trump
-                "EIGHT, EIGHT, false" // Identical rank does not "beat" (must be strictly greater)
+                "ACE,   KING,  true",   // Higher trump beats lower trump
+                "TEN,   JACK,  false",  // Lower trump loses to higher trump
+                "EIGHT, EIGHT, false"   // Identical rank does not "beat" (must be strictly greater)
         })
         @DisplayName("When both are Trumps, the higher rank wins")
         void higherTrumpWins(Rank challengerRank, Rank currentBestRank, boolean expectedResult) {
-            Card challenger = new Card(Suit.HEARTS, challengerRank);
+            Card challenger  = new Card(Suit.HEARTS, challengerRank);
             Card currentBest = new Card(Suit.HEARTS, currentBestRank);
 
-            assertEquals(expectedResult, evaluator.doesBeat(challenger, currentBest));
+            // Lead is SPADES, Trump is HEARTS
+            assertEquals(expectedResult, CardMath.doesCardBeat(challenger, currentBest, Suit.SPADES, Suit.HEARTS));
         }
     }
 
     @Nested
     @DisplayName("Lead Suit Contests (No Trump involved)")
     class LeadSuitTests {
-        private TrickEvaluator evaluator;
-
-        @BeforeEach
-        void setUp() {
-            // Lead is CLUBS, Trump is HEARTS
-            evaluator = new TrickEvaluator(Suit.CLUBS, Suit.HEARTS);
-        }
 
         @ParameterizedTest(name = "Challenger {0} vs Current Best {1} -> expects {2}")
         @CsvSource({
                 "QUEEN, JACK, true",   // Higher lead beats lower lead
-                "NINE, TEN, false",    // Lower lead loses to higher lead
+                "NINE,  TEN,  false"   // Lower lead loses to higher lead
         })
         @DisplayName("When both are Lead suit, the higher rank wins")
         void higherLeadWins(Rank challengerRank, Rank currentBestRank, boolean expectedResult) {
-            Card challenger = new Card(Suit.CLUBS, challengerRank);
+            Card challenger  = new Card(Suit.CLUBS, challengerRank);
             Card currentBest = new Card(Suit.CLUBS, currentBestRank);
 
-            assertEquals(expectedResult, evaluator.doesBeat(challenger, currentBest));
+            // Lead is CLUBS, Trump is HEARTS
+            assertEquals(expectedResult, CardMath.doesCardBeat(challenger, currentBest, Suit.CLUBS, Suit.HEARTS));
         }
 
         @Test
         @DisplayName("Off-suit card (not lead, not trump) always loses to Lead suit")
         void offSuitLosesToLead() {
             Card currentBest = new Card(Suit.CLUBS, Rank.TWO);      // Lead suit
-            Card challenger = new Card(Suit.DIAMONDS, Rank.ACE);    // Off-suit, high rank
+            Card challenger  = new Card(Suit.DIAMONDS, Rank.ACE);   // Off-suit, high rank
 
-            assertFalse(evaluator.doesBeat(challenger, currentBest));
+            assertFalse(CardMath.doesCardBeat(challenger, currentBest, Suit.CLUBS, Suit.HEARTS));
         }
 
         @Test
         @DisplayName("Off-suit card always loses to another off-suit card (first to play wins ties)")
         void offSuitLosesToOffSuit() {
             Card currentBest = new Card(Suit.DIAMONDS, Rank.TEN);   // Off-suit
-            Card challenger = new Card(Suit.SPADES, Rank.ACE);      // Off-suit, higher rank
+            Card challenger  = new Card(Suit.SPADES, Rank.ACE);     // Different off-suit, higher rank
 
-            // Neither is lead, neither is trump. Challenger cannot "beat" the current best.
-            assertFalse(evaluator.doesBeat(challenger, currentBest));
+            // Lead is CLUBS, Trump is HEARTS. Neither DIAMONDS nor SPADES is lead/trump.
+            assertFalse(CardMath.doesCardBeat(challenger, currentBest, Suit.CLUBS, Suit.HEARTS));
         }
 
         @Test
         @DisplayName("Off-suit challenger (non-lead, non-trump) loses to a trump card")
         void offSuitLosesToTrump() {
-            // Lead is SPADES, Trump is HEARTS (from setUp)
-            Card currentBest = new Card(Suit.HEARTS, Rank.TWO);      // Trump suit
-            Card challenger = new Card(Suit.DIAMONDS, Rank.ACE);    // Off-suit (non-lead, non-trump)
+            Card currentBest = new Card(Suit.HEARTS, Rank.TWO);     // Trump suit
+            Card challenger  = new Card(Suit.DIAMONDS, Rank.ACE);   // Off-suit (non-lead, non-trump)
 
-            assertFalse(evaluator.doesBeat(challenger, currentBest),
+            // Lead is SPADES, Trump is HEARTS
+            assertFalse(CardMath.doesCardBeat(challenger, currentBest, Suit.SPADES, Suit.HEARTS),
                     "An off-suit card should never beat a trump card.");
         }
     }
@@ -153,15 +141,13 @@ class TrickEvaluatorTest {
         @Test
         @DisplayName("Should evaluate purely on Lead suit when Trump is null")
         void operatesWithoutTrumpSuit() {
-            TrickEvaluator miserieEvaluator = new TrickEvaluator(Suit.DIAMONDS, null);
-
-            Card leadLow = new Card(Suit.DIAMONDS, Rank.TWO);
-            Card leadHigh = new Card(Suit.DIAMONDS, Rank.KING);
+            Card leadLow    = new Card(Suit.DIAMONDS, Rank.TWO);
+            Card leadHigh   = new Card(Suit.DIAMONDS, Rank.KING);
             Card offSuitAce = new Card(Suit.SPADES, Rank.ACE);
 
-            assertTrue(miserieEvaluator.doesBeat(leadHigh, leadLow));
-
-            assertFalse(miserieEvaluator.doesBeat(offSuitAce, leadHigh));
+            // Lead is DIAMONDS, Trump is NULL (Miserie)
+            assertTrue(CardMath.doesCardBeat(leadHigh, leadLow, Suit.DIAMONDS, null));
+            assertFalse(CardMath.doesCardBeat(offSuitAce, leadHigh, Suit.DIAMONDS, null));
         }
     }
 }

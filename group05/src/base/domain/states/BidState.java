@@ -212,6 +212,9 @@ public class BidState extends State {
         Player firstPlayer = determineFirstPlayerToLead(winningBid);
         getGame().getCurrentRound().startPlayPhase(
                 bidManager.getAllBids(), winningBid, this.currentTrumpSuit, firstPlayer);
+
+        List<PlayerId> biddingTeam = bidManager.resolveBiddingTeam();
+        getGame().notifyBiddingFinalized(winningBid.getType(), biddingTeam);
     }
 
     // =========================================================================

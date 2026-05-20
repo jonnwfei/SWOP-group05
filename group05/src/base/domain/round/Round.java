@@ -13,6 +13,8 @@ import base.domain.trick.Trick;
 import java.util.ArrayList;
 import java.util.List;
 
+import static base.domain.WhistRules.MAX_TURNS;
+
 /**
  * Represents a single Round in a game of Whist.
  * A Round consists of a Bidding phase followed by a Play phase of exactly 13 Tricks.
@@ -28,9 +30,6 @@ import java.util.List;
  * @since 24/02/26
  */
 public class Round {
-
-    /** The maximum number of tricks played in a single round. */
-    public static final int MAX_TRICKS = 13;
 
     /** The 4 players participating in this round. */
     private final List<Player> players;
@@ -191,7 +190,7 @@ public class Round {
         if (trick == null) {
             throw new IllegalArgumentException("Trick must not be null.");
         }
-        if (trick.getTurns().size() != Trick.MAX_TURNS) {
+        if (trick.getTurns().size() != MAX_TURNS) {
             throw new IllegalArgumentException("Trick is not completed yet.");
         }
         if (this.isFinished()) {

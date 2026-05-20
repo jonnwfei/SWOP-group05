@@ -5,6 +5,7 @@ import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.player.TeamRole;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 import org.junit.jupiter.api.DisplayName;
@@ -68,7 +69,7 @@ class PlayResultsTest {
         @DisplayName("Successfully creates and returns state via accessors")
         void validCreation() {
             PlayResults.PlayCardResult result = new PlayResults.PlayCardResult(
-                    validTurns, true, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap
+                    validTurns, true, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.BIDDING_TEAM
             );
 
             assertEquals(validTurns, result.turns());
@@ -93,7 +94,7 @@ class PlayResultsTest {
             Map<PlayerId, String> mutableMap = new HashMap<>(validMap);
 
             PlayResults.PlayCardResult result = new PlayResults.PlayCardResult(
-                    mutableTurns, false, mutableNames, mutableHands, 1, mockPlayer, mutableLegalCards, null, mutableMap
+                    mutableTurns, false, mutableNames, mutableHands, 1, mockPlayer, mutableLegalCards, null, mutableMap, TeamRole.DEFENDING_TEAM
             );
 
             // Mutate originals
@@ -122,47 +123,50 @@ class PlayResultsTest {
         @DisplayName("Exhaustively evaluates every single validation guard branch")
         void validationGuards() {
             // Turns
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(null, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap));
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(Arrays.asList(testTurn, null), false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(null, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(Arrays.asList(testTurn, null), false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
 
             // Exposed Names
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, null, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap));
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, Arrays.asList("Alice", null), validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, null, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, Arrays.asList("Alice", null), validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
 
             // Formatted Hands
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, null, 1, mockPlayer, validLegalCards, mockTrick, validMap));
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, Arrays.asList("Alice", "Bob"), Arrays.asList(validHands.get(0), null), 1, mockPlayer, validLegalCards, mockTrick, validMap));
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, List.of(Arrays.asList(testCard, null)), 1, mockPlayer, validLegalCards, mockTrick, validMap));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, null, 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, Arrays.asList("Alice", "Bob"), Arrays.asList(validHands.get(0), null), 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, List.of(Arrays.asList(testCard, null)), 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
 
             // Size Mismatch
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, List.of("Alice", "Bob"), validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, List.of("Alice", "Bob"), validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
 
             // Trick Number
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 0, mockPlayer, validLegalCards, mockTrick, validMap));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 0, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
 
             // Player
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, null, validLegalCards, mockTrick, validMap));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, null, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
 
             // Legal Cards (Custom guard for null, native NullPointerException from List.copyOf if containing nulls)
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, null, mockTrick, validMap));
-            assertThrows(NullPointerException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, Arrays.asList(testCard, null), mockTrick, validMap));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, null, mockTrick, validMap, TeamRole.DEFENDING_TEAM));
+            assertThrows(NullPointerException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, Arrays.asList(testCard, null), mockTrick, validMap, TeamRole.DEFENDING_TEAM));
 
             // Map (Null key or null value via HashMap since Map.of rejects nulls immediately)
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, null));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, null, TeamRole.DEFENDING_TEAM));
 
             Map<PlayerId, String> nullKeyMap = new HashMap<>(); nullKeyMap.put(null, "Alice");
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, nullKeyMap));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, nullKeyMap, TeamRole.DEFENDING_TEAM));
 
             Map<PlayerId, String> nullValMap = new HashMap<>(); nullValMap.put(testPlayerId, null);
-            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, nullValMap));
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, nullValMap, TeamRole.DEFENDING_TEAM));
+
+            // Role
+            assertThrows(IllegalArgumentException.class, () -> new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap, null));
         }
 
         @Test
         @DisplayName("Validates implicit record methods")
         void implicitMethods() {
-            PlayResults.PlayCardResult r1 = new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap);
-            PlayResults.PlayCardResult r2 = new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap);
-            PlayResults.PlayCardResult r3 = new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 2, mockPlayer, validLegalCards, mockTrick, validMap);
+            PlayResults.PlayCardResult r1 = new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM);
+            PlayResults.PlayCardResult r2 = new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 1, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM);
+            PlayResults.PlayCardResult r3 = new PlayResults.PlayCardResult(validTurns, false, validNames, validHands, 2, mockPlayer, validLegalCards, mockTrick, validMap, TeamRole.DEFENDING_TEAM);
 
             assertEquals(r1, r2);
             assertEquals(r1.hashCode(), r2.hashCode());
