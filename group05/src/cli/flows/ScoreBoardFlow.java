@@ -1,6 +1,8 @@
 package cli.flows;
 
 import base.GameController;
+import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.round.Round;
 import base.domain.snapshots.SaveMode;
 import cli.TerminalManager;
@@ -8,7 +10,9 @@ import cli.events.MenuEvents.*;
 import cli.util.TerminalInputHelper;
 import cli.events.CountEvents.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Between-rounds scoreboard menu. Delegates cross-cutting edit actions to
@@ -67,11 +71,10 @@ public class ScoreBoardFlow {
             }
         }
     }
-
     private void showScoreTable() {
-        List<String> playerNames = controller.getPlayerNames();
-        List<Round>  rounds      = controller.getRounds();
-        terminalManager.handle(new ScoreTableIOEvent(playerNames, rounds));
+        terminalManager.handle(new ScoreTableIOEvent(
+                controller.getPlayerNamesMap(),
+                controller.getRounds()));
     }
 
     private int showMenu() {

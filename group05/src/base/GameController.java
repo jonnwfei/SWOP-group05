@@ -4,10 +4,12 @@ import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
 
 import java.util.List;
+import java.util.Map;
 
 public class GameController {
     private final WhistGame game;
@@ -126,5 +128,10 @@ public class GameController {
     public void removePlayer(Player player)  { game.deletePlayer(player); }
     public void removeRound(Round round)     { game.deleteRound(round); }
 
-    public void clearHistory()               { game.clearHistory(); }
+    public void clearHistory()
+    { game.clearHistory(); }
+
+    public Map<PlayerId, String> getPlayerNamesMap() {
+        return game.getPlayerNamesMap();
+    }
 }

@@ -292,7 +292,7 @@ public class Round {
         return count;
     }
 
-    // =========================================================================
+    // ====================================================================
     // Accessors
     // =========================================================================
 
@@ -392,7 +392,10 @@ public class Round {
         this.finished = true;
         this.calculateScores();
     }
-    public void setTrumpSuit(Suit suit){
+    void setTrumpSuit(Suit suit){
+        if (finished || !playedTricks.isEmpty()) {
+            throw new IllegalStateException("Cannot change trump suit after the round has started or finished");
+        }
         this.trumpSuit = suit;
     }
 

@@ -4,12 +4,15 @@ import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.results.PlayResults.*;
 import base.domain.round.Round;
 import cli.events.IOEvent;
 import cli.events.MessageIOEvent;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static cli.events.BidEvents.*;
 import static cli.events.CountEvents.*;
@@ -57,8 +60,10 @@ public class TerminalRenderer {
     }
 
     private void renderScoreTableEvent(ScoreTableIOEvent event) {
-        List<String> names  = event.playerNames();
-        List<Round>  rounds = event.rounds();
+        Map<PlayerId, String> playerColumns = event.playerColumns();
+        List<PlayerId> columnIds = new ArrayList<>(playerColumns.keySet());
+        List<String>   names     = columnIds.stream().map(playerColumns::get).toList();
+        List<Round>    rounds    = event.rounds();
 
         if (rounds.isEmpty()) {
             System.out.println("No rounds played yet.");
@@ -86,7 +91,7 @@ public class TerminalRenderer {
         System.out.println(divider);
 
         // ── data rows ────────────────────────────────────────────────────
-        int[] totals = new int[names.size()];
+        int[] totals = new int[columnIds.size()];
 
         for (int i = 0; i < rounds.size(); i++) {
             Round        round        = rounds.get(i);
@@ -101,11 +106,18 @@ public class TerminalRenderer {
             row.append(pad(trump,          trumpCol));
             row.append(pad(bid,            bidCol));
 
-            for (int pi = 0; pi < names.size(); pi++) {
-                // match by position: names list and allPlayers share the same order via controller
-                int delta = (pi < roundPlayers.size() && pi < deltas.size()) ? deltas.get(pi) : 0;
-                totals[pi] += delta;
-                row.append(pad(formatDelta(delta) + " / " + totals[pi], playerCol));
+            for (int col = 0; col < columnIds.size(); col++) {
+                PlayerId id = columnIds.get(col);
+
+                // locate this player's position inside this round's player list
+                int roundIndex = -1;
+                for (int j = 0; j < roundPlayers.size(); j++) {
+                    if (roundPlayers.get(j).getId().equals(id)) { roundIndex = j; break; }
+                }
+
+                int delta = (roundIndex >= 0 && roundIndex < deltas.size()) ? deltas.get(roundIndex) : 0;
+                totals[col] += delta;
+                row.append(pad(formatDelta(delta) + " / " + totals[col], playerCol));
             }
             System.out.println(row);
         }

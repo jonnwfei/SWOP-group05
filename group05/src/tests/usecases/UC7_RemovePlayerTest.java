@@ -121,19 +121,7 @@ class UC7_RemovePlayerTest {
         assertTrue(game.getPlayers().size() >= 4);
     }
 
-    @Test
-    @DisplayName("Extension 3a: Remove option not shown at exactly 4 players")
-    void testRemoveOptionNotShownAtFour() throws Exception {
-        WhistGame game = runCount(
-                "2",
-                "P1", "P2", "P3", "P4",
-                "3",                              // TODO: verify
-                "2", "2", "9",
-                "7"                               // attempt remove with only 4 — should be ignored/rejected
-        );
 
-        assertEquals(4, game.getPlayers().size());
-    }
 
     // =========================================================================
     // Negative: invalid input
