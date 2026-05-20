@@ -413,8 +413,9 @@ public class Round {
         if (players.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
 
         BidType bidType = highestBid.getType();
-        PlayerId bidderId = bidManager.getHighestBidder(); // TODO: when Optional is removed, change this
-        int bidderIndex = players.indexOf(bidderId != null ? this.getPlayerById(bidderId) : players.getFirst());
+        PlayerId bidderId = bidManager.getHighestBidder();
+        Player bidder =  bidderId != null ? getPlayerById(bidderId) : currentPlayer;
+        int bidderIndex = players.indexOf(bidder);
 
         List<Integer> participantIndices = biddingTeam.stream()
                 .map(players::indexOf).toList();
@@ -501,9 +502,7 @@ public class Round {
 
         // Apply score deltas to players and update internal list.
         for (int i = 0; i < this.players.size(); i++) {
-            int delta = restoredScoreDeltas.get(i);
-            this.players.get(i).updateScore(delta);
-            this.scoreDeltas.set(i, delta);
+            this.scoreDeltas.set(i, restoredScoreDeltas.get(i)); // TODO: this is becuz round shouldnt restore the scores itself, but the game should apply the deltas to the players.
         }
 
         this.finished = true;
