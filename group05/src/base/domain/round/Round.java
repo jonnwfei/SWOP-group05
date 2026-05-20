@@ -419,11 +419,11 @@ public class Round {
 
         List<Integer> participantIndices = biddingTeam.stream()
                 .map(players::indexOf).toList();
-        List<Integer> miserieWinnerIndices = miserieWinners.stream().map(players::indexOf).toList();
+        List<Integer> miserieWinnerIndices = miserieWinners.stream().map(players::indexOf).toList(); // TODO: should be
 
         try {
             return new RoundSnapshot(
-                    bidType, bidderIndex, participantIndices, countTricksWon,
+                    bidType, bidderIndex, participantIndices, countTricksWon, //TODO: will aslo be changed, no more countTricks won etc
                     miserieWinnerIndices, multiplier, scoreDeltas, trumpSuit);
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
