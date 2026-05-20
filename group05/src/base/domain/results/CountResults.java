@@ -58,6 +58,7 @@ public sealed interface CountResults extends GameResult {
             List<String> names,
             List<Integer> scores,
             boolean canRemovePlayer
+
     ) implements CountResults {
         public ScoreBoardResult {
             if (names == null || names.isEmpty())

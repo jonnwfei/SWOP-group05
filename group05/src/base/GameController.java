@@ -4,11 +4,12 @@ import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
+import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
-import base.domain.strategy.*;
 
 import java.util.List;
+import java.util.Map;
 
 public class GameController {
     private final WhistGame game;
@@ -29,14 +30,6 @@ public class GameController {
 
     public boolean isGameOver() {
         return game.isOver();
-    }
-
-    public void addPlayer(Player player) {
-        game.addPlayer(player);
-    }
-
-    public void removePlayer(Player player) {
-        game.removePlayer(player);
     }
 
     public List<Player> getPlayers() {
@@ -67,10 +60,6 @@ public class GameController {
         return game.getRounds();
     }
 
-    public void removeRound(Round round) {
-        game.removeRound(round);
-    }
-
     public void recalibrateScores() {
         game.recalibrateScores();
     }
@@ -93,7 +82,6 @@ public class GameController {
 
     /**
      * TODO : delete this -> need to fix the uses for the game persistence
-     * @return whistgame
      */
     public WhistGame getGame() {
         return this.game;
@@ -103,31 +91,14 @@ public class GameController {
         game.setDealerPlayer(first);
     }
 
-    // Player factories — flows pass intent, controller constructs
-    public void addHumanPlayer(String name) {
-        game.addPlayer(new Player(new HumanStrategy(), name));
-    }
-
-    public void addSmartBot(String name) {
-        game.addPlayer(new Player(new SmartBotStrategy(), name));
-    }
-
-    public void addHighBot(String name) {
-        game.addPlayer(new Player(new HighBotStrategy(), name));
-    }
-
-    public void addLowBot(String name) {
-        game.addPlayer(new Player(new LowBotStrategy(), name));
-    }
-
     public void setFirstPlayerAsDealer() {
         game.setFirstPlayerAsDealer();
     }
+
     public void removePlayerAtIndex(int index) {
-        game.removePlayerAtIndex(index);
+        game.deletePlayerAtIndex(index);
     }
 
-    // Projections — flows never need to import Player
     public List<String> getPlayerNames() {
         return game.getAllPlayers().stream().map(Player::getName).toList();
     }
@@ -140,4 +111,27 @@ public class GameController {
         return game.getAllPlayers().size();
     }
 
+    public void undo()           { game.undo(); }
+    public void redo()           { game.redo(); }
+    public boolean canUndo()     { return game.canUndo(); }
+    public boolean canRedo()     { return game.canRedo(); }
+
+    public void addRoundAtIndex(Round round, int index) {
+        game.addRoundAtIndex(round, index);
+    }
+
+    public void addHumanPlayer(String name)  { game.addHumanPlayer(name); }
+    public void addSmartBot(String name)     { game.addSmartBot(name); }
+    public void addHighBot(String name)      { game.addHighBot(name); }
+    public void addLowBot(String name)       { game.addLowBot(name); }
+
+    public void removePlayer(Player player)  { game.deletePlayer(player); }
+    public void removeRound(Round round)     { game.deleteRound(round); }
+
+    public void clearHistory()
+    { game.clearHistory(); }
+
+    public Map<PlayerId, String> getPlayerNamesMap() {
+        return game.getPlayerNamesMap();
+    }
 }
