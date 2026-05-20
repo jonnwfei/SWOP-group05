@@ -1,7 +1,6 @@
 package base.domain.round;
 
-import base.domain.bid.Bid;
-import base.domain.bid.PassBid;
+import base.domain.bid.*;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import org.junit.jupiter.api.AfterEach;
@@ -32,6 +31,7 @@ class RoundRestorationServiceTest {
 
     // Bid is a sealed interface; all permits are records — use a real instance.
     private static final Bid A_BID = new PassBid();
+    private static final Bid A_NORMALBID = new MiserieBid(BidType.MISERIE);
 
     private List<Player> fourPlayers;
     private List<Integer> fourDeltas;
@@ -86,7 +86,7 @@ class RoundRestorationServiceTest {
         @DisplayName("Throws when participants list is empty")
         void throwsOnEmptyParticipants() {
             assertThrows(IllegalArgumentException.class, () ->
-                    service.restore(round, A_BID, Suit.HEARTS,
+                    service.restore(round, A_NORMALBID, Suit.HEARTS,
                             List.of(), 8, List.of(), fourDeltas));
         }
 
