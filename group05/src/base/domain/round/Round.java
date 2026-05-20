@@ -428,7 +428,9 @@ public class Round {
             throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
         }
     }
-
+    public void setTrumpSuit(Suit suit){
+        this.trumpSuit = suit;
+    }
     /**
      * Rehydrates a historical round from a persisted snapshot without
      * re-running scoring logic.

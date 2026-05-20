@@ -7,6 +7,7 @@ import base.domain.snapshots.SaveMode;
 import cli.adapter.Adapter;
 import cli.flows.GameEditFlow;
 import cli.flows.MenuFlow;
+import cli.flows.ReportFlow;
 import cli.flows.ScoreBoardFlow;
 import base.domain.results.GameResult;
 import cli.adapter.AdapterResponse;
@@ -25,6 +26,7 @@ public class GameCli {
     private final TerminalManager terminalManager;
     private final MenuFlow menuFlow;
     private final GamePersistenceService persistenceService;
+    private final ReportFlow reportFlow;
 
     public GameCli() {
         this.controller = new GameController(new WhistGame());
@@ -32,12 +34,14 @@ public class GameCli {
         this.terminalManager = new TerminalManager();
         this.persistenceService = new GamePersistenceService();
         this.menuFlow = new MenuFlow(terminalManager, persistenceService, controller);
+        this.reportFlow = new ReportFlow(terminalManager, controller);
     }
 
     public void run() {
         while (true) {
             controller.reset();
             SaveMode mode = menuFlow.run();
+            controller.clearHistory();
             GameEditFlow editFlow = new GameEditFlow(terminalManager, controller, persistenceService, mode);
             ScoreBoardFlow scoreBoardFlow = new ScoreBoardFlow(terminalManager, controller, editFlow);
 
@@ -46,6 +50,7 @@ public class GameCli {
                 runSession();
                 continueSession = scoreBoardFlow.run(mode);
             }
+            reportFlow.run(); // triggered exactly once, when the user quits
         }
     }
 
