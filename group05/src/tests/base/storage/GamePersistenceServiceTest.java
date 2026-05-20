@@ -122,6 +122,13 @@ class GamePersistenceServiceTest {
     @DisplayName("Save Game & Player Data Serialization")
     class SaveGameTests {
 
+        @BeforeEach
+        void setupSaveGameTests() {
+            // CRITICAL: Tell the mocked game to actually execute the snapshot logic!
+            // Without this, mockGame.toSnapshot() returns null and skips all validation/mapping.
+            when(mockGame.toSnapshot()).thenCallRealMethod();
+        }
+
         @Test
         @DisplayName("Successfully saves a game in GAME mode with accurate data mapping")
         void shouldSaveGameMainSuccessScenario() {
@@ -150,7 +157,7 @@ class GamePersistenceServiceTest {
             Player smartBot = new Player(new SmartBotStrategy(new PlayerId()), "SmartBot", new PlayerId());
 
             when(mockGame.getAllPlayers()).thenReturn(List.of(highBot, lowBot, smartBot, p4));
-            when(mockGame.getDealerPlayer()).thenReturn(highBot);
+            when(mockGame.getDealerPlayer()).thenReturn(highBot); // highBot is at index 0
 
             persistenceService.save(mockGame, SaveMode.GAME, "Bot Save");
 
@@ -192,12 +199,12 @@ class GamePersistenceServiceTest {
             when(mockGame.getDealerPlayer()).thenReturn(null);
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Null Dealer Save"));
 
+            // Create a dealer who is not in the list of the game's players
             Player ghostDealer = new Player(new HumanStrategy(), "Ghost", new PlayerId());
             when(mockGame.getDealerPlayer()).thenReturn(ghostDealer);
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Ghost Save"));
         }
     }
-
     @Nested
     @DisplayName("Round Serialization (toSnapshot)")
     class RoundSerializationTests {
