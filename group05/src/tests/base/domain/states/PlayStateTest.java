@@ -14,6 +14,7 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.PlayResults.*;
 import base.domain.round.Round;
+import base.domain.scores.ScoringRegistry;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,9 @@ class PlayStateTest {
     private final PlayerId id2 = new PlayerId();
     private final PlayerId id3 = new PlayerId();
     private final PlayerId id4 = new PlayerId();
+
+    @Mock
+    private ScoringRegistry scoringRegistry;
 
     @BeforeEach
     void setUpValidGameContext() {
@@ -100,7 +104,7 @@ class PlayStateTest {
             StateStep step = state.executeState();
 
             assertFalse(step.shouldTransition());
-            assertTrue(step.result() instanceof PlayCardResult);
+            assertInstanceOf(PlayCardResult.class, step.result());
             assertEquals("Alice", ((PlayCardResult) step.result()).player().getName());
         }
     }
@@ -130,9 +134,9 @@ class PlayStateTest {
 
             assertTrue(result.isOpenMiserie());
             assertEquals(1, result.exposedPlayerNames().size());
-            assertEquals("Bob", result.exposedPlayerNames().get(0));
+            assertEquals("Bob", result.exposedPlayerNames().getFirst());
             assertEquals(1, result.formattedExposedHand().size());
-            assertTrue(result.formattedExposedHand().get(0).contains(exposedCard));
+            assertTrue(result.formattedExposedHand().getFirst().contains(exposedCard));
         }
     }
 
@@ -157,7 +161,7 @@ class PlayStateTest {
             when(round.getLastPlayedTrick()).thenReturn(mockTrick);
 
             StateStep step = state.executeState(new NumberCommand(0));
-            assertTrue(step.result() instanceof TrickHistoryResult);
+            assertInstanceOf(TrickHistoryResult.class, step.result());
         }
 
         @Test
@@ -166,7 +170,7 @@ class PlayStateTest {
             when(round.getLastPlayedTrick()).thenReturn(null);
 
             StateStep step = state.executeState(new NumberCommand(0));
-            assertTrue(step.result() instanceof PlayCardResult);
+            assertInstanceOf(PlayCardResult.class, step.result());
             assertFalse(step.shouldTransition()); // Switch default branch toStep fallback
         }
 
@@ -174,10 +178,10 @@ class PlayStateTest {
         @DisplayName("Unhandled commands return a refreshed PlayCardResult")
         void unhandledCommandsFallback() {
             StateStep textStep = state.executeState(new TextCommand("dummy"));
-            assertTrue(textStep.result() instanceof PlayCardResult);
+            assertInstanceOf(PlayCardResult.class, textStep.result());
 
             StateStep numberStep = state.executeState(new NumberCommand(99));
-            assertTrue(numberStep.result() instanceof PlayCardResult);
+            assertInstanceOf(PlayCardResult.class, numberStep.result());
         }
 
         @Test
@@ -189,7 +193,7 @@ class PlayStateTest {
 
             StateStep step = state.executeState(new CardCommand(illegalCard));
 
-            assertTrue(step.result() instanceof PlayCardResult);
+            assertInstanceOf(PlayCardResult.class, step.result());
             verify(p1, never()).removeCard(any()); // Card was rejected
         }
 
@@ -200,7 +204,7 @@ class PlayStateTest {
 
             StateStep step = state.executeState(new CardCommand(validCard));
 
-            assertTrue(step.result() instanceof EndOfTurnResult);
+            assertInstanceOf(EndOfTurnResult.class, step.result());
             verify(p1).removeCard(validCard);
             verify(game).notifyTurnPlayed(any(PlayTurn.class));
             verify(round).advanceToNextPlayer();
@@ -232,29 +236,29 @@ class PlayStateTest {
             // P1
             when(round.getCurrentPlayer()).thenReturn(p1);
             StateStep step1 = state.executeState(new CardCommand(c1));
-            assertTrue(step1.result() instanceof EndOfTurnResult);
+            assertInstanceOf(EndOfTurnResult.class, step1.result());
 
             // P2
             when(round.getCurrentPlayer()).thenReturn(p2);
             StateStep step2 = state.executeState(new CardCommand(c2));
-            assertTrue(step2.result() instanceof EndOfTurnResult);
+            assertInstanceOf(EndOfTurnResult.class, step2.result());
 
             // P3
             when(round.getCurrentPlayer()).thenReturn(p3);
             StateStep step3 = state.executeState(new CardCommand(c3));
-            assertTrue(step3.result() instanceof EndOfTurnResult);
+            assertInstanceOf(EndOfTurnResult.class, step3.result());
 
             // P4 (Final card of the trick)
             when(round.getCurrentPlayer()).thenReturn(p4);
             StateStep step4 = state.executeState(new CardCommand(c4));
 
             // Assertions
-            assertTrue(step4.result() instanceof EndOfTrickResult);
+            assertInstanceOf(EndOfTrickResult.class, step4.result());
             EndOfTrickResult trickResult = (EndOfTrickResult) step4.result();
             assertEquals(c4, trickResult.card());
             assertEquals("Dave", trickResult.winner(), "P4 played the Ace of Hearts (Trump) and should win");
 
-            verify(round).finalizeTrick(any(Trick.class));
+            verify(round).finalizeTrick(any(Trick.class), any(ScoringRegistry.class));
             verify(round, times(3)).advanceToNextPlayer(); // Winner starts next trick, so advance is skipped
         }
 
@@ -275,15 +279,15 @@ class PlayStateTest {
             when(round.getCurrentPlayer()).thenReturn(p4);
 
             // Mock the Round to declare itself finished during the finalizeTrick call
-            doAnswer(inv -> {
+            doAnswer(_ -> {
                 when(round.isFinished()).thenReturn(true);
                 return null;
-            }).when(round).finalizeTrick(any(Trick.class));
+            }).when(round).finalizeTrick(any(Trick.class), scoringRegistry);
 
             StateStep step4 = state.executeState(new CardCommand(c4));
 
             // Result must upgrade from EndOfTrick to EndOfRound and Trigger Transition
-            assertTrue(step4.result() instanceof EndOfRoundResult);
+            assertInstanceOf(EndOfRoundResult.class, step4.result());
             assertTrue(step4.shouldTransition());
         }
     }

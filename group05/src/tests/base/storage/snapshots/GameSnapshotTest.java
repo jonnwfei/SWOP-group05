@@ -1,5 +1,7 @@
 package base.storage.snapshots;
 
+import base.domain.bid.BidType;
+import base.domain.card.Suit;
 import base.domain.player.PlayerId;
 import base.domain.snapshots.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +29,7 @@ class GameSnapshotTest {
     @Test
     @DisplayName("Verify full state restoration for Use Case 4.5")
     void testFullStateIntegrity() {
-        RoundSnapshot roundSnapshot = new RoundSnapshot(List.of("1", "2", "3", "4"),base.domain.bid.BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0));
+        RoundSnapshot roundSnapshot = new RoundSnapshot(List.of("1", "2", "3", "4"), BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0), Suit.HEARTS);
         GameSnapshot snapshot = new GameSnapshot(GAME_DESC, SaveMode.GAME, 1, playerSnapshots, List.of(roundSnapshot));
 
         assertAll("Snapshot must preserve all domain state",
@@ -85,7 +87,7 @@ class GameSnapshotTest {
         // 1. External Mutation Test
         modifiableList.clear();
         modifiableRoundList.add(
-                new RoundSnapshot(List.of("1", "2", "3", "4"),base.domain.bid.BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0)));
+                new RoundSnapshot(List.of("1", "2", "3", "4"),base.domain.bid.BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0), Suit.HEARTS));
 
         assertFalse(snapshot.players().isEmpty(), "Snapshot should be immune to external player list mutations.");
         assertTrue(snapshot.rounds().isEmpty(), "Snapshot should be immune to external round list mutations.");
