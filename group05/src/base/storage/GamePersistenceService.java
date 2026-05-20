@@ -47,7 +47,7 @@ public class GamePersistenceService {
      */
     public void save(WhistGame game, SaveMode mode, String description) {
         if (game == null) throw new IllegalArgumentException("Cannot save null game");
-        if (mode == null) throw new IllegalArgumentException("Cannot save without a save mode ");
+        if (mode == null) throw new IllegalArgumentException("Cannot save without a save mode");
         if (description == null) throw new IllegalArgumentException("Cannot save without a description");
         String normalizedDescription = description.trim();
         if (normalizedDescription.isEmpty()) {
