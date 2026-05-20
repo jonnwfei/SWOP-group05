@@ -50,7 +50,7 @@ public class CommandBuilder {
     public ReversibleAction addSmartBot(String name) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name cannot be null or blank");
         PlayerId id = new PlayerId();
-        return new AddPlayerAction(game, new Player(new SmartBotStrategy(id), name, id));
+        return new AddPlayerAction(game, new Player(new SmartBotStrategy(), name, id));
     }
 
     /**

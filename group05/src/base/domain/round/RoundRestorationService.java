@@ -8,6 +8,8 @@ import base.domain.player.Player;
 import java.util.List;
 import java.util.Objects;
 
+import static base.domain.WhistRules.MAX_TRICKS;
+
 /**
  * Domain service responsible for restoring a {@link Round} from a persisted snapshot.
  * <p>
@@ -69,7 +71,7 @@ public class RoundRestorationService { // TODO: this will be removed
         if (highestBid.getType() != BidType.PASS && participants.isEmpty()) {
             throw new IllegalArgumentException("Non-PASS rounds must have at least one participant.");
         }
-        if (tricksWon < -1 || tricksWon > Round.MAX_TRICKS) {
+        if (tricksWon < -1 || tricksWon > MAX_TRICKS) {
             throw new IllegalArgumentException("Invalid tricks won value.");
         }
         if (restoredScoreDeltas == null

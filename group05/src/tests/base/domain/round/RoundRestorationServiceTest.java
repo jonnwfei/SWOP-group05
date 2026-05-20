@@ -1,6 +1,10 @@
 package base.domain.round;
 
-import base.domain.bid.*;
+import base.domain.WhistRules;
+import base.domain.bid.Bid;
+import base.domain.bid.BidType;
+import base.domain.bid.MiserieBid;
+import base.domain.bid.PassBid;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import org.junit.jupiter.api.AfterEach;
@@ -31,8 +35,7 @@ class RoundRestorationServiceTest {
 
     // Bid is a sealed interface; all permits are records — use a real instance.
     private static final Bid A_BID = new PassBid();
-    private static final Bid A_NORMALBID = new MiserieBid(BidType.MISERIE);
-
+    private static final Bid B_BID = new MiserieBid(BidType.MISERIE);
     private List<Player> fourPlayers;
     private List<Integer> fourDeltas;
 
@@ -86,7 +89,7 @@ class RoundRestorationServiceTest {
         @DisplayName("Throws when participants list is empty")
         void throwsOnEmptyParticipants() {
             assertThrows(IllegalArgumentException.class, () ->
-                    service.restore(round, A_NORMALBID, Suit.HEARTS,
+                    service.restore(round, B_BID, Suit.HEARTS, // bij een pas mag de part list leeg zijn -> miserie nodig
                             List.of(), 8, List.of(), fourDeltas));
         }
 
@@ -144,7 +147,7 @@ class RoundRestorationServiceTest {
         void acceptsMaxTricks() {
             assertDoesNotThrow(() ->
                     service.restore(round, A_BID, Suit.HEARTS,
-                            List.of(p1), Round.MAX_TRICKS, List.of(), fourDeltas));
+                            List.of(p1), WhistRules.MAX_TRICKS, List.of(), fourDeltas));
         }
     }
 

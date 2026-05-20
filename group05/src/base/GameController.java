@@ -21,6 +21,7 @@ public class GameController {
     }
 
     public void reset() {
+        //TODO: both functions are always called together, why not combine into one reset funciton?
         game.resetPlayers();
         game.resetRounds();
     }
