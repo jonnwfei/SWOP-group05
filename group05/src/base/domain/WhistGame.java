@@ -1,6 +1,7 @@
 package base.domain;
 
 import base.domain.bid.Bid;
+import base.domain.bid.BidManager;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
@@ -408,10 +409,11 @@ public class WhistGame {
     // =================================================================================
 
     /**
-     * Constructs a GameSnapshot from the current state of the provided game instance, using the specified save mode and description.
+     * Constructs a GameSnapshot from the current state of this game instance.
      * @return GameSnapshot representing the current state of the game
      * @throws IllegalArgumentException if the description is blank
-     * @throws IllegalStateException if the dealer is null or not in the players list or round history containts null entries
+     * @throws IllegalStateException if the dealer is null, not in the players list or if the players or
+     *  round history contain null entries
      */
     public GameSnapshot toSnapshot() {
         List<Player> allPlayers = this.getAllPlayers();
@@ -478,7 +480,6 @@ public class WhistGame {
 
         for (RoundSnapshot snapshot : roundSnapshots) {
             Player mainBidder = players.get(snapshot.bidderIndex());
-            Bid highestBid = snapshot.bidType().instantiate(snapshot.trumpSuit());
 
             List<Player> participants = snapshot.participantIndices().stream()
                     .map(players::get)
@@ -489,6 +490,27 @@ public class WhistGame {
                     .toList();
 
             Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
+            BidManager roundBidManager = restoredRound.getBidManager();
+            Bid highestBid = null;
+
+            // 2. Rebuild the BidManager's history based on the bid type
+            if (snapshot.bidType() == BidType.PASS) {
+                // For an all-PASS round, register a PASS for all 4 players
+                for (Player p : players) {
+                    Bid passBid = roundBidManager.placeBid(p.getId(), BidType.PASS, null);
+                    if (p.equals(mainBidder)) {
+                        highestBid = passBid; // Capture one of them to satisfy the restore method
+                    }
+                }
+            } else {
+                // For normal rounds, use the manager's reconstruction utility
+                List<PlayerId> participantIds = participants.stream().map(Player::getId).toList();
+                highestBid = roundBidManager.reconstructManualHistory(
+                        snapshot.bidType(),
+                        snapshot.trumpSuit(),
+                        participantIds
+                );
+            }
             restoredRound.restoreFromSnapshot(
                     highestBid,
                     snapshot.trumpSuit(),
