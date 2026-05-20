@@ -167,13 +167,15 @@ public class Player {
     /**
      * Constructs a snapshot of a player, containing their name, strategy type, and score from their current state in the game.
      * @return PlayerSnapshot of the provided player
-     * @throws IllegalArgumentException if the player is null
+     * @throws IllegalArgumentException if the player's strategy is missing or corrupted
      */
     public PlayerSnapshot toSnapshot() {
+        Strategy strategy = this.decisionStrategy;
+        if (strategy == null) throw new IllegalArgumentException("Strategy can't be null.");
         return new PlayerSnapshot(
                 playerId.id().toString(),
                 playerName,
-                this.getDecisionStrategy().toSnapshotType(),
+                strategy.toSnapshotType(),
                 playerScore
         );
     }}
