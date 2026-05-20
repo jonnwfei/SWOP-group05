@@ -227,6 +227,10 @@ public class SaveRepository {
             properties.setProperty(prefix + "tricksWon", String.valueOf(round.tricksWon()));
             properties.setProperty(prefix + "multiplier", String.valueOf(round.multiplier()));
 
+            for (int j = 0; j < 4; j++) {
+                properties.setProperty(prefix + "player." + j, round.playerIds().get(j));
+            }
+
             properties.setProperty(prefix + "participants.count", String.valueOf(round.participantIndices().size()));
             for (int j = 0; j < round.participantIndices().size(); j++) {
                 properties.setProperty(prefix + "participants." + j, String.valueOf(round.participantIndices().get(j)));
@@ -278,6 +282,12 @@ public class SaveRepository {
             List<RoundSnapshot> rounds = new ArrayList<>();
             for (int i = 0; i < roundCount; i++) {
                 String prefix = "round." + i + ".";
+                
+                List<String> roundPlayerIds = new ArrayList<>();
+                for (int j = 0; j < 4; j++) {
+                    roundPlayerIds.add(properties.getProperty(prefix + "player." + j));
+                }
+
                 BidType bidType = BidType.valueOf(properties.getProperty(prefix + "bidType", BidType.PASS.name()));
                 String rawTrumpSuit = properties.getProperty(prefix + "trumpSuit", "NONE");
                 Suit trumpSuit = "NONE".equals(rawTrumpSuit) ? null : Suit.valueOf(rawTrumpSuit);
@@ -304,6 +314,7 @@ public class SaveRepository {
                 }
 
                 rounds.add(new RoundSnapshot(
+                        roundPlayerIds,
                         bidType,
                         bidderIndex,
                         participantIndices,

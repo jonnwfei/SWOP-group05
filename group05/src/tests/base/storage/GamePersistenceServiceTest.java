@@ -6,6 +6,7 @@ import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.round.Round;
+import base.domain.scores.ScoringRegistry;
 import base.domain.strategy.HighBotStrategy;
 import base.domain.strategy.HumanStrategy;
 import base.domain.strategy.LowBotStrategy;
@@ -38,6 +39,7 @@ class GamePersistenceServiceTest {
 
     private AutoCloseable mocks;
     private GamePersistenceService persistenceService;
+    private ScoringRegistry  scoringRegistry;
 
     private Player p1, p2, p3, p4;
     private List<Player> fourPlayers;
@@ -46,6 +48,7 @@ class GamePersistenceServiceTest {
     void setUp() {
         mocks = MockitoAnnotations.openMocks(this);
         persistenceService = new GamePersistenceService(mockRepository);
+        scoringRegistry = new ScoringRegistry();
 
         p1 = new Player(new HumanStrategy(), "P1", new PlayerId());
         p2 = new Player(new HumanStrategy(), "P2", new PlayerId());
@@ -69,7 +72,7 @@ class GamePersistenceServiceTest {
     private Round createValidRound() {
         Round round = new Round(fourPlayers, p1, 1);
         Bid soloBid = round.getBidManager().placeBid(p1.getId(), BidType.SOLO, Suit.HEARTS);
-        round.resolveManualCount(soloBid, List.of(p1), 13, List.of());
+        round.resolveManualCount(soloBid, List.of(p1.getId()), 13, List.of(), scoringRegistry);
         return round;
     }
 
@@ -228,13 +231,13 @@ class GamePersistenceServiceTest {
         }
 
         @Test
-        @DisplayName("Rejects PASS round if tricksWon is not -1")
+        @DisplayName("Rejects PASS round if tricksWon is not ")
         void shouldRejectPassRoundWithInvalidTricks() {
             Round round = new Round(fourPlayers, p1, 1);
             Bid passBid = round.getBidManager().placeBid(p1.getId(), BidType.PASS, null);
 
             // Force invalid tricks (5) for a PASS bid
-            round.resolveManualCount(passBid, List.of(), 5, List.of());
+            round.resolveManualCount(passBid, List.of(), 5, List.of(), scoringRegistry);
 
             when(mockGame.getRounds()).thenReturn(List.of(round));
             when(mockGame.toSnapshot()).thenCallRealMethod();
@@ -285,7 +288,7 @@ class GamePersistenceServiceTest {
             when(mockGame.toSnapshot()).thenCallRealMethod();
 
             // 1. Participant not in the game
-            round.resolveManualCount(soloBid, List.of(alienPlayer), 13, List.of());
+            round.resolveManualCount(soloBid, List.of(alienPlayer.getId()), 13, List.of(), scoringRegistry);
             when(mockGame.getRounds()).thenReturn(List.of(round));
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
         }
@@ -298,7 +301,7 @@ class GamePersistenceServiceTest {
             Player alienPlayer = new Player(new HumanStrategy(), "Alien", new PlayerId());
 
             // Alien player as miserie winner
-            round.resolveManualCount(miserieBid, List.of(p1), -1, List.of(alienPlayer));
+            round.resolveManualCount(miserieBid, List.of(p1.getId()), -1, List.of(alienPlayer.getId()), scoringRegistry);
 
             when(mockGame.getRounds()).thenReturn(List.of(round));
             when(mockGame.toSnapshot()).thenCallRealMethod();
@@ -335,11 +338,11 @@ class GamePersistenceServiceTest {
             when(mockGame.getRounds()).thenReturn(List.of(round));
 
             // --- Test 1: SoloBid (-14) ---
-            round.resolveManualCount(soloBid, List.of(p1), -14, List.of());
+            round.resolveManualCount(soloBid, List.of(p1.getId()), -14, List.of(), scoringRegistry);
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
 
             // --- Test 2: SoloBid (14) ---
-            round.resolveManualCount(soloBid, List.of(p1), 14, List.of());
+            round.resolveManualCount(soloBid, List.of(p1.getId()), 14, List.of(), scoringRegistry);
             assertThrows(IllegalStateException.class, () -> persistenceService.save(mockGame, SaveMode.GAME, "Test"));
         }
 
@@ -350,7 +353,7 @@ class GamePersistenceServiceTest {
             Bid soloBid = round.getBidManager().placeBid(p1.getId(), BidType.SOLO, Suit.HEARTS);
 
             // Zero participants for SOLO
-            round.resolveManualCount(soloBid, List.of(), 13, List.of());
+            round.resolveManualCount(soloBid, List.of(), 13, List.of(), scoringRegistry);
 
             when(mockGame.getRounds()).thenReturn(List.of(round));
             when(mockGame.toSnapshot()).thenCallRealMethod();
@@ -386,7 +389,8 @@ class GamePersistenceServiceTest {
         @DisplayName("Successfully loads a COUNT mode save without restoring the deck")
         void shouldLoadCountModeWithoutDeck() {
             List<RoundSnapshot> rounds = List.of(
-                    new RoundSnapshot(BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0), Suit.HEARTS)
+                    new RoundSnapshot(
+                            fourPlayers.stream().map(p -> p.getId().id().toString()).toList(),BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0), Suit.HEARTS)
             );
             GameSnapshot countSnapshot = new GameSnapshot("Count Save", SaveMode.COUNT, 0, createValidPlayerSnapshots(), rounds);
             when(mockRepository.loadByDescription("Count Save")).thenReturn(countSnapshot);
@@ -417,7 +421,8 @@ class GamePersistenceServiceTest {
             when(corruptedSnapshot.players()).thenReturn(badPlayersList);
 
             List<RoundSnapshot> rounds = List.of(
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30), Suit.HEARTS)
+                    new RoundSnapshot(
+                            fourPlayers.stream().map(p -> p.getId().id().toString()).toList(),BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30), Suit.HEARTS)
             );
             when(corruptedSnapshot.rounds()).thenReturn(rounds);
             when(mockRepository.loadByDescription("bad_restore")).thenReturn(corruptedSnapshot);

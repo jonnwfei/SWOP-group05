@@ -25,16 +25,4 @@ public record PassBid() implements Bid {
         if (dealtTrump == null) {throw new IllegalArgumentException("Dealt trump suit cannot be null.");}
         return dealtTrump;
     }
-
-    /**
-     * Calculates the points for a pass.
-     * @param tricksWon The number of tricks won (irrelevant for a pass).
-     * @return 0, as passing does not award or lose any points.
-     */
-    @Override
-    public int calculateBasePoints(int tricksWon) {
-        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
-        // Passing awards 0 points.
-        return BidType.PASS.getBasePoints();
-    }
 }

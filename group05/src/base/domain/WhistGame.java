@@ -1,7 +1,5 @@
 package base.domain;
 
-import base.domain.bid.Bid;
-import base.domain.bid.BidManager;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
@@ -16,14 +14,26 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.GameResult;
 import base.domain.round.Round;
-import base.domain.snapshots.*;
+import base.domain.scores.ScoringParameters;
+import base.domain.scores.ScoringRegistry;
 import base.domain.states.BidState;
 import base.domain.states.CountState;
 import base.domain.states.State;
 import base.domain.states.StateStep;
-import base.domain.strategy.Strategy;
 import base.domain.turn.BidTurn;
 import base.domain.turn.PlayTurn;
+import base.domain.snapshots.GameSnapshot;
+import base.domain.snapshots.PlayerSnapshot;
+import base.domain.snapshots.RoundSnapshot;
+import base.domain.snapshots.SaveMode;
+import base.domain.strategy.Strategy;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Objects;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,6 +51,7 @@ public class WhistGame implements GameEventPublisher {
     private final List<Player> allPlayers;
     private final List<Round> rounds;
     private final List<GameObserver> observers;
+    private final ScoringRegistry scoringRegistry;
     private final ActionHistory history = new ActionHistory();
     private final CommandBuilder commands = new CommandBuilder(this);
 
@@ -50,6 +61,7 @@ public class WhistGame implements GameEventPublisher {
         this.rounds = new ArrayList<>();
         this.observers = new ArrayList<>();
         this.dealerPlayer = null;
+        this.scoringRegistry = new ScoringRegistry();
     }
 
     // --- Player Management ---
@@ -199,7 +211,6 @@ public class WhistGame implements GameEventPublisher {
     }
 
     public void setDeck(Deck deck) {
-        if (deck == null) throw new IllegalArgumentException("Deck cannot be null.");
         this.deck = deck;
     }
 
@@ -249,7 +260,8 @@ public class WhistGame implements GameEventPublisher {
         this.deck.shuffle();
         List<List<Card>> hands = this.deck.deal();
 
-        Suit dealtTrump = hands.getLast().getLast().suit();
+        int dealerIdx = getPlayers().indexOf(dealerPlayer);
+        Suit dealtTrump = hands.get(dealerIdx).getLast().suit();
 
         for (int i = 0; i < activePlayers.size(); i++) {
             activePlayers.get(i).setHand(hands.get(i));
@@ -453,6 +465,20 @@ public class WhistGame implements GameEventPublisher {
         player.getDecisionStrategy().onJoinGame(this);
     }
 
+    public void applyScoringChange(BidType bidType, ScoringParameters scoringParameters) {
+        this.scoringRegistry.updateParameters(bidType, scoringParameters);
+
+        for (Round round : this.rounds) {
+            round.recalculateRetroactiveScores(this.scoringRegistry);
+        }
+
+        recalibrateScores();
+    }
+
+    public ScoringRegistry getScoringRegistry() {
+        return scoringRegistry;
+    }
+
     // =================================================================================
     // Game Snapshot Extraction & Restoration
     // =================================================================================
@@ -520,53 +546,21 @@ public class WhistGame implements GameEventPublisher {
      * @throws IllegalStateException if trying to restore rounds to a game without exactly 4 players
      */
     private void restoreRoundHistory(List<RoundSnapshot> roundSnapshots) {
-        if (roundSnapshots == null ||roundSnapshots.isEmpty()) {
+        if (roundSnapshots == null || roundSnapshots.isEmpty()) {
             return;
         }
 
-        List<Player> players = this.getPlayers();
-        if (players.size() != 4) throw new IllegalStateException("Cannot restore rounds without exactly 4 players");
-
         for (RoundSnapshot snapshot : roundSnapshots) {
-            Player mainBidder = players.get(snapshot.bidderIndex());
-
-            List<Player> participants = snapshot.participantIndices().stream()
-                    .map(players::get)
+            // Identify the EXACT 4 players who played this round
+            List<Player> historicalPlayers = snapshot.playerIds().stream()
+                    .map(idStr -> getPlayerById(PlayerId.fromString(idStr)))
                     .toList();
 
-            List<Player> miserieWinners = snapshot.miserieWinnerIndices().stream()
-                    .map(players::get)
-                    .toList();
+            Player mainBidder = historicalPlayers.get(snapshot.bidderIndex());
 
-            Round restoredRound = new Round(players, mainBidder, snapshot.multiplier());
-            BidManager roundBidManager = restoredRound.getBidManager();
-            Bid highestBid = null;
-
-            // 2. Rebuild the BidManager's history based on the bid type
-            if (snapshot.bidType() == BidType.PASS) {
-                // For an all-PASS round, register a PASS for all 4 players
-                for (Player p : players) {
-                    Bid passBid = roundBidManager.placeBid(p.getId(), BidType.PASS, null);
-                    if (p.equals(mainBidder)) {
-                        highestBid = passBid; // Capture one of them to satisfy the restore method
-                    }
-                }
-            } else {
-                // For normal rounds, use the manager's reconstruction utility
-                List<PlayerId> participantIds = participants.stream().map(Player::getId).toList();
-                highestBid = roundBidManager.reconstructManualHistory(
-                        snapshot.bidType(),
-                        snapshot.trumpSuit(),
-                        participantIds
-                );
-            }
-            restoredRound.restoreFromSnapshot(
-                    highestBid,
-                    snapshot.trumpSuit(),
-                    participants,
-                    snapshot.tricksWon(),
-                    miserieWinners,
-                    snapshot.scoreDeltas());
+            // Create the round and tell it to unpack its own snapshot
+            Round restoredRound = new Round(historicalPlayers, mainBidder, snapshot.multiplier());
+            restoredRound.restoreFromSnapshot(snapshot);
 
             this.addRound(restoredRound);
         }

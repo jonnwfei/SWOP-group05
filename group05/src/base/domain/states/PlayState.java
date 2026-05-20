@@ -3,7 +3,6 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
-import base.domain.bid.BidManager;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
 import base.domain.commands.GameCommand;
@@ -29,6 +28,7 @@ public class PlayState extends State {
 
     public PlayState(WhistGame game) {
         super(game);
+
         Round round = game.getCurrentRound();
         if (round == null) {
             throw new IllegalStateException("Cannot create PlayState: no currentRound exists.");
@@ -113,18 +113,26 @@ public class PlayState extends State {
             Player winningPlayer = getGame().getPlayerById(currentTrick.getWinningPlayerId());
 
             // Round registers the trick and automatically scores itself if it's the 13th or all miserie players won
-            currentRound.finalizeTrick(currentTrick);
             getGame().notifyTrickCompleted(winningPlayer.getId());
+            currentRound.finalizeTrick(currentTrick, getGame().getScoringRegistry());
 
-            this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getTrumpSuit());
+            if (currentRound.isFinished()) {
+                List<Integer> deltas = currentRound.getScoreDeltas();
+                List<Player> roundPlayers = currentRound.getPlayers();
+                for (int i = 0; i < roundPlayers.size(); i++) {
+                    roundPlayers.get(i).updateScore(deltas.get(i));
+                }
+            } else {
+                this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getTrumpSuit());
+            }
         } else {
             currentRound.advanceToNextPlayer();
         }
     }
 
     private GameResult buildNeedCardResult(Player player) {
-        boolean isOpenMiserie = currentRound.getHighestBid() != null &&
-                currentRound.getHighestBid().getType() == BidType.OPEN_MISERIE;
+        Bid highestBid = currentRound.getHighestBid();
+        boolean isOpenMiserie = highestBid != null && highestBid.getType() == BidType.OPEN_MISERIE;
 
         List<String> exposedNames = new ArrayList<>();
         List<List<Card>> exposedHands = new ArrayList<>();
@@ -136,7 +144,7 @@ public class PlayState extends State {
 
         List<PlayTurn> turns = currentTrick.getTurns();
         List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
-        TeamRole role = currentRound.getBiddingTeamPlayers().contains(player)
+        TeamRole role = currentRound.getRoundContract().getBiddingTeam().contains(player.getId())
                 ? TeamRole.BIDDING_TEAM
                 : TeamRole.DEFENDING_TEAM;
 

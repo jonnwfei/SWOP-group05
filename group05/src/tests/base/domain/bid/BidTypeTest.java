@@ -1,7 +1,6 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
-import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,8 +28,6 @@ class BidTypeTest {
         @Test
         @DisplayName("PASS holds correct static game rules")
         void pass_ReturnsCorrectStaticData() {
-            assertEquals(0, BidType.PASS.getTargetTricks());
-            assertEquals(0, BidType.PASS.getBasePoints());
             assertEquals(BidCategory.PASS, BidType.PASS.getCategory());
             assertFalse(BidType.PASS.getRequiresSuit());
         }
@@ -38,8 +35,6 @@ class BidTypeTest {
         @Test
         @DisplayName("MISERIE holds correct static game rules")
         void miserie_ReturnsCorrectStaticData() {
-            assertEquals(0, BidType.MISERIE.getTargetTricks());
-            assertEquals(21, BidType.MISERIE.getBasePoints());
             assertEquals(BidCategory.MISERIE, BidType.MISERIE.getCategory());
             assertFalse(BidType.MISERIE.getRequiresSuit());
         }
@@ -47,8 +42,6 @@ class BidTypeTest {
         @Test
         @DisplayName("ABONDANCE_9 holds correct static game rules")
         void abondance9_ReturnsCorrectStaticData() {
-            assertEquals(9, BidType.ABONDANCE_9.getTargetTricks());
-            assertEquals(15, BidType.ABONDANCE_9.getBasePoints());
             assertEquals(BidCategory.ABONDANCE, BidType.ABONDANCE_9.getCategory());
             assertTrue(BidType.ABONDANCE_9.getRequiresSuit());
         }

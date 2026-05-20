@@ -42,27 +42,6 @@ public record TroelBid(BidType bidType, Suit trumpSuit) implements Bid {
     @Override
     public BidType getType() {return bidType;}
 
-    /**
-     * Calculates the points won or lost based on tricks taken.
-     * Earns extra points (+2) for each overtrick, and doubles the total score if all 13 tricks are won.
-     *
-     * @param tricksWon The combined number of tricks won by the team.
-     * @return Positive calculated points if the contract was met, negative base points if failed.
-     */
-    @Override
-    public int calculateBasePoints(int tricksWon) {
-        if (tricksWon < 0) {throw new IllegalArgumentException("there can't be negative tricks won.");}
-        int points = bidType.getBasePoints();
-        int extra = tricksWon - bidType.getTargetTricks();
-        if (extra < 0) {
-            points = -1 * points;
-            return points;
-        }
-        points += 2*extra;
-        if (tricksWon == 13) {points = 2*points;}
-        return points;
-    }
-
     @Override
     public Suit determineTrump(Suit dealtTrump) {
         return this.trumpSuit;

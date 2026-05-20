@@ -90,6 +90,15 @@ public final class SmartBotStrategy implements Strategy {
         return BidType.PASS.instantiate( null);
     }
 
+    @Override
+    public BidType handleRejectedProposal(List<Card> hand) {
+        int tricksWithCurrentTrump = estimateWinningTricks(hand, memory.getCurrentTrump());
+        if (tricksWithCurrentTrump >= MIN_TRICKS_FOR_PROPOSAL) {
+            return BidType.SOLO_PROPOSAL;
+        }
+        return BidType.PASS;
+    }
+
     /**
      * Determines the optimal card to play for the current trick based on the active tactic.
      *
