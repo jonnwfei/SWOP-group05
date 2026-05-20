@@ -12,6 +12,8 @@ import base.domain.trick.Trick;
 import java.util.ArrayList;
 import java.util.List;
 
+import static base.domain.round.TrickLedger.MAX_TRICKS;
+
 /**
  * Represents a single Round in a game of Whist.
  * A Round consists of a Bidding phase followed by a Play phase of exactly 13 Tricks.
@@ -28,29 +30,19 @@ import java.util.List;
  */
 public class Round {
 
-    /** The maximum number of tricks played in a single round. */
-    public static final int MAX_TRICKS = 13;
-
     /** The 4 players participating in this round. */
     private final List<Player> players;
-
-    /** The players who must fulfil the active bid contract. */
-    private final List<Player> biddingTeam;
 
     /** The player whose turn it currently is to bid or play a card. */
     private Player currentPlayer;
 
     /** The record of all completed tricks in this round. */
-    private final List<Trick> playedTricks;
+    private final TrickLedger trickLedger;
 
     /** Per-round bid history and player↔bid mapping. */
     private final BidManager bidManager;
 
-    /** The final, highest bid that dictates the scoring and rules of the round. */
-    private Bid highestBid;
-
-    /** The active trump suit, determined by the dealer's last card or the winning bid. */
-    private Suit trumpSuit;
+    private RoundContract roundContract;
 
     /** The score multiplier for this round. */
     private final int multiplier;
@@ -68,9 +60,9 @@ public class Round {
     private boolean finished;
 
     // Domain services – stateless, created once.
-    private final RoundScoringService scoringService;
-    private final RoundCompletionService completionService;
-    private final RoundRestorationService restorationService;
+//    private final RoundScoringService scoringService;
+//    private final RoundCompletionService completionService;
+//    private final RoundRestorationService restorationService;
 
     /**
      * Constructs a new Round of Whist.
@@ -89,12 +81,10 @@ public class Round {
             throw new IllegalArgumentException("Starting Player must not be null and must be in the players list.");
         }
         this.players = new ArrayList<>(players);
-        this.biddingTeam = new ArrayList<>();
         this.currentPlayer = startingPlayer;
-        this.playedTricks = new ArrayList<>();
+        this.trickLedger = new TrickLedger();
         this.bidManager = new BidManager(this.players);
-        this.highestBid = null;
-        this.trumpSuit = null;
+        this.roundContract = null;
         this.multiplier = multiplier;
         this.scoreDeltas = new ArrayList<>(List.of(0, 0, 0, 0));
         this.countTricksWon = -1;
@@ -136,11 +126,14 @@ public class Round {
             throw new IllegalStateException("BidManager state out of sync with provided finalBids.");
         }
 
-        this.highestBid = highestBid;
-        this.trumpSuit = trumpSuit;
+        List<PlayerId> biddingTeam = this.bidManager.resolveBiddingTeam();
+
+
+        this.roundContract = new RoundContract(highestBid, trumpSuit, biddingTeam, ,multiplier);
+
         this.currentPlayer = firstPlayer;
 
-        resolveTeams();
+//        resolveTeams();
     }
 
     /**
@@ -187,17 +180,10 @@ public class Round {
      * @throws IllegalStateException    if the round is already finished.
      */
     public void finalizeTrick(Trick trick) {
-        if (trick == null) {
-            throw new IllegalArgumentException("Trick must not be null.");
+        if (this.finished) {
+            throw new IllegalStateException("Cannot add trick to finished round");
         }
-        if (trick.getTurns().size() != Trick.MAX_TURNS) {
-            throw new IllegalArgumentException("Trick is not completed yet.");
-        }
-        if (this.isFinished()) {
-            throw new IllegalStateException("Cannot add trick: The round is already finished.");
-        }
-
-        this.playedTricks.add(trick);
+        this.trickLedger.recordTrick(trick);
         this.currentPlayer = getPlayerById(trick.getWinningPlayerId());
 
         if (completionService.shouldAutoFinish(this)) {
@@ -236,7 +222,7 @@ public class Round {
         List<Player> bidders = getBiddingTeamPlayers();
 
         if (highestBid.getType().getCategory() == BidCategory.MISERIE) {
-            if (playedTricks.isEmpty()) {
+            if (this.trickLedger.isFull()) {
                 return List.copyOf(miserieWinners);
             }
             List<Player> successful = new ArrayList<>();
@@ -281,14 +267,7 @@ public class Round {
      * @return number of tricks won by the team.
      */
     public int getTricksWonBy(List<Player> team) {
-        List<PlayerId> teamIds = team.stream().map(Player::getId).toList();
-        int count = 0;
-        for (Trick t : playedTricks) {
-            if (teamIds.contains(t.getWinningPlayerId())) {
-                count++;
-            }
-        }
-        return count;
+        return this.trickLedger.getTricksWonByTeam(team);
     }
 
     // =========================================================================
@@ -353,20 +332,13 @@ public class Round {
     }
 
     public List<Trick> getTricks() {
-        return List.copyOf(playedTricks);
+        return this.trickLedger.getTricks();
     }
 
     public Trick getLastPlayedTrick() {
-        return playedTricks.isEmpty() ? null : playedTricks.getLast();
+        return this.trickLedger.getLastTrick();
     }
 
-    /**
-     * Checks whether the round has concluded.
-     * Delegates to {@link RoundCompletionService}.
-     */
-    public boolean isFinished() {
-        return completionService.isFinished(this);
-    }
 
     // =========================================================================
     // Setters used for count-mode or restoration
@@ -380,6 +352,7 @@ public class Round {
         if (highestBid == null || biddingTeam == null || miserieWinners == null) {
             throw new IllegalArgumentException("Cannot resolve manual count with incomplete data");
         }
+
 
         this.highestBid = highestBid;
         this.biddingTeam.clear();
@@ -419,8 +392,7 @@ public class Round {
             List<Player> miserieWinners,
             List<Integer> restoredScoreDeltas) {
 
-        restorationService.restore(
-                this,
+        this.restoreState(
                 highestBid,
                 trumpSuit,
                 participants,
@@ -481,21 +453,71 @@ public class Round {
     // =========================================================================
 
     /**
-     * Resolves the bidding team based on the highest bid by asking the
-     * {@link BidManager} who participates. {@link Bid} no longer knows about
-     * {@link Player}.
+     * Checks whether the given round is finished according to the game rules.
+     *
+     * @param round the round to evaluate.
+     * @return {@code true} if the round is finished.
      */
-    private void resolveTeams() {
-        if (bidManager.getAllBids().size() != this.players.size()) {
-            throw new IllegalStateException("Biddings are not finalised; must be called at the end of bidding phase.");
+    public boolean isFinished() {
+        if (this.isMarkedFinished()) {
+            return true;
         }
-        int totalCards = players.stream().mapToInt(p -> p.getHand().size()).sum();
-        if (totalCards != 52) {
-            throw new IllegalStateException("resolveTeams() can only be called before the play phase begins!");
+        return isAllPassFinished() || shouldAutoFinish();
+    }
+
+    /**
+     * Determines if the round should automatically finish after a trick is played.
+     * This is used by the round itself to trigger automatic scoring.
+     *
+     * @return {@code true} if the round conditions warrant an automatic end.
+     */
+    public boolean shouldAutoFinish() {
+        if (this.getTricks().size() >= MAX_TRICKS) {
+            return true;
         }
 
-        bidManager.resolveBiddingTeam().stream()
-                .map(this::getPlayerById)
-                .forEach(biddingTeam::add);
+        Bid highestBid = this.getHighestBid();
+        if (highestBid != null && highestBid.getType().getCategory() == BidCategory.MISERIE) {
+            return isMiserieEarlyTermination();
+        }
+        return false;
+    }
+
+    private boolean isAllPassFinished() {
+        Bid highestBid = this.getHighestBid();
+        return highestBid != null
+                && highestBid.getType() == BidType.PASS
+                && this.getBids().size() == this.getPlayers().size();
+    }
+
+    /**
+     * Miserie rounds end early when every Miserie bidder
+     * has already failed by taking at least one trick.
+     * <p>
+     * Participants are resolved via the round's
+     * {@link base.domain.bid.BidManager} rather than by inspecting individual
+     * {@link Bid} objects, which no longer reference {@link PlayerId}.
+     */
+    private boolean isMiserieEarlyTermination() {
+        Bid highestBid = this.getHighestBid();
+        if (highestBid == null || highestBid.getType().getCategory() != BidCategory.MISERIE) {
+            return false;
+        }
+
+        List<PlayerId> miserieBidders =
+                this.getBidManager().findMiserieParticipants(highestBid.getType());
+
+        if (miserieBidders.isEmpty()) {
+            return false;
+        }
+
+        for (PlayerId bidderId : miserieBidders) {
+            boolean wonATrick = this.getTricks().stream()
+                    .anyMatch(trick -> trick.getWinningPlayerId().equals(bidderId));
+            if (!wonATrick) {
+                return false;   // someone is still safe
+            }
+        }
+        return true;            // all Miserie bidders have failed
     }
 }
