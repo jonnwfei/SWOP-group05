@@ -11,6 +11,7 @@ import base.domain.card.Suit;
 import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.player.TeamRole;
 import base.domain.results.BidResults.*;
 import base.domain.results.CountResults.*;
 import base.domain.results.PlayResults.*;
@@ -80,7 +81,7 @@ class AdapterTest {
         @Test
         @DisplayName("PlayCardResult for Bot delegates to strategy and returns Immediate CardCommand")
         void playCard_BotPlayer_ReturnsImmediateCommand() {
-            when(botPlayer.chooseCard(any())).thenReturn(TEST_CARD);
+            when(botPlayer.chooseCard(any(), any())).thenReturn(TEST_CARD);
             PlayCardResult result = playCardResult(botPlayer);
 
             AdapterResult adapterResult = adapter.handleResult(result);
@@ -90,7 +91,7 @@ class AdapterTest {
 
             assertInstanceOf(CardCommand.class, command);
             assertEquals(TEST_CARD, ((CardCommand) command).card());
-            verify(botPlayer).chooseCard(any());
+            verify(botPlayer).chooseCard(any(), any());
         }
 
         @Test
@@ -232,7 +233,8 @@ class AdapterTest {
         return new PlayCardResult(
                 List.of(), false, List.of(), List.of(),
                 1, player, List.of(TEST_CARD), null,
-                Map.of(player.getId(), player.getName())
+                Map.of(player.getId(), player.getName()),
+                TeamRole.DEFENDING_TEAM
         );
     }
 

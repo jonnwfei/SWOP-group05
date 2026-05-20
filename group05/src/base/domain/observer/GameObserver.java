@@ -18,4 +18,5 @@ public interface GameObserver {
     default void onRoundStarted(List<PlayerId> players) {}
     default void onBiddingFinalized(BidType winningBid, List<PlayerId> biddingTeam) {}
     default void onTrickCompleted(PlayerId winner) {}
+    default void onRoundFinished() {}
 }

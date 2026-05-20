@@ -4,6 +4,7 @@ import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.strategy.Strategy;
+import base.domain.player.TeamRole;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -93,8 +94,8 @@ public class Player {
      * @param lead the leading {@link Suit} of the current trick, or {@code null} if this player is leading the trick.
      * @return the {@link Card} chosen by the player's strategy.
      */
-    public Card chooseCard(Suit lead) {
-        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead, );
+    public Card chooseCard(Suit lead, TeamRole role) {
+        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead, role);
     }
 
     /**

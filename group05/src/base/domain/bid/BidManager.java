@@ -203,7 +203,8 @@ public final class BidManager {
         Rank bestRank = null;
         for (Player p : players) {
             if (p.getId().equals(bidder)) continue;
-            Rank r =  findHighestCardOfSuit(p.getHand(),Suit.HEARTS).rank();
+            Card highestHeartCard = findHighestCardOfSuit(p.getHand(), Suit.HEARTS);
+            Rank r = highestHeartCard != null ? highestHeartCard.rank() : null;
             if (best == null || (r != null && (bestRank == null || r.compareTo(bestRank) > 0))) {
                 best = p;
                 bestRank = r;

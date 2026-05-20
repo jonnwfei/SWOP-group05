@@ -324,13 +324,16 @@ public class WhistGame implements GameEventPublisher {
         for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
     }
 
-    //TODO: use these on states
     public void notifyBiddingFinalized(BidType winningBid, List<PlayerId> biddingTeam) {
         for (GameObserver observer : observers) observer.onBiddingFinalized(winningBid, biddingTeam);
     }
 
     public void notifyTrickCompleted(PlayerId winner) {
         for (GameObserver observer : observers) observer.onTrickCompleted(winner);
+    }
+
+    public void notifyRoundFinished() {
+        for (GameObserver observer : observers) observer.onRoundFinished();
     }
 
     public  void removeRound(Round round){
