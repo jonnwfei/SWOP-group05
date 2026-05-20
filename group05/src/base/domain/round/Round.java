@@ -7,6 +7,7 @@ import base.domain.bid.BidType;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.snapshots.RoundSnapshot;
 import base.domain.scores.ScoringRegistry;
 import base.domain.trick.Trick;
 
@@ -65,6 +66,19 @@ public class Round {
     // Phase transitions
     // =========================================================================
 
+    /**
+     * Finalises the bidding phase and prepares the round for the playing phase.
+     * The {@link BidManager} was already populated by {@code BidState}; the
+     * {@code finalBids} parameter is kept as a sanity check — we trust the manager
+     * as the source of truth.
+     *
+     * @param finalBids   the complete list of bids made this round.
+     * @param highestBid  the winning contract.
+     * @param trumpSuit   the active trump suit for the play phase.
+     * @param firstPlayer the player who gets to lead the first trick.
+     * @throws IllegalArgumentException if any argument is invalid.
+     * @throws IllegalStateException    if the BidManager is out of sync with {@code finalBids}.
+     */
     public void startPlayPhase(List<Bid> finalBids, Bid highestBid, Suit trumpSuit, Player firstPlayer) {
         if (this.finished) throw new IllegalStateException("Cannot start play phase: Round is already finished.");
         Objects.requireNonNull(highestBid, "Winning bid cannot be null.");
@@ -88,6 +102,15 @@ public class Round {
         this.currentPlayer = firstPlayer;
     }
 
+    /**
+     * Aborts the round because all players passed.
+     * The {@link BidManager} already holds the 4 PASS bids (placed by BidState);
+     * we only need to record the all-PASS marker on Round itself for the
+     * multiplier carry-over.
+     *
+     * @param finalBids the 4 pass bids.
+     * @throws IllegalArgumentException if finalBids is null, not exactly 4, or not all PASS.
+     */
     public void abortWithAllPass(List<Bid> finalBids) {
         if (this.finished) throw new IllegalStateException("Cannot abort: Round is already finished.");
         if (finalBids == null || finalBids.size() != this.players.size()) {
@@ -108,10 +131,26 @@ public class Round {
         this.currentPlayer = players.get((currentIdx + 1) % 4);
     }
 
-    public void finalizeTrick(Trick trick, ScoringRegistry registry) {
-        if (this.finished) throw new IllegalStateException("Cannot add trick to finished round.");
-        Objects.requireNonNull(trick, "Trick cannot be null.");
-        Objects.requireNonNull(registry, "ScoringRegistry cannot be null.");
+    /**
+     * Registers a completed Trick to this Round's history.
+     * The winner of the trick becomes the next current player.
+     * If the round should finish automatically (13 tricks played or Miserie early
+     * termination), scores are calculated and the round is marked finished.
+     *
+     * @param trick the completed trick to be added.
+     * @throws IllegalArgumentException if the trick is null or incomplete.
+     * @throws IllegalStateException    if the round is already finished.
+     */
+    public void finalizeTrick(Trick trick) {
+        if (trick == null) {
+            throw new IllegalArgumentException("Trick must not be null.");
+        }
+        if (trick.getTurns().size() != Trick.MAX_TURNS) {
+            throw new IllegalArgumentException("Trick is not completed yet.");
+        }
+        if (this.isFinished()) {
+            throw new IllegalStateException("Cannot add trick: The round is already finished.");
+        }
 
         this.trickLedger.recordTrick(trick);
         this.currentPlayer = getPlayerById(trick.getWinningPlayerId());
@@ -257,6 +296,57 @@ public class Round {
         this.applyFinalScores(registry);
     }
 
+    // =========================================================================
+    // Snapshot restore
+    // =========================================================================
+
+
+    /**
+     * Constructs a snapshot of a round for persistence.
+     * This currently captures stable metadata and round count compatibility fields.
+     * @return RoundSnapshot of the provided round
+     * @throws IllegalArgumentException if the round is null
+     * @throws IllegalStateException if the round's internal state is corrupted or missing essential data
+     */
+    public RoundSnapshot toSnapshot( ) {
+
+        if (highestBid == null) throw new IllegalStateException("Cannot snapshot a round without a highest bid");
+
+        if (players.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
+
+        BidType bidType = highestBid.getType();
+        PlayerId bidderId = bidManager.getHighestBidder();
+        Player bidder =  bidderId != null ? getPlayerById(bidderId) : currentPlayer;
+        int bidderIndex = players.indexOf(bidder);
+
+        List<Integer> participantIndices = biddingTeam.stream()
+                .map(players::indexOf).toList();
+        List<Integer> miserieWinnerIndices = miserieWinners.stream().map(players::indexOf).toList(); // TODO: should be
+
+        try {
+            return new RoundSnapshot(
+                    bidType, bidderIndex, participantIndices, countTricksWon, //TODO: will aslo be changed, no more countTricks won etc
+                    miserieWinnerIndices, multiplier, scoreDeltas, trumpSuit);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Rehydrates a historical round from a persisted snapshot without
+     * re-running scoring logic.
+     * <p>
+     * NOTE: {@code GamePersistenceService} is responsible for repopulating the
+     * {@link BidManager} via {@code bidManager.placeBid(...)} for the snapshot's
+     * bidder before this method runs.
+     *
+     * @param highestBid          restored winning bid.
+     * @param trumpSuit           restored trump suit (can be null for no-trump).
+     * @param participants        restored bidding team members.
+     * @param tricksWon           restored count-mode tricks won value.
+     * @param miserieWinners      restored count-mode miserie winners.
+     * @param restoredScoreDeltas restored per-player score deltas.
+     */
     public void restoreFromSnapshot(
             Bid highestBid,
             Suit trumpSuit,
@@ -285,9 +375,7 @@ public class Round {
         this.miserieWinners = miserieWinners == null ? new ArrayList<>() : new ArrayList<>(miserieWinners);
 
         for (int i = 0; i < this.players.size(); i++) {
-            int delta = restoredScoreDeltas.get(i);
-            this.players.get(i).updateScore(delta);
-            this.scoreDeltas.set(i, delta);
+            this.scoreDeltas.set(i, restoredScoreDeltas.get(i)); // TODO: this is becuz round shouldnt restore the scores itself, but the game should apply the deltas to the players.
         }
 
         this.finished = true;

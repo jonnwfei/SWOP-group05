@@ -1,5 +1,7 @@
 package base.storage.snapshots;
 
+import base.domain.snapshots.PlayerSnapshot;
+import base.domain.snapshots.StrategySnapshotType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

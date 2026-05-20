@@ -4,7 +4,7 @@ import base.GameController;
 import base.domain.WhistRules;
 import base.domain.deck.Deck;
 import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
+import base.domain.snapshots.SaveMode;
 import cli.util.TerminalInputHelper;
 import cli.TerminalManager;
 
