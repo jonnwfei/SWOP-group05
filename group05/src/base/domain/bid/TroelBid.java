@@ -9,7 +9,6 @@ import base.domain.player.PlayerId;
 import java.util.Comparator;
 import java.util.List;
 
-import static base.domain.card.CardMath.getHighestRankOfSuit;
 
 /**
  * Represents a forced contract triggered when a player holds 3 or 4 Aces.

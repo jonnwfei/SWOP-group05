@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static base.domain.card.CardMath.getHighestRankOfSuit;
+import static base.domain.card.CardMath.findHighestCardOfSuit;
+
 
 /**
  * Owns the PlayerId <-> Bid mapping and all bid-history reasoning for a single Round.
  * Acts as the link between Round, Player and Bid: Bid stays player-agnostic,
  * Round and BidState ask the manager who placed/accepted/partnered which bid.
- * <br>
  * Lifecycle: one BidManager per Round. Constructed by Round, shared with BidState.
  */
 public final class BidManager {
@@ -62,7 +62,7 @@ public final class BidManager {
         Bid bid = bidType.instantiate(trumpSuit);
         bidsByPlayer.put(playerId, bid);
 
-        if (bidType != BidType.PASS && (highestBid == null || bid.compareTo(highestBid) > 0)) {
+        if (highestBid == null || bid.compareTo(highestBid) > 0) {
             highestBid = bid;
             highestBidder = playerId;
         }
@@ -203,7 +203,8 @@ public final class BidManager {
         Rank bestRank = null;
         for (Player p : players) {
             if (p.getId().equals(bidder)) continue;
-            Rank r = getHighestRankOfSuit(Suit.HEARTS, p.getHand());
+            Card highestHeartCard = findHighestCardOfSuit(p.getHand(), Suit.HEARTS);
+            Rank r = highestHeartCard != null ? highestHeartCard.rank() : null;
             if (best == null || (r != null && (bestRank == null || r.compareTo(bestRank) > 0))) {
                 best = p;
                 bestRank = r;

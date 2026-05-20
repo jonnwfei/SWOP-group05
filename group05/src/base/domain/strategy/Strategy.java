@@ -1,13 +1,13 @@
 package base.domain.strategy;
 
 import base.domain.bid.Bid;
+import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.observer.GameEventPublisher;
 import base.domain.player.Player;
-import base.domain.player.PlayerId;
+import base.domain.player.TeamRole;
 import base.domain.snapshots.StrategySnapshotType;
-
 import java.util.List;
 
 /**
@@ -33,23 +33,45 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
      */
     Bid determineBid(List<Card> hand);
 
+    /**
+     * Determines the fallback bid when a player's proposal is rejected (no partner found).
+     * <p>
+     * For a human strategy, this is typically handled via UI input.
+     * For an AI strategy, this allows the bot to decide whether to play alone (SOLO_PROPOSAL)
+     * or give up the round (PASS).
+     *
+     * @param hand The player's current hand.
+     * @return The chosen {@link BidType} (either PASS or SOLO_PROPOSAL).
+     */
+    default BidType handleRejectedProposal(List<Card> hand) {
+        return BidType.PASS;
+    }
 
-    Card chooseCardToPlay(List<Card> currentHand, Suit lead );
+
+    Card chooseCardToPlay(List<Card> currentHand, Suit lead, TeamRole role);
 
     StrategySnapshotType toSnapshotType() ;
 
-    static Strategy toStrategy(StrategySnapshotType snapshotType, PlayerId restoredId) {
+    static Strategy toStrategy(StrategySnapshotType snapshotType) {
         return switch (snapshotType) {
             case HIGH_BOT -> new HighBotStrategy();
             case LOW_BOT -> new LowBotStrategy();
-            case SMART_BOT -> new SmartBotStrategy(restoredId); //TODO: still code smell, wait for refactor of tommy
+            case SMART_BOT -> new SmartBotStrategy();
             case HUMAN -> new HumanStrategy();
         };
     }
 
     /**
-     * Lifecycle hook called when the strategy is added to a live game.
+     * Lifecycle hook called when the strategy is attached to a game.
+     * Default implementation does nothing, for strategies that don't need to listen to events.
      * @param publisher A restricted interface to subscribe to game events.
      */
     default void onJoinGame(GameEventPublisher publisher) {}
+
+    /**
+     * Lifecycle hook called when the strategy is removed from a game.
+     * Default implementation does nothing, for strategies that don't need to listen to events.
+     * @param publisher A restricted interface to unsubscribe from game events.
+     */
+    default void onLeaveGame(GameEventPublisher publisher) {}
 }

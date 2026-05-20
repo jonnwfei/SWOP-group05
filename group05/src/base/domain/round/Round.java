@@ -16,6 +16,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static base.domain.WhistRules.MAX_TURNS;
+
 /**
  * Represents a single Round in a game of Whist.
  * Acts as the Aggregate Root/Coordinator for the turn order, trick ledger, and contract.
@@ -25,6 +27,7 @@ import java.util.Map;
  */
 public class Round {
 
+    /** The 4 players participating in this round. */
     private final List<Player> players;
     private Player currentPlayer;
     private final TrickLedger trickLedger;
@@ -60,6 +63,18 @@ public class Round {
     // Phase transitions
     // =========================================================================
 
+    /**
+     * Finalises the bidding phase and prepares the round for the playing phase.
+     * The {@link BidManager} was already populated by {@code BidState}; the
+     * {@code finalBids} parameter is kept as a sanity check — we trust the manager
+     * as the source of truth.
+     *
+     * @param highestBid  the winning contract.
+     * @param trumpSuit   the active trump suit for the play phase.
+     * @param firstPlayer the player who gets to lead the first trick.
+     * @throws IllegalArgumentException if any argument is invalid.
+     * @throws IllegalStateException    if the BidManager is out of sync with {@code finalBids}.
+     */
     public void startPlayPhase(Bid highestBid, Suit trumpSuit, Player firstPlayer) {
         if (this.finished) throw new IllegalStateException("Round already finished.");
         if (highestBid == null) throw new IllegalArgumentException("highestBid cannot be null.");
@@ -74,6 +89,15 @@ public class Round {
         this.currentPlayer = firstPlayer;
     }
 
+    /**
+     * Aborts the round because all players passed.
+     * The {@link BidManager} already holds the 4 PASS bids (placed by BidState);
+     * we only need to record the all-PASS marker on Round itself for the
+     * multiplier carry-over.
+     *
+     * @param finalBids the 4 pass bids.
+     * @throws IllegalArgumentException if finalBids is null, not exactly 4, or not all PASS.
+     */
     public void abortWithAllPass(List<Bid> finalBids) {
         if (this.finished) throw new IllegalStateException("Round already finished.");
         if (finalBids == null || finalBids.size() != 4)
@@ -86,6 +110,9 @@ public class Round {
         this.finished = true;
     }
 
+    /**
+     * Advances the {@code currentPlayer} to the next player in turn order.
+     */
     public void advanceToNextPlayer() {
         if (this.finished) throw new IllegalStateException("Round already finished.");
         int currentIdx = players.indexOf(currentPlayer);
@@ -94,6 +121,7 @@ public class Round {
 
     public void finalizeTrick(Trick trick, ScoringRegistry registry) {
         if (this.finished) throw new IllegalStateException("Cannot add trick to finished round");
+        if (this.roundContract == null) throw new IllegalStateException("Play phase not started.");
         if (trick == null || registry == null) throw new IllegalArgumentException("Arguments cannot be null.");
 
         this.trickLedger.recordTrick(trick);
@@ -150,7 +178,7 @@ public class Round {
 
         // Re-process with same facts but new registry parameters
         RoundOutcomeFacts facts = this.outcome.facts();
-        
+
         Map<PlayerId, Integer> deltasMap = this.roundContract.evaluateOutcome(
                 facts.tricksWon(), facts.miserieWinners(), registry
         );
@@ -189,7 +217,15 @@ public class Round {
         return bidManager.getHighestBid();
     }
 
+    /**
+     * Maps a {@link PlayerId} to the actual {@link Player} object.
+     *
+     * @param id the player's id.
+     * @return the player.
+     * @throws IllegalStateException if no player with the given id is found.
+     */
     public Player getPlayerById(PlayerId id) {
+        if (id == null) throw new IllegalArgumentException("PlayerId must not be null.");
         return players.stream()
                 .filter(p -> p.getId().equals(id))
                 .findFirst()
@@ -227,6 +263,15 @@ public class Round {
         this.processOutcome(facts, registry);
     }
 
+    /**
+     * Rehydrates a historical round from a persisted snapshot without
+     * re-running scoring logic.
+     * <p>
+     * NOTE: {@code GamePersistenceService} is responsible for repopulating the
+     * {@link BidManager} via {@code bidManager.placeBid(...)} for the snapshot's
+     * bidder before this method runs.
+     * @param snapshot snapshot to restore from
+     */
     public void restoreFromSnapshot(RoundSnapshot snapshot) {
         if (this.finished) throw new IllegalStateException("Round already finished.");
         if (snapshot == null) throw new IllegalArgumentException("Snapshot cannot be null.");
@@ -285,7 +330,7 @@ public class Round {
 
         List<Player> roundPlayers = getPlayers();
         List<String> playerIds = roundPlayers.stream().map(p -> p.getId().id().toString()).toList();
-        
+
         BidType bidType = highestBid.getType();
 
         PlayerId bidderId = bidManager.getBidderOf(highestBid);
