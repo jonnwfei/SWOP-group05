@@ -3,7 +3,7 @@ package base.domain.strategy;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
-import base.domain.player.PlayerId;
+import base.domain.player.TeamRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -17,13 +17,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class HumanStrategyTest {
 
     private HumanStrategy strategy;
-    private PlayerId humanId;
     private List<Card> dummyHand;
 
     @BeforeEach
     void setUp() {
         strategy = new HumanStrategy();
-        humanId = new PlayerId();
         dummyHand = List.of(new Card(Suit.HEARTS, Rank.ACE));
     }
 
@@ -35,7 +33,7 @@ class HumanStrategyTest {
         @DisplayName("determineBid() should return null as UI handles human input")
         void determineBidReturnsNull() {
             // Passing the ID and Hand, completely decoupled from the Player object!
-            assertNull(strategy.determineBid(humanId, dummyHand),
+            assertNull(strategy.determineBid(dummyHand),
                     "Human strategy should return null. The UI/State machine handles actual bid creation.");
         }
     }
@@ -47,7 +45,7 @@ class HumanStrategyTest {
         @Test
         @DisplayName("chooseCardToPlay() should return null as UI handles human input")
         void chooseCardToPlayReturnsNull() {
-            assertNull(strategy.chooseCardToPlay(dummyHand, Suit.HEARTS),
+            assertNull(strategy.chooseCardToPlay(dummyHand, Suit.HEARTS, TeamRole.DEFENDING_TEAM),
                     "Human strategy should return null. The UI/State machine handles actual card selection.");
         }
     }

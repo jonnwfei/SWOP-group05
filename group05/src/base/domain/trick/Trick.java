@@ -1,5 +1,6 @@
 package base.domain.trick;
 
+import base.domain.card.CardMath;
 import base.domain.card.Suit;
 import base.domain.card.Card;
 import base.domain.player.PlayerId;
@@ -8,6 +9,8 @@ import base.domain.turn.PlayTurn;
 import java.util.ArrayList;
 import java.util.List;
 
+import static base.domain.WhistRules.MAX_TURNS;
+
 /**
  * Represents a single trick in a Whist round.
  * Acts as a passive ledger that records turns and calculates the current winning card.
@@ -15,10 +18,6 @@ import java.util.List;
  * @since 25/02/2026
  */
 public class Trick {
-    /**
-     * The maximum number of players/cards in a single trick.
-     */
-    public static final int MAX_TURNS = 4;
 
     private final Suit trumpSuit;
     private final PlayerId startingPlayerId;
@@ -54,6 +53,11 @@ public class Trick {
         if (playTurns.isEmpty())
             return null;
         return playTurns.getFirst().playedCard().suit();
+    }
+
+    /** @return The card that is currently winning the trick, or null if empty. */
+    public Card getCurrentWinningCard() {
+        return this.currentWinningCard;
     }
 
     /** @return The ID of the player who won the trick or is currently winning. */
@@ -103,7 +107,7 @@ public class Trick {
     }
 
     /**
-     * Updates the state of the trick using the globally defined TrickEvaluator rules.
+     * Updates the state of the trick using the globally defined CardMath rules.
      */
     private void updateWinningPlayer(PlayerId playerId, Card playedCard) {
         if (this.winningPlayerId == null) {
@@ -113,9 +117,7 @@ public class Trick {
         }
 
         // Delegate the complex math to our Pure Fabrication evaluator!
-        TrickEvaluator evaluator = new TrickEvaluator(getLeadingSuit(), this.trumpSuit);
-
-        if (evaluator.doesBeat(playedCard, this.currentWinningCard)) {
+        if (CardMath.doesCardBeat(playedCard, currentWinningCard, getLeadingSuit(), trumpSuit)) {
             this.winningPlayerId = playerId;
             this.currentWinningCard = playedCard;
         }

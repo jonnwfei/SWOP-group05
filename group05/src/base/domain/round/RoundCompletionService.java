@@ -7,15 +7,20 @@ import base.domain.player.PlayerId;
 
 import java.util.List;
 
+import static base.domain.WhistRules.MAX_TRICKS;
+
 /**
  * Domain service responsible for determining whether a {@link Round} is finished.
  * <p>
  * It encapsulates all the rules regarding round termination:
  * <ul>
- *   <li>All players passed (all‑pass round).</li>
+ *   <li>All players passed (all-pass round).</li>
  *   <li>All 13 tricks have been played.</li>
  *   <li>Miserie early termination (every Miserie bidder has taken at least one trick).</li>
  * </ul>
+ * Miserie-participant lookup is delegated to the round's
+ * {@link base.domain.bid.BidManager}, since {@link Bid} no longer carries a
+ * {@link PlayerId}.
  *
  * @author Stan Kestens
  * @since 08/05/2026
@@ -43,7 +48,7 @@ public class RoundCompletionService {
      * @return {@code true} if the round conditions warrant an automatic end.
      */
     public boolean shouldAutoFinish(Round round) {
-        if (round.getTricks().size() >= Round.MAX_TRICKS) {
+        if (round.getTricks().size() >= MAX_TRICKS) {
             return true;
         }
 
@@ -64,6 +69,10 @@ public class RoundCompletionService {
     /**
      * Miserie rounds end early when every Miserie bidder
      * has already failed by taking at least one trick.
+     * <p>
+     * Participants are resolved via the round's
+     * {@link base.domain.bid.BidManager} rather than by inspecting individual
+     * {@link Bid} objects, which no longer reference {@link PlayerId}.
      */
     private boolean isMiserieEarlyTermination(Round round) {
         Bid highestBid = round.getHighestBid();
@@ -71,10 +80,8 @@ public class RoundCompletionService {
             return false;
         }
 
-        List<PlayerId> miserieBidders = round.getBids().stream()
-                .filter(b -> b.getType() == highestBid.getType())
-                .map(Bid::getPlayerId)
-                .toList();
+        List<PlayerId> miserieBidders =
+                round.getBidManager().findMiserieParticipants(highestBid.getType());
 
         if (miserieBidders.isEmpty()) {
             return false;

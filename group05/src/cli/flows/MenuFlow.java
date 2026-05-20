@@ -4,14 +4,19 @@ import base.GameController;
 import base.domain.WhistRules;
 import base.domain.deck.Deck;
 import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
+import base.domain.snapshots.SaveMode;
 import cli.util.TerminalInputHelper;
 import cli.TerminalManager;
 
 import static cli.events.MenuEvents.*;
 
 import java.util.List;
-
+/**
+ * Handles the main menu of the application.
+ * Responsible for setting up a new game, count mode,
+ * or loading an existing saved game.
+ * @author stankestens
+ */
 public class MenuFlow {
 
     private final TerminalInputHelper input;
@@ -20,13 +25,24 @@ public class MenuFlow {
     private final GamePersistenceService persistenceService;
     private SaveMode savedMode;
 
+    /**
+     * Creates a new MenuFlow.
+     *
+     * @param terminalManager handles user interaction
+     * @param persistenceService handles save/load operations
+     * @param controller handles the game interaction
+     */
     public MenuFlow(TerminalManager terminalManager, GamePersistenceService persistenceService, GameController controller) {
         this.input = new TerminalInputHelper(terminalManager);
         this.terminalManager = terminalManager;
         this.controller = controller;
         this.persistenceService = persistenceService;
     }
-
+    /**
+     * Displays the main menu and executes the selected option.
+     *
+     * @return the selected SaveMode (GAME or COUNT)
+     */
     public SaveMode run() {
         int choice = input.askInt(new WelcomeMenuIOEvent(), 1, 3);
         return switch (choice) {
@@ -37,6 +53,9 @@ public class MenuFlow {
         };
     }
 
+    /**
+     * Sets up a full game with humans and bots.
+     */
     private void setupGame() {
         int bots = input.askInt(new AmountOfBotsIOEvent(), 0, WhistRules.REQUIRED_PLAYERS);
         int minHumans = WhistRules.REQUIRED_PLAYERS - bots;
@@ -51,13 +70,18 @@ public class MenuFlow {
         controller.startGame();
     }
 
+    /**
+     * Sets up count mode with only human players.
+     */
     private void setupCount() {
         addHumanPlayers(1, WhistRules.REQUIRED_PLAYERS);
         controller.setFirstPlayerAsDealer();
         printPlayerNames();
         controller.startCount();
     }
-
+    /**
+     * Loads a saved game and restores its mode.
+     */
     private void setupLoadSave() {
         List<String> availableSaves = persistenceService.listDescriptions();
         if (availableSaves.isEmpty()) {
@@ -81,13 +105,25 @@ public class MenuFlow {
         }
     }
 
+
+    /**
+     * Adds human players to the game.
+     *
+     * @param startIndex starting player number
+     * @param amount number of players to add
+     */
     private void addHumanPlayers(int startIndex, int amount) {
         for (int i = 0; i < amount; i++) {
             String name = input.askString(new PlayerNameIOEvent(startIndex + i));
             controller.addHumanPlayer(name);
         }
     }
-
+    /**
+     * Adds bot players with selected strategies.
+     *
+     * @param startIndex starting player number
+     * @param amount number of bots to add
+     */
     private void addBotPlayers(int startIndex, int amount) {
         for (int i = 0; i < amount; i++) {
             int botNumber = startIndex + i;

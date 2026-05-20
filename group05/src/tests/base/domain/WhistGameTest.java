@@ -191,7 +191,7 @@ class WhistGameTest {
             game.setDeck(mockDeck);
 
             List<Card> hand = List.of(new Card(Suit.SPADES, Rank.ACE));
-            when(mockDeck.deal(Deck.DealType.WHIST)).thenReturn(List.of(hand, hand, hand, hand));
+            when(mockDeck.deal()).thenReturn(List.of(hand, hand, hand, hand));
 
             Suit resultingTrump = game.dealCards();
 
@@ -250,8 +250,7 @@ class WhistGameTest {
             addFourPlayers();
 
             Round pastRound = mock(Round.class);
-            Bid passBid = mock(PassBid.class);
-            when(passBid.getType()).thenReturn(BidType.PASS);
+            Bid passBid = new PassBid();
             when(pastRound.getHighestBid()).thenReturn(passBid);
             game.addRound(pastRound);
 
@@ -341,7 +340,7 @@ class WhistGameTest {
             game.setDeck(deck);
 
             List<Card> dummyHand = List.of(new Card(Suit.HEARTS, Rank.ACE));
-            when(deck.deal(Deck.DealType.WHIST)).thenReturn(List.of(dummyHand, dummyHand, dummyHand, dummyHand));
+            when(deck.deal()).thenReturn(List.of(dummyHand, dummyHand, dummyHand, dummyHand));
 
             assertTrue(game.isOver());
 

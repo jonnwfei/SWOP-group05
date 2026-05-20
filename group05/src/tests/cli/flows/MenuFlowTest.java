@@ -1,9 +1,10 @@
 package cli.flows;
 
+import base.GameController;
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
+import base.domain.snapshots.SaveMode;
 import cli.TerminalManager;
 import cli.elements.Response; // Using the real class
 import cli.events.MenuEvents.*;
@@ -32,6 +33,7 @@ class MenuFlowTest {
     @Mock private TerminalManager terminalManager;
     @Mock private GamePersistenceService persistenceService;
     @Mock private WhistGame game;
+    private GameController controller;
 
     private MenuFlow menuFlow;
     private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
@@ -40,7 +42,8 @@ class MenuFlowTest {
     @BeforeEach
     void setUp() {
         System.setOut(new PrintStream(outContent));
-        menuFlow = new MenuFlow(terminalManager, persistenceService, game);
+        controller = new GameController(game);
+        menuFlow = new MenuFlow(terminalManager, persistenceService, controller);
     }
 
     @AfterEach

@@ -1,5 +1,6 @@
 package cli.adapter;
 
+import base.GameController;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
@@ -10,6 +11,7 @@ import base.domain.card.Suit;
 import base.domain.commands.*;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.player.TeamRole;
 import base.domain.results.BidResults.*;
 import base.domain.results.CountResults.*;
 import base.domain.results.PlayResults.*;
@@ -39,6 +41,7 @@ import static org.mockito.Mockito.*;
 class AdapterTest {
 
     private WhistGame game;
+    private GameController controller;
     private Player humanPlayer;
     private Player botPlayer;
     private PlayerId humanId;
@@ -62,12 +65,13 @@ class AdapterTest {
 
         lenient().when(botPlayer.getId()).thenReturn(botId);
         lenient().when(botPlayer.getName()).thenReturn("Bob-Bot");
-        lenient().when(botPlayer.getDecisionStrategy()).thenReturn(new SmartBotStrategy(botId));
+        lenient().when(botPlayer.getDecisionStrategy()).thenReturn(new SmartBotStrategy());
 
         lenient().when(game.getPlayers()).thenReturn(List.of(humanPlayer, botPlayer));
         lenient().when(game.getAllPlayers()).thenReturn(List.of(humanPlayer, botPlayer));
 
-        adapter = new Adapter(game);
+        controller = new GameController(game);
+        adapter = new Adapter(controller);
     }
 
     @Nested
@@ -77,7 +81,7 @@ class AdapterTest {
         @Test
         @DisplayName("PlayCardResult for Bot delegates to strategy and returns Immediate CardCommand")
         void playCard_BotPlayer_ReturnsImmediateCommand() {
-            when(botPlayer.chooseCard(any())).thenReturn(TEST_CARD);
+            when(botPlayer.chooseCard(any(), any())).thenReturn(TEST_CARD);
             PlayCardResult result = playCardResult(botPlayer);
 
             AdapterResult adapterResult = adapter.handleResult(result);
@@ -87,7 +91,7 @@ class AdapterTest {
 
             assertInstanceOf(CardCommand.class, command);
             assertEquals(TEST_CARD, ((CardCommand) command).card());
-            verify(botPlayer).chooseCard(any());
+            verify(botPlayer).chooseCard(any(), any());
         }
 
         @Test
@@ -229,7 +233,8 @@ class AdapterTest {
         return new PlayCardResult(
                 List.of(), false, List.of(), List.of(),
                 1, player, List.of(TEST_CARD), null,
-                Map.of(player.getId(), player.getName())
+                Map.of(player.getId(), player.getName()),
+                TeamRole.DEFENDING_TEAM
         );
     }
 

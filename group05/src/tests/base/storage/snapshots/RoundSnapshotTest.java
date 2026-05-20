@@ -1,6 +1,7 @@
 package base.storage.snapshots;
 
 import base.domain.bid.BidType;
+import base.domain.snapshots.RoundSnapshot;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

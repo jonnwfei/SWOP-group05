@@ -1,7 +1,6 @@
 package base.domain.strategy;
 
 import base.domain.bid.Bid;
-import base.domain.bid.BidCategory;
 import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
@@ -9,8 +8,8 @@ import base.domain.card.Rank;
 import base.domain.card.Suit;
 import base.domain.observer.GameEventPublisher;
 import base.domain.player.PlayerId;
+import base.domain.player.TeamRole;
 import base.domain.turn.BidTurn;
-import base.domain.turn.PlayTurn;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,7 +46,7 @@ class SmartBotStrategyTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        strategy = new SmartBotStrategy(botId);
+        strategy = new SmartBotStrategy();
 
         // INJECTION REFLECTION: Swap the internal Memory and Random objects with our Mocks
         Field memoryField = SmartBotStrategy.class.getDeclaredField("memory");
@@ -72,17 +71,6 @@ class SmartBotStrategyTest {
     @Nested
     @DisplayName("Lifecycle & Core Mechanics")
     class LifecycleTests {
-        @Test
-        @DisplayName("Constructor throws on null PlayerId")
-        void constructorNullCheck() {
-            assertThrows(IllegalArgumentException.class, () -> new SmartBotStrategy(null));
-        }
-
-        @Test
-        @DisplayName("getGameObserver returns the internal memory")
-        void returnsGameObserver() {
-            assertEquals(mockMemory, strategy.getGameObserver());
-        }
 
         @Test
         @DisplayName("onJoinGame registers the observer")
@@ -96,15 +84,17 @@ class SmartBotStrategyTest {
         @DisplayName("determineBid throws on null player or empty hand")
         void bidValidation() {
             List<Card> validHand = List.of(new Card(Suit.HEARTS, Rank.TWO));
-            assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(null, validHand));
-            assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(botId, Collections.emptyList()));
+
+            assertDoesNotThrow(() -> strategy.determineBid(validHand));
+            assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(Collections.emptyList()));
+            assertThrows(NullPointerException.class, () -> strategy.determineBid(null));
         }
 
         @Test
         @DisplayName("chooseCardToPlay throws on null or empty hand")
         void playValidation() {
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(null, Suit.HEARTS));
-            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(Collections.emptyList(), Suit.HEARTS));
+            assertThrows(NullPointerException.class, () -> strategy.chooseCardToPlay(null, Suit.HEARTS, TeamRole.DEFENDING_TEAM));
+            assertThrows(IllegalArgumentException.class, () -> strategy.chooseCardToPlay(Collections.emptyList(), Suit.HEARTS, TeamRole.DEFENDING_TEAM));
         }
 
         @Test
@@ -115,7 +105,7 @@ class SmartBotStrategyTest {
             mockedCardMath.when(() -> CardMath.getLegalCards(anyList(), any())).thenReturn(Collections.emptyList());
 
             List<Card> hand = List.of(new Card(Suit.HEARTS, Rank.TWO));
-            assertThrows(IllegalStateException.class, () -> strategy.chooseCardToPlay(hand, Suit.HEARTS));
+            assertThrows(IllegalStateException.class, () -> strategy.chooseCardToPlay(hand, Suit.HEARTS, TeamRole.DEFENDING_TEAM));
         }
     }
 
@@ -142,7 +132,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
 
             // It has 4 Aces, but 13 expected tricks means it MUST bid Solo Slim!
-            assertEquals(BidType.SOLO_SLIM, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.SOLO_SLIM, strategy.determineBid(hand).getType());
         }
 
         // ==========================================
@@ -153,14 +143,14 @@ class SmartBotStrategyTest {
         @DisplayName("Bids OPEN_MISERIE if max card is <= 7")
         void bidsOpenMiserie() {
             List<Card> hand = List.of(new Card(Suit.HEARTS, Rank.TWO), new Card(Suit.SPADES, Rank.SEVEN));
-            assertEquals(BidType.OPEN_MISERIE, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.OPEN_MISERIE, strategy.determineBid(hand).getType());
         }
 
         @Test
         @DisplayName("Bids MISERIE if max card is <= 10")
         void bidsMiserie() {
             List<Card> hand = List.of(new Card(Suit.HEARTS, Rank.EIGHT), new Card(Suit.SPADES, Rank.TEN));
-            assertEquals(BidType.MISERIE, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.MISERIE, strategy.determineBid(hand).getType());
         }
 
         @Test
@@ -170,7 +160,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
             when(mockMemory.hasActiveProposal()).thenReturn(false);
 
-            assertEquals(BidType.PROPOSAL, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.PROPOSAL, strategy.determineBid(hand).getType());
         }
 
         @Test
@@ -180,7 +170,7 @@ class SmartBotStrategyTest {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
             when(mockMemory.hasActiveProposal()).thenReturn(true);
 
-            assertEquals(BidType.ACCEPTANCE, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.ACCEPTANCE, strategy.determineBid(hand).getType());
         }
 
         @Test
@@ -189,16 +179,16 @@ class SmartBotStrategyTest {
             List<Card> hand = generateTrickHand(1); // 1 Trick
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
 
-            assertEquals(BidType.PASS, strategy.determineBid(botId, hand).getType());
+            assertEquals(BidType.PASS, strategy.determineBid(hand).getType());
         }
 
         @DisplayName("Abondance Tier mapping routing (9 to 13 tricks)")
         void abondanceRouting() {
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.HEARTS);
 
-            assertEquals(BidType.ABONDANCE_10, strategy.determineBid(botId, generateTrickHand(10)).getType());
-            assertEquals(BidType.ABONDANCE_11, strategy.determineBid(botId, generateTrickHand(11)).getType());
-            assertEquals(BidType.ABONDANCE_12_OT, strategy.determineBid(botId, generateTrickHand(12)).getType());
+            assertEquals(BidType.ABONDANCE_10, strategy.determineBid(generateTrickHand(10)).getType());
+            assertEquals(BidType.ABONDANCE_11, strategy.determineBid(generateTrickHand(11)).getType());
+            assertEquals(BidType.ABONDANCE_12_OT, strategy.determineBid(generateTrickHand(12)).getType());
 
             List<Card> flushOfSpades = List.of(
                     new Card(Suit.SPADES, Rank.TWO), new Card(Suit.SPADES, Rank.THREE),
@@ -210,13 +200,13 @@ class SmartBotStrategyTest {
                     new Card(Suit.SPADES, Rank.ACE)
             );
 
-            Bid soloBid = strategy.determineBid(botId, flushOfSpades);
+            Bid soloBid = strategy.determineBid(flushOfSpades);
             assertEquals(BidType.SOLO, soloBid.getType(), "Different trump should yield SOLO");
 
             // Current trump is SPADES.
             // Result: Bot keeps trump as Spades. (Spades == Spades -> SOLO_SLIM)
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.SPADES);
-            Bid soloSlimBid = strategy.determineBid(botId, flushOfSpades);
+            Bid soloSlimBid = strategy.determineBid(flushOfSpades);
             assertEquals(BidType.SOLO_SLIM, soloSlimBid.getType(), "Same trump should yield SOLO_SLIM");
         }
 
@@ -224,8 +214,9 @@ class SmartBotStrategyTest {
         @DisplayName("Throws exception on mathematically impossible trick counts (>13)")
         void boundsCheckHighBids() {
             List<Card> impossibleHand = generateTrickHand(14);
-            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(botId, impossibleHand));
-            assertTrue(ex.getMessage().contains("Invalid tricks value: 14"));
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> strategy.determineBid(impossibleHand));
+            assertTrue(ex.getMessage().contains("Invalid tricks value") && ex.getMessage().contains("14"),
+                    "Exception message should mention 'Invalid tricks value' and the count 14, but was: " + ex.getMessage());
         }
 
         private List<Card> generateTrickHand(int tricks) {
@@ -269,7 +260,7 @@ class SmartBotStrategyTest {
 
             when(mockMemory.isHighestUnplayedCardInSuit(ace)).thenReturn(true);
 
-            assertEquals(ace, strategy.chooseCardToPlay(List.of(two, ace), null));
+            assertEquals(ace, strategy.chooseCardToPlay(List.of(two, ace), null, TeamRole.DEFENDING_TEAM));
         }
 
         @Test
@@ -280,17 +271,19 @@ class SmartBotStrategyTest {
             when(mockMemory.isLeadPlayer()).thenReturn(true);
             when(mockMemory.isHighestUnplayedCardInSuit(any())).thenReturn(false);
 
-            assertEquals(low, strategy.chooseCardToPlay(List.of(low, med), null));
+            assertEquals(low, strategy.chooseCardToPlay(List.of(low, med), null, TeamRole.DEFENDING_TEAM));
         }
 
         @Test
         @DisplayName("Following: Conserves high cards (plays low) if partner is winning")
         void followPartnerWinning() {
             Card low = new Card(Suit.HEARTS, Rank.TWO);
+            PlayerId winnerId = new PlayerId();
             when(mockMemory.isLeadPlayer()).thenReturn(false);
-            when(mockMemory.isTeamWinning(botId)).thenReturn(true);
+            when(mockMemory.getCurrentWinnerId()).thenReturn(winnerId);
+            when(mockMemory.isPlayerOnBiddingTeam(winnerId)).thenReturn(false); // DEFENDING_TEAM is winning
 
-            assertEquals(low, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.ACE), low), Suit.HEARTS));
+            assertEquals(low, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.ACE), low), Suit.HEARTS, TeamRole.DEFENDING_TEAM));
         }
 
         @Test
@@ -298,25 +291,30 @@ class SmartBotStrategyTest {
         void followLosingVoidHasTrump() {
             Card lowTrump = new Card(Suit.HEARTS, Rank.THREE);
             Card discard = new Card(Suit.DIAMONDS, Rank.TWO);
+            PlayerId winnerId = new PlayerId();
 
             when(mockMemory.isLeadPlayer()).thenReturn(false);
-            when(mockMemory.isTeamWinning(botId)).thenReturn(false);
+            when(mockMemory.getCurrentWinnerId()).thenReturn(winnerId);
+            when(mockMemory.isPlayerOnBiddingTeam(winnerId)).thenReturn(true); // DEFENDING_TEAM is losing
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.HEARTS);
 
             // Lead is SPADES. Hand has Diamonds & Hearts (Trump). It is void in Lead.
-            assertEquals(lowTrump, strategy.chooseCardToPlay(List.of(discard, lowTrump), Suit.SPADES));
+            assertEquals(lowTrump, strategy.chooseCardToPlay(List.of(discard, lowTrump), Suit.SPADES, TeamRole.DEFENDING_TEAM));
         }
 
         @Test
         @DisplayName("Following (Losing): Void in lead, NO trump -> Dump lowest card")
         void followLosingVoidNoTrump() {
             Card lowDiscard = new Card(Suit.DIAMONDS, Rank.TWO);
+            PlayerId winnerId = new PlayerId();
+
             when(mockMemory.isLeadPlayer()).thenReturn(false);
-            when(mockMemory.isTeamWinning(botId)).thenReturn(false);
+            when(mockMemory.getCurrentWinnerId()).thenReturn(winnerId);
+            when(mockMemory.isPlayerOnBiddingTeam(winnerId)).thenReturn(true); // DEFENDING_TEAM is losing
             when(mockMemory.getCurrentTrump()).thenReturn(Suit.HEARTS);
 
             // Lead is SPADES. Hand has Diamonds & Clubs. Void in lead, void in trump.
-            assertEquals(lowDiscard, strategy.chooseCardToPlay(List.of(new Card(Suit.CLUBS, Rank.NINE), lowDiscard), Suit.SPADES));
+            assertEquals(lowDiscard, strategy.chooseCardToPlay(List.of(new Card(Suit.CLUBS, Rank.NINE), lowDiscard), Suit.SPADES, TeamRole.DEFENDING_TEAM));
         }
 
         @Test
@@ -324,13 +322,16 @@ class SmartBotStrategyTest {
         void followLosingMustFollowSuit() {
             Card highLead = new Card(Suit.SPADES, Rank.KING);
             Card lowLead = new Card(Suit.SPADES, Rank.TWO);
+            PlayerId winnerId = new PlayerId();
 
             when(mockMemory.isLeadPlayer()).thenReturn(false);
-            when(mockMemory.isTeamWinning(botId)).thenReturn(false);
-            when(mockMemory.getCurrentTrump()).thenReturn(Suit.HEARTS);
+            when(mockMemory.getCurrentWinnerId()).thenReturn(winnerId);
+            when(mockMemory.isPlayerOnBiddingTeam(winnerId)).thenReturn(true); // DEFENDING_TEAM is losing
 
+            // Hand is purely SPADES and lead is SPADES, so isVoidInLead = false.
+            // The bot must follow suit, so trump is never consulted.
             // Must follow SPADES
-            assertEquals(highLead, strategy.chooseCardToPlay(List.of(highLead, lowLead), Suit.SPADES));
+            assertEquals(highLead, strategy.chooseCardToPlay(List.of(highLead, lowLead), Suit.SPADES, TeamRole.DEFENDING_TEAM));
         }
     }
 
@@ -342,6 +343,7 @@ class SmartBotStrategyTest {
         void setupMiserie() {
             BidTurn miserieBid = new BidTurn(botId, BidType.MISERIE);
             lenient().when(mockMemory.getHighestBid()).thenReturn(miserieBid);
+            lenient().when(mockMemory.getActiveBid()).thenReturn(BidType.MISERIE);
         }
 
         @Test
@@ -350,7 +352,7 @@ class SmartBotStrategyTest {
             Card low = new Card(Suit.HEARTS, Rank.TWO);
             when(mockMemory.isLeadPlayer()).thenReturn(true);
 
-            assertEquals(low, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.KING), low), null));
+            assertEquals(low, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.KING), low), null, TeamRole.BIDDING_TEAM));
         }
 
         @Test
@@ -360,10 +362,10 @@ class SmartBotStrategyTest {
             Card unsafeHigh = new Card(Suit.HEARTS, Rank.KING); // Beats the Ten
 
             when(mockMemory.isLeadPlayer()).thenReturn(false);
-            when(mockMemory.getCurrentWinningTurn()).thenReturn(new PlayTurn(new PlayerId(), new Card(Suit.HEARTS, Rank.TEN)));
+            when(mockMemory.getCurrentWinningCard()).thenReturn(new Card(Suit.HEARTS, Rank.TEN));
 
             // Plays 9 to stay under the 10, instead of dumping the 2.
-            assertEquals(safeHigh, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.TWO), safeHigh, unsafeHigh), Suit.HEARTS));
+            assertEquals(safeHigh, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.TWO), safeHigh, unsafeHigh), Suit.HEARTS, TeamRole.BIDDING_TEAM));
         }
 
         @Test
@@ -373,10 +375,10 @@ class SmartBotStrategyTest {
             Card otherHigh = new Card(Suit.HEARTS, Rank.QUEEN);
 
             when(mockMemory.isLeadPlayer()).thenReturn(false);
-            when(mockMemory.getCurrentWinningTurn()).thenReturn(new PlayTurn(new PlayerId(), new Card(Suit.HEARTS, Rank.TWO)));
+            when(mockMemory.getCurrentWinningCard()).thenReturn(new Card(Suit.HEARTS, Rank.TWO));
 
             // Everything beats a 2, so it must dump the absolute highest card to minimize future risk
-            assertEquals(absoluteHighest, strategy.chooseCardToPlay(List.of(otherHigh, absoluteHighest), Suit.HEARTS));
+            assertEquals(absoluteHighest, strategy.chooseCardToPlay(List.of(otherHigh, absoluteHighest), Suit.HEARTS, TeamRole.BIDDING_TEAM));
         }
     }
 
@@ -390,6 +392,7 @@ class SmartBotStrategyTest {
         void setupAntiMiserie() {
             BidTurn miserieBid = new BidTurn(opponentId, BidType.MISERIE);
             lenient().when(mockMemory.getHighestBid()).thenReturn(miserieBid);
+            lenient().when(mockMemory.getActiveBid()).thenReturn(BidType.MISERIE);
         }
 
         @Test
@@ -398,7 +401,7 @@ class SmartBotStrategyTest {
             Card low = new Card(Suit.HEARTS, Rank.TWO);
             when(mockMemory.hasPlayerActedInCurrentTrick(opponentId)).thenReturn(false);
 
-            assertEquals(low, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.ACE), low), Suit.HEARTS));
+            assertEquals(low, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.ACE), low), Suit.HEARTS, TeamRole.DEFENDING_TEAM));
         }
 
         @Test
@@ -408,11 +411,11 @@ class SmartBotStrategyTest {
             Card winningCard = new Card(Suit.HEARTS, Rank.TEN);
 
             when(mockMemory.hasPlayerActedInCurrentTrick(opponentId)).thenReturn(true);
-            when(mockMemory.calculateCurrentWinnerId()).thenReturn(opponentId);
+            when(mockMemory.getCurrentWinnerId()).thenReturn(opponentId);
             when(mockMemory.getCardPlayedBy(opponentId)).thenReturn(winningCard);
 
             // 3 is under 10. Ace beats 10. Play the 3 to force opponent to keep the trick.
-            assertEquals(safeLow, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.ACE), safeLow), Suit.HEARTS));
+            assertEquals(safeLow, strategy.chooseCardToPlay(List.of(new Card(Suit.HEARTS, Rank.ACE), safeLow), Suit.HEARTS, TeamRole.DEFENDING_TEAM));
         }
 
         @Test
@@ -422,11 +425,11 @@ class SmartBotStrategyTest {
             Card winningCard = new Card(Suit.HEARTS, Rank.TWO); // Opponent played a 2
 
             when(mockMemory.hasPlayerActedInCurrentTrick(opponentId)).thenReturn(true);
-            when(mockMemory.calculateCurrentWinnerId()).thenReturn(opponentId);
+            when(mockMemory.getCurrentWinnerId()).thenReturn(opponentId);
             when(mockMemory.getCardPlayedBy(opponentId)).thenReturn(winningCard);
 
             // No cards are under 2. Bot MUST win. Dump the highest possible card.
-            assertEquals(absoluteHighest, strategy.chooseCardToPlay(List.of(absoluteHighest, new Card(Suit.HEARTS, Rank.THREE)), Suit.HEARTS));
+            assertEquals(absoluteHighest, strategy.chooseCardToPlay(List.of(absoluteHighest, new Card(Suit.HEARTS, Rank.THREE)), Suit.HEARTS, TeamRole.DEFENDING_TEAM));
         }
 
         @Test
@@ -435,10 +438,10 @@ class SmartBotStrategyTest {
             Card highest = new Card(Suit.HEARTS, Rank.ACE);
 
             when(mockMemory.hasPlayerActedInCurrentTrick(opponentId)).thenReturn(true);
-            when(mockMemory.calculateCurrentWinnerId()).thenReturn(new PlayerId()); // Someone ELSE is winning
+            when(mockMemory.getCurrentWinnerId()).thenReturn(new PlayerId()); // Someone ELSE is winning
 
             // Opponent is currently safe. Bot plays aggressively to take control.
-            assertEquals(highest, strategy.chooseCardToPlay(List.of(highest, new Card(Suit.HEARTS, Rank.TWO)), Suit.HEARTS));
+            assertEquals(highest, strategy.chooseCardToPlay(List.of(highest, new Card(Suit.HEARTS, Rank.TWO)), Suit.HEARTS, TeamRole.DEFENDING_TEAM));
         }
     }
 }

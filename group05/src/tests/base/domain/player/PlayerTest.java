@@ -5,6 +5,7 @@ import base.domain.bid.SoloBid;
 import base.domain.card.Card;
 import base.domain.card.Rank;
 import base.domain.card.Suit;
+import base.domain.player.TeamRole;
 import base.domain.strategy.HumanStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -177,23 +179,23 @@ class PlayerTest {
         @DisplayName("chooseCard() should delegate decision to strategy")
         void delegatesChooseCard() {
             Card expected = new Card(Suit.HEARTS, Rank.TEN);
-            when(mockStrategy.chooseCardToPlay(anyList(), eq(Suit.HEARTS))).thenReturn(expected);
+            when(mockStrategy.chooseCardToPlay(anyList(), eq(Suit.HEARTS), any(TeamRole.class))).thenReturn(expected);
 
-            Card result = player.chooseCard(Suit.HEARTS);
+            Card result = player.chooseCard(Suit.HEARTS, TeamRole.DEFENDING_TEAM);
 
             assertEquals(expected, result);
-            verify(mockStrategy).chooseCardToPlay(anyList(), eq(Suit.HEARTS));
+            verify(mockStrategy).chooseCardToPlay(anyList(), eq(Suit.HEARTS), any(TeamRole.class));
         }
 
         @Test
         @DisplayName("chooseBid() should delegate decision to strategy using player's ID")
         void delegatesChooseBid() {
-            when(mockStrategy.determineBid(eq(player.getId()), anyList())).thenReturn(mockBid);
+            when(mockStrategy.determineBid(anyList())).thenReturn(mockBid);
 
             Bid result = player.chooseBid();
 
             assertEquals(mockBid, result);
-            verify(mockStrategy).determineBid(eq(player.getId()), anyList());
+            verify(mockStrategy).determineBid(anyList());
         }
     }
 

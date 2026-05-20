@@ -1,10 +1,11 @@
 package cli.flows;
 
+import base.GameController;
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
+import base.domain.snapshots.SaveMode;
 import cli.TerminalManager;
 import cli.elements.Response; // Use the real class!
 import cli.events.CountEvents.PlayerSelectionIOEvent;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.*;
 class GameEditFlowTest {
 
     @Mock private TerminalManager terminalManager;
+    private GameController controller;
     @Mock private WhistGame game;
     @Mock private GamePersistenceService persistenceService;
 
@@ -44,7 +46,8 @@ class GameEditFlowTest {
     @BeforeEach
     void setUp() {
         System.setOut(new PrintStream(outContent));
-        flow = new GameEditFlow(terminalManager,game, persistenceService, SaveMode.GAME);
+        controller = new GameController(game);
+        flow = new GameEditFlow(terminalManager, controller, persistenceService, SaveMode.GAME);
     }
 
     @AfterEach
@@ -63,10 +66,10 @@ class GameEditFlowTest {
     class InitializationTests {
         @Test
         void constructorGuards() {
-            assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(null, game, persistenceService, SaveMode.GAME));
+            assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(null, controller, persistenceService, SaveMode.GAME));
             assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(terminalManager, null, persistenceService, SaveMode.GAME));
-            assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(terminalManager, game, null, SaveMode.GAME));
-            assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(terminalManager, game, persistenceService, null));
+            assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(terminalManager, controller, null, SaveMode.GAME));
+            assertThrows(IllegalArgumentException.class, () -> new GameEditFlow(terminalManager, controller, persistenceService, null));
         }
 
         @Test
@@ -188,7 +191,7 @@ class GameEditFlowTest {
                     .thenReturn(realResponse("abc"), realResponse("  1 ,, 2 "));
 
             assertTrue(flow.removePlayer());
-            verify(game).removePlayer(p1);
+            verify(game).removePlayerAtIndex(0);
         }
     }
 

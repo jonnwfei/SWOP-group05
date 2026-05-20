@@ -19,33 +19,26 @@ import static org.mockito.Mockito.when;
 
 @DisplayName("Proposal Bid Rules & Calculations")
 class ProposalBidTest {
-
-    private PlayerId proposerId;
+    
     private Suit dealtTrump;
     private ProposalBid bid;
 
     @BeforeEach
     void setUp() {
         // Arrange
-        proposerId = new PlayerId();
         dealtTrump = Suit.HEARTS;
-        bid = new ProposalBid(proposerId);
+        bid = new ProposalBid();
     }
 
     @Test
-    @DisplayName("Constructor enforces non-null parameters")
+    @DisplayName("Constructor creates instance successfully (no parameters to validate)")
     void constructor_NullParameters_ThrowsIllegalArgumentException() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                new ProposalBid(null)
-        );
-        assertTrue(exception.getMessage().toLowerCase().contains("null"), "Should reject null Proposer PlayerId");
+        assertNotNull(new ProposalBid(), "ProposalBid is a no-arg record and should always construct successfully");
     }
 
     @Test
     @DisplayName("Basic Accessors return correctly assigned values")
     void basicAccessors_ReturnExpectedValues() {
-        assertEquals(proposerId, bid.getPlayerId(), "getPlayerId() should return the proposer's ID");
-        assertEquals(proposerId, bid.proposer(), "Record accessor should return the proposer's ID");
         assertEquals(BidType.PROPOSAL, bid.getType(), "getType() should always return PROPOSAL");
     }
 
@@ -63,48 +56,6 @@ class ProposalBidTest {
                 bid.determineTrump(null)
         );
         assertTrue(exception.getMessage().toLowerCase().contains("null"));
-    }
-
-    @Test
-    @DisplayName("getTeam() successfully finds the acceptor and pairs them with the proposer")
-    void getTeam_AcceptanceExists_ReturnsProposerAndAcceptor() {
-        // Arrange
-        PlayerId acceptorId = new PlayerId();
-
-        // Mocking the bid history to isolate this test from the concrete AcceptedBid class
-        Bid mockAcceptance = mock(AcceptedBid.class);
-        when(mockAcceptance.getType()).thenReturn(BidType.ACCEPTANCE);
-        when(mockAcceptance.getPlayerId()).thenReturn(acceptorId);
-
-        Bid mockPass = mock(PassBid.class);
-        when(mockPass.getType()).thenReturn(BidType.PASS);
-
-        List<Bid> bidHistory = List.of(bid, mockPass, mockAcceptance);
-        List<Player> allPlayers = Collections.emptyList(); // Not used by ProposalBid
-
-        // Act
-        List<PlayerId> team = bid.getTeam(bidHistory, allPlayers);
-
-        // Assert
-        assertEquals(2, team.size(), "Team should consist of exactly 2 players");
-        assertEquals(proposerId, team.get(0), "Team must contain the original proposer first");
-        assertEquals(acceptorId, team.get(1), "Team must contain the acceptor second");
-    }
-
-    @Test
-    @DisplayName("getTeam() throws an exception if no Acceptance bid exists in history")
-    void getTeam_NoAcceptanceExists_ThrowsIllegalArgumentException() {
-        // Arrange: A bid history with only PASS bids and the Proposal itself
-        Bid mockPass = mock(PassBid.class);
-        when(mockPass.getType()).thenReturn(BidType.PASS);
-
-        List<Bid> bidHistory = List.of(bid, mockPass, mockPass, mockPass);
-
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                bid.getTeam(bidHistory, Collections.emptyList())
-        );
-        assertTrue(exception.getMessage().contains("impossible to have ProposalBid without AcceptedBid"));
     }
 
     @ParameterizedTest(name = "Winning {0} tricks yields {1} base points (including overtricks)")

@@ -3,7 +3,9 @@ package base.domain.player;
 import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.snapshots.PlayerSnapshot;
 import base.domain.strategy.Strategy;
+import base.domain.player.TeamRole;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +47,7 @@ public class Player {
      * @param playerId         the unique identifier for this player instance.
      * @throws IllegalArgumentException if {@code decisionStrategy}, {@code name}, or {@code playerId} is null.
      */
+    //TODO: remove?
     public Player(Strategy decisionStrategy, String name, PlayerId playerId) {
         if (decisionStrategy == null || name == null || playerId == null) throw new IllegalArgumentException("Strategy, name and/or Id can't be null");
         this.decisionStrategy = decisionStrategy;
@@ -92,8 +95,8 @@ public class Player {
      * @param lead the leading {@link Suit} of the current trick, or {@code null} if this player is leading the trick.
      * @return the {@link Card} chosen by the player's strategy.
      */
-    public Card chooseCard(Suit lead) {
-        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead);
+    public Card chooseCard(Suit lead, TeamRole role) {
+        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead, role);
     }
 
     /**
@@ -112,7 +115,7 @@ public class Player {
      *
      * @return the {@link Bid} chosen by the player's strategy.
      */
-    public Bid chooseBid() {return this.decisionStrategy.determineBid(playerId, currentHand);}
+    public Bid chooseBid() {return this.decisionStrategy.determineBid(currentHand);}
 
     /**
      * updates the player score.
@@ -145,8 +148,8 @@ public class Player {
     public String getName() {return this.playerName;}
 
     /**
-     * Retrieves the player's unique Id
-     * @return the player's Id.
+     * Retrieves the player's unique ID
+     * @return the player's ID.
      */
     public PlayerId getId() {return this.playerId;}
 
@@ -162,4 +165,19 @@ public class Player {
         if (card == null) throw new IllegalArgumentException("card can't be null.");
         return currentHand.stream().anyMatch(card::equals);
     }
-}
+
+    /**
+     * Constructs a snapshot of a player, containing their name, strategy type, and score from their current state in the game.
+     * @return PlayerSnapshot of the provided player
+     * @throws IllegalArgumentException if the player's strategy is missing or corrupted
+     */
+    public PlayerSnapshot toSnapshot() {
+        Strategy strategy = this.decisionStrategy;
+        if (strategy == null) throw new IllegalArgumentException("Strategy can't be null.");
+        return new PlayerSnapshot(
+                playerId.id().toString(),
+                playerName,
+                strategy.toSnapshotType(),
+                playerScore
+        );
+    }}

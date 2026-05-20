@@ -9,26 +9,22 @@ import base.domain.player.PlayerId;
 import java.util.Comparator;
 import java.util.List;
 
-import static base.domain.card.CardMath.getHighestRankOfSuit;
 
 /**
  * Represents a forced contract triggered when a player holds 3 or 4 Aces.
  * The player forms a team with a forced partner (the holder of the 4th Ace, or the highest Heart).
  *
- * @param playerId  The ID of the player forced into the bid.
  * @param bidType   The specific Troel rank (TROEL or TROELA).
  * @param trumpSuit The suit of the missing 4th Ace (for TROEL). Ignored for TROELA.
  * @author Tommy Wu
  * @since 01/04/2026
  */
-public record TroelBid(PlayerId playerId, BidType bidType, Suit trumpSuit) implements Bid {
+public record TroelBid(BidType bidType, Suit trumpSuit) implements Bid {
 
-    public TroelBid(PlayerId playerId, BidType bidType, Suit trumpSuit) {
-        if (playerId == null) throw new IllegalArgumentException("PlayerId can't be null");
+    public TroelBid(BidType bidType, Suit trumpSuit) {
         if (bidType == null) throw new IllegalArgumentException("BidType can't be null");
         if (bidType.getCategory() != BidCategory.TROEL) throw new IllegalArgumentException("TroelBid requires a TROEL category!");
 
-        this.playerId = playerId;
         this.bidType = bidType;
 
         // Rule Enforcement: If it's TROELA, the trump is ALWAYS Hearts.
@@ -40,42 +36,9 @@ public record TroelBid(PlayerId playerId, BidType bidType, Suit trumpSuit) imple
             this.trumpSuit = trumpSuit;
         }
     }
-
     @Override
-    public PlayerId getPlayerId() {return playerId;}
+    public int teamSize() {return 2;}
 
-    /**
-     * Determines the attacking team by finding the forced partner.
-     * For TROEL: The partner is the player with the 4th (missing) Ace.
-     * For TROELA: The partner is the player with the highest card in Hearts.
-     *
-     * @param allBids    All bids placed during the round.
-     * @param allPlayers All players in the game.
-     * @return A list containing the Troel bidder and their forced partner.
-     * @throws IllegalStateException if the forced partner cannot be found (e.g., the deck is corrupted or missing cards).
-     */
-    @Override
-    public List<PlayerId> getTeam(List<Bid> allBids, List<Player> allPlayers) {
-        PlayerId partnerId;
-
-        if (bidType == BidType.TROEL) {
-            Card missingAce = new Card(this.trumpSuit, Rank.ACE);
-            partnerId = allPlayers.stream()
-                    .filter(p -> p.hasCard(missingAce))
-                    .map(Player::getId) // Return ONLY the ID
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("Partner not found. Corrupted deck!"));
-        } else {
-            // TROELA: Partner is the player with the highest Heart (excluding the bidder)
-            partnerId = allPlayers.stream()
-                    .filter(p -> !p.getId().equals(playerId))
-                    .max(Comparator.comparing(p -> getHighestRankOfSuit(Suit.HEARTS, p.getHand()), Comparator.nullsFirst(Comparator.naturalOrder())))
-                    .map(Player::getId)
-                    .orElseThrow(() -> new IllegalStateException("Partner not found. Corrupted deck!"));
-        }
-
-        return List.of(playerId, partnerId);
-    }
     @Override
     public BidType getType() {return bidType;}
 

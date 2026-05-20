@@ -3,11 +3,13 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
+import base.domain.bid.BidManager;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
 import base.domain.commands.GameCommand;
 import base.domain.commands.GameCommand.*;
 import base.domain.player.Player;
+import base.domain.player.TeamRole;
 import base.domain.results.*;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
@@ -98,7 +100,10 @@ public class PlayState extends State {
         processTurnOutcome();
 
         // 4. Return the correct progression event
-        if (currentRound.isFinished()) return new EndOfRoundResult(player.getName(), card);
+        if (currentRound.isFinished()) {
+            getGame().notifyRoundFinished();
+            return new EndOfRoundResult(player.getName(), card);
+        }
         if (trickFinished) return new EndOfTrickResult(player.getName(), card, winner);
         return new EndOfTurnResult(player.getName(), card);
     }
@@ -109,6 +114,7 @@ public class PlayState extends State {
 
             // Round registers the trick and automatically scores itself if it's the 13th or all miserie players won
             currentRound.finalizeTrick(currentTrick);
+            getGame().notifyTrickCompleted(winningPlayer.getId());
 
             this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getTrumpSuit());
         } else {
@@ -130,13 +136,16 @@ public class PlayState extends State {
 
         List<PlayTurn> turns = currentTrick.getTurns();
         List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
-
+        TeamRole role = currentRound.getBiddingTeamPlayers().contains(player)
+                ? TeamRole.BIDDING_TEAM
+                : TeamRole.DEFENDING_TEAM;
 
         return new PlayCardResult(
                 turns, isOpenMiserie, exposedNames, exposedHands,
                 currentRound.getTricks().size() + 1, player, legalCards,
                 currentRound.getLastPlayedTrick(),
-                getGame().getPlayerNamesMap()
+                getGame().getPlayerNamesMap(),
+                role
         );
     }
 
@@ -146,7 +155,7 @@ public class PlayState extends State {
     private void populateExposedHands(List<String> exposedNames, List<List<Card>> exposedHands) {
         for (Bid bid : currentRound.getBids()) {
             if (bid.getType() == BidType.OPEN_MISERIE) {
-                Player proposer = getGame().getPlayerById(bid.getPlayerId());
+                Player proposer = getGame().getPlayerById(currentRound.getBidManager().getBidderOf(bid));
                 exposedNames.add(proposer.getName());
                 exposedHands.add(proposer.getHand());
             }
