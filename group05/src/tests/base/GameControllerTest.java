@@ -56,7 +56,7 @@ class GameControllerTest {
     @DisplayName("Delegates player management to WhistGame")
     void testPlayerManagement() {
         Player player = mock(Player.class);
-        
+
         controller.addPlayer(player);
         verify(mockGame).addPlayer(player);
 

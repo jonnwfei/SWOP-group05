@@ -4,6 +4,7 @@ import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.player.TeamRole;
+import base.domain.snapshots.StrategySnapshotType;
 
 import java.util.List;
 
@@ -43,5 +44,13 @@ public final class HumanStrategy implements Strategy {
     @Override
     public Card chooseCardToPlay(List<Card> currentHand, Suit lead, TeamRole role) {
         return null;
+    }
+
+    /**
+     * Returns the snapshot type for this strategy, used for serialization and game state representation.
+     * @return the enum value for HUMAN
+     */
+    public StrategySnapshotType toSnapshotType() {
+        return StrategySnapshotType.HUMAN;
     }
 }

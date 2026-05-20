@@ -10,6 +10,7 @@ import base.domain.card.Suit;
 import base.domain.observer.GameEventPublisher;
 import base.domain.player.PlayerId;
 import base.domain.player.TeamRole;
+import base.domain.snapshots.StrategySnapshotType;
 import base.domain.turn.BidTurn;
 
 import java.util.Comparator;
@@ -117,6 +118,14 @@ public final class SmartBotStrategy implements Strategy {
             case MISERIE       -> playToLoseTrick(legalCards, lead);
             case ANTI_MISERIE  -> playToForceMiserieLoss(legalCards, lead);
         };
+    }
+
+    /**
+     * Returns the snapshot type for this strategy, used for serialization and game state representation.
+     * @return the enum value for SMART_BOT
+     */
+    public StrategySnapshotType toSnapshotType() {
+        return StrategySnapshotType.SMART_BOT;
     }
 
     @Override

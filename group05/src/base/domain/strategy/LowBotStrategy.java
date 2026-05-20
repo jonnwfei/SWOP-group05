@@ -6,6 +6,7 @@ import base.domain.card.Card;
 import base.domain.card.CardMath;
 import base.domain.card.Suit;
 import base.domain.player.TeamRole;
+import base.domain.snapshots.StrategySnapshotType;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -43,6 +44,14 @@ public final class LowBotStrategy implements Strategy {
         }
         List<Card> legalCards = CardMath.getLegalCards(currentHand, lead);
         return Collections.min(legalCards, Comparator.comparing(Card::rank));
+    }
+
+    /**
+     * Returns the snapshot type for this strategy, used for serialization and game state representation.
+     * @return the enum value for LOW_BOT
+     */
+    public StrategySnapshotType toSnapshotType() {
+        return StrategySnapshotType.LOW_BOT;
     }
 
 }
