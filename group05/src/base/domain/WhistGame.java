@@ -7,7 +7,8 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.commands.GameCommand;
 import base.domain.deck.Deck;
-
+import static base.domain.WhistRules.*;
+import base.domain.observer.GameEventPublisher;
 import base.domain.observer.GameObserver;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
@@ -33,7 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
+
 
 /**
  * Represents a game of Whist.
@@ -41,10 +44,7 @@ import java.util.stream.Collectors;
  * @author Stan Kestens, Tommy Wu
  * @since 28/02/2026
  */
-public class WhistGame {
-
-    public static final int REQUIRED_PLAYERS = 4;
-
+public class WhistGame implements GameEventPublisher {
     private State state;
     private Deck deck;
     private Player dealerPlayer;
@@ -64,6 +64,10 @@ public class WhistGame {
 
     // --- Player Management ---
 
+    /**
+     * Finds the next player in the seating order.
+     * Centralizes the rotational logic so State classes don't have to do modulo math.
+     */
     public Player getNextPlayer(Player currentPlayer) {
         List<Player> activePlayers = getPlayers();
         if (currentPlayer == null || !activePlayers.contains(currentPlayer)) {
@@ -73,6 +77,10 @@ public class WhistGame {
         return activePlayers.get((currentIndex + 1) % activePlayers.size());
     }
 
+    /**
+     * Maps a PlayerId back to the physical Player object.
+     * Centralized here so States and Rounds can operate purely on IDs for security.
+     */
     public Player getPlayerById(PlayerId id) {
         if (id == null) throw new IllegalArgumentException("PlayerId cannot be null.");
         return allPlayers.stream()
@@ -81,6 +89,9 @@ public class WhistGame {
                 .orElseThrow(() -> new IllegalStateException("PlayerId " + id + " not found in the game."));
     }
 
+    /**
+     * Returns the active players currently seated at the table (max 4).
+     */
     public List<Player> getPlayers() {
         if (allPlayers.size() < REQUIRED_PLAYERS) {
             throw new IllegalStateException("Active table is not ready (needs 4 players).");
@@ -88,6 +99,9 @@ public class WhistGame {
         return List.copyOf(allPlayers.subList(0, REQUIRED_PLAYERS));
     }
 
+    /**
+     * Returns all players currently participating in this game.
+     */
     public List<Player> getAllPlayers() {
         return List.copyOf(this.allPlayers);
     }
@@ -100,6 +114,9 @@ public class WhistGame {
         return allPlayers.stream().map(Player::getId).toList();
     }
 
+    /**
+     * Generates a lookup map of PlayerIds to their respective Names.
+     */
     public Map<PlayerId, String> getPlayerNamesMap() {
         return allPlayers.stream().collect(Collectors.toUnmodifiableMap(Player::getId, Player::getName));
     }
@@ -109,19 +126,25 @@ public class WhistGame {
         if (allPlayers.contains(player))
             throw new IllegalArgumentException("Player already in Game");
         this.allPlayers.add(player);
-        player.getDecisionStrategy().onJoinGame(this::addObserver);
+        player.getDecisionStrategy().onJoinGame(this);
     }
 
+    /**
+     * Removes any player from the game roster as long as at least 4 players remain.
+     *
+     * @param player player to remove
+     */
     public void removePlayer(Player player) {
         if (player == null) throw new IllegalArgumentException("Player cannot be null");
         if (getTotalPlayerCount() <= REQUIRED_PLAYERS) {
             throw new IllegalStateException("Cannot remove player: at least 4 total players are required.");
         }
-
-        boolean removed = this.allPlayers.remove(player);
-        if (!removed) {
+        if (!this.allPlayers.contains(player)) {
             throw new IllegalArgumentException("Cannot remove player: player is not part of this game.");
         }
+
+        this.allPlayers.remove(player);
+        player.getDecisionStrategy().onLeaveGame(this);
 
         if (player.equals(this.dealerPlayer)) {
             this.dealerPlayer = getPlayers().isEmpty() ? null : getPlayers().getFirst();
@@ -152,6 +175,9 @@ public class WhistGame {
         this.dealerPlayer = activePlayers.get(new Random().nextInt(activePlayers.size()));
     }
 
+    /**
+     * Advances the dealer designation to the next player using our clean roster method.
+     */
     public void advanceDealer() {
         if (getPlayers().isEmpty() || dealerPlayer == null) {
             throw new IllegalStateException("Cannot advance dealer: missing players or current dealer.");
@@ -186,6 +212,11 @@ public class WhistGame {
         return rounds.isEmpty() ? null : rounds.getLast();
     }
 
+    /**
+     * Determines the winner of the most recent round.
+     *
+     * @return The winning {@link Player}, or null if no rounds have finished.
+     */
     public Player getLastRoundWinner() {
         if (this.rounds.isEmpty())
             return null;
@@ -195,6 +226,13 @@ public class WhistGame {
         return winningPlayers.getFirst();
     }
 
+    /**
+     * Deals 13 cards to each player and determines the initial dealt trump suit.
+     *
+     * @return The originally dealt trump suit (the suit of the last card dealt).
+     * @throws IllegalStateException if the deck is not set, if there are not exactly 4 players,
+     * or if the deck deals invalid hands.
+     */
     public Suit dealCards() {
         List<Player> activePlayers = getPlayers();
         if (this.deck == null) throw new IllegalStateException("Cannot deal cards: Deck is not set.");
@@ -212,6 +250,11 @@ public class WhistGame {
         return dealtTrump;
     }
 
+    /**
+     * Initializes a new round with the specified starting player.
+     *
+     * @param startingPlayer The player who will take the first turn in the new round.
+     */
     public void initializeNextRound(Player startingPlayer) {
         List<Player> activePlayers = getPlayers();
         if (activePlayers.size() < REQUIRED_PLAYERS)
@@ -220,11 +263,8 @@ public class WhistGame {
             throw new IllegalArgumentException("Starting player not at the table or is null.");
 
         int multiplier = 1;
-        if (!this.rounds.isEmpty()) {
-            Bid lastBid = getCurrentRound().getHighestBid();
-            if (lastBid != null && lastBid.getType() == BidType.PASS) {
-                multiplier = 2;
-            }
+        if (!this.rounds.isEmpty() && getCurrentRound().getHighestBid().getType() == BidType.PASS) {
+            multiplier = 2;
         }
         addRound(new Round(activePlayers, startingPlayer, multiplier));
     }
@@ -239,14 +279,28 @@ public class WhistGame {
         this.state = new CountState(this);
     }
 
+    /**
+     * Triggers a transition to the next game state based on internal logic.
+     */
     public void nextState() {
         this.state = state.nextState();
     }
 
+    /**
+     * Executes the current state without a user command (e.g. for bot turns or automatic transitions).
+     *
+     * @return The resulting event to be rendered by the UI.
+     */
     public StateStep executeState() {
         return state.executeState();
     }
 
+    /**
+     * Delegates the provided action to the current state for processing.
+     *
+     * @param command The user action to process.
+     * @return The resulting event to be rendered by the UI.
+     */
     public StateStep executeState(GameCommand command) {
         return state.executeState(command);
     }
@@ -259,6 +313,10 @@ public class WhistGame {
 
     public void addObserver(GameObserver observer) {
         if (observer != null) this.observers.add(observer);
+    }
+
+    public void removeObserver(GameObserver observer) {
+        if (observer != null) this.observers.remove(observer);
     }
 
     public void notifyRoundStarted() {
@@ -274,10 +332,29 @@ public class WhistGame {
         for (GameObserver observer : observers) observer.onBidPlaced(bidTurn);
     }
 
+    public void notifyTurnPlayed(PlayTurn playTurn) {
+        for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
+    }
+
+    public void notifyBiddingFinalized(BidType winningBid, List<PlayerId> biddingTeam) {
+        for (GameObserver observer : observers) observer.onBiddingFinalized(winningBid, biddingTeam);
+    }
+
+    public void notifyTrickCompleted(PlayerId winner) {
+        for (GameObserver observer : observers) observer.onTrickCompleted(winner);
+    }
+
+    public void notifyRoundFinished() {
+        for (GameObserver observer : observers) observer.onRoundFinished();
+    }
+
     public  void removeRound(Round round){
         this.rounds.remove(round);
     }
 
+    /**
+     * Rotates seats by moving the current dealer to the end of the global queue.
+     */
     public void rotateActivePlayers() {
         if (getTotalPlayerCount() <= REQUIRED_PLAYERS) return;
 
@@ -288,20 +365,29 @@ public class WhistGame {
 
         Player leavingPlayer = allPlayers.remove(dealerIndex);
         allPlayers.add(leavingPlayer);
+        // Keep dealer anchored to an active seat so advanceDealer() can safely move to next dealer.
         this.dealerPlayer = allPlayers.get(dealerIndex);
     }
 
+    /**
+     * Recalculates all player scores from scratch based on the current round history.
+     * Call this after removing a round to ensure the scoreboard is accurate.
+     */
     public void recalibrateScores() {
+        // 1. Reset all players to
+        // 0
         for (Player p : this.allPlayers) {
             p.updateScore(-p.getScore());
         }
 
         List<PlayerId> currentPlayerIds = getPlayerIds();
 
+        // 2. Re-apply deltas from all rounds currently in the list
         for (Round round : this.rounds) {
             List<Integer> deltas = round.getScoreDeltas();
             List<Player> roundPlayers = round.getPlayers();
 
+            // Map the deltas back to the players based on their index in the round
             for (int i = 0; i < roundPlayers.size(); i++) {
                 Player historicalPlayer = roundPlayers.get(i);
                 if (!currentPlayerIds.contains(historicalPlayer.getId())) {
@@ -314,14 +400,20 @@ public class WhistGame {
             }
         }
     }
-    public void notifyTurnPlayed(PlayTurn playTurn) {
-        for (GameObserver observer : observers) observer.onTurnPlayed(playTurn);
-    }
 
+    /**
+     *
+     * @return true if possible to remove player
+     */
     public boolean canRemovePlayer() {
         return (this.allPlayers.size() > REQUIRED_PLAYERS);
     }
 
+    /**
+     * Drives the state machine forward until user input is required.
+     * @param command null on the first call, otherwise the user's response to the last result.
+     * @return The GameResult the UI layer needs to render and respond to.
+     */
     public GameResult advance(GameCommand command) {
         while (!isOver()) {
             StateStep step = (command == null)
@@ -359,6 +451,13 @@ public class WhistGame {
     // Game Snapshot Extraction & Restoration
     // =================================================================================
 
+    /**
+     * Constructs a GameSnapshot from the current state of this game instance.
+     * @return GameSnapshot representing the current state of the game
+     * @throws IllegalArgumentException if the description is blank
+     * @throws IllegalStateException if the dealer is null, not in the players list or if the players or
+     *  round history contain null entries
+     */
     public GameSnapshot toSnapshot() {
         List<Player> allPlayers = this.getAllPlayers();
         if (allPlayers.stream().anyMatch(Objects::isNull)) {
@@ -380,6 +479,12 @@ public class WhistGame {
         return new GameSnapshot(dealerIndex, snapshots, roundSnapshots);
     }
 
+    /**
+     * Restores the state of the provided game instance based on the data contained in the given GameSnapshot.
+     * This includes resetting the game's players and rounds, then re-adding the players with their respective strategies, names, and scores as specified in the snapshot.
+     * @param snapshot the snapshot containing the saved state to restore
+     * @throws NullPointerException if the snapshot is null
+     */
     public void restoreGame(GameSnapshot snapshot) {
         Objects.requireNonNull(snapshot, "Snapshot must not be null");
         this.resetPlayers();
@@ -387,7 +492,7 @@ public class WhistGame {
 
         for (PlayerSnapshot playerSnapshot : snapshot.players()) {
             PlayerId restoredId = PlayerId.fromString(playerSnapshot.id());
-            Strategy playerStrategy = Strategy.toStrategy(playerSnapshot.strategyType(), restoredId);
+            Strategy playerStrategy = Strategy.toStrategy(playerSnapshot.strategyType());
 
             Player player = new Player(playerStrategy, playerSnapshot.name(), restoredId);
             player.updateScore(playerSnapshot.score());
@@ -403,6 +508,11 @@ public class WhistGame {
         this.setDealerPlayer(allPlayers.get(snapshot.dealerIndex()));
     }
 
+    /**
+     * Rebuilds round history placeholders so round-based workflows keep functioning after load.
+     * @param roundSnapshots persisted round snapshots
+     * @throws IllegalStateException if trying to restore rounds to a game without exactly 4 players
+     */
     private void restoreRoundHistory(List<RoundSnapshot> roundSnapshots) {
         if (roundSnapshots == null || roundSnapshots.isEmpty()) {
             return;

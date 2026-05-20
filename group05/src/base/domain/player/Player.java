@@ -5,6 +5,7 @@ import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.snapshots.PlayerSnapshot;
 import base.domain.strategy.Strategy;
+import base.domain.player.TeamRole;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,7 @@ public class Player {
      * @param playerId         the unique identifier for this player instance.
      * @throws IllegalArgumentException if {@code decisionStrategy}, {@code name}, or {@code playerId} is null.
      */
+    //TODO: remove?
     public Player(Strategy decisionStrategy, String name, PlayerId playerId) {
         if (decisionStrategy == null || name == null || playerId == null) throw new IllegalArgumentException("Strategy, name and/or Id can't be null");
         this.decisionStrategy = decisionStrategy;
@@ -93,8 +95,8 @@ public class Player {
      * @param lead the leading {@link Suit} of the current trick, or {@code null} if this player is leading the trick.
      * @return the {@link Card} chosen by the player's strategy.
      */
-    public Card chooseCard(Suit lead) {
-        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead);
+    public Card chooseCard(Suit lead, TeamRole role) {
+        return this.decisionStrategy.chooseCardToPlay(this.getHand(), lead, role);
     }
 
     /**

@@ -65,8 +65,8 @@ public class Adapter {
                     );
                     // BOT → immediate domain command
                     default -> {
-                        Card chosen = player.chooseCard(
-                                p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
+                        Suit lead = p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit();
+                        Card chosen = player.chooseCard(lead, p.role());
                         yield new AdapterResult.Immediate(new CardCommand(chosen));
                     }
                 };
@@ -302,9 +302,8 @@ public class Adapter {
                         }
 
                         default -> {
-                            Card chosen = player
-                                    .chooseCard(p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit());
-
+                            Suit lead = p.turns().isEmpty() ? null : p.turns().getFirst().playedCard().suit();
+                            Card chosen = player.chooseCard(lead, p.role());
                             yield AdapterResponse.toDomain(new CardCommand(chosen));
                         }
 

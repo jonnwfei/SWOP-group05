@@ -3,6 +3,7 @@ package base.domain.results;
 import base.domain.card.Card;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.player.TeamRole;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 
@@ -21,7 +22,8 @@ public sealed interface PlayResults extends GameResult {
             Player player,
             List<Card> legalCards,
             Trick lastPlayedTrick,
-            Map<PlayerId, String> playerNames
+            Map<PlayerId, String> playerNames,
+            TeamRole role
     ) implements PlayResults {
         public PlayCardResult {
             if (turns == null || turns.stream().anyMatch(Objects::isNull))
@@ -43,6 +45,8 @@ public sealed interface PlayResults extends GameResult {
             if (playerNames == null || playerNames.entrySet().stream().anyMatch(e -> e.getKey() == null || e.getValue() == null)) {
                 throw new IllegalArgumentException("playerNames cannot be null or contain null objects");
             }
+            if (role == null)
+                throw new IllegalArgumentException("role cannot be null.");
             // lastPlayedTrick is intentionally nullable (null = no trick played yet)
             turns = List.copyOf(turns);
             exposedPlayerNames = List.copyOf(exposedPlayerNames);

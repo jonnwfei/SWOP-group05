@@ -197,28 +197,29 @@ class CardMathTest {
     }
 
     @Nested
-    @DisplayName("getHighestRankOfSuit()")
-    class GetHighestRankOfSuitTests {
+    @DisplayName("findHighestCardOfSuit()")
+    class FindHighestCardOfSuitTests {
 
         @Test
-        @DisplayName("Should throw exception if parameters are null")
+        @DisplayName("Should throw NullPointerException if parameters are null")
         void throwsOnNulls() {
-            assertThrows(IllegalArgumentException.class, () -> CardMath.getHighestRankOfSuit(null, List.of()));
-            assertThrows(IllegalArgumentException.class, () -> CardMath.getHighestRankOfSuit(Suit.HEARTS, null));
+            assertThrows(NullPointerException.class, () -> CardMath.findHighestCardOfSuit(null, Suit.HEARTS));
+            assertThrows(NullPointerException.class, () -> CardMath.findHighestCardOfSuit(List.of(), null));
         }
 
         @Test
-        @DisplayName("Should return the highest rank of the requested suit")
-        void returnsHighestRankWhenSuitPresent() {
+        @DisplayName("Should return the highest card of the requested suit")
+        void returnsHighestCardWhenSuitPresent() {
             List<Card> hand = List.of(
                     new Card(Suit.HEARTS, Rank.TEN),
                     new Card(Suit.HEARTS, Rank.ACE),
                     new Card(Suit.SPADES, Rank.KING)
             );
 
-            Rank highestHeart = CardMath.getHighestRankOfSuit(Suit.HEARTS, hand);
+            Card highestHeart = CardMath.findHighestCardOfSuit(hand, Suit.HEARTS);
 
-            assertEquals(Rank.ACE, highestHeart);
+            assertNotNull(highestHeart);
+            assertEquals(Rank.ACE, highestHeart.rank());
         }
 
         @Test
@@ -229,7 +230,7 @@ class CardMathTest {
                     new Card(Suit.SPADES, Rank.KING)
             );
 
-            Rank highestClub = CardMath.getHighestRankOfSuit(Suit.CLUBS, hand);
+            Card highestClub = CardMath.findHighestCardOfSuit(hand, Suit.CLUBS);
 
             assertNull(highestClub, "Should return null because hand has no Clubs.");
         }

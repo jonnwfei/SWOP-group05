@@ -3,12 +3,12 @@ package base.domain.states;
 import base.domain.WhistGame;
 import base.domain.bid.Bid;
 import base.domain.bid.BidType;
-import base.domain.bid.BidManager;
 import base.domain.card.Card;
 import base.domain.card.CardMath;
 import base.domain.commands.GameCommand;
 import base.domain.commands.GameCommand.*;
 import base.domain.player.Player;
+import base.domain.player.TeamRole;
 import base.domain.results.*;
 import base.domain.round.Round;
 import base.domain.trick.Trick;
@@ -71,6 +71,7 @@ public class PlayState extends State {
                 Card card = c.card();
                 List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
 
+                // CLEANUP: Validate explicitly instead of using try/catch for flow control
                 if (!legalCards.contains(card)) {
                     yield buildNeedCardResult(player);
                 }
@@ -81,17 +82,28 @@ public class PlayState extends State {
         };
     }
 
+    /**
+     * CLEANUP: Extracted the massive duplication between bots and humans into a single method.
+     * Both actors play cards the exact same way.
+     */
     private GameResult executeCardPlay(Player player, Card card) {
+        // 1. Play card, remove from hand, and broadcast
         currentTrick.addTurn(player.getId(), card);
         player.removeCard(card);
         getGame().notifyTurnPlayed(new PlayTurn(player.getId(), card));
 
+        // 2. Pre-calculate winner before processTurnOutcome clears the trick
         boolean trickFinished = currentTrick.isCompleted();
         String winner = trickFinished ? getGame().getPlayerById(currentTrick.getWinningPlayerId()).getName() : null;
 
+        // 3. Let the round handle the physics
         processTurnOutcome();
 
-        if (currentRound.isFinished()) return new EndOfRoundResult(player.getName(), card);
+        // 4. Return the correct progression event
+        if (currentRound.isFinished()) {
+            getGame().notifyRoundFinished();
+            return new EndOfRoundResult(player.getName(), card);
+        }
         if (trickFinished) return new EndOfTrickResult(player.getName(), card, winner);
         return new EndOfTurnResult(player.getName(), card);
     }
@@ -101,6 +113,7 @@ public class PlayState extends State {
             Player winningPlayer = getGame().getPlayerById(currentTrick.getWinningPlayerId());
 
             // Round registers the trick and automatically scores itself if it's the 13th or all miserie players won
+            getGame().notifyTrickCompleted(winningPlayer.getId());
             currentRound.finalizeTrick(currentTrick, getGame().getScoringRegistry());
 
             if (currentRound.isFinished()) {
@@ -124,22 +137,29 @@ public class PlayState extends State {
         List<String> exposedNames = new ArrayList<>();
         List<List<Card>> exposedHands = new ArrayList<>();
 
+        // CLEANUP: Helper method call to keep this builder clean and readable
         if (isOpenMiserie) {
             populateExposedHands(exposedNames, exposedHands);
         }
 
         List<PlayTurn> turns = currentTrick.getTurns();
         List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
-
+        TeamRole role = currentRound.getBiddingTeamPlayers().contains(player)
+                ? TeamRole.BIDDING_TEAM
+                : TeamRole.DEFENDING_TEAM;
 
         return new PlayCardResult(
                 turns, isOpenMiserie, exposedNames, exposedHands,
                 currentRound.getTricks().size() + 1, player, legalCards,
                 currentRound.getLastPlayedTrick(),
-                getGame().getPlayerNamesMap()
+                getGame().getPlayerNamesMap(),
+                role
         );
     }
 
+    /**
+     * Helper method to isolate the Open Miserie visibility logic
+     */
     private void populateExposedHands(List<String> exposedNames, List<List<Card>> exposedHands) {
         for (Bid bid : currentRound.getBids()) {
             if (bid.getType() == BidType.OPEN_MISERIE) {
@@ -150,6 +170,11 @@ public class PlayState extends State {
         }
     }
 
+    /**
+     * Determines the next state based on whether all tricks have been played.
+     * * @return ScoreBoardState if the round is finished, otherwise remains in
+     * PlayState.
+     */
     @Override
     public State nextState() {
         if (currentRound.isFinished()) {
