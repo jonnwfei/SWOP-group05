@@ -1,6 +1,7 @@
 package base.domain.strategy;
 
 import base.domain.bid.Bid;
+import base.domain.bid.BidType;
 import base.domain.card.Card;
 import base.domain.card.Suit;
 import base.domain.observer.GameEventPublisher;
@@ -31,6 +32,20 @@ public sealed interface Strategy permits HighBotStrategy, HumanStrategy, LowBotS
      * @return the chosen {@link Bid}.
      */
     Bid determineBid(List<Card> hand);
+
+    /**
+     * Determines the fallback bid when a player's proposal is rejected (no partner found).
+     * <p>
+     * For a human strategy, this is typically handled via UI input.
+     * For an AI strategy, this allows the bot to decide whether to play alone (SOLO_PROPOSAL)
+     * or give up the round (PASS).
+     *
+     * @param hand The player's current hand.
+     * @return The chosen {@link BidType} (either PASS or SOLO_PROPOSAL).
+     */
+    default BidType handleRejectedProposal(List<Card> hand) {
+        return BidType.PASS;
+    }
 
 
     Card chooseCardToPlay(List<Card> currentHand, Suit lead, TeamRole role);

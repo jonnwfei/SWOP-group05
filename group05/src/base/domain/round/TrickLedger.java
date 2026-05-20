@@ -1,5 +1,6 @@
 package base.domain.round;
 
+import base.domain.WhistRules;
 import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
 
@@ -16,7 +17,7 @@ public class TrickLedger {
         if (trick == null) {
             throw new IllegalArgumentException("Trick must not be null.");
         }
-        if (trick.getTurns() == null || trick.getTurns().size() != Trick.MAX_TURNS) {
+        if (trick.getTurns() == null || trick.getTurns().size() != WhistRules.MAX_TURNS) {
             throw new IllegalArgumentException("Trick is not completed yet.");
         }
         if (trick.getWinningPlayerId() == null) {

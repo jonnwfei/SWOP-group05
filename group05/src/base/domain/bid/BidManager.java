@@ -62,7 +62,7 @@ public final class BidManager {
         Bid bid = bidType.instantiate(trumpSuit);
         bidsByPlayer.put(playerId, bid);
 
-        if (bidType != BidType.PASS && (highestBid == null || bid.compareTo(highestBid) > 0)) {
+        if (highestBid == null || bid.compareTo(highestBid) > 0) {
             highestBid = bid;
             highestBidder = playerId;
         }

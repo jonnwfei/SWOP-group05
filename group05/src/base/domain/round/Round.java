@@ -122,6 +122,7 @@ public class Round {
 
     public void finalizeTrick(Trick trick, ScoringRegistry registry) {
         if (this.finished) throw new IllegalStateException("Cannot add trick to finished round");
+        if (this.roundContract == null) throw new IllegalStateException("Play phase not started.");
         if (trick == null || registry == null) throw new IllegalArgumentException("Arguments cannot be null.");
 
         this.trickLedger.recordTrick(trick);

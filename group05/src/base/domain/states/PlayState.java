@@ -144,7 +144,7 @@ public class PlayState extends State {
 
         List<PlayTurn> turns = currentTrick.getTurns();
         List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
-        TeamRole role = currentRound.getBiddingTeamPlayers().contains(player)
+        TeamRole role = currentRound.getRoundContract().getBiddingTeam().contains(player.getId())
                 ? TeamRole.BIDDING_TEAM
                 : TeamRole.DEFENDING_TEAM;
 

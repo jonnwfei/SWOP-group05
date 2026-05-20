@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static base.domain.round.TrickLedger.MAX_TRICKS;
+import static base.domain.WhistRules.MAX_TRICKS;
 
 /**
  * Acts as the centralized, thread-safe Configuration Registry for all scoring math.
@@ -29,6 +29,11 @@ public class ScoringRegistry {
         scoringSettings.put(BidType.ABONDANCE_9, new ScoringParameters(9, MAX_TRICKS, 15, 0, false));
         scoringSettings.put(BidType.ABONDANCE_10, new ScoringParameters(10, MAX_TRICKS, 18, 0, false));
         scoringSettings.put(BidType.ABONDANCE_11, new ScoringParameters(11, MAX_TRICKS, 24, 0, false));
+        scoringSettings.put(BidType.ABONDANCE_12, new ScoringParameters(12, MAX_TRICKS, 27, 0, false));
+
+        scoringSettings.put(BidType.ABONDANCE_9_OT, new ScoringParameters(9, MAX_TRICKS, 15, 0, false));
+        scoringSettings.put(BidType.ABONDANCE_10_OT, new ScoringParameters(10, MAX_TRICKS, 18, 0, false));
+        scoringSettings.put(BidType.ABONDANCE_11_OT, new ScoringParameters(11, MAX_TRICKS, 24, 0, false));
         scoringSettings.put(BidType.ABONDANCE_12_OT, new ScoringParameters(12, MAX_TRICKS, 27, 0, false));
 
         // --- SOLO ---

@@ -241,7 +241,8 @@ public class WhistGame implements GameEventPublisher {
         this.deck.shuffle();
         List<List<Card>> hands = this.deck.deal();
 
-        Suit dealtTrump = hands.getLast().getLast().suit();
+        int dealerIdx = getPlayers().indexOf(dealerPlayer);
+        Suit dealtTrump = hands.get(dealerIdx).getLast().suit();
 
         for (int i = 0; i < activePlayers.size(); i++) {
             activePlayers.get(i).setHand(hands.get(i));
