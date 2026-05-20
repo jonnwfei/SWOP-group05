@@ -11,7 +11,6 @@ import base.domain.commands.GameCommand.*;
 import base.domain.player.Player;
 import base.domain.results.*;
 import base.domain.round.Round;
-import base.domain.round.RoundContract;
 import base.domain.trick.Trick;
 import base.domain.turn.PlayTurn;
 
@@ -25,7 +24,6 @@ import java.util.List;
  */
 public class PlayState extends State {
     private final Round currentRound;
-    private final RoundContract roundContract;
     private Trick currentTrick;
 
     public PlayState(WhistGame game) {
@@ -36,14 +34,7 @@ public class PlayState extends State {
             throw new IllegalStateException("Cannot create PlayState: no currentRound exists.");
         }
         this.currentRound = round;
-
-        RoundContract roundContract = round.getRoundContract();
-        if (roundContract == null) {
-            throw new IllegalStateException("Cannot create PlayState: no RoundContract formed.");
-        }
-        this.roundContract = roundContract;
-
-        this.currentTrick = new Trick(currentRound.getCurrentPlayer().getId(), currentRound.getRoundContract().TrumpSuit());
+        this.currentTrick = new Trick(currentRound.getCurrentPlayer().getId(), currentRound.getTrumpSuit());
     }
 
     @Override
@@ -80,7 +71,6 @@ public class PlayState extends State {
                 Card card = c.card();
                 List<Card> legalCards = CardMath.getLegalCards(player.getHand(), currentTrick.getLeadingSuit());
 
-                // CLEANUP: Validate explicitly instead of using try/catch for flow control
                 if (!legalCards.contains(card)) {
                     yield buildNeedCardResult(player);
                 }
@@ -91,24 +81,16 @@ public class PlayState extends State {
         };
     }
 
-    /**
-     * CLEANUP: Extracted the massive duplication between bots and humans into a single method.
-     * Both actors play cards the exact same way.
-     */
     private GameResult executeCardPlay(Player player, Card card) {
-        // 1. Play card, remove from hand, and broadcast
         currentTrick.addTurn(player.getId(), card);
         player.removeCard(card);
         getGame().notifyTurnPlayed(new PlayTurn(player.getId(), card));
 
-        // 2. Pre-calculate winner before processTurnOutcome clears the trick
         boolean trickFinished = currentTrick.isCompleted();
         String winner = trickFinished ? getGame().getPlayerById(currentTrick.getWinningPlayerId()).getName() : null;
 
-        // 3. Let the round handle the physics
         processTurnOutcome();
 
-        // 4. Return the correct progression event
         if (currentRound.isFinished()) return new EndOfRoundResult(player.getName(), card);
         if (trickFinished) return new EndOfTrickResult(player.getName(), card, winner);
         return new EndOfTurnResult(player.getName(), card);
@@ -121,20 +103,27 @@ public class PlayState extends State {
             // Round registers the trick and automatically scores itself if it's the 13th or all miserie players won
             currentRound.finalizeTrick(currentTrick, getGame().getScoringRegistry());
 
-            this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getRoundContract().TrumpSuit());
+            if (currentRound.isFinished()) {
+                List<Integer> deltas = currentRound.getScoreDeltas();
+                List<Player> roundPlayers = currentRound.getPlayers();
+                for (int i = 0; i < roundPlayers.size(); i++) {
+                    roundPlayers.get(i).updateScore(deltas.get(i));
+                }
+            } else {
+                this.currentTrick = new Trick(winningPlayer.getId(), currentRound.getTrumpSuit());
+            }
         } else {
             currentRound.advanceToNextPlayer();
         }
     }
 
     private GameResult buildNeedCardResult(Player player) {
-        boolean isOpenMiserie = roundContract.winningBid() != null &&
-                roundContract.winningBid().getType() == BidType.OPEN_MISERIE;
+        Bid highestBid = currentRound.getHighestBid();
+        boolean isOpenMiserie = highestBid != null && highestBid.getType() == BidType.OPEN_MISERIE;
 
         List<String> exposedNames = new ArrayList<>();
         List<List<Card>> exposedHands = new ArrayList<>();
 
-        // CLEANUP: Helper method call to keep this builder clean and readable
         if (isOpenMiserie) {
             populateExposedHands(exposedNames, exposedHands);
         }
@@ -151,9 +140,6 @@ public class PlayState extends State {
         );
     }
 
-    /**
-     * Helper method to isolate the Open Miserie visibility logic
-     */
     private void populateExposedHands(List<String> exposedNames, List<List<Card>> exposedHands) {
         for (Bid bid : currentRound.getBids()) {
             if (bid.getType() == BidType.OPEN_MISERIE) {
@@ -164,11 +150,6 @@ public class PlayState extends State {
         }
     }
 
-    /**
-     * Determines the next state based on whether all tricks have been played.
-     * * @return ScoreBoardState if the round is finished, otherwise remains in
-     * PlayState.
-     */
     @Override
     public State nextState() {
         if (currentRound.isFinished()) {

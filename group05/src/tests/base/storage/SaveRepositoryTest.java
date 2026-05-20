@@ -49,7 +49,7 @@ class SaveRepositoryTest {
         );
 
         rounds = List.of(
-                new RoundSnapshot(BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0), Suit.HEARTS)
+                new RoundSnapshot(List.of("1", "2", "3", "4"),BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0), Suit.HEARTS)
         );
 
         testSnapshot = new GameSnapshot("Friday Night Game", SaveMode.GAME, 0, players, rounds);

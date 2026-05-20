@@ -28,6 +28,7 @@ class RoundSnapshotTest {
         void testValidNormalBid() {
             assertDoesNotThrow(() -> {
                 new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),
                         BidType.SOLO,
                         0,
                         List.of(0),
@@ -44,6 +45,7 @@ class RoundSnapshotTest {
         void testValidMiserieBid() {
             assertDoesNotThrow(() -> {
                 new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),
                         BidType.MISERIE,
                         2,
                         List.of(1, 2),
@@ -59,6 +61,7 @@ class RoundSnapshotTest {
         @DisplayName("Null miserieWinnerIndices gracefully defaults to empty list")
         void testNullMiserieWinnersDefaultsToEmpty() {
             RoundSnapshot snapshot = new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),
                     BidType.SOLO,
                     0,
                     List.of(0),
@@ -81,7 +84,8 @@ class RoundSnapshotTest {
         @DisplayName("Rejects null bidType")
         void testNullBidType() {
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(null, 0, List.of(0), 5, List.of(), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),null, 0, List.of(0), 5, List.of(), 1, getValidDeltas())
             );
         }
 
@@ -89,10 +93,12 @@ class RoundSnapshotTest {
         @DisplayName("Rejects out of bounds bidderIndex")
         void testInvalidBidderIndex() {
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, -1, List.of(0), 5, List.of(), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, -1, List.of(0), 5, List.of(), 1, getValidDeltas())
             );
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 4, List.of(0), 5, List.of(), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 4, List.of(0), 5, List.of(), 1, getValidDeltas())
             );
         }
 
@@ -100,10 +106,12 @@ class RoundSnapshotTest {
         @DisplayName("Rejects invalid multipliers")
         void testInvalidMultiplier() {
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(), 0, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 5, List.of(), 0, getValidDeltas())
             );
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(), -2, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 5, List.of(), -2, getValidDeltas())
             );
         }
 
@@ -111,10 +119,12 @@ class RoundSnapshotTest {
         @DisplayName("Rejects out of bounds tricksWon")
         void testInvalidTricksWon() {
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), -2, List.of(), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), -2, List.of(), 1, getValidDeltas())
             );
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 14, List.of(), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 14, List.of(), 1, getValidDeltas())
             );
         }
     }
@@ -128,22 +138,26 @@ class RoundSnapshotTest {
         void testInvalidParticipantIndices() {
             // Null list
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, null, 5, List.of(), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, null, 5, List.of(), 1, getValidDeltas())
             );
 
             // Contains null element
             List<Integer> listWithNull = new ArrayList<>();
             listWithNull.add(null);
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, listWithNull, 5, List.of(), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, listWithNull, 5, List.of(), 1, getValidDeltas())
             );
 
             // Contains out of bounds indices
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(-1), 5, List.of(), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(-1), 5, List.of(), 1, getValidDeltas())
             );
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(4), 5, List.of(), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(4), 5, List.of(), 1, getValidDeltas())
             );
         }
 
@@ -154,17 +168,20 @@ class RoundSnapshotTest {
             List<Integer> listWithNull = new ArrayList<>();
             listWithNull.add(null);
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, listWithNull, 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 5, listWithNull, 1, getValidDeltas())
             );
 
             // Contains out of bounds index (too low)
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(-1), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 5, List.of(-1), 1, getValidDeltas())
             );
 
             // Contains out of bounds index (too high) - THIS WAS THE MISSING BRANCH!
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0, 1, 2, 3), 5, List.of(4), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0, 1, 2, 3), 5, List.of(4), 1, getValidDeltas())
             );
         }
 
@@ -172,7 +189,8 @@ class RoundSnapshotTest {
         @DisplayName("Rejects miserie winners that are not participants")
         void testMiserieWinnersMustBeParticipants() {
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.MISERIE, 0, List.of(0, 1), -1, List.of(2), 1, getValidDeltas())
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.MISERIE, 0, List.of(0, 1), -1, List.of(2), 1, getValidDeltas())
             );
         }
     }
@@ -185,13 +203,16 @@ class RoundSnapshotTest {
         @DisplayName("Rejects null or incorrectly sized scoreDeltas")
         void testInvalidScoreDeltasSize() {
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(), 1, null)
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 5, List.of(), 1, null)
             );
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(), 1, List.of(0, 0, 0)) // Size 3
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 5, List.of(), 1, List.of(0, 0, 0)) // Size 3
             );
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(), 1, List.of(0, 0, 0, 0, 0)) // Size 5
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 5, List.of(), 1, List.of(0, 0, 0, 0, 0)) // Size 5
             );
         }
 
@@ -200,7 +221,8 @@ class RoundSnapshotTest {
         void testNullInsideScoreDeltas() {
             List<Integer> deltasWithNull = Arrays.asList(90, -30, null, -60);
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(), 1, deltasWithNull)
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 5, List.of(), 1, deltasWithNull)
             );
         }
 
@@ -209,7 +231,8 @@ class RoundSnapshotTest {
         void testNonZeroSumDeltas() {
             List<Integer> invalidDeltas = Arrays.asList(90, -30, -30, -20); // Sums to +10
             assertThrows(IllegalArgumentException.class, () ->
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 5, List.of(), 1, invalidDeltas)
+                    new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),BidType.SOLO, 0, List.of(0), 5, List.of(), 1, invalidDeltas)
             );
         }
     }
@@ -226,6 +249,7 @@ class RoundSnapshotTest {
             List<Integer> deltas = new ArrayList<>(Arrays.asList(30, -10, -10, -10));
 
             RoundSnapshot snapshot = new RoundSnapshot(
+                        List.of("1", "2", "3", "4"),
                     BidType.MISERIE,
                     0,
                     participants,

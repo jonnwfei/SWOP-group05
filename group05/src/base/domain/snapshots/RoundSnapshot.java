@@ -16,8 +16,9 @@ import java.util.Objects;
  * Snapshot of one round for persistence.
  * Containing:
  * <ul>
+ *     <li>Identity of the 4 players in the round</li>
  *     <li>Bid type for the round</li>
- *     <li>Bidder index</li>
+ *     <li>Bidder index (relative to playerIds)</li>
  *     <li>Participant indices</li>
  *     <li>Number of tricks won by the bidder</li>
  *     <li>Miserie winner indices, if applicable</li>
@@ -26,37 +27,31 @@ import java.util.Objects;
  * </ul>
  */
 public record RoundSnapshot(
+        List<String> playerIds,
         BidType bidType,
         int bidderIndex,
         List<Integer> participantIndices,
         int tricksWon,
         List<Integer> miserieWinnerIndices,
         int multiplier,
-    List<Integer> scoreDeltas,
-    Suit trumpSuit
+        List<Integer> scoreDeltas,
+        Suit trumpSuit
         ) {
     /**
      * Defensive constructor for RoundSnapshot
+     * @param playerIds the 4 players participating in this specific round
      * @param bidType   bid type of the round, either normal or miserie
-     * @param bidderIndex index of the bidder for this round, used for determining turn order and game flow when loading
-     * @param participantIndices list of indices of participants for this round, used for determining turn order and game flow when loading
+     * @param bidderIndex index of the bidder for this round
+     * @param participantIndices list of indices of participants for this round
      * @param tricksWon number of tricks won by the bidder, -1 if miserie
      * @param miserieWinnerIndices list of indices of miserie winners for this round, empty if normal bid
-     * @param multiplier multiplier for the round, used for calculating score changes when loading
-     * @param scoreDeltas list of score changes for each player at the end of the round, used for calculating scores when loading
-     * @throws IllegalArgumentException if bidType is null
-     * @throws IllegalArgumentException if bidderIndex is negative or greater than 3
-     * @throws IllegalArgumentException if multiplier is less than 1
-     * @throws IllegalArgumentException if tricksWon is less than -1 or greater than 13
-     * @throws IllegalArgumentException if participantIndices is null
-     * @throws IllegalArgumentException if scoreDeltas is null or does not contain exactly 4 entries
-     * @throws IllegalArgumentException if any participant index is null, negative, or greater than 3
-     * @throws IllegalArgumentException if any miserie winner index is null, negative, or greater than 3
-     * @throws IllegalArgumentException if miserie winners are not all participants
-     * @throws IllegalArgumentException if any score delta is null
-     * @throws IllegalArgumentException if score deltas do not sum to zero
+     * @param multiplier multiplier for the round
+     * @param scoreDeltas list of score changes for each player at the end of the round
+     * @throws IllegalArgumentException if bidType is null or playerIds size != 4
      */
     public RoundSnapshot {
+        if (playerIds == null || playerIds.size() != 4)
+            throw new IllegalArgumentException("Round must have exactly 4 player IDs");
         if (bidType == null) throw new IllegalArgumentException("bidType of RoundSnapshot cannot be null");
         if (bidderIndex < 0 || bidderIndex > 3) throw new IllegalArgumentException("bidderIdx can't be negative or greater than 3: " + bidderIndex);
         if (multiplier < 1) throw new IllegalArgumentException("multiplier must be at least 1: " + multiplier);
@@ -83,34 +78,13 @@ public record RoundSnapshot(
         int sum = scoreDeltas.stream().mapToInt(Integer::intValue).sum();
         if (sum != 0) throw new IllegalArgumentException("Score deltas must be zero-sum, got " + sum);
 
-        // Consistency validation
-        if (bidType == BidType.PASS && tricksWon != -1) { // TODO: can be updated when Round refactor comes in
+        if (bidType == BidType.PASS && tricksWon != -1) {
             throw new IllegalArgumentException("PASS round must have tricksWon = -1");
         }
 
-        if (bidType != BidType.PASS && bidType.getCategory() != BidCategory.MISERIE) {
-            if (participantIndices.isEmpty()) {
-                throw new IllegalArgumentException("Non-PASS round must have at least one participant");
-            }
-        }
-
-        // for immutability
+        playerIds = List.copyOf(playerIds);
         participantIndices = List.copyOf(participantIndices);
         miserieWinnerIndices = List.copyOf(miserieWinnerIndices);
         scoreDeltas = List.copyOf(scoreDeltas);
-    }
-
-    /**
-     * Backward-compatible constructor used by existing callers that do not persist trump yet.
-     */
-    public RoundSnapshot(
-            BidType bidType,
-            int bidderIndex,
-            List<Integer> participantIndices,
-            int tricksWon,
-            List<Integer> miserieWinnerIndices,
-            int multiplier,
-            List<Integer> scoreDeltas) {
-        this(bidType, bidderIndex, participantIndices, tricksWon, miserieWinnerIndices, multiplier, scoreDeltas, null);
     }
 }

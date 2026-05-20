@@ -139,11 +139,25 @@ public class CountState extends State {
 
         Round round = new Round(getGame().getPlayers(), primaryBidder, 1);
 
-        Bid officialBid = round.getBidManager().reconstructManualHistory(
-                selectedBidType, trumpSuit, participatingPlayerIds
-        );
+        if (selectedBidType == PASS) {
+            List<Bid> mockBids = List.of(new PassBid(), new PassBid(), new PassBid(), new PassBid());
+            round.getBidManager().placeBid(primaryBidder.getId(), PASS, null);
+            round.abortWithAllPass(mockBids);
+        } else {
+            Bid officialBid = round.getBidManager().reconstructManualHistory(
+                    selectedBidType, trumpSuit, participatingPlayerIds
+            );
 
-        round.resolveManualCount(officialBid, trumpSuit, this.participatingPlayerIds, tricks, winnersId, getGame().getScoringRegistry());
+            round.resolveManualCount(officialBid, this.participatingPlayerIds, tricks, winnersId, getGame().getScoringRegistry());
+            
+            // Apply scores to players manually since Round is now stateless
+            List<Integer> deltas = round.getScoreDeltas();
+            List<Player> roundPlayers = round.getPlayers();
+            for (int i = 0; i < roundPlayers.size(); i++) {
+                roundPlayers.get(i).updateScore(deltas.get(i));
+            }
+        }
+        
         getGame().addRound(round);
 
         currentPhase = CountPhase.PROMPT_NEXT_STATE;

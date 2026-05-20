@@ -2,6 +2,7 @@ package base.domain.round;
 
 import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
+import base.domain.round.TrickLedger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

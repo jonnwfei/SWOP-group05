@@ -80,7 +80,6 @@ class RoundTest {
             assertFalse(round.isFinished());
             assertEquals(List.of(0, 0, 0, 0), round.getScoreDeltas());
             assertNotNull(round.getBidManager());
-            assertNull(round.getRoundContract());
         }
 
         @Test
@@ -192,14 +191,14 @@ class RoundTest {
             Bid someBid = new PassBid();
             List<PlayerId> parts = List.of(id1);
 
-            assertThrows(NullPointerException.class, () -> round.resolveManualCount(null, Suit.HEARTS, parts, 10, null, registry));
-            assertThrows(NullPointerException.class, () -> round.resolveManualCount(someBid, Suit.HEARTS, null, 10, null, registry));
-            assertThrows(NullPointerException.class, () -> round.resolveManualCount(someBid, Suit.HEARTS, parts, 10, null, null));
+            assertThrows(NullPointerException.class, () -> round.resolveManualCount(null, parts, 10, null, registry));
+            assertThrows(NullPointerException.class, () -> round.resolveManualCount(someBid, null, 10, null, registry));
+            assertThrows(NullPointerException.class, () -> round.resolveManualCount(someBid, parts, 10, null, null));
 
-            assertThrows(IllegalArgumentException.class, () -> round.resolveManualCount(someBid, Suit.HEARTS, parts, -2, null, registry));
+            assertThrows(IllegalArgumentException.class, () -> round.resolveManualCount(someBid, parts, -2, null, registry));
 
             round.abortWithAllPass(createFourPassBids());
-            assertThrows(IllegalStateException.class, () -> round.resolveManualCount(someBid, Suit.HEARTS, parts, 10, null, registry));
+            assertThrows(IllegalStateException.class, () -> round.resolveManualCount(someBid, parts, 10, null, registry));
         }
     }
 

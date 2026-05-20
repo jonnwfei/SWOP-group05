@@ -386,7 +386,8 @@ class GamePersistenceServiceTest {
         @DisplayName("Successfully loads a COUNT mode save without restoring the deck")
         void shouldLoadCountModeWithoutDeck() {
             List<RoundSnapshot> rounds = List.of(
-                    new RoundSnapshot(BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0), Suit.HEARTS)
+                    new RoundSnapshot(
+                            fourPlayers.stream().map(p -> p.getId().id().toString()).toList(),BidType.PASS, 0, List.of(0), -1, List.of(), 1, List.of(0, 0, 0, 0), Suit.HEARTS)
             );
             GameSnapshot countSnapshot = new GameSnapshot("Count Save", SaveMode.COUNT, 0, createValidPlayerSnapshots(), rounds);
             when(mockRepository.loadByDescription("Count Save")).thenReturn(countSnapshot);
@@ -417,7 +418,8 @@ class GamePersistenceServiceTest {
             when(corruptedSnapshot.players()).thenReturn(badPlayersList);
 
             List<RoundSnapshot> rounds = List.of(
-                    new RoundSnapshot(BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30), Suit.HEARTS)
+                    new RoundSnapshot(
+                            fourPlayers.stream().map(p -> p.getId().id().toString()).toList(),BidType.SOLO, 0, List.of(0), 13, List.of(), 1, List.of(90, -30, -30, -30), Suit.HEARTS)
             );
             when(corruptedSnapshot.rounds()).thenReturn(rounds);
             when(mockRepository.loadByDescription("bad_restore")).thenReturn(corruptedSnapshot);
