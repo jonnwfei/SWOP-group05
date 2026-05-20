@@ -215,7 +215,7 @@ public class WhistGame {
     public Player getLastRoundWinner() {
         if (this.rounds.isEmpty())
             return null;
-        List<Player> winningPlayers = rounds.getLast().getWinningPlayers();
+        List<Player> winningPlayers = rounds.getLast().getWinningPlayers(this.scoringRegistry);
         if (winningPlayers.isEmpty())
             return null;
         return winningPlayers.getFirst();
