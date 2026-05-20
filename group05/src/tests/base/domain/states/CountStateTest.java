@@ -1,4 +1,4 @@
-package base.domain.states;
+package tests.base.domain.states;
 
 import base.domain.WhistGame;
 import base.domain.bid.BidType;
@@ -8,6 +8,7 @@ import base.domain.player.Player;
 import base.domain.player.PlayerId;
 import base.domain.results.CountResults.*;
 import base.domain.round.Round;
+import base.domain.states.CountState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

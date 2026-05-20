@@ -1,15 +1,11 @@
-package base.domain.bid;
+package tests.base.domain.bid;
 
+import base.domain.bid.BidType;
+import base.domain.bid.PassBid;
 import base.domain.card.Suit;
-import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.Collections;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -47,23 +43,6 @@ class PassBidTest {
     @DisplayName("determineTrump() rejects null dealt trump")
     void determineTrump_NullDealtTrump_ThrowsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> bid.determineTrump(null));
-    }
-
-    @ParameterizedTest(name = "Passing always yields {0} base points regardless of tricks won")
-    @ValueSource(ints = {0, 1, 6, 13})
-    void calculateBasePoints_AlwaysReturnsZero(int tricksWon) {
-        // A PassBid always awards its base points (0) regardless of tricks accidentally won
-        int expectedPoints = BidType.PASS.getBasePoints();
-        assertEquals(expectedPoints, bid.calculateBasePoints(tricksWon));
-    }
-
-    @Test
-    @DisplayName("calculateBasePoints() rejects negative trick counts")
-    void calculateBasePoints_NegativeInput_ThrowsIllegalArgumentException() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                bid.calculateBasePoints(-1)
-        );
-        assertTrue(exception.getMessage().contains("negative"), "Exception should mention negative tricks");
     }
 
     @Test

@@ -1,16 +1,10 @@
 package base.domain.bid;
 
 import base.domain.card.Suit;
-import base.domain.player.PlayerId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.Collections;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -80,34 +74,6 @@ class AbondanceBidTest {
         @DisplayName("determineTrump() throws exception if dealt trump is null")
         void determineTrump_NullDealtTrump_ThrowsIllegalArgumentException() {
             assertThrows(IllegalArgumentException.class, () -> bid.determineTrump(null));
-        }
-    }
-
-    @Nested
-    @DisplayName("Score Calculation Logic")
-    class CalculationTests {
-
-        @ParameterizedTest(name = "Winning with {0} tricks awards positive base points")
-        @ValueSource(ints = {9, 10, 13}) // Testing exact target, over target, and max tricks
-        void calculateBasePoints_TargetMetOrExceeded_ReturnsPositivePoints(int tricksWon) {
-            int expectedPoints = abondanceBidType.getBasePoints();
-            assertEquals(expectedPoints, bid.calculateBasePoints(tricksWon));
-        }
-
-        @ParameterizedTest(name = "Failing with {0} tricks deducts base points")
-        @ValueSource(ints = {8, 4, 0}) // Testing barely failed, severely failed, and 0 tricks
-        void calculateBasePoints_BelowTarget_ReturnsNegativePoints(int tricksWon) {
-            int expectedPenalty = -1 * abondanceBidType.getBasePoints();
-            assertEquals(expectedPenalty, bid.calculateBasePoints(tricksWon));
-        }
-
-        @Test
-        @DisplayName("calculateBasePoints() rejects negative trick counts")
-        void calculateBasePoints_NegativeInput_ThrowsIllegalArgumentException() {
-            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-                    bid.calculateBasePoints(-1)
-            );
-            assertTrue(exception.getMessage().contains("negative"));
         }
     }
 

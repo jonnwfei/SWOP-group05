@@ -63,12 +63,12 @@ public class TerminalRenderer {
         for (int i = 0; i < rounds.size(); i++) {
             Round r = rounds.get(i);
             // Show the round index and the winners (assuming Round has getWinners/getWinningPlayers)
-            String winners = r.getWinningPlayers().stream()
+            String winners = r.getPlayers().stream()
                     .map(Player::getName)
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("None");
 
-            System.out.printf("[%d] Round %d - Winners: [%s]%n", i + 1, i + 1, winners);
+            System.out.printf("[%d] Round %d - Players: [%s]%n", i + 1, i + 1, winners);
         }
     }
 
