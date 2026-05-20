@@ -10,7 +10,9 @@ import base.domain.player.PlayerId;
 import base.domain.trick.Trick;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static base.domain.round.TrickLedger.MAX_TRICKS;
 
@@ -125,15 +127,13 @@ public class Round {
         if (bidManager.getAllBids().size() != this.players.size()) {
             throw new IllegalStateException("BidManager state out of sync with provided finalBids.");
         }
+        Set<PlayerId> biddingTeam = new HashSet<>(bidManager.resolveBiddingTeam());
+        Set<PlayerId> defendingTeam = new HashSet<>(this.players.stream().map(Player::getId).toList());
+        defendingTeam.removeAll(biddingTeam);
 
-        List<PlayerId> biddingTeam = this.bidManager.resolveBiddingTeam();
-
-
-        this.roundContract = new RoundContract(highestBid, trumpSuit, biddingTeam, ,multiplier);
+        this.roundContract = new RoundContract(highestBid, trumpSuit, biddingTeam, defendingTeam ,multiplier);
 
         this.currentPlayer = firstPlayer;
-
-//        resolveTeams();
     }
 
     /**
@@ -155,8 +155,6 @@ public class Round {
         if (!finalBids.stream().allMatch(bid -> bid.getType() == BidType.PASS)) {
             throw new IllegalArgumentException("All bids must be PASS.");
         }
-
-        this.highestBid = finalBids.getFirst();
         this.players.forEach(Player::flushHand);
         this.finished = true;
     }
