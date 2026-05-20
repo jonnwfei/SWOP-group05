@@ -4,7 +4,7 @@ import base.GameController;
 import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
+import base.domain.snapshots.SaveMode;
 import cli.TerminalManager;
 import cli.elements.Response; // Using the real class
 import cli.events.MenuEvents.*;

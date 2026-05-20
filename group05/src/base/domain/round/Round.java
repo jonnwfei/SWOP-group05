@@ -7,6 +7,7 @@ import base.domain.bid.BidType;
 import base.domain.card.Suit;
 import base.domain.player.Player;
 import base.domain.player.PlayerId;
+import base.domain.snapshots.RoundSnapshot;
 import base.domain.trick.Trick;
 
 import java.util.ArrayList;
@@ -268,6 +269,7 @@ public class Round {
      * @throws IllegalStateException if no player with the given id is found.
      */
     public Player getPlayerById(PlayerId id) {
+        if (id == null) throw new IllegalArgumentException("PlayerId must not be null.");
         return players.stream()
                 .filter(p -> p.getId().equals(id))
                 .findFirst()
@@ -396,6 +398,38 @@ public class Round {
     // Snapshot restore
     // =========================================================================
 
+
+    /**
+     * Constructs a snapshot of a round for persistence.
+     * This currently captures stable metadata and round count compatibility fields.
+     * @return RoundSnapshot of the provided round
+     * @throws IllegalArgumentException if the round is null
+     * @throws IllegalStateException if the round's internal state is corrupted or missing essential data
+     */
+    public RoundSnapshot toSnapshot( ) {
+
+        if (highestBid == null) throw new IllegalStateException("Cannot snapshot a round without a highest bid");
+
+        if (players.size() != 4) throw new IllegalStateException("Cannot snapshot round without exactly 4 players");
+
+        BidType bidType = highestBid.getType();
+        PlayerId bidderId = bidManager.getHighestBidder();
+        Player bidder =  bidderId != null ? getPlayerById(bidderId) : currentPlayer;
+        int bidderIndex = players.indexOf(bidder);
+
+        List<Integer> participantIndices = biddingTeam.stream()
+                .map(players::indexOf).toList();
+        List<Integer> miserieWinnerIndices = miserieWinners.stream().map(players::indexOf).toList(); // TODO: should be
+
+        try {
+            return new RoundSnapshot(
+                    bidType, bidderIndex, participantIndices, countTricksWon, //TODO: will aslo be changed, no more countTricks won etc
+                    miserieWinnerIndices, multiplier, scoreDeltas, trumpSuit);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Round contains invalid data: " + e.getMessage());
+        }
+    }
+
     /**
      * Rehydrates a historical round from a persisted snapshot without
      * re-running scoring logic.
@@ -468,9 +502,7 @@ public class Round {
 
         // Apply score deltas to players and update internal list.
         for (int i = 0; i < this.players.size(); i++) {
-            int delta = restoredScoreDeltas.get(i);
-            this.players.get(i).updateScore(delta);
-            this.scoreDeltas.set(i, delta);
+            this.scoreDeltas.set(i, restoredScoreDeltas.get(i)); // TODO: this is becuz round shouldnt restore the scores itself, but the game should apply the deltas to the players.
         }
 
         this.finished = true;
@@ -487,7 +519,7 @@ public class Round {
      */
     private void resolveTeams() {
         if (bidManager.getAllBids().size() != this.players.size()) {
-            throw new IllegalStateException("Biddings are not finalised; must be called at the end of bidding phase.");
+            throw new IllegalStateException("Bids are not finalised; must be called at the end of bidding phase.");
         }
         int totalCards = players.stream().mapToInt(p -> p.getHand().size()).sum();
         if (totalCards != 52) {

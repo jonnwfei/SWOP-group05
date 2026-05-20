@@ -3,6 +3,7 @@ package base.domain.player;
 import base.domain.bid.Bid;
 import base.domain.card.Card;
 import base.domain.card.Suit;
+import base.domain.snapshots.PlayerSnapshot;
 import base.domain.strategy.Strategy;
 
 import java.util.ArrayList;
@@ -145,8 +146,8 @@ public class Player {
     public String getName() {return this.playerName;}
 
     /**
-     * Retrieves the player's unique Id
-     * @return the player's Id.
+     * Retrieves the player's unique ID
+     * @return the player's ID.
      */
     public PlayerId getId() {return this.playerId;}
 
@@ -162,4 +163,19 @@ public class Player {
         if (card == null) throw new IllegalArgumentException("card can't be null.");
         return currentHand.stream().anyMatch(card::equals);
     }
-}
+
+    /**
+     * Constructs a snapshot of a player, containing their name, strategy type, and score from their current state in the game.
+     * @return PlayerSnapshot of the provided player
+     * @throws IllegalArgumentException if the player's strategy is missing or corrupted
+     */
+    public PlayerSnapshot toSnapshot() {
+        Strategy strategy = this.decisionStrategy;
+        if (strategy == null) throw new IllegalArgumentException("Strategy can't be null.");
+        return new PlayerSnapshot(
+                playerId.id().toString(),
+                playerName,
+                strategy.toSnapshotType(),
+                playerScore
+        );
+    }}

@@ -1,6 +1,7 @@
 package base.storage.snapshots;
 
 import base.domain.player.PlayerId;
+import base.domain.snapshots.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +19,7 @@ class GameSnapshotTest {
     void setUp() {
         playerSnapshots = List.of(
                 new PlayerSnapshot(new PlayerId().id().toString(),"Stan", StrategySnapshotType.HUMAN, 10),
-                new PlayerSnapshot(new PlayerId().id().toString(),"Seppe", StrategySnapshotType.SMART_BOT, -5), // FIXED TODO
+                new PlayerSnapshot(new PlayerId().id().toString(),"Seppe", StrategySnapshotType.SMART_BOT, -5),
                 new PlayerSnapshot(new PlayerId().id().toString(),"Tommy", StrategySnapshotType.LOW_BOT, -5),
                 new PlayerSnapshot(new PlayerId().id().toString(),"John", StrategySnapshotType.HIGH_BOT, 0));
     }

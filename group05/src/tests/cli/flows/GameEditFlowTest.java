@@ -5,7 +5,7 @@ import base.domain.WhistGame;
 import base.domain.player.Player;
 import base.domain.round.Round;
 import base.storage.GamePersistenceService;
-import base.storage.snapshots.SaveMode;
+import base.domain.snapshots.SaveMode;
 import cli.TerminalManager;
 import cli.elements.Response; // Use the real class!
 import cli.events.CountEvents.PlayerSelectionIOEvent;
