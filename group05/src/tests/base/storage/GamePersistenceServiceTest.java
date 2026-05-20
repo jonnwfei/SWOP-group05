@@ -124,8 +124,6 @@ class GamePersistenceServiceTest {
 
         @BeforeEach
         void setupSaveGameTests() {
-            // CRITICAL: Tell the mocked game to actually execute the snapshot logic!
-            // Without this, mockGame.toSnapshot() returns null and skips all validation/mapping.
             when(mockGame.toSnapshot()).thenCallRealMethod();
         }
 
