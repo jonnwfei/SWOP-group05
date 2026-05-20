@@ -77,8 +77,8 @@ class UC7_RemovePlayerTest {
     @DisplayName("Steps 1-5: Removed player no longer in list")
     void testRemovedPlayerNotInList() throws Exception {
         WhistGame game = runCount(roundThenAddPlayer("ToRemove",
-                "6",                              // Step 1
-                "5"                               // Step 2
+                "6",                              // Step 1: remove player (always option 6 when canRemove=true)
+                "5"                               // Step 2: select player 5
         ));
 
         assertFalse(game.getAllPlayers().stream().anyMatch(p -> p.getName().equals("ToRemove")));
@@ -99,7 +99,7 @@ class UC7_RemovePlayerTest {
                 "5", "Extra1",                    // add 3 extra players
                 "5", "Extra2",
                 "5", "Extra3",
-                "6", "5",                         // remove first
+                "6", "5",                         // remove first (option 6 = remove player when canRemove=true)
                 "6", "5"                          // remove second
         );
 
@@ -115,7 +115,7 @@ class UC7_RemovePlayerTest {
     void testCannotRemoveBelowFour() throws Exception {
         WhistGame game = runCount(roundThenAddPlayer("ExtraOnly",
                 "6", "5"                          // remove ExtraOnly → back to 4
-                // option 6 should now disappear — no more input needed
+                // remove option disappears once back at 4 players
         ));
 
         assertTrue(game.getPlayers().size() >= 4);
@@ -129,7 +129,7 @@ class UC7_RemovePlayerTest {
                 "P1", "P2", "P3", "P4",
                 "3",                              // TODO: verify
                 "2", "2", "9",
-                "6"                               // attempt remove with only 4 — should be ignored/rejected
+                "7"                               // attempt remove with only 4 — should be ignored/rejected
         );
 
         assertEquals(4, game.getPlayers().size());
@@ -143,8 +143,8 @@ class UC7_RemovePlayerTest {
     @DisplayName("Step 2: Invalid index re-prompts")
     void testInvalidIndexRePrompts() throws Exception {
         WhistGame game = runCount(roundThenAddPlayer("FifthPlayer",
-                "6",                              // Step 1
-                "99",                             // invalid
+                "6",                              // Step 1: remove player
+                "99",                             // invalid index (out of range)
                 "5"                               // valid retry
         ));
 
@@ -155,9 +155,9 @@ class UC7_RemovePlayerTest {
     @DisplayName("Step 2: Non-numeric input re-prompts")
     void testNonNumericRePrompts() throws Exception {
         WhistGame game = runCount(roundThenAddPlayer("FifthPlayer",
-                "6",
-                "abc",
-                "5"
+                "6",                              // remove player
+                "abc",                            // non-numeric
+                "5"                               // valid retry
         ));
 
         assertNotNull(game);

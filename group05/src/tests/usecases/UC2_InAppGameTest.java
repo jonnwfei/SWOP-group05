@@ -223,31 +223,36 @@ class UC2_InAppGameTest {
     @Test
     @DisplayName("Extension 11a: Miserie ends early when bidder wins a trick")
     void testMiserieEarlyEnd() throws Exception {
-        List<Card> p1 = new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.ACE)));
-        List<Card> p2 = new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.ACE)));
-        List<Card> p3 = new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.ACE)));
-        List<Card> p4 = new ArrayList<>(List.of(new Card(Suit.HEARTS, Rank.ACE)));
+        // All players get the same hand: KING + 12×TWO.
+        // Whoever is left-of-dealer: (1) bids first → gets "7" = Miserie,
+        //                            (2) leads the trick first (Miserie rule).
+        // When all play card "1" (KING), the leader's KING ties with everyone —
+        // tie-break favours the leader, so the miserie bidder always wins the trick.
+        List<Card> hand = new ArrayList<>();
+        hand.add(new Card(Suit.HEARTS, Rank.KING));
+        for (int i = 0; i < 12; i++) hand.add(new Card(Suit.HEARTS, Rank.TWO));
 
-        for (int i = 0; i < 12; i++) {
-            p1.add(new Card(Suit.HEARTS, Rank.TWO));
-            p2.add(new Card(Suit.HEARTS, Rank.TWO));
-            p3.add(new Card(Suit.HEARTS, Rank.TWO));
-            p4.add(new Card(Suit.HEARTS, Rank.TWO));
-        }
-
-        WhistGame game = run(List.of(p1, p2, p3, p4),
-                "1",                                    // Step 1
+        WhistGame game = run(List.of(hand, new ArrayList<>(hand),
+                                     new ArrayList<>(hand), new ArrayList<>(hand)),
+                "1",                                    // Step 1: game mode
                 "0",                                    // 0 bots
                 "4",                                    // 4 humans
                 "P1", "P2", "P3", "P4",
 
-                // Step 6: P1 bids Miserie (index 7 = Miserie)
+                // Bidding: first player bids Miserie, the rest pass
                 "7", "1", "1", "1",
-                "", "1", "", "1", "", "1", "", "1"      // Play the trick
+
+                // Play trick — all play card "1" (their KING).
+                // Leader (= miserie bidder) wins via tie-break → early termination fires.
+                "", "1", "", "1", "", "1", "", "1"
         );
 
+        // Miserie bidder won a trick → failed → gets negative score.
+        // We don't know which player number won (dealer is random), so use anyMatch.
         assertTrue(game.getPlayers().stream().anyMatch(p -> p.getScore() < 0),
                 "Miserie bidder who won a trick should have a negative score");
+        assertEquals(0, game.getPlayers().stream().mapToInt(Player::getScore).sum(),
+                "Zero-sum must hold");
     }
 
     // =========================================================================
@@ -269,7 +274,7 @@ class UC2_InAppGameTest {
                 "P1", "P2", "P3", "P4",
 
                 // Step 6: P1 bids Open Miserie
-                "8", "1", "1", "1",
+                "12", "1", "1", "1",
 
                 // Steps 8+9: play first trick
                 "", "1",

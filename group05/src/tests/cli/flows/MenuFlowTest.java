@@ -76,7 +76,8 @@ class MenuFlowTest {
             SaveMode mode = menuFlow.run();
 
             assertEquals(SaveMode.GAME, mode);
-            verify(game, times(4)).addPlayer(any(Player.class));
+            verify(game, times(3)).addHumanPlayer(anyString());
+            verify(game).addSmartBot(anyString());
             verify(game).startGame();
         }
 
@@ -94,7 +95,7 @@ class MenuFlowTest {
 
             assertTrue(outContent.toString().contains("Invalid input. Please enter a number."));
             assertTrue(outContent.toString().contains("Input cannot be empty."));
-            verify(game, times(4)).addPlayer(any());
+            verify(game, times(4)).addHumanPlayer(anyString());
         }
     }
 
@@ -116,7 +117,7 @@ class MenuFlowTest {
             SaveMode mode = menuFlow.run();
 
             assertEquals(SaveMode.COUNT, mode);
-            verify(game, times(4)).addPlayer(any());
+            verify(game, times(4)).addHumanPlayer(anyString());
             verify(game).startCount();
         }
     }
@@ -163,6 +164,8 @@ class MenuFlowTest {
         when(game.getAllPlayers()).thenReturn(Collections.emptyList());
 
         menuFlow.run();
-        verify(game, times(4)).addPlayer(any());
+        verify(game, times(2)).addHumanPlayer(anyString());
+        verify(game).addHighBot(anyString());
+        verify(game).addLowBot(anyString());
     }
 }

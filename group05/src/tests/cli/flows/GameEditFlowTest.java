@@ -113,7 +113,7 @@ class GameEditFlowTest {
             when(terminalManager.handle(any(AddHumanPlayerIOEvent.class))).thenReturn(realResponse("Alice"));
 
             flow.addPlayer();
-            verify(game).addPlayer(argThat(p -> p.getName().equals("Alice")));
+            verify(game).addHumanPlayer("Alice");
         }
 
         @Test
@@ -125,28 +125,28 @@ class GameEditFlowTest {
                     .thenReturn(realResponse("Bob"));
 
             flow.addPlayer();
-            verify(game).addPlayer(argThat(p -> p.getName().equals("Bob")));
+            verify(game).addHumanPlayer("Bob");
         }
 
         @Test
         void gameModeAddsSmartBot() {
             when(terminalManager.handle(any(AddPlayerIOEvent.class))).thenReturn(realResponse("2"));
             flow.addPlayer();
-            verify(game).addPlayer(argThat(p -> p.getName().contains("Smart")));
+            verify(game).addSmartBot(anyString());
         }
 
         @Test
         void gameModeAddsHighBot() {
             when(terminalManager.handle(any(AddPlayerIOEvent.class))).thenReturn(realResponse("3"));
             flow.addPlayer();
-            verify(game).addPlayer(argThat(p -> p.getName().contains("High")));
+            verify(game).addHighBot(anyString());
         }
 
         @Test
         void gameModeAddsLowBot() {
             when(terminalManager.handle(any(AddPlayerIOEvent.class))).thenReturn(realResponse("4"));
             flow.addPlayer();
-            verify(game).addPlayer(argThat(p -> p.getName().contains("Low")));
+            verify(game).addLowBot(anyString());
         }
     }
 
@@ -191,7 +191,7 @@ class GameEditFlowTest {
                     .thenReturn(realResponse("abc"), realResponse("  1 ,, 2 "));
 
             assertTrue(flow.removePlayer());
-            verify(game).removePlayerAtIndex(0);
+            verify(game).deletePlayerAtIndex(0);
         }
     }
 
@@ -219,7 +219,7 @@ class GameEditFlowTest {
             when(terminalManager.handle(any(DeleteRoundIOEvent.class))).thenReturn(realResponse("2"));
 
             assertTrue(flow.removeRound());
-            verify(game).removeRound(mockRound2);
+            verify(game).deleteRound(mockRound2);
             verify(game).recalibrateScores();
         }
     }

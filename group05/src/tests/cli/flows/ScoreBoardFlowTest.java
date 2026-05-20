@@ -167,7 +167,8 @@ class ScoreBoardFlowTest {
         @Test
         @DisplayName("Loops when input is out of range or not a number")
         void testAskIntRetryLogic() {
-            // First: "abc" (Error), Second: "99" (Out of range), Third: "2" (Valid)
+            // canRemove=false, canUndo=false, canRedo=false → max = 6
+            // First: "abc" (not a number), Second: "99" (out of range), Third: "2" (valid quit)
             when(terminalManager.handle(any(ScoreBoardIOEvent.class))).thenReturn(
                     realResponse("abc"), realResponse("99"), realResponse("2")
             );
@@ -176,19 +177,20 @@ class ScoreBoardFlowTest {
 
             String output = outContent.toString();
             assertTrue(output.contains("Invalid input. Please enter a number."));
-            assertTrue(output.contains("Please enter a number between 1 and 5."));
+            assertTrue(output.contains("Please enter a number between 1 and 6."));
         }
 
         @Test
         @DisplayName("Enforces range based on player removal eligibility")
         void testRangeEnforcement() {
-            when(game.canRemovePlayer()).thenReturn(true); // max should be 6
+            // canRemove=true adds one option → max = 7
+            when(game.canRemovePlayer()).thenReturn(true);
             when(terminalManager.handle(any(ScoreBoardIOEvent.class))).thenReturn(
-                    realResponse("7"), realResponse("2")
+                    realResponse("8"), realResponse("2")  // "8" is out of range, "2" quits
             );
 
             scoreBoardFlow.run(SaveMode.GAME);
-            assertTrue(outContent.toString().contains("Please enter a number between 1 and 6."));
+            assertTrue(outContent.toString().contains("Please enter a number between 1 and 7."));
         }
     }
 }

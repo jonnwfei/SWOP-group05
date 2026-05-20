@@ -18,7 +18,7 @@ public class TerminalInputHelper {
             try {
                 String raw = terminalManager.handle(event).rawInput();
                 return Integer.parseInt(raw.trim());
-            } catch (Exception e) {
+            } catch (NumberFormatException e) {
                 System.out.println("Invalid input. Please enter a number.");
             }
         }
