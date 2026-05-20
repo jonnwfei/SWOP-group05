@@ -105,7 +105,9 @@ public final class SmartBotStrategy implements Strategy {
         if (currentHand.isEmpty()) {
             throw new IllegalArgumentException("Cannot choose a card from an empty hand.");
         }
-
+        if (role == null){
+            throw new IllegalArgumentException("Role cannot be null");
+        }
         PlayTactic tactic = determineCurrentTactic(role);
         List<Card> legalCards = CardMath.getLegalCards(currentHand, lead);
 
@@ -332,20 +334,19 @@ public final class SmartBotStrategy implements Strategy {
         return new TrumpEvaluation(bestSuit, maxTricks);
     }
 
-    //FIXME: trump
+
     private Bid mapToHighBid(int tricks, Suit chosenTrump) {
+        boolean keepsTrump = chosenTrump == memory.getCurrentTrump();
         return switch (tricks) {
-            case 9  -> BidType.ABONDANCE_9.instantiate(chosenTrump);
+            case 9  -> keepsTrump ? BidType.ABONDANCE_9_OT.instantiate(chosenTrump)
+                    : BidType.ABONDANCE_9.instantiate(chosenTrump);
             case 10 -> BidType.ABONDANCE_10.instantiate(chosenTrump);
-            case 11 -> BidType.ABONDANCE_11.instantiate(chosenTrump);
+            case 11 -> keepsTrump ? BidType.ABONDANCE_11_OT.instantiate(chosenTrump)
+                    : BidType.ABONDANCE_11.instantiate(chosenTrump);
             case 12 -> BidType.ABONDANCE_12_OT.instantiate(chosenTrump);
-            case 13 -> {
-                if (chosenTrump == memory.getCurrentTrump()) {
-                    yield BidType.SOLO_SLIM.instantiate(chosenTrump);
-                } else {
-                    yield BidType.SOLO.instantiate(chosenTrump);
-                }
-            }
-            default -> throw new IllegalArgumentException("Invalid tricks value for mapping to high bid: " + tricks);        };
+            case 13 -> keepsTrump ? BidType.SOLO_SLIM.instantiate(chosenTrump)
+                    : BidType.SOLO.instantiate(chosenTrump);
+            default -> throw new IllegalArgumentException("Invalid tricks value for mapping to high bid: " + tricks);
+        };
     }
 }

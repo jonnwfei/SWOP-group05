@@ -1,4 +1,4 @@
-package tests.base.domain.strategy;
+package base.domain.strategy;
 
 import base.domain.bid.BidType;
 import base.domain.card.Card;

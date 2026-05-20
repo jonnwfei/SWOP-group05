@@ -302,7 +302,9 @@ public class WhistGame implements GameEventPublisher {
         if (observer != null) this.observers.add(observer);
     }
 
-    public void removeObserver(GameObserver observer) {if (observer != null) this.observers.remove(observer);}
+    public void removeObserver(GameObserver observer) {
+        if (observer != null) this.observers.remove(observer);
+    }
 
     public void notifyRoundStarted() {
         List<PlayerId> ids = getPlayers().stream().map(Player::getId).toList();
