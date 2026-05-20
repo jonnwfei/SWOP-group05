@@ -60,7 +60,7 @@ public class Round {
     // Phase transitions
     // =========================================================================
 
-    public void startPlayPhase(List<Bid> finalBids, Bid highestBid, Suit trumpSuit, Player firstPlayer) {
+    public void startPlayPhase(Bid highestBid, Suit trumpSuit, Player firstPlayer) {
         if (this.finished) throw new IllegalStateException("Round already finished.");
         if (highestBid == null) throw new IllegalArgumentException("highestBid cannot be null.");
         if (firstPlayer == null) throw new IllegalArgumentException("firstPlayer cannot be null.");
@@ -227,27 +227,51 @@ public class Round {
         this.processOutcome(facts, registry);
     }
 
-    public void restoreFromSnapshot(
-            Bid highestBid,
-            Suit trumpSuit,
-            List<PlayerId> biddingTeam,
-            int tricksWon,
-            List<PlayerId> miserieWinners,
-            List<Integer> restoredScoreDeltas) {
-
+    public void restoreFromSnapshot(RoundSnapshot snapshot) {
         if (this.finished) throw new IllegalStateException("Round already finished.");
-        if (restoredScoreDeltas == null || restoredScoreDeltas.size() != 4)
-            throw new IllegalArgumentException("Must provide exactly 4 score deltas.");
+        if (snapshot == null) throw new IllegalArgumentException("Snapshot cannot be null.");
 
-        if (highestBid != null && biddingTeam != null) {
-            List<PlayerId> defendingTeam = new ArrayList<>(this.players.stream().map(Player::getId).toList());
-            defendingTeam.removeAll(biddingTeam);
-            this.roundContract = new RoundContract(highestBid, biddingTeam, defendingTeam, this.multiplier);
+        // 1. Map indices back to PlayerIds using the Round's own players list
+        List<PlayerId> participantIds = snapshot.participantIndices().stream()
+                .map(i -> this.players.get(i).getId())
+                .toList();
+
+        List<PlayerId> miserieWinnerIds = snapshot.miserieWinnerIndices().stream()
+                .map(i -> this.players.get(i).getId())
+                .toList();
+
+        // 2. Rebuild the BidManager's history internally
+        Bid highestBid = null;
+        if (snapshot.bidType() == BidType.PASS) {
+            for (Player p : this.players) {
+                Bid passBid = this.bidManager.placeBid(p.getId(), BidType.PASS, null);
+                if (p.equals(this.currentPlayer)) {
+                    highestBid = passBid;
+                }
+            }
+        } else {
+            highestBid = this.bidManager.reconstructManualHistory(
+                    snapshot.bidType(),
+                    snapshot.trumpSuit(),
+                    participantIds
+            );
         }
-        
-        this.trumpSuit = trumpSuit;
-        RoundOutcomeFacts facts = new RoundOutcomeFacts(tricksWon, miserieWinners == null ? List.of() : miserieWinners);
-        this.outcome = new RoundOutcome(facts, List.copyOf(restoredScoreDeltas));
+
+        // 3. Contract Creation
+        if (highestBid.getType() != BidType.PASS) {
+            List<PlayerId> defendingTeam = new ArrayList<>(this.players.stream().map(Player::getId).toList());
+            defendingTeam.removeAll(participantIds);
+            this.roundContract = new RoundContract(highestBid, participantIds, defendingTeam, this.multiplier);
+        } else {
+            this.roundContract = null; // No contract for all-PASS rounds
+        }
+
+        // 4. Outcome & State Assignment
+        this.trumpSuit = snapshot.trumpSuit();
+        RoundOutcomeFacts facts = new RoundOutcomeFacts(snapshot.tricksWon(), miserieWinnerIds);
+
+        // We can just pass the list directly, because RoundSnapshot already made it immutable!
+        this.outcome = new RoundOutcome(facts, snapshot.scoreDeltas());
         this.finished = true;
     }
 

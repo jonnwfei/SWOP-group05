@@ -81,6 +81,9 @@ public record RoundSnapshot(
         if (bidType == BidType.PASS && tricksWon != -1) {
             throw new IllegalArgumentException("PASS round must have tricksWon = -1");
         }
+        if (bidType != BidType.PASS && participantIndices.isEmpty()) {
+            throw new IllegalArgumentException("Non-PASS round must have at least one participant");
+        }
 
         playerIds = List.copyOf(playerIds);
         participantIndices = List.copyOf(participantIndices);

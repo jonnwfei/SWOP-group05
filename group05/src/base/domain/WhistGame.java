@@ -409,47 +409,16 @@ public class WhistGame {
         }
 
         for (RoundSnapshot snapshot : roundSnapshots) {
-            // BUG 2 FIX: Identify the EXACT 4 players who played this round, not just current table
+            // Identify the EXACT 4 players who played this round
             List<Player> historicalPlayers = snapshot.playerIds().stream()
                     .map(idStr -> getPlayerById(PlayerId.fromString(idStr)))
                     .toList();
 
             Player mainBidder = historicalPlayers.get(snapshot.bidderIndex());
 
-            List<PlayerId> participantIds = snapshot.participantIndices().stream()
-                    .map(i -> historicalPlayers.get(i).getId())
-                    .toList();
-
-            List<PlayerId> miserieWinnerIds = snapshot.miserieWinnerIndices().stream()
-                    .map(i -> historicalPlayers.get(i).getId())
-                    .toList();
-
+            // Create the round and tell it to unpack its own snapshot
             Round restoredRound = new Round(historicalPlayers, mainBidder, snapshot.multiplier());
-            BidManager roundBidManager = restoredRound.getBidManager();
-            Bid highestBid = null;
-
-            if (snapshot.bidType() == BidType.PASS) {
-                for (Player p : historicalPlayers) {
-                    Bid passBid = roundBidManager.placeBid(p.getId(), BidType.PASS, null);
-                    if (p.equals(mainBidder)) {
-                        highestBid = passBid;
-                    }
-                }
-            } else {
-                highestBid = roundBidManager.reconstructManualHistory(
-                        snapshot.bidType(),
-                        snapshot.trumpSuit(),
-                        participantIds
-                );
-            }
-
-            restoredRound.restoreFromSnapshot(
-                    highestBid,
-                    snapshot.trumpSuit(),
-                    participantIds,
-                    snapshot.tricksWon(),
-                    miserieWinnerIds,
-                    snapshot.scoreDeltas());
+            restoredRound.restoreFromSnapshot(snapshot);
 
             this.addRound(restoredRound);
         }
